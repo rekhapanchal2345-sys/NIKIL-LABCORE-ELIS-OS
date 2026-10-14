@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Clock,
   AlertCircle,
@@ -27,7 +29,8 @@ import {
   RefreshCw,
   Search,
   X,
-  Plus
+  Plus,
+  Barcode as BarcodeIcon,
 } from "lucide-react";
 import { formatPatientFullName } from "@/lib/patient-utils";
 
@@ -710,6 +713,7 @@ export function OrderRowQuickActions({
   onAddPayment,
   onCancel,
   onWhatsApp,
+  onPhlebotomyBarcodes,
 }: {
   order: any;
   onView?: () => void;
@@ -719,7 +723,9 @@ export function OrderRowQuickActions({
   onAddPayment?: () => void;
   onCancel?: () => void;
   onWhatsApp?: () => void;
+  onPhlebotomyBarcodes?: () => void;
 }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -750,18 +756,36 @@ export function OrderRowQuickActions({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-52 z-50 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 text-xs animate-in fade-in duration-100">
+        <div className="absolute right-0 mt-1 w-56 z-50 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 text-xs animate-in fade-in duration-100">
           <button
             type="button"
             onClick={() => {
               setIsOpen(false);
-              onView?.();
+              if (onView) {
+                onView();
+              } else {
+                router.push(`/orders/${order.id}`);
+              }
             }}
             className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             <Eye className="h-4 w-4 text-blue-600" />
             <span>View Order Details</span>
           </button>
+
+          {onPhlebotomyBarcodes && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                onPhlebotomyBarcodes();
+              }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+            >
+              <BarcodeIcon className="h-4 w-4 text-indigo-600" />
+              <span>Phlebotomy Tube Barcodes</span>
+            </button>
+          )}
 
           <a
             href={`/orders/${order.id}/barcode`}

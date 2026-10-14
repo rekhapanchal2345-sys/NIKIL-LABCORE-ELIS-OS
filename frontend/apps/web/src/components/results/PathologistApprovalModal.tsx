@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 
 interface PathologistApprovalModalProps {
   isOpen: boolean;
@@ -24,54 +24,92 @@ export default function PathologistApprovalModal({
   const [signature, setSignature] = useState("");
   const [isDrawing, setIsDrawing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  const initCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.strokeStyle = "#000";
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctxRef.current = ctx;
-      }
+    if (isOpen) {
+      const timer = setTimeout(initCanvas, 50);
+      window.addEventListener("resize", initCanvas);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener("resize", initCanvas);
+      };
     }
-  }, []);
+  }, [isOpen, initCanvas]);
 
   const handleClear = () => {
     const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (canvas && ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       setSignature("");
     }
   };
 
-  const handleStartDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (canvas && ctx) {
-      const rect = canvas.getBoundingClientRect();
-      ctx.beginPath();
-      ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-    }
+    if (!canvas) return;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    lastPointRef.current = { x, y };
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
   };
 
-  const handleDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     if (!isDrawing) return;
     const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (canvas && ctx) {
-      const rect = canvas.getBoundingClientRect();
-      ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx || !lastPointRef.current) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const events = (e.nativeEvent as any).getCoalescedEvents?.() || [e];
+    for (const ce of events) {
+      const currentX = ce.clientX - rect.left;
+      const currentY = ce.clientY - rect.top;
+      const midX = (lastPointRef.current.x + currentX) / 2;
+      const midY = (lastPointRef.current.y + currentY) / 2;
+      ctx.quadraticCurveTo(lastPointRef.current.x, lastPointRef.current.y, midX, midY);
       ctx.stroke();
+      lastPointRef.current = { x: currentX, y: currentY };
     }
   };
 
-  const handleStopDrawing = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
     setIsDrawing(false);
+    lastPointRef.current = null;
     const canvas = canvasRef.current;
     if (canvas) {
       setSignature(canvas.toDataURL());
@@ -132,13 +170,11 @@ export default function PathologistApprovalModal({
           <div className="mt-2 rounded-lg border-2 border-gray-300">
             <canvas
               ref={canvasRef}
-              width={600}
-              height={150}
-              className="w-full cursor-crosshair bg-white"
-              onMouseDown={handleStartDrawing}
-              onMouseMove={handleDraw}
-              onMouseUp={handleStopDrawing}
-              onMouseLeave={handleStopDrawing}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              className="w-full h-[150px] cursor-crosshair bg-white touch-none select-none rounded-lg"
             />
           </div>
           <button

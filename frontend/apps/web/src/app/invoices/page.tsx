@@ -47,13 +47,40 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
-    search: patientIdParam || "",
-    paymentStatus: "",
-    paymentMode: "",
-    doctorId: "",
-    dateFrom: "",
-    dateTo: "",
+    search: searchParams.get("search") || patientIdParam || "",
+    paymentStatus: searchParams.get("status") || "",
+    paymentMode: searchParams.get("paymentMode") || "",
+    doctorId: searchParams.get("doctorId") || "",
+    dateFrom: searchParams.get("dateFrom") || "",
+    dateTo: searchParams.get("dateTo") || "",
   });
+
+  // URL State Synchronization (Level 4)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      
+      if (filters.search) url.searchParams.set("search", filters.search);
+      else url.searchParams.delete("search");
+
+      if (filters.paymentStatus) url.searchParams.set("status", filters.paymentStatus);
+      else url.searchParams.delete("status");
+
+      if (filters.dateFrom) url.searchParams.set("dateFrom", filters.dateFrom);
+      else url.searchParams.delete("dateFrom");
+
+      if (filters.dateTo) url.searchParams.set("dateTo", filters.dateTo);
+      else url.searchParams.delete("dateTo");
+
+      if (filters.paymentMode) url.searchParams.set("paymentMode", filters.paymentMode);
+      else url.searchParams.delete("paymentMode");
+
+      if (filters.doctorId) url.searchParams.set("doctorId", filters.doctorId);
+      else url.searchParams.delete("doctorId");
+
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, [filters]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,

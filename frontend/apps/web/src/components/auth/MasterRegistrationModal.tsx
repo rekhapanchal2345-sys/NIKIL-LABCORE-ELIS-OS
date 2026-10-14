@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   ShieldCheck,
   KeyRound,
@@ -452,39 +452,74 @@ export default function MasterRegistrationModal({
     playBeep(1100, "triangle", 0.06);
   };
 
-  // Canvas signature drawing
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    setIsDrawing(true);
-    const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
-  };
+  // Canvas signature drawing with dynamic high-DPI scaling and zero-latency pointer events
+  const canvasLastPointRef = useRef<{ x: number; y: number } | null>(null);
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+  const initSignatureCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    ctx.scale(dpr, dpr);
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.strokeStyle = "#10b981"; // Emerald medical ink
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
-    ctx.stroke();
+  }, []);
+
+  const handleSignaturePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    canvasLastPointRef.current = { x, y };
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
   };
 
-  const stopDrawing = () => {
+  const handleSignaturePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx || !canvasLastPointRef.current) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const events = (e.nativeEvent as any).getCoalescedEvents?.() || [e];
+    for (const ce of events) {
+      const currentX = ce.clientX - rect.left;
+      const currentY = ce.clientY - rect.top;
+      const midX = (canvasLastPointRef.current.x + currentX) / 2;
+      const midY = (canvasLastPointRef.current.y + currentY) / 2;
+      ctx.quadraticCurveTo(canvasLastPointRef.current.x, canvasLastPointRef.current.y, midX, midY);
+      ctx.stroke();
+      canvasLastPointRef.current = { x: currentX, y: currentY };
+    }
+  };
+
+  const handleSignaturePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
     if (!isDrawing) return;
     setIsDrawing(false);
+    canvasLastPointRef.current = null;
     const canvas = canvasRef.current;
     if (canvas) {
       setDrawnSignatureData(canvas.toDataURL());
@@ -1734,16 +1769,11 @@ export default function MasterRegistrationModal({
                               </p>
                               <canvas
                                 ref={canvasRef}
-                                width={280}
-                                height={70}
-                                onMouseDown={startDrawing}
-                                onMouseMove={draw}
-                                onMouseUp={stopDrawing}
-                                onMouseLeave={stopDrawing}
-                                onTouchStart={startDrawing}
-                                onTouchMove={draw}
-                                onTouchEnd={stopDrawing}
-                                className="w-full h-[70px] bg-slate-900/90 rounded-xl cursor-crosshair touch-none border border-slate-800"
+                                onPointerDown={handleSignaturePointerDown}
+                                onPointerMove={handleSignaturePointerMove}
+                                onPointerUp={handleSignaturePointerUp}
+                                onPointerCancel={handleSignaturePointerUp}
+                                className="w-full h-[70px] bg-slate-900/90 rounded-xl cursor-crosshair touch-none border border-slate-800 select-none"
                               />
 
                               <div className="text-[10px] font-black text-emerald-300 tracking-wider uppercase font-sans mt-2">

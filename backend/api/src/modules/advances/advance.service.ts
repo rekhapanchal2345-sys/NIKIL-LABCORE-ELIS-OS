@@ -185,14 +185,24 @@ export const applyAdvanceToInvoice = async (
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Get wallet
+      // Atomic deduct to prevent concurrent double-spending
+      const updatedWallets = await tx.patientWallet.updateMany({
+        where: {
+          patientId: data.patientId,
+          balance: { gte: amount },
+        },
+        data: {
+          balance: { decrement: amount },
+        },
+      });
+
+      if (updatedWallets.count === 0) {
+        throw new Error("Insufficient wallet balance or wallet not found");
+      }
+      
       const wallet = await tx.patientWallet.findUnique({
         where: { patientId: data.patientId },
       });
-
-      if (!wallet || Number(wallet.balance) < amount) {
-        throw new Error("Insufficient wallet balance");
-      }
 
       // Get order
       const order = await tx.order.findUnique({
@@ -227,22 +237,16 @@ export const applyAdvanceToInvoice = async (
         },
       });
 
-      // Update wallet balance
-      const updatedWallet = await tx.patientWallet.update({
-        where: { id: wallet.id },
-        data: {
-          balance: { decrement: amount },
-        },
-      });
+      // Wallet already updated atomically, just use it
 
       // Create wallet transaction
       await tx.walletTransaction.create({
         data: {
-          walletId: wallet.id,
+          walletId: wallet!.id,
           amount: -amount,
           transactionType: "DEBIT",
-          balanceBefore: Number(updatedWallet.balance) + amount,
-          balanceAfter: Number(updatedWallet.balance),
+          balanceBefore: Number(wallet!.balance) + amount,
+          balanceAfter: Number(wallet!.balance),
           referenceId: payment.id,
           referenceType: "PAYMENT",
           description: `Payment for order ${order.orderNumber}`,
@@ -254,7 +258,7 @@ export const applyAdvanceToInvoice = async (
         data: {
           patientId: data.patientId,
           amount: -amount,
-          balance: Number(updatedWallet.balance),
+          balance: Number(wallet!.balance),
           transactionType: "DEBIT",
           referenceId: payment.id,
           referenceType: "PAYMENT",
@@ -297,7 +301,7 @@ export const applyAdvanceToInvoice = async (
         });
       }
 
-      return { payment, wallet: updatedWallet };
+      return { payment, wallet: wallet! };
     });
 
     return result;

@@ -16,6 +16,7 @@ interface AbhaCardData {
   linkedAt?: string | null;
   status?: string;
   qrData: string;
+  photo?: string | null;
 }
 
 interface AbhaCardModalProps {
@@ -105,8 +106,15 @@ export default function AbhaCardModal({ data, onClose }: AbhaCardModalProps) {
                   <div style={{ fontSize: "14px", fontWeight: "bold", color: "white" }}>Ayushman Bharat</div>
                   <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.85)" }}>Health Account (ABHA)</div>
                 </div>
-                <div style={{ background: "white", borderRadius: "8px", padding: "4px" }}>
-                  <img src={qrDataUrl} alt="ABHA QR" width={60} height={60} style={{ display: "block" }} />
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {data.photo && (
+                    <div style={{ background: "white", borderRadius: "8px", padding: "2px", width: "60px", height: "60px", overflow: "hidden" }}>
+                      <img src={data.photo} alt="Patient" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "6px" }} />
+                    </div>
+                  )}
+                  <div style={{ background: "white", borderRadius: "8px", padding: "4px" }}>
+                    <img src={qrDataUrl} alt="ABHA QR" width={60} height={60} style={{ display: "block" }} />
+                  </div>
                 </div>
               </div>
 

@@ -2,6 +2,7 @@ import prisma from "../../../config/database";
 import cache from "../../utils/cache";
 import { getISTDayBounds, roundHalfUp, rupeesToPaise, paiseToRupees } from "../../utils/money";
 import { getNextSequenceNumber } from "../../services/sequence.service";
+import { createAuditLog } from "../audit/audit.service";
 
 async function generateReceiptNumber(tx?: any): Promise<string> {
   return getNextSequenceNumber("REC", "MAIN", tx);
@@ -176,6 +177,15 @@ export const createSplitPayment = async (
         }
       );
 
+    // Create Audit Log for split payment
+    await createAuditLog({
+      userId: receivedById || "SYSTEM",
+      module: "PAYMENT",
+      action: "CREATE_SPLIT_PAYMENT",
+      recordId: data.orderId,
+      newData: { payments: data.payments, orderId: data.orderId }
+    });
+
     return payments;
   } catch (error) {
     console.error('Error in createSplitPayment:', error);
@@ -346,6 +356,15 @@ export const createPayment = async (
           return payment;
         }
       );
+
+    // Create Audit Log for payment
+    await createAuditLog({
+      userId: receivedById || "SYSTEM",
+      module: "PAYMENT",
+      action: "CREATE_PAYMENT",
+      recordId: data.orderId,
+      newData: { amount: data.amount, method: data.method, orderId: data.orderId }
+    });
 
     return payment;
   } catch (error) {

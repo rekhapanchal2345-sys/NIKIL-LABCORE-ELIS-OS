@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { FlaskConical, ScanLine, UserRound, ArrowRight } from "lucide-react";
 
 export interface LabSample {
   id: string | number;
@@ -41,25 +42,25 @@ function formatDate(date?: string) {
 function statusBadge(status?: string) {
   const value = status?.toLowerCase();
   if (value === "completed" || value === "received" || value === "approved") {
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+    return "border-emerald-200 bg-emerald-50 text-emerald-800 font-bold";
   }
   if (value === "rejected" || value === "cancelled") {
-    return "border-rose-500/30 bg-rose-500/10 text-rose-300";
+    return "border-rose-200 bg-rose-50 text-rose-800 font-bold";
   }
   if (value === "pending" || value === "collected" || value === "processing") {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+    return "border-amber-200 bg-amber-50 text-amber-800 font-bold";
   }
-  return "border-slate-700 bg-slate-800 text-slate-400";
+  return "border-slate-200 bg-slate-100 text-slate-700 font-medium";
 }
 
 function LoadingRows() {
   return (
     <>
       {Array.from({ length: 6 }).map((_, row) => (
-        <tr key={row} className="border-t border-slate-800">
+        <tr key={row} className="border-t border-slate-100">
           {Array.from({ length: 8 }).map((__, cell) => (
             <td key={cell} className="px-4 py-4">
-              <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+              <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
             </td>
           ))}
         </tr>
@@ -74,143 +75,101 @@ export default function SampleTable({
   onDelete,
 }: SampleTableProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-slate-950/80">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* Command bar */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 px-5 py-4 flex items-center gap-3">
-        <span className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-2 text-cyan-400 shadow-lg shadow-cyan-500/10">🧪</span>
+      <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 flex items-center gap-3">
+        <span className="rounded-xl border border-sky-200 bg-sky-50 p-2 text-sky-700 shadow-sm">
+          <FlaskConical className="h-4 w-4" />
+        </span>
         <div>
-          <h2 className="text-sm font-bold text-white tracking-wide">Sample Worklist</h2>
-          <p className="text-xs text-slate-400">Laboratory specimen tracking and chain of custody</p>
+          <h2 className="text-sm font-black text-slate-900 tracking-wide">Sample Worklist</h2>
+          <p className="text-xs text-slate-500">Laboratory specimen tracking and chain of custody</p>
         </div>
-        <span className="ml-auto rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[10px] font-bold text-cyan-300">
+        <span className="ml-auto rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[10px] font-black text-sky-800">
           {samples.length} specimens
         </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full">
-          <thead className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+        <table className="min-w-full text-xs text-left">
+          <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600">
             <tr>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider">
                 <div>Sample</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Accession ID</span>
+                <span className="text-[9px] font-medium text-slate-400">Accession ID</span>
               </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider">
                 <div>Barcode</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Tube label</span>
+                <span className="text-[9px] font-medium text-slate-400">Tube label</span>
               </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider">
                 <div>Patient</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Identity</span>
+                <span className="text-[9px] font-medium text-slate-400">Identity</span>
               </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider">
                 <div>Order</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Accession chain</span>
+                <span className="text-[9px] font-medium text-slate-400">Requisition</span>
               </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider">
                 <div>Sample Type</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Specimen class</span>
+                <span className="text-[9px] font-medium text-slate-400">Matrix</span>
               </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider">
                 <div>Status</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Lifecycle state</span>
+                <span className="text-[9px] font-medium text-slate-400">Stage</span>
               </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider">
                 <div>Collected</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Date + time</span>
+                <span className="text-[9px] font-medium text-slate-400">Timestamp</span>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Actions</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Workflow</span>
+              <th className="px-4 py-3 font-black uppercase text-[10px] tracking-wider text-right">
+                Actions
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-800/70">
+          <tbody className="divide-y divide-slate-100">
             {loading ? (
               <LoadingRows />
             ) : samples.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-16 text-center">
-                  <div className="text-3xl text-slate-600">🧪</div>
-                  <p className="mt-2 text-sm font-semibold text-slate-300">No samples found</p>
-                  <p className="mt-1 text-sm text-slate-500">Collected laboratory samples will appear here.</p>
+                <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  No specimens registered in worklist.
                 </td>
               </tr>
             ) : (
               samples.map((sample) => (
-                <tr key={sample.id} className="group bg-slate-950 hover:bg-slate-900/60 transition-colors">
-                  <td className="border-r border-slate-800 px-4 py-4">
-                    <Link href={`/samples/${sample.id}`} className="font-mono text-sm font-bold text-white hover:text-cyan-300 transition-colors">
-                      {sample.sampleNumber || `SMP-${sample.id}`}
-                    </Link>
-                    <p className="mt-1 font-mono text-xs text-slate-500">
-                      ID: {sample.id}
-                    </p>
+                <tr key={sample.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="px-4 py-3.5 font-mono font-bold text-slate-900">
+                    {sample.sampleNumber || `SMP-${sample.id}`}
                   </td>
-
-                  <td className="border-r border-slate-800 px-4 py-4">
-                    <span className="rounded-lg border border-slate-700 bg-slate-900/80 px-2 py-1 font-mono text-xs text-slate-300">
-                      {sample.barcode || "—"}
-                    </span>
+                  <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600">
+                    {sample.barcode || "—"}
                   </td>
-
-                  <td className="border-r border-slate-800 px-4 py-4">
-                    {sample.patientId ? (
-                      <Link href={`/patients/${sample.patientId}`} className="text-sm font-semibold text-slate-200 hover:text-cyan-300 transition-colors">
-                        {sample.patientName || `Patient #${sample.patientId}`}
-                      </Link>
-                    ) : (
-                      <span className="text-sm text-slate-400">{sample.patientName || "—"}</span>
-                    )}
+                  <td className="px-4 py-3.5 font-bold text-slate-900">
+                    {sample.patientName || "—"}
                   </td>
-
-                  <td className="border-r border-slate-800 px-4 py-4">
-                    {sample.orderId ? (
-                      <Link href={`/orders/${sample.orderId}`} className="font-mono text-sm font-semibold text-slate-300 hover:text-cyan-300 transition-colors">
-                        {sample.orderNumber || `ORD-${sample.orderId}`}
-                      </Link>
-                    ) : "—"}
+                  <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600">
+                    {sample.orderNumber || "—"}
                   </td>
-
-                  <td className="border-r border-slate-800 px-4 py-4 text-sm text-slate-400">
+                  <td className="px-4 py-3.5 text-slate-700">
                     {sample.sampleType || "—"}
                   </td>
-
-                  <td className="border-r border-slate-800 px-4 py-4">
-                    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${statusBadge(sample.status)}`}>
-                      {sample.status || "Pending"}
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] uppercase ${statusBadge(sample.status)}`}>
+                      {sample.status || "UNKNOWN"}
                     </span>
                   </td>
-
-                  <td className="border-r border-slate-800 px-4 py-4 font-mono text-xs text-slate-400">
+                  <td className="px-4 py-3.5 text-slate-500 text-[11px]">
                     {formatDate(sample.collectedAt)}
                   </td>
-
-                  <td className="px-4 py-4">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/samples/${sample.id}`}
-                        className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white transition-colors"
-                      >
-                        View
-                      </Link>
-                      <Link
-                        href={`/samples/${sample.id}?edit=true`}
-                        className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors"
-                      >
-                        Edit
-                      </Link>
-                      {onDelete && (
-                        <button
-                          type="button"
-                          onClick={() => onDelete(sample)}
-                          className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/20 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
+                  <td className="px-4 py-3.5 text-right">
+                    <Link
+                      href={`/samples/${sample.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-800"
+                    >
+                      Dossier <ArrowRight className="h-3 w-3" />
+                    </Link>
                   </td>
                 </tr>
               ))

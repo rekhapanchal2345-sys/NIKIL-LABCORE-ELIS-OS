@@ -552,3 +552,92 @@ export const exportPaymentData = async (options: any = {}) => {
     throw error;
   }
 };
+// =======================================================
+// GENERATE THERMAL RECEIPT TEXT (80mm / 42 chars)
+// =======================================================
+export const generateThermalReceipt = async (receiptId: string) => {
+  const receipt = await prisma.receipt.findUnique({
+    where: { id: receiptId },
+  });
+
+  if (!receipt) {
+    throw new HttpError("Receipt not found", 404);
+  }
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: receipt.paymentId },
+    include: {
+      order: {
+        include: {
+          patient: true,
+          invoice: true,
+          items: { include: { test: true } },
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    throw new HttpError("Payment not found", 404);
+  }
+
+  const order = payment.order;
+  const patient = order.patient;
+  
+  const line = () => '-'.repeat(42) + '\n';
+  const center = (text: string) => {
+    const pad = Math.max(0, Math.floor((42 - text.length) / 2));
+    return ' '.repeat(pad) + text + '\n';
+  };
+  const leftRight = (left: string, right: string) => {
+    const space = 42 - left.length - right.length;
+    return left + ' '.repeat(Math.max(1, space)) + right + '\n';
+  };
+
+  let text = '';
+  text += center('LABCORE DIAGNOSTICS');
+  text += center('123 Health Ave, Medical District');
+  text += center('Ph: +91-9876543210');
+  text += line();
+  text += center('PAYMENT RECEIPT');
+  text += line();
+  
+  text += leftRight('Receipt No:', receipt.receiptNumber);
+  text += leftRight('Date:', payment.paidAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+  text += leftRight('Patient:', patient.firstName + ' ' + (patient.lastName || ''));
+  text += leftRight('UHID:', patient.uhid);
+  text += line();
+  
+  text += leftRight('ITEM', 'AMOUNT');
+  text += line();
+  
+  for (const item of order.items) {
+    let name = item.test?.shortName || item.test?.testName || 'Test Package';
+    if (name.length > 25) name = name.substring(0, 25) + '..';
+    const amountStr = Number(item.finalPrice).toFixed(2);
+    text += leftRight(name, amountStr);
+  }
+  
+  text += line();
+  
+  if (order.invoice) {
+    text += leftRight('Subtotal:', Number(order.invoice.subtotal).toFixed(2));
+    if (Number(order.invoice.discount) > 0) {
+      text += leftRight('Discount:', '-' + Number(order.invoice.discount).toFixed(2));
+    }
+    text += leftRight('Total GST:', Number(order.invoice.gstAmount).toFixed(2));
+    text += leftRight('Grand Total:', Number(order.invoice.grandTotal).toFixed(2));
+  }
+  
+  text += line();
+  text += leftRight('Paid Amount:', Number(payment.amount).toFixed(2));
+  text += leftRight('Payment Mode:', payment.method);
+  text += line();
+  
+  text += center('Thank you for choosing LabCore!');
+  text += center('Get reports online:');
+  text += center('https://labcore.example.com');
+  text += '\n\n\n\n'; // Feed lines for cutter
+
+  return text;
+};

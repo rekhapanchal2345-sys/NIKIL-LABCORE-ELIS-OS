@@ -18,7 +18,9 @@ export class WebSocketService {
         methods: ['GET', 'POST'],
         credentials: true
       },
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      pingInterval: 25000,
+      pingTimeout: 60000
     });
 
     this.io.on('connection', (socket) => {

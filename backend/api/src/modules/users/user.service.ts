@@ -1,5 +1,11 @@
 import prisma from "../../../config/database";
 import { hashPassword } from "../../utils/password";
+import {
+  assertStrongPassword,
+  assertNotCommonPassword,
+  assertNoPersonalInfo,
+} from "../../utils/password-policy";
+import { emailBlindIndex, normaliseEmail } from "../../utils/gmail";
 import { UserRole, AccountStatus } from "@prisma/client";
 
 interface CreateUserInput {
@@ -147,10 +153,16 @@ export const getUserById = async (id: string) => {
 };
 
 export const createUser = async (data: CreateUserInput) => {
+  assertStrongPassword(data.password);
+  assertNotCommonPassword(data.password);
+  assertNoPersonalInfo(data.password, data.email, data.fullName);
+
+  const canonicalEmail = normaliseEmail(data.email);
+
   const existingUser = await prisma.user.findFirst({
     where: {
       OR: [
-        { email: data.email },
+        { email: canonicalEmail },
         { employeeCode: data.employeeCode },
       ],
     },
@@ -164,15 +176,17 @@ export const createUser = async (data: CreateUserInput) => {
 
   const passwordHash = await hashPassword(data.password);
 
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       employeeCode: data.employeeCode,
       fullName: data.fullName,
-      email: data.email,
+      email: canonicalEmail,
       phone: data.phone,
       passwordHash,
       role: data.role,
       specialization: data.specialization,
+      passwordChangedAt: new Date(),
+      emailBlindIndex: emailBlindIndex(canonicalEmail),
     },
     select: {
       id: true,
@@ -186,6 +200,12 @@ export const createUser = async (data: CreateUserInput) => {
       createdAt: true,
     },
   });
+
+  await prisma.passwordHistory.create({
+    data: { userId: user.id, passwordHash },
+  });
+
+  return user;
 };
 
 export const updateUser = async (
@@ -243,7 +263,7 @@ export const changeUserStatus = async (
     throw new Error("User not found");
   }
 
-  return prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: { id },
     data: { status },
     select: {
@@ -255,6 +275,18 @@ export const changeUserStatus = async (
       status: true,
     },
   });
+
+  if (status !== "ACTIVE") {
+    await prisma.userSession.updateMany({
+      where: { userId: id, revokedAt: null },
+      data: {
+        revokedAt: new Date(),
+        revokeReason: `account_status_${status.toLowerCase()}`,
+      },
+    });
+  }
+
+  return updatedUser;
 };
 
 export const deleteUser = async (id: string) => {

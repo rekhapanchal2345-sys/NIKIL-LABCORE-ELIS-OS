@@ -35,8 +35,8 @@ export const confirmAbhaAuthSchema = z.object({
 // ─── Patient Linking ───────────────────────────────────────────────────────
 export const linkAbhaSchema = z.object({
   patientId: z.string().min(1, "Patient ID is required"),
-  abhaNumber: z.string().min(14, "Invalid ABHA Number"),
-  abhaAddress: z.string().min(3, "Invalid ABHA Address"),
+  abhaNumber: z.string().regex(/^\d{14}$/, "Invalid ABHA Number (must be 14 digits)"),
+  abhaAddress: z.string().regex(/^[a-zA-Z0-9.\-_]+@abdm$/, "Invalid ABHA Address format"),
   status: z.enum(["LINKED", "VERIFIED"]).optional().default("LINKED"),
 });
 

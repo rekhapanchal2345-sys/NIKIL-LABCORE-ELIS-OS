@@ -7,6 +7,10 @@ import DoctorTable, { Doctor } from "@/components/doctors/DoctorTable";
 import DoctorQuickViewModal, { DoctorProfileData } from "@/components/doctors/DoctorQuickViewModal";
 import DoctorCommissionPayoutModal from "@/components/doctors/DoctorCommissionPayoutModal";
 import DoctorRequisitionSlipModal from "@/components/doctors/DoctorRequisitionSlipModal";
+import DoctorIdBadgeModal from "@/components/doctors/DoctorIdBadgeModal";
+import DoctorSamplePickupModal from "@/components/doctors/DoctorSamplePickupModal";
+import DoctorTariffSheetModal from "@/components/doctors/DoctorTariffSheetModal";
+import DoctorAnalyticsModal from "@/components/doctors/DoctorAnalyticsModal";
 import RegisterDoctorWizard from "@/components/doctors/RegisterDoctorWizard";
 import { doctorApi } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -34,6 +38,10 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Bike,
+  FileBadge,
+  BarChart3,
+  FileSpreadsheet,
 } from "lucide-react";
 
 export default function DoctorsPage() {
@@ -68,6 +76,11 @@ export default function DoctorsPage() {
   const [selectedDoctorForView, setSelectedDoctorForView] = useState<DoctorProfileData | null>(null);
   const [selectedDoctorForPayout, setSelectedDoctorForPayout] = useState<DoctorProfileData | null>(null);
   const [selectedDoctorForRequisition, setSelectedDoctorForRequisition] = useState<DoctorProfileData | null>(null);
+  const [requisitionAutoOpenModal, setRequisitionAutoOpenModal] = useState<"whatsapp" | "email" | undefined>(undefined);
+  const [selectedDoctorForPickup, setSelectedDoctorForPickup] = useState<DoctorProfileData | null>(null);
+  const [selectedDoctorForBadge, setSelectedDoctorForBadge] = useState<DoctorProfileData | null>(null);
+  const [selectedDoctorForTariff, setSelectedDoctorForTariff] = useState<DoctorProfileData | null>(null);
+  const [selectedDoctorForAnalytics, setSelectedDoctorForAnalytics] = useState<DoctorProfileData | null>(null);
   const [doctorToEdit, setDoctorToEdit] = useState<DoctorProfileData | null>(null);
   const [showAddEditModal, setShowAddEditModal] = useState(false);
 
@@ -319,14 +332,38 @@ export default function DoctorsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  onClick={() => {
+                    const firstDoc = (filteredDoctors[0] as DoctorProfileData) || null;
+                    setSelectedDoctorForPickup(firstDoc);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  title="Schedule Phlebotomy Specimen Pickup Requisition"
+                >
+                  <Bike className="w-4 h-4 text-rose-600" />
+                  <span>Sample Pickup</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const firstDoc = (filteredDoctors[0] as DoctorProfileData) || null;
+                    setSelectedDoctorForTariff(firstDoc);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  title="Diagnostic Rate Master & B2B Tariff Directory"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-amber-600" />
+                  <span>Rate Master</span>
+                </button>
+
                 <button
                   onClick={handleExportCSV}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-sm transition-all active:scale-95"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-xs transition-all active:scale-95 cursor-pointer"
                   title="Export Doctors to CSV"
                 >
                   <Download className="w-4 h-4" />
-                  Export CSV
+                  <span>Export CSV</span>
                 </button>
 
                 {canAddDoctor && (
@@ -335,10 +372,10 @@ export default function DoctorsPage() {
                       setDoctorToEdit(null);
                       setShowAddEditModal(true);
                     }}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs shadow-md transition-all active:scale-95 transform hover:-translate-y-0.5"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs shadow-md transition-all active:scale-95 transform hover:-translate-y-0.5 cursor-pointer"
                   >
                     <Plus className="w-4 h-4 text-white" />
-                    Add New Doctor
+                    <span>Add New Doctor</span>
                   </button>
                 )}
               </div>
@@ -600,7 +637,22 @@ export default function DoctorsPage() {
             onDelete={handleDeleteDoctor}
             onQuickView={(doc) => setSelectedDoctorForView(doc as DoctorProfileData)}
             onPayout={(doc) => setSelectedDoctorForPayout(doc as DoctorProfileData)}
-            onRequisitionSlip={(doc) => setSelectedDoctorForRequisition(doc as DoctorProfileData)}
+            onRequisitionSlip={(doc) => {
+              setSelectedDoctorForRequisition(doc as DoctorProfileData);
+              setRequisitionAutoOpenModal(undefined);
+            }}
+            onWhatsAppDoctor={(doc) => {
+              setSelectedDoctorForRequisition(doc as DoctorProfileData);
+              setRequisitionAutoOpenModal("whatsapp");
+            }}
+            onEmailDoctor={(doc) => {
+              setSelectedDoctorForRequisition(doc as DoctorProfileData);
+              setRequisitionAutoOpenModal("email");
+            }}
+            onSamplePickup={(doc) => setSelectedDoctorForPickup(doc as DoctorProfileData)}
+            onIdBadge={(doc) => setSelectedDoctorForBadge(doc as DoctorProfileData)}
+            onTariffSheet={(doc) => setSelectedDoctorForTariff(doc as DoctorProfileData)}
+            onAnalytics={(doc) => setSelectedDoctorForAnalytics(doc as DoctorProfileData)}
             onEdit={(doc) => {
               setDoctorToEdit(doc as DoctorProfileData);
               setShowAddEditModal(true);
@@ -644,7 +696,22 @@ export default function DoctorsPage() {
           onClose={() => setSelectedDoctorForView(null)}
           doctor={selectedDoctorForView}
           onOpenPayoutModal={(doc) => setSelectedDoctorForPayout(doc)}
-          onOpenRequisitionSlip={(doc) => setSelectedDoctorForRequisition(doc)}
+          onOpenRequisitionSlip={(doc) => {
+            setSelectedDoctorForRequisition(doc);
+            setRequisitionAutoOpenModal(undefined);
+          }}
+          onOpenWhatsApp={(doc) => {
+            setSelectedDoctorForRequisition(doc);
+            setRequisitionAutoOpenModal("whatsapp");
+          }}
+          onOpenEmail={(doc) => {
+            setSelectedDoctorForRequisition(doc);
+            setRequisitionAutoOpenModal("email");
+          }}
+          onOpenSamplePickup={(doc) => setSelectedDoctorForPickup(doc)}
+          onOpenIdBadge={(doc) => setSelectedDoctorForBadge(doc)}
+          onOpenTariffSheet={(doc) => setSelectedDoctorForTariff(doc)}
+          onOpenAnalytics={(doc) => setSelectedDoctorForAnalytics(doc)}
           onEditDoctor={(doc) => {
             setDoctorToEdit(doc);
             setShowAddEditModal(true);
@@ -662,11 +729,43 @@ export default function DoctorsPage() {
         {/* MODAL 3: OFFICIAL CLINICAL INVESTIGATION REQUISITION SLIP / RX PAD */}
         <DoctorRequisitionSlipModal
           isOpen={Boolean(selectedDoctorForRequisition)}
-          onClose={() => setSelectedDoctorForRequisition(null)}
+          onClose={() => {
+            setSelectedDoctorForRequisition(null);
+            setRequisitionAutoOpenModal(undefined);
+          }}
           doctor={selectedDoctorForRequisition}
+          autoOpenModal={requisitionAutoOpenModal}
         />
 
-        {/* MODAL 3: ENTERPRISE 8-STEP DOCTOR REGISTRATION & COMPLIANCE WIZARD */}
+        {/* MODAL 4: DOCTOR DIGITAL PRIVILEGE ID BADGE & CERTIFICATE */}
+        <DoctorIdBadgeModal
+          isOpen={Boolean(selectedDoctorForBadge)}
+          onClose={() => setSelectedDoctorForBadge(null)}
+          doctor={selectedDoctorForBadge}
+        />
+
+        {/* MODAL 5: PHLEBOTOMY SPECIMEN PICKUP & RIDER DISPATCH */}
+        <DoctorSamplePickupModal
+          isOpen={Boolean(selectedDoctorForPickup)}
+          onClose={() => setSelectedDoctorForPickup(null)}
+          doctor={selectedDoctorForPickup}
+        />
+
+        {/* MODAL 6: DIAGNOSTIC RATE MASTER & TARIFF DIRECTORY */}
+        <DoctorTariffSheetModal
+          isOpen={Boolean(selectedDoctorForTariff)}
+          onClose={() => setSelectedDoctorForTariff(null)}
+          doctor={selectedDoctorForTariff}
+        />
+
+        {/* MODAL 7: CLINICAL ANALYTICS & PRESCRIBING DOSSIER */}
+        <DoctorAnalyticsModal
+          isOpen={Boolean(selectedDoctorForAnalytics)}
+          onClose={() => setSelectedDoctorForAnalytics(null)}
+          doctor={selectedDoctorForAnalytics}
+        />
+
+        {/* MODAL 8: ENTERPRISE 8-STEP DOCTOR REGISTRATION & COMPLIANCE WIZARD */}
         <RegisterDoctorWizard
           isOpen={showAddEditModal}
           onClose={() => {

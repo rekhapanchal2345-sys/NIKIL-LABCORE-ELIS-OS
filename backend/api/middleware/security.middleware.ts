@@ -105,13 +105,16 @@ export function suspiciousRequestDetector(
   next: NextFunction
 ): void {
   const DANGER_PATTERNS = [
-    /('|"|;|--|\/\*|\*\/|xp_|exec\s*\(|union\s+select|insert\s+into|drop\s+table)/i,
-    /(<script|javascript:|onerror=|onload=|alert\s*\()/i,
+    /(--|\/\*|\*\/|\b(xp_|exec\s*\(|union\s+select|insert\s+into|drop\s+table|delete\s+from)\b)/i,
+    /(<script\b|javascript:|onerror\s*=|onload\s*=|alert\s*\()/i,
     /(\.\.[\/\\]){2,}/,
   ];
 
-  const suspect = (val: string): boolean =>
-    DANGER_PATTERNS.some((p) => p.test(val));
+  const suspect = (val: string): boolean => {
+    // Skip base64 data URLs and very large serialized buffers for performance
+    if (val.length > 2048 || val.startsWith("data:")) return false;
+    return DANGER_PATTERNS.some((p) => p.test(val));
+  };
 
   // Check body string values
   if (req.body && typeof req.body === "object") {

@@ -179,7 +179,15 @@ function buildObservationResource(
       },
     ],
     code: {
-      coding: [],
+      coding: parameter.loincCode
+        ? [
+            {
+              system: "http://loinc.org",
+              code: parameter.loincCode,
+              display: parameter.parameterName,
+            },
+          ]
+        : [],
       text: parameter.parameterName ?? "Result",
     },
     subject: { reference: patientRef },
@@ -354,6 +362,13 @@ export async function buildFhirBundle(orderId: string): Promise<object> {
         value: (order as any).orderNumber ?? orderId,
       },
     ],
+    presentedForm: [
+      {
+        contentType: "application/pdf",
+        data: "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLYyMDI1MDY1MlSxjK2OBrGQDC5AgkAAK/X/PAgB1SgjBCmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKMzEKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoZ2hvc3RzY3JpcHQpL0NyZWF0aW9uRGF0ZShEOjIwMjExMDAyMjIwMzMzWik+PgplbmRvYmoKCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDI1OCAwMDAwMCBuIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAxMzUgMDAwMDAgbiAKMDAwMDAwMDE1NCAwMDAwMCBuIAowMDAwMDAwMzQ2IDAwMDAwIG4gCjAwMDAwMDA0MDUgMDAwMDAgbiAKMDAwMDAwMDQ1NSAwMDAwMCBuIAp0cmFpbGVyCjw8L1NpemUgOC9Sb290IDYgMCBSL0luZm8gNyAwIFIvSUQoKT4+CnN0YXJ0eHJlZgo1NTkKJSVFT0YK", // Base64 empty PDF placeholder (in production, generate from report service)
+        title: "Diagnostic Report PDF",
+      }
+    ]
   };
 
   // Composition (document entry point)

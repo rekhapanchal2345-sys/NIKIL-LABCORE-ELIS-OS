@@ -4,14 +4,18 @@
 }
 
 @media print {
-  /* Hide all non-printable elements */
+  /* Hide non-printable elements unless within print containers */
   body * {
     visibility: hidden;
   }
 
-  /* Show only the print template */
+  /* Show print template and registration print form container */
   .print-template,
-  .print-template * {
+  .print-template *,
+  .print-form-page,
+  .print-form-page *,
+  .print-form-container,
+  .print-form-container * {
     visibility: visible;
   }
 

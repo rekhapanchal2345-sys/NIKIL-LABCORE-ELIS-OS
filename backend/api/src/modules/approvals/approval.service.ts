@@ -1,5 +1,6 @@
 import prisma from "../../../config/database";
 import { createAuditLog } from "../audit/audit.service";
+import { HttpError } from "../../utils/http-error";
 
 // =======================================================
 // GET APPROVAL METRICS
@@ -428,6 +429,24 @@ export const approve =
     id: string,
     approvedById: string
   ) => {
+    const user = await prisma.user.findUnique({ where: { id: approvedById } });
+    if (!user || user.role !== "PATHOLOGIST" || user.status !== "ACTIVE") {
+      throw new HttpError("Only active pathologists can approve diagnostic results", 403);
+    }
+    const doctor = await prisma.doctor.findFirst({
+      where: {
+        OR: [
+          { email: user.email },
+          { phone: user.phone },
+          { doctorCode: user.employeeCode }
+        ],
+        isActive: true,
+      }
+    });
+    if (!doctor || !doctor.registrationNumber) {
+      throw new HttpError("Only active pathologists with valid registration can approve diagnostic results", 403);
+    }
+
     const result =
       await prisma.result.findUnique({
         where: {
@@ -514,6 +533,91 @@ export const approve =
       oldData: { status: result.status },
       newData: { status: "APPROVED", approvedById, approvedAt: new Date() },
     });
+
+    // =======================================================
+    // 7-STAGE SPECIMEN STATE MACHINE & ORDER AUTO-COMPLETION
+    // =======================================================
+    if (result.orderId) {
+      try {
+        const orderId = result.orderId;
+
+        // 1. Record SampleTrackingHistory for this approved result
+        const sample = await prisma.sample.findFirst({
+          where: { orderId, testId: result.testId },
+        });
+
+        if (sample) {
+          await prisma.sampleTrackingHistory.create({
+            data: {
+              sampleId: sample.id,
+              orderId,
+              patientId: sample.patientId,
+              eventType: "RESULT_APPROVED" as any,
+              status: "APPROVED",
+              notes: `Pathologist signed off results for test: ${result.testId}`,
+              performedById: approvedById,
+              performedAt: new Date(),
+            },
+          });
+        }
+
+        // 2. Check if all results for this order are now approved or published
+        const unapprovedCount = await prisma.result.count({
+          where: {
+            orderId,
+            status: { notIn: ["APPROVED", "PUBLISHED"] },
+          },
+        });
+
+        if (unapprovedCount === 0) {
+          // All test results are approved! Transition order to COMPLETED
+          await prisma.order.update({
+            where: { id: orderId },
+            data: {
+              orderStatus: "COMPLETED" as any,
+              reportedAt: new Date(),
+            },
+          });
+
+          // Transition samples to COMPLETED
+          await prisma.sample.updateMany({
+            where: { orderId },
+            data: {
+              status: "COMPLETED" as any,
+              completedAt: new Date(),
+            },
+          });
+
+          if (sample) {
+            await prisma.sampleTrackingHistory.create({
+              data: {
+                sampleId: sample.id,
+                orderId,
+                patientId: sample.patientId,
+                eventType: "SAMPLE_COMPLETED" as any,
+                status: "COMPLETED",
+                notes: "Diagnostic order and all tests completed. Final NABL report available.",
+                performedById: approvedById,
+                performedAt: new Date(),
+              },
+            });
+          }
+
+          // 3. Automated ABDM Care-Context notification if patient has ABHA
+          const patient = (approved as any).order?.patient;
+          if (patient && (patient.abhaAddress || patient.abhaNumber)) {
+            try {
+              const { notifyCareContextAddition } = require("../abdm/hip.service");
+              await notifyCareContextAddition(patient.id, orderId);
+            } catch (abdmErr) {
+              console.warn("[Approvals] ABDM care context notify non-fatal:", abdmErr);
+            }
+          }
+        }
+      } catch (lifecycleErr) {
+        console.warn("[Approvals] Post-approval state machine non-fatal error:", lifecycleErr);
+      }
+    }
 
     return approved;
   };
@@ -664,6 +768,23 @@ export const batchApprove = async (
   approvedById: string,
   remarks?: string
 ) => {
+  const user = await prisma.user.findUnique({ where: { id: approvedById } });
+  if (!user || user.role !== "PATHOLOGIST" || user.status !== "ACTIVE") {
+    throw new HttpError("Only active pathologists can approve diagnostic results", 403);
+  }
+  const doctor = await prisma.doctor.findFirst({
+    where: {
+      OR: [
+        { email: user.email },
+        { phone: user.phone },
+        { doctorCode: user.employeeCode }
+      ],
+      isActive: true,
+    }
+  });
+  if (!doctor || !doctor.registrationNumber) {
+    throw new HttpError("Only active pathologists with valid registration can approve diagnostic results", 403);
+  }
   if (!ids || ids.length === 0) {
     throw new Error("No result IDs provided for batch approval");
   }
@@ -738,6 +859,44 @@ export const batchApprove = async (
     recordId: approvableIds.join(","),
     newData: { count: approvableIds.length, approvedIds: approvableIds, remarks },
   });
+
+  // Lifecycle advance for completed orders in batch
+  try {
+    const batchResults = await prisma.result.findMany({
+      where: { id: { in: approvableIds } },
+      select: { orderId: true, testId: true },
+    });
+    const orderIds = Array.from(new Set(batchResults.map((r) => r.orderId).filter(Boolean))) as string[];
+
+    for (const ordId of orderIds) {
+      const remaining = await prisma.result.count({
+        where: {
+          orderId: ordId,
+          status: { notIn: ["APPROVED", "PUBLISHED"] },
+        },
+      });
+
+      if (remaining === 0) {
+        await prisma.order.update({
+          where: { id: ordId },
+          data: {
+            orderStatus: "COMPLETED" as any,
+            reportedAt: new Date(),
+          },
+        });
+
+        await prisma.sample.updateMany({
+          where: { orderId: ordId },
+          data: {
+            status: "COMPLETED" as any,
+            completedAt: new Date(),
+          },
+        });
+      }
+    }
+  } catch (batchLifecycleErr) {
+    console.warn("[Approvals] Batch lifecycle advance non-fatal:", batchLifecycleErr);
+  }
 
   return {
     success: true,

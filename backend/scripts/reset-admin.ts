@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import prisma from '../api/config/database';
 import bcrypt from 'bcryptjs';
+import { hashPassword } from '../api/src/utils/password';
 import { UserRole, AccountStatus } from '@prisma/client';
 
 /** Reads the seed admin credentials, refusing to fall back to any default password. */
@@ -60,7 +61,7 @@ async function resetAdminUser() {
     console.log('Password: [HIDDEN - set ADMIN_PASSWORD in your environment]');
 
     // Hash password
-    const passwordHash = await bcrypt.hash(newAdminUser.password, 12);
+    const passwordHash = await hashPassword(newAdminUser.password);
 
     // Create new admin user
     const user = await prisma.user.create({

@@ -419,6 +419,45 @@ export default function PaymentsPage() {
   const [notifyModalOpen, setNotifyModalOpen] = useState(false);
   const [notifyPayload, setNotifyPayload] = useState<NotificationPayload | null>(null);
 
+  // URL State Synchronization (Level 4)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('tab')) setActiveTab(urlParams.get('tab') as any);
+      if (urlParams.has('status')) setStatusFilter(urlParams.get('status') || "All");
+      if (urlParams.has('method')) setMethodFilter(urlParams.get('method') || "All");
+      if (urlParams.has('date')) setDateFilter(urlParams.get('date') || "All");
+      if (urlParams.has('search')) setSearch(urlParams.get('search') || "");
+      if (urlParams.has('aging')) setAgingFilter(urlParams.get('aging') as any);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      
+      if (activeTab !== "Overview") url.searchParams.set("tab", activeTab);
+      else url.searchParams.delete("tab");
+
+      if (statusFilter !== "All") url.searchParams.set("status", statusFilter);
+      else url.searchParams.delete("status");
+
+      if (methodFilter !== "All") url.searchParams.set("method", methodFilter);
+      else url.searchParams.delete("method");
+
+      if (dateFilter !== "All") url.searchParams.set("date", dateFilter);
+      else url.searchParams.delete("date");
+
+      if (search) url.searchParams.set("search", search);
+      else url.searchParams.delete("search");
+
+      if (agingFilter !== "ALL") url.searchParams.set("aging", agingFilter);
+      else url.searchParams.delete("aging");
+
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, [activeTab, statusFilter, methodFilter, dateFilter, search, agingFilter]);
+
   const handleNotifyPayment = (payment: Payment) => {
     setNotifyPayload({
       patientId: payment.patientId,

@@ -1,49 +1,55 @@
-const express = require('express');
-const cors = require('cors');
+/**
+ * Consolidated Backend Entry Point - LabCore ELIS OS
+ * 
+ * All legacy backend logic from the root has been consolidated into the modern
+ * Node.js & Express 5 TypeScript backend located in ./backend.
+ * 
+ * This root entry point safely delegates to backend/api/src/server.ts or the
+ * compiled bundle in backend/dist without initializing dual servers or port conflicts.
+ */
 const path = require('path');
-const doctorRoutes = require('./src/routes/doctorRoutes');
-const aiStudioRoutes = require('./src/routes/aiStudioRoutes');
+const fs = require('fs');
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+const backendDir = path.join(__dirname, 'backend');
+const distServer = path.join(backendDir, 'dist', 'api', 'src', 'server.js');
+const tsServer = path.join(backendDir, 'api', 'src', 'server.ts');
+const backendEnv = path.join(backendDir, '.env');
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, 'public')));
-
-// API Routes
-app.use('/api/v1/doctor-module', doctorRoutes);
-app.use('/api/v1/ai-studio', aiStudioRoutes);
-
-// System Health & Module Info
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'online',
-    timestamp: new Date().toISOString(),
-    system: 'LabCore ELIS & Hospital Information System',
-    module: 'Doctor & Pathologist Advanced Portal',
-    version: '2.5.0-PRO'
-  });
-});
-
-// Fallback to frontend index.html for SPA routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Start Server
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`=======================================================`);
-    console.log(`🚀 LabCore ELIS Doctor Module Backend Server Running!`);
-    console.log(`🌐 Clinical Portal: http://localhost:${PORT}`);
-    console.log(`🩺 API Base: http://localhost:${PORT}/api/v1/doctor-module`);
-    console.log(`=======================================================`);
-  });
+if (fs.existsSync(backendEnv)) {
+  require('dotenv').config({ path: backendEnv });
+} else {
+  require('dotenv').config();
 }
 
-module.exports = app;
+if (require.main === module) {
+  console.log('=======================================================');
+  console.log('🔄 LabCore ELIS OS: Consolidated Backend Initialized');
+  console.log('📂 Target: modern Express 5 + TypeScript in ./backend');
+  console.log('=======================================================');
+
+  if (fs.existsSync(distServer)) {
+    require(distServer);
+  } else {
+    // When executing directly in development from TypeScript source
+    const tsNode = require(path.join(backendDir, 'node_modules', 'ts-node'));
+    tsNode.register({
+      transpileOnly: true,
+      project: path.join(backendDir, 'tsconfig.json')
+    });
+    require(tsServer);
+  }
+} else {
+  // When imported as a module, delegate to modern app
+  const distApp = path.join(backendDir, 'dist', 'api', 'src', 'app.js');
+  if (fs.existsSync(distApp)) {
+    module.exports = require(distApp).default || require(distApp);
+  } else {
+    const tsNode = require(path.join(backendDir, 'node_modules', 'ts-node'));
+    tsNode.register({
+      transpileOnly: true,
+      project: path.join(backendDir, 'tsconfig.json')
+    });
+    const tsApp = path.join(backendDir, 'api', 'src', 'app.ts');
+    module.exports = require(tsApp).default || require(tsApp);
+  }
+}

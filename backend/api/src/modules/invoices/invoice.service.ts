@@ -67,6 +67,18 @@ export const createInvoice = async (
       throw new HttpError("Discount cannot be greater than subtotal", 400);
     }
 
+    if (discount > 0 && order.createdById) {
+      const user = await prisma.user.findUnique({ where: { id: order.createdById } });
+      const isManagerOrAdmin = user && ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(user.role);
+      
+      if (!isManagerOrAdmin) {
+        const maxAllowedDiscount = subtotal * 0.10;
+        if (discount > maxAllowedDiscount) {
+          throw new HttpError(`Unauthorized Discount: Front desk cannot exceed 10% (Max allowed: ₹${maxAllowedDiscount}). Manager override required.`, 403);
+        }
+      }
+    }
+
     const taxableAmount = roundHalfUp(subtotal - discount);
 
     // Configurable GST rate (default 18% or 0% for clinical exemption)

@@ -12,10 +12,14 @@ import { z } from "zod";
 
 export const userRoleSchema = z.enum([
   "ADMIN",
+  "SUPER_ADMIN",
+  "BRANCH_ADMIN",
   "FRONT_DESK",
   "LAB_TECH",
   "PATHOLOGIST",
   "DOCTOR",
+  "ACCOUNTANT",
+  "AUDITOR",
 ]);
 
 /**
@@ -24,14 +28,15 @@ export const userRoleSchema = z.enum([
  * ACTIVE
  * INACTIVE
  * SUSPENDED
+ * LOCKED
  */
 
-export const accountStatusSchema =
-  z.enum([
-    "ACTIVE",
-    "INACTIVE",
-    "SUSPENDED",
-  ]);
+export const accountStatusSchema = z.enum([
+  "ACTIVE",
+  "INACTIVE",
+  "SUSPENDED",
+  "LOCKED",
+]);
 
 /**
  * Create User
@@ -69,8 +74,8 @@ export const createUserSchema = {
       .string()
       .trim()
       .regex(
-        /^[0-9+\-\s()]{7,15}$/,
-        "Invalid phone number."
+        /^\+91[6-9]\d{9}$/,
+        "Invalid phone number. Must be +91 followed by 10 digits."
       )
       .nullable()
       .optional(),
@@ -152,8 +157,8 @@ export const updateUserSchema = {
       .string()
       .trim()
       .regex(
-        /^[0-9+\-\s()]{7,15}$/,
-        "Invalid phone number."
+        /^\+91[6-9]\d{9}$/,
+        "Invalid phone number. Must be +91 followed by 10 digits."
       )
       .nullable()
       .optional(),

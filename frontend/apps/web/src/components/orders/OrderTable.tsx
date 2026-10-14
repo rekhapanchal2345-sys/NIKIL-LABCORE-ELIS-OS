@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { Eye, Trash2, Clock, AlertTriangle, CheckCircle2, UserRound, Stethoscope } from "lucide-react";
 
 export interface LabOrder {
   id: string | number;
@@ -54,44 +55,33 @@ function formatDate(date?: string) {
 function statusClass(status?: string) {
   const value = status?.toLowerCase();
 
-  if (
-    value === "completed" ||
-    value === "approved" ||
-    value === "paid"
-  ) {
-    return "bg-green-500/20 text-green-400 border border-green-500/30";
+  if (value === "completed" || value === "approved" || value === "paid") {
+    return "bg-emerald-50 text-emerald-800 border border-emerald-200";
   }
 
-  if (
-    value === "cancelled" ||
-    value === "rejected"
-  ) {
-    return "bg-red-500/20 text-red-400 border border-red-500/30";
+  if (value === "cancelled" || value === "rejected") {
+    return "bg-rose-50 text-rose-800 border border-rose-200";
   }
 
-  if (
-    value === "pending" ||
-    value === "processing" ||
-    value === "collected"
-  ) {
-    return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+  if (value === "pending" || value === "processing" || value === "collected") {
+    return "bg-amber-50 text-amber-800 border border-amber-200";
   }
 
-  return "bg-purple-500/20 text-purple-300/60 border border-purple-500/30";
+  return "bg-sky-50 text-sky-800 border border-sky-200";
 }
 
 function priorityClass(priority?: string) {
   const value = priority?.toLowerCase();
 
   if (value === "urgent" || value === "stat") {
-    return "bg-red-500/20 text-red-400 border border-red-500/30";
+    return "bg-rose-600 text-white font-bold";
   }
 
   if (value === "high") {
-    return "bg-orange-500/20 text-orange-400 border border-orange-500/30";
+    return "bg-amber-100 text-amber-800 border border-amber-200 font-bold";
   }
 
-  return "bg-purple-500/20 text-purple-300/60 border border-purple-500/30";
+  return "bg-slate-100 text-slate-700 border border-slate-200";
 }
 
 function LoadingRows() {
@@ -101,7 +91,7 @@ function LoadingRows() {
         <tr key={row}>
           {Array.from({ length: 8 }).map((__, cell) => (
             <td key={cell} className="px-4 py-4">
-              <div className="h-4 w-24 animate-pulse rounded bg-purple-500/20" />
+              <div className="h-4 w-24 animate-pulse rounded bg-slate-100" />
             </td>
           ))}
         </tr>
@@ -116,62 +106,50 @@ export default function OrderTable({
   onDelete,
 }: OrderTableProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-purple-500/30 bg-black/40 backdrop-blur-xl shadow-lg shadow-purple-500/20">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-purple-500/20">
-          <thead className="bg-purple-500/10">
+        <table className="min-w-full divide-y divide-slate-100">
+          <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-purple-300/80">
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Order
               </th>
-
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-purple-300/80">
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Patient
               </th>
-
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-purple-300/80">
-                Doctor
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                Referring Doctor
               </th>
-
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-purple-300/80">
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Priority
               </th>
-
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-purple-300/80">
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Status
               </th>
-
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-purple-300/80">
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Amount
               </th>
-
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-purple-300/80">
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Date
               </th>
-
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-purple-300/80">
+              <th className="px-5 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
                 Actions
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-purple-500/20 bg-black/40">
+          <tbody className="divide-y divide-slate-100 bg-white text-xs">
             {loading ? (
               <LoadingRows />
             ) : orders.length === 0 ? (
               <tr>
-                <td
-                  colSpan={8}
-                  className="px-6 py-16 text-center"
-                >
-                  <div className="text-2xl">📋</div>
-
-                  <p className="mt-2 text-sm font-semibold text-purple-200">
-                    No orders found
+                <td colSpan={8} className="px-6 py-16 text-center">
+                  <div className="text-3xl mb-2">📋</div>
+                  <p className="text-sm font-bold text-slate-800">
+                    No clinical orders found
                   </p>
-
-                  <p className="mt-1 text-sm text-purple-300/70">
-                    Laboratory orders will appear here.
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Requisition records will appear here as they are registered.
                   </p>
                 </td>
               </tr>
@@ -179,55 +157,54 @@ export default function OrderTable({
               orders.map((order) => (
                 <tr
                   key={order.id}
-                  className="hover:bg-purple-500/10 transition-colors"
+                  className="hover:bg-slate-50/80 transition-colors"
                 >
-                  <td className="px-4 py-4">
+                  <td className="px-5 py-4">
                     <Link
                       href={`/orders/${order.id}`}
-                      className="text-sm font-semibold text-purple-200 hover:text-cyan-400 transition-colors"
+                      className="text-xs font-bold text-slate-900 hover:text-sky-600 transition-colors font-mono"
                     >
-                      {order.orderNumber ||
-                        `ORD-${order.id}`}
+                      {order.orderNumber || `ORD-${order.id}`}
                     </Link>
-
-                    <p className="mt-1 text-xs text-purple-300/70">
-                      ID: {order.id}
-                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">ID: {order.id}</p>
                   </td>
 
-                  <td className="px-4 py-4">
+                  <td className="px-5 py-4">
                     {order.patientId ? (
                       <Link
                         href={`/patients/${order.patientId}`}
-                        className="text-sm font-medium text-purple-200 hover:text-cyan-400 transition-colors"
+                        className="text-xs font-bold text-slate-800 hover:text-sky-600 transition-colors flex items-center gap-1.5"
                       >
-                        {order.patientName ||
-                          `Patient #${order.patientId}`}
+                        <UserRound className="h-3 w-3 text-sky-600" />
+                        {order.patientName || `Patient #${order.patientId}`}
                       </Link>
                     ) : (
-                      <span className="text-sm text-purple-300/80">
+                      <span className="text-xs font-medium text-slate-700">
                         {order.patientName || "—"}
                       </span>
                     )}
                   </td>
 
-                  <td className="px-4 py-4 text-sm text-purple-300/80">
-                    {order.doctorName || "—"}
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${priorityClass(
-                        order.priority
-                      )}`}
-                    >
-                      {order.priority || "Normal"}
+                  <td className="px-5 py-4 text-xs text-slate-600">
+                    <span className="flex items-center gap-1">
+                      <Stethoscope className="h-3 w-3 text-slate-400" />
+                      {order.doctorName || "Self / OPD Walk-in"}
                     </span>
                   </td>
 
-                  <td className="px-4 py-4">
+                  <td className="px-5 py-4">
                     <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] ${priorityClass(
+                        order.priority
+                      )}`}
+                    >
+                      {order.priority || "Routine"}
+                    </span>
+                  </td>
+
+                  <td className="px-5 py-4">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${statusClass(
                         order.status
                       )}`}
                     >
@@ -235,53 +212,38 @@ export default function OrderTable({
                     </span>
                   </td>
 
-                  <td className="px-4 py-4">
-                    <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">
-                      {formatCurrency(
-                        order.totalAmount
-                      )}
+                  <td className="px-5 py-4">
+                    <p className="text-xs font-bold text-slate-900">
+                      {formatCurrency(order.totalAmount)}
                     </p>
-
-                    {order.pendingAmount !==
-                      undefined && (
-                      <p className="mt-1 text-xs text-purple-300/70">
-                        Due:{" "}
-                        {formatCurrency(
-                          order.pendingAmount
-                        )}
+                    {order.pendingAmount !== undefined && order.pendingAmount > 0 && (
+                      <p className="text-[10px] font-bold text-rose-600 mt-0.5">
+                        Due: {formatCurrency(order.pendingAmount)}
                       </p>
                     )}
                   </td>
 
-                  <td className="px-4 py-4 text-sm text-purple-300/80">
+                  <td className="px-5 py-4 text-xs text-slate-500 font-medium">
                     {formatDate(order.createdAt)}
                   </td>
 
-                  <td className="px-4 py-4">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
                       <Link
                         href={`/orders/${order.id}`}
-                        className="rounded-md border border-purple-500/30 px-3 py-1.5 text-xs font-medium text-purple-300 transition hover:bg-purple-500/20 hover:border-cyan-500/50 hover:text-cyan-400"
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-sky-600 hover:bg-slate-50 transition-colors shadow-2xs"
+                        title="View details"
                       >
-                        View
-                      </Link>
-
-                      <Link
-                        href={`/orders/${order.id}?edit=true`}
-                        className="rounded-md border border-purple-500/30 px-3 py-1.5 text-xs font-medium text-purple-300 transition hover:bg-purple-500/20 hover:border-cyan-500/50 hover:text-cyan-400"
-                      >
-                        Edit
+                        <Eye className="h-3.5 w-3.5" />
                       </Link>
 
                       {onDelete && (
                         <button
-                          type="button"
-                          onClick={() =>
-                            onDelete(order)
-                          }
-                          className="rounded-md border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/20"
+                          onClick={() => onDelete(order)}
+                          className="p-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors shadow-2xs"
+                          title="Delete"
                         >
-                          Delete
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>

@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -22,10 +22,10 @@ if not GEMINI_API_KEY:
 
 GEMINI_API_BASE = os.getenv(
     "GEMINI_API_BASE_URL",
-    "https://generativelanguage.googleapis.com/v1/models",
+    "https://generativelanguage.googleapis.com/v1beta/models",
 )
 
-DEFAULT_MODEL = os.getenv("GEMINI_DEFAULT_MODEL", "gemini-1.5-flash")
+DEFAULT_MODEL = os.getenv("GEMINI_DEFAULT_MODEL", "gemini-3.8-flash")
 
 app = FastAPI(title="Gemini OpenAI‑compatible proxy")
 
@@ -82,7 +82,31 @@ def translate_to_gemini(payload: ChatCompletionRequest) -> Dict[str, Any]:
         gemini_payload["generationConfig"]["topP"] = payload.top_p
     if not gemini_payload["generationConfig"]:
         del gemini_payload["generationConfig"]
+    if payload.stream:
+        return {"url": f"{GEMINI_API_BASE}/{model_name}:streamGenerateContent?alt=sse", "params": params, "json": gemini_payload}
     return {"url": f"{GEMINI_API_BASE}/{model_name}:generateContent", "params": params, "json": gemini_payload}
+
+@app.get("/v1/models")
+async def list_models():
+    models_list = [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+    ]
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": m,
+                "object": "model",
+                "created": int(time.time()),
+                "owned_by": "google",
+            }
+            for m in models_list
+        ],
+    }
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request, body: ChatCompletionRequest):
@@ -90,6 +114,30 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
         raise HTTPException(status_code=401, detail="GEMINI_API_KEY not configured")
     try:
         gemini_req = translate_to_gemini(body)
+        if body.stream:
+            async def generate_sse():
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    async with client.stream("POST", gemini_req["url"], params=gemini_req["params"], json=gemini_req["json"]) as response:
+                        response.raise_for_status()
+                        async for chunk in response.aiter_lines():
+                            if chunk:
+                                if chunk.startswith("data: "):
+                                    try:
+                                        chunk_data = json.loads(chunk[6:])
+                                        text = chunk_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                                        out_chunk = {
+                                            "id": "gemini-proxy",
+                                            "object": "chat.completion.chunk",
+                                            "created": int(time.time()),
+                                            "model": body.model or DEFAULT_MODEL,
+                                            "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}]
+                                        }
+                                        yield f"data: {json.dumps(out_chunk)}\n\n"
+                                    except Exception:
+                                        pass
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(generate_sse(), media_type="text/event-stream")
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(gemini_req["url"], params=gemini_req["params"], json=gemini_req["json"]) 
         resp.raise_for_status()

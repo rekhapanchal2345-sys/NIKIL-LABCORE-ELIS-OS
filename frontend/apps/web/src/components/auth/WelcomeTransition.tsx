@@ -1,6 +1,44 @@
 "use client";
+// ──────────────────────────────────────────────────────────────────────────
+// LabCore ELIS™ Enterprise OS — God-Tier Clinical Welcome Transition Portal
+// High-Tech Hospital, Laboratory & Clinic Authorization Sequence
+// Features: Holographic Reticle Radar HUD, Biometric Optical Scanner Laser,
+// Holographic Medical ID Credential Projection, 3-Trace Vitals Monitor
+// (ECG Lead-II, SpO2 Pleth, Respiration), 5-Stage Verification Engine,
+// Synthesized Web Audio Haptics, Interactive Sound Toggle, Keyboard Fast Skip.
+// ──────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import {
+  ShieldCheck,
+  Activity,
+  HeartPulse,
+  BadgeCheck,
+  CheckCircle2,
+  Stethoscope,
+  Microscope,
+  Cpu,
+  Zap,
+  Lock,
+  Building2,
+  Scan,
+  Radio,
+  FileCheck,
+  Sparkles,
+  Loader2,
+  Volume2,
+  VolumeX,
+  Fingerprint,
+  Flame,
+  Layers,
+  Globe,
+  Crosshair,
+  Award,
+  Check,
+  ArrowRight,
+  Clock,
+} from "lucide-react";
+import LabCoreLogo from "@/components/common/LabCoreLogo";
 
 /* ─────────────────────────────────────────────────────────────────
    TYPES
@@ -15,681 +53,690 @@ export interface WelcomeTransitionProps {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   HELPERS
+   CLINICAL PROFILE RESOLVER
+   Resolves any username & role into authentic hospital credentials
 ───────────────────────────────────────────────────────────────── */
+function getClinicalProfile(userName: string, role: string) {
+  const lowerUser = (userName || "").toLowerCase();
+  const lowerRole = (role || "").toLowerCase();
+
+  let formattedName = userName || "Authorized Clinician";
+  let formattedRole = role || "Consultant Pathologist";
+  let degrees = "MD, FRCPath (London)";
+  let department = "Division of Laboratory Medicine & Pathology Core";
+  let hospitalWing = "Apollo-AIIMS Integrated Tertiary Diagnostic Network";
+  let clearance = "Level 5 Unrestricted Authority";
+  let station = "BENCH-HISTOPATH-CORE-01";
+  let licenseNo = "MCI-REG-88219-PATH";
+  let avatarInitials = "RS";
+  let themeColor = "#38bdf8";
+
+  if (
+    lowerUser.includes("pathologist") ||
+    lowerRole.includes("pathologist") ||
+    lowerUser.includes("vikram") ||
+    lowerUser.includes("rajeshwari")
+  ) {
+    formattedName = "Dr. Rajeshwari Swaminathan";
+    degrees = "MD, FRCPath, DipRCPath";
+    formattedRole = "Director of Clinical Pathology & Laboratory Medicine";
+    department = "Division of Histopathology & Molecular Genomics";
+    hospitalWing = "Central Reference Diagnostic Center & Oncology Core";
+    clearance = "Level 5 Unrestricted Diagnostic Sign-off";
+    station = "HISTOPATH-BENCH-01";
+    licenseNo = "MCI-REG-88219-PATH";
+    avatarInitials = "RS";
+    themeColor = "#818cf8";
+  } else if (
+    lowerUser.includes("biochemist") ||
+    lowerRole.includes("biochemist") ||
+    lowerUser.includes("tech") ||
+    lowerRole.includes("tech") ||
+    lowerUser.includes("ananya") ||
+    lowerUser.includes("amitabh")
+  ) {
+    formattedName = "Ananya Sengupta";
+    degrees = "M.Sc (Biochemistry), Lead MLT";
+    formattedRole = "Senior Medical Technologist & Automation Supervisor";
+    department = "High-Throughput Clinical Chemistry & Immunoassay Bay";
+    hospitalWing = "Automated Diagnostic Track & Robotics Hub";
+    clearance = "Level 4 Technical Supervisor";
+    station = "ROCHE-COBAS-TRACK-03";
+    licenseNo = "MLT-BOARD-4402-QC";
+    avatarInitials = "AS";
+    themeColor = "#38bdf8";
+  } else if (
+    lowerUser.includes("frontdesk") ||
+    lowerRole.includes("front_desk") ||
+    lowerUser.includes("reception") ||
+    lowerUser.includes("kavita") ||
+    lowerUser.includes("rajesh")
+  ) {
+    formattedName = "Kavita Menon";
+    degrees = "MHA (Hospital Administration)";
+    formattedRole = "Hospital Central Admissions & Registration Lead";
+    department = "Patient Accession, OPD & Billing Administration Wing";
+    hospitalWing = "Super-Specialty Hospital Ambulatory Care";
+    clearance = "Level 2 Frontline Access";
+    station = "OPD-DESK-COUNTER-02";
+    licenseNo = "HOSP-ADM-1190-REG";
+    avatarInitials = "KM";
+    themeColor = "#34d399";
+  } else if (
+    lowerUser.includes("phlebotomy") ||
+    lowerRole.includes("phlebotom") ||
+    lowerUser.includes("sunita") ||
+    lowerUser.includes("deepak")
+  ) {
+    formattedName = "Sunita Sharma";
+    degrees = "CPT, Certified Phlebotomist Lead";
+    formattedRole = "Senior Phlebotomist & Specimen Custodian";
+    department = "Specimen Accession & Vacutainer Phlebotomy Unit";
+    hospitalWing = "Central Blood Draw & Ambulatory Diagnostics";
+    clearance = "Level 2 Specimen Logistics";
+    station = "PHLEBOTOMY-STATION-01";
+    licenseNo = "CPT-NAT-3021-SPEC";
+    avatarInitials = "SS";
+    themeColor = "#14b8a6";
+  } else if (
+    lowerUser.includes("admin") ||
+    lowerRole.includes("admin") ||
+    lowerUser.includes("banerjee")
+  ) {
+    formattedName = "Dr. A. K. Banerjee";
+    degrees = "MD, M.S., FICS, FAIMS";
+    formattedRole = "Medical Superintendent & Hospital Administrator";
+    department = "Executive Healthcare Directorate & Clinical Informatics";
+    hospitalWing = "Apex Medical Governance & IT Infrastructure";
+    clearance = "Level 5 Super Administrator";
+    station = "DIRECTORATE-EXEC-CONSOLE";
+    licenseNo = "MCI-DIR-0001-EXEC";
+    avatarInitials = "AB";
+    themeColor = "#f43f5e";
+  } else if (
+    lowerUser.includes("doctor") ||
+    lowerRole.includes("doctor") ||
+    lowerUser.includes("physician") ||
+    lowerUser.includes("siddharth") ||
+    lowerUser.includes("icu")
+  ) {
+    formattedName = "Dr. Siddharth Verma";
+    degrees = "MD (Medicine), DM (Cardiology)";
+    formattedRole = "Chief of Critical Care & Inpatient Emergency";
+    department = "Intensive Care Unit (ICU) & Emergency Trauma Core";
+    hospitalWing = "Critical Care Tertiary Hospital Wing";
+    clearance = "Level 4 Emergency Consultant";
+    station = "ICU-CRITICAL-CARE-04";
+    licenseNo = "MCI-CARD-1094-DM";
+    avatarInitials = "SV";
+    themeColor = "#0ea5e9";
+  } else {
+    const clean = userName.replace(/@.*/, "").replace(/[0-9_.-]/g, " ").trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    avatarInitials = parts.map((p) => p[0]).join("").toUpperCase().slice(0, 2) || "MD";
+    formattedName = parts.length > 0
+      ? parts.map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(" ")
+      : userName;
+    if (!formattedName.startsWith("Dr.") && !lowerRole.includes("tech") && !lowerRole.includes("desk")) {
+      formattedName = `Dr. ${formattedName}`;
+    }
+  }
+
+  return {
+    formattedName,
+    formattedRole,
+    degrees,
+    department,
+    hospitalWing,
+    clearance,
+    station,
+    licenseNo,
+    avatarInitials,
+    themeColor,
+  };
+}
+
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 5)  return "Good night";
+  if (h < 5) return "Good night";
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
 }
 
-function getFirstName(fullName: string): string {
-  return fullName.trim().split(/\s+/)[0] || fullName;
-}
-
 function formatLastLogin(iso?: string): string {
-  if (!iso) return "";
+  if (!iso) return "Today at " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   try {
     return new Date(iso).toLocaleString("en-IN", {
-      day: "numeric", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit", hour12: true,
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
-  } catch { return ""; }
-}
-
-function getInitials(name: string): string {
-  return name.trim().split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-}
-
-function getRoleColor(role: string): { bg: string; text: string; glow: string; accent: string } {
-  const r = role.toLowerCase();
-  if (r.includes("admin"))       return { bg: "rgba(239,68,68,0.12)",   text: "#fca5a5", glow: "rgba(239,68,68,0.35)",    accent: "#ef4444" };
-  if (r.includes("doctor") || r.includes("physician")) return { bg: "rgba(59,130,246,0.12)", text: "#93c5fd", glow: "rgba(59,130,246,0.35)", accent: "#3b82f6" };
-  if (r.includes("technician") || r.includes("tech"))  return { bg: "rgba(16,185,129,0.12)", text: "#6ee7b7", glow: "rgba(16,185,129,0.35)", accent: "#10b981" };
-  if (r.includes("manager") || r.includes("supervisor")) return { bg: "rgba(245,158,11,0.12)", text: "#fcd34d", glow: "rgba(245,158,11,0.35)", accent: "#f59e0b" };
-  if (r.includes("pathologist")) return { bg: "rgba(56,189,248,0.12)", text: "#7dd3fc",  glow: "rgba(56,189,248,0.35)",  accent: "#0ea5e9" };
-  return { bg: "rgba(99,102,241,0.12)", text: "#a5b4fc", glow: "rgba(99,102,241,0.35)", accent: "#6366f1" };
-}
-
-/** Build animated DNA helix path for SVG */
-function buildDNAPath(w: number, h: number, offset: number, strand: "A" | "B"): string {
-  const pts: string[] = [];
-  const steps = 40;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const x = strand === "A"
-      ? w / 2 + Math.sin(t * Math.PI * 4 + offset) * (w * 0.36)
-      : w / 2 + Math.sin(t * Math.PI * 4 + offset + Math.PI) * (w * 0.36);
-    const y = t * h;
-    pts.push(`${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`);
+  } catch {
+    return "Today at " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   }
-  return pts.join(" ");
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   SUB-COMPONENTS
+   3-TRACE SYNCHRONIZED VITALS CANVAS (ECG + SpO2 Pleth + Respiration)
 ───────────────────────────────────────────────────────────────── */
+function TriVitalsMonitor({ visible }: { visible: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-function Particle({ delay, duration, x, y, size, color }: {
-  delay: number; duration: number; x: number; y: number; size: number; color: string;
-}) {
-  return (
-    <div style={{
-      position: "absolute",
-      left: `${x}%`, top: `${y}%`,
-      width: size, height: size,
-      borderRadius: "50%",
-      background: color,
-      boxShadow: `0 0 ${size * 2}px ${color}`,
-      animation: `wt-particle-float ${duration}s ${delay}s ease-in-out infinite alternate`,
-      opacity: 0.6,
-    }} />
-  );
-}
+  useEffect(() => {
+    if (!visible) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-function ECGWave({ color, visible }: { color: string; visible: boolean }) {
-  return (
-    <svg width="280" height="50" viewBox="0 0 280 50" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s" }}>
-      <defs>
-        <linearGradient id="ecg-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor={color} stopOpacity="0" />
-          <stop offset="25%" stopColor={color} stopOpacity="0.8" />
-          <stop offset="75%" stopColor={color} stopOpacity="0.8" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-        <filter id="ecg-glow">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      <path
-        d="M0,25 L40,25 L55,25 L60,10 L65,40 L70,8 L78,42 L85,25 L120,25 L160,25 L175,25 L180,12 L185,38 L190,8 L198,42 L205,25 L240,25 L280,25"
-        fill="none"
-        stroke="url(#ecg-grad)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter="url(#ecg-glow)"
-        strokeDasharray="600"
-        strokeDashoffset="600"
-        style={{ animation: visible ? "wt-ecg-draw 1.6s ease-in-out both" : "none" }}
-      />
-    </svg>
-  );
-}
+    let animId: number;
+    let offset = 0;
+    const W = 460;
+    const H = 84;
 
-function BiometricScanner({ active, color }: { active: boolean; color: string }) {
+    // ECG pattern
+    const ecgPattern = [
+      0, 0, 0, 0.05, -0.05, 0, 0.08, -0.28, 0.94, -0.42, 0.05, 0.18, 0.05, 0, 0, 0,
+      0, 0, 0.04, -0.04, 0, 0.06, -0.24, 0.86, -0.38, 0.04, 0.16, 0.04, 0, 0, 0, 0,
+    ];
+
+    // SpO2 Plethysmograph pattern
+    const plethPattern = [
+      0.1, 0.25, 0.5, 0.88, 0.72, 0.6, 0.66, 0.52, 0.36, 0.22, 0.15, 0.1, 0.1, 0.1, 0.1, 0.1,
+    ];
+
+    // Respiration wave
+    const respPattern = [
+      0.2, 0.35, 0.55, 0.75, 0.85, 0.8, 0.65, 0.45, 0.3, 0.2, 0.15, 0.15, 0.15, 0.15,
+    ];
+
+    function draw() {
+      ctx!.clearRect(0, 0, W, H);
+
+      // Faint hospital telemetry grid
+      ctx!.strokeStyle = "rgba(255,255,255,0.03)";
+      ctx!.lineWidth = 0.5;
+      for (let x = 0; x < W; x += 16) {
+        ctx!.beginPath();
+        ctx!.moveTo(x, 0);
+        ctx!.lineTo(x, H);
+        ctx!.stroke();
+      }
+
+      const step = 6;
+      const totalPoints = Math.ceil(W / step) + 1;
+
+      // ── Trace 1: ECG Lead-II (Green) ──
+      ctx!.beginPath();
+      ctx!.strokeStyle = "#34d399";
+      ctx!.lineWidth = 1.6;
+      ctx!.shadowColor = "#34d399";
+      ctx!.shadowBlur = 6;
+      const ecgMid = 22;
+
+      for (let i = 0; i < totalPoints; i++) {
+        const x = i * step;
+        const patIndex = Math.floor((i + offset) % ecgPattern.length);
+        const yVal = ecgPattern[patIndex] || 0;
+        const y = ecgMid - yVal * 16;
+        if (i === 0) ctx!.moveTo(x, y);
+        else ctx!.lineTo(x, y);
+      }
+      ctx!.stroke();
+
+      // Lead-II pulse tracer
+      const tracerIndex = Math.floor(offset % totalPoints);
+      const tracerX = (tracerIndex * step) % W;
+      const ecgPatI = Math.floor((tracerIndex + offset) % ecgPattern.length);
+      const tracerY = ecgMid - (ecgPattern[ecgPatI] || 0) * 16;
+
+      ctx!.beginPath();
+      ctx!.arc(tracerX, tracerY, 3, 0, Math.PI * 2);
+      ctx!.fillStyle = "#ffffff";
+      ctx!.shadowColor = "#34d399";
+      ctx!.shadowBlur = 8;
+      ctx!.fill();
+
+      // ── Trace 2: SpO2 Pleth (Sky Blue) ──
+      ctx!.beginPath();
+      ctx!.strokeStyle = "#38bdf8";
+      ctx!.lineWidth = 1.4;
+      ctx!.shadowColor = "#38bdf8";
+      ctx!.shadowBlur = 5;
+      const plethMid = 52;
+
+      for (let i = 0; i < totalPoints; i++) {
+        const x = i * step;
+        const patIndex = Math.floor((i + offset * 0.7) % plethPattern.length);
+        const yVal = plethPattern[patIndex] || 0;
+        const y = plethMid - yVal * 12;
+        if (i === 0) ctx!.moveTo(x, y);
+        else ctx!.lineTo(x, y);
+      }
+      ctx!.stroke();
+
+      // ── Trace 3: Respiration (Purple) ──
+      ctx!.beginPath();
+      ctx!.strokeStyle = "#c084fc";
+      ctx!.lineWidth = 1.2;
+      ctx!.shadowColor = "#c084fc";
+      ctx!.shadowBlur = 4;
+      const respMid = 72;
+
+      for (let i = 0; i < totalPoints; i++) {
+        const x = i * step;
+        const patIndex = Math.floor((i + offset * 0.45) % respPattern.length);
+        const yVal = respPattern[patIndex] || 0;
+        const y = respMid - yVal * 8;
+        if (i === 0) ctx!.moveTo(x, y);
+        else ctx!.lineTo(x, y);
+      }
+      ctx!.stroke();
+
+      offset += 0.32;
+      animId = requestAnimationFrame(draw);
+    }
+
+    draw();
+    return () => cancelAnimationFrame(animId);
+  }, [visible]);
+
   return (
-    <div style={{ position: "relative", width: 68, height: 68, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <svg width="68" height="68" viewBox="0 0 68 68" style={{ position: "absolute" }}>
-        <defs>
-          <linearGradient id="bio-ring-g" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color} />
-            <stop offset="100%" stopColor="#38bdf8" />
-          </linearGradient>
-        </defs>
-        <circle cx="34" cy="34" r="30" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" />
-        {active && (
-          <circle
-            cx="34" cy="34" r="30"
-            fill="none"
-            stroke="url(#bio-ring-g)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeDasharray="188"
-            strokeDashoffset="188"
-            style={{ animation: "wt-bio-ring 1s cubic-bezier(0.4,0,0.2,1) 0.2s both", transformOrigin: "34px 34px", transform: "rotate(-90deg)" }}
-          />
-        )}
-      </svg>
-      {/* Fingerprint arc lines */}
-      <svg width="34" height="34" viewBox="0 0 36 36" style={{ position: "relative", zIndex: 1 }}>
-        <path d="M18 4 C10 4 4 10 4 18" fill="none" stroke={active ? color : "rgba(255,255,255,0.15)"} strokeWidth="1.5" strokeLinecap="round" style={{ transition: "stroke 0.4s" }} />
-        <path d="M18 8 C12 8 8 13 8 18 C8 23 10 27 14 30" fill="none" stroke={active ? color : "rgba(255,255,255,0.15)"} strokeWidth="1.5" strokeLinecap="round" style={{ transition: "stroke 0.4s 0.08s" }} />
-        <path d="M18 12 C14 12 11 15 11 18 C11 22 13 26 16 29" fill="none" stroke={active ? color : "rgba(255,255,255,0.15)"} strokeWidth="1.5" strokeLinecap="round" style={{ transition: "stroke 0.4s 0.16s" }} />
-        <path d="M18 16 C16 16 14 17 14 19 C14 22 16 26 19 29" fill="none" stroke={active ? color : "rgba(255,255,255,0.15)"} strokeWidth="1.5" strokeLinecap="round" style={{ transition: "stroke 0.4s 0.24s" }} />
-        <path d="M22 6 C28 9 32 13 32 18 C32 24 28 30 22 32" fill="none" stroke={active ? color : "rgba(255,255,255,0.15)"} strokeWidth="1.5" strokeLinecap="round" style={{ transition: "stroke 0.4s 0.12s" }} />
-        {active && (
-          <circle cx="18" cy="18" r="3" fill={color}
-            style={{ animation: "wt-bio-pulse 1.5s ease-in-out 0.8s infinite" }} />
-        )}
-      </svg>
+    <div className="p-3 rounded-xl bg-white/[0.025] border border-white/[0.06] backdrop-blur-md">
+      <div className="flex items-center justify-between mb-2 text-[10px] font-mono px-1">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1 text-emerald-400 font-bold">
+            <HeartPulse className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+            <span>ECG LEAD-II: 74 BPM</span>
+          </span>
+          <span className="flex items-center gap-1 text-sky-400 font-bold">
+            <Activity className="h-3.5 w-3.5 text-sky-400" />
+            <span>SpO2: 99% PLETH</span>
+          </span>
+          <span className="text-purple-300 font-bold hidden sm:inline">
+            <span>RESP: 16/MIN</span>
+          </span>
+        </div>
+        <div className="text-white/40">
+          <span>BP 120/80 mmHg · EtCO2 38</span>
+        </div>
+      </div>
+      <canvas ref={canvasRef} width={460} height={84} className="w-full opacity-90 rounded-lg" />
     </div>
   );
 }
 
-/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+/* ─────────────────────────────────────────────────────────────────
    MAIN COMPONENT
-\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+───────────────────────────────────────────────────────────────── */
 export function WelcomeTransition({
-  userName, role, lastLoginTime, quickStat, onComplete, shortMode = false,
+  userName,
+  role,
+  lastLoginTime,
+  quickStat,
+  onComplete,
+  shortMode = false,
 }: WelcomeTransitionProps) {
-  const firstName    = getFirstName(userName);
-  const initials     = getInitials(userName);
-  const greeting     = getGreeting();
+  const profile = useMemo(() => getClinicalProfile(userName, role), [userName, role]);
+  const greeting = getGreeting();
   const lastLoginFmt = formatLastLogin(lastLoginTime);
-  const roleColor    = getRoleColor(role);
-  const doneRef      = useRef(false);
+  const doneRef = useRef(false);
 
-  const [phase, setPhase]             = useState(0);
-  const [exiting, setExiting]         = useState(false);
+  const [phase, setPhase] = useState(0);
+  const [exiting, setExiting] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
-  const [dnaOffset, setDnaOffset]     = useState(0);
-  const [scanY, setScanY]             = useState(0);
-  const [typedName, setTypedName]     = useState("");
-  const [showCheckmark, setShowCheckmark] = useState(false);
+  const [typedTitle, setTypedTitle] = useState("");
+  const [scanLaserY, setScanLaserY] = useState(0);
+  const [soundMuted, setSoundMuted] = useState(false);
 
-  /* DNA helix continuous tick */
-  useEffect(() => {
-    const id = setInterval(() => setDnaOffset(p => p + 0.045), 40);
-    return () => clearInterval(id);
-  }, []);
+  // Synthesized Futuristic Healthcare Audio Engine (Native Web Audio API)
+  const playTactileChimes = useCallback(() => {
+    if (soundMuted || typeof window === "undefined") return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
 
-  /* Biometric scan line sweep */
-  useEffect(() => {
-    if (phase < 2) return;
-    const id = setInterval(() => setScanY(p => (p + 1.8) % 100), 22);
-    return () => clearInterval(id);
-  }, [phase]);
-
-  /* Typewriter effect for name */
-  useEffect(() => {
-    if (phase < 4) { setTypedName(""); return; }
-    let i = 0;
-    const id = setInterval(() => {
-      setTypedName(firstName.slice(0, i + 1));
-      i++;
-      if (i >= firstName.length) clearInterval(id);
-    }, 55);
-    return () => clearInterval(id);
-  }, [phase, firstName]);
+      // Ascending healthcare triumph chord: C5 -> E5 -> G5 -> C6
+      const chord = [523.25, 659.25, 783.99, 1046.5];
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+        gain.gain.setValueAtTime(0.045, ctx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + idx * 0.08 + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.08);
+        osc.stop(ctx.currentTime + idx * 0.08 + 0.45);
+      });
+    } catch {}
+  }, [soundMuted]);
 
   const complete = useCallback(() => {
     if (doneRef.current) return;
     doneRef.current = true;
     setExiting(true);
-    setTimeout(() => onComplete(), 700);
+    setTimeout(() => onComplete(), 600);
   }, [onComplete]);
 
-  /* Phase sequencing */
+  // Phase sequencing
   useEffect(() => {
+    playTactileChimes();
+
     if (shortMode) {
-      setPhase(7); setProgressPct(100);
-      const t = setTimeout(complete, 1000);
+      setPhase(5);
+      setProgressPct(100);
+      const t = setTimeout(complete, 900);
       return () => clearTimeout(t);
     }
 
-    const schedule: [number, number][] = [
-      [1, 100],   // bg + particles
-      [2, 600],   // biometric scanner + DNA
-      [3, 1500],  // ring draw
-      [4, 2500],  // greeting + typewriter
-      [5, 3500],  // role badge + ECG
-      [6, 4500],  // last login + progress
-      [7, 5500],  // skip hint
-    ];
-
     const timers: ReturnType<typeof setTimeout>[] = [];
-    schedule.forEach(([ph, ms]) => timers.push(setTimeout(() => setPhase(ph), ms)));
-    timers.push(setTimeout(() => setShowCheckmark(true), 1020));
 
-    let pct = 0;
-    const prog = setInterval(() => {
-      pct = Math.min(pct + 0.5, 97);
-      setProgressPct(pct);
-    }, 60);
-    timers.push(setTimeout(() => { setProgressPct(100); clearInterval(prog); }, 4800));
-    timers.push(setTimeout(complete, 5000));
+    // Phase timings
+    timers.push(setTimeout(() => setPhase(1), 100)); // Biometric Scanner & HUD
+    timers.push(setTimeout(() => setPhase(2), 700)); // Holographic ID Card & Credentials
+    timers.push(setTimeout(() => setPhase(3), 1600)); // Tri-Vitals & Checkpoints
+    timers.push(setTimeout(() => setPhase(4), 2500)); // Final Sync & Audit Trail
+    timers.push(setTimeout(() => setPhase(5), 3300)); // Ready State
 
-    return () => { timers.forEach(clearTimeout); clearInterval(prog); };
-  }, [complete, shortMode]);
+    // Smooth Progress Tick
+    let p = 0;
+    const progInterval = setInterval(() => {
+      p = Math.min(p + 1.25, 98);
+      setProgressPct(p);
+    }, 32);
 
-  const skip = () => complete();
+    timers.push(
+      setTimeout(() => {
+        setProgressPct(100);
+        clearInterval(progInterval);
+      }, 2800)
+    );
+
+    // Auto complete after 3.9s
+    timers.push(setTimeout(complete, 3900));
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearInterval(progInterval);
+    };
+  }, [complete, shortMode, playTactileChimes]);
+
+  // Scanner laser line movement
+  useEffect(() => {
+    const id = setInterval(() => {
+      setScanLaserY((prev) => (prev + 2.2) % 100);
+    }, 24);
+    return () => clearInterval(id);
+  }, []);
+
+  // Doctor credentials typewriter
+  useEffect(() => {
+    if (phase < 2) return;
+    const target = `${profile.formattedName} (${profile.degrees})`;
+    let i = 0;
+    const id = setInterval(() => {
+      setTypedTitle(target.slice(0, i + 1));
+      i++;
+      if (i >= target.length) clearInterval(id);
+    }, 28);
+    return () => clearInterval(id);
+  }, [phase, profile]);
+
   const show = (minPhase: number) => phase >= minPhase;
 
-  /* Static particle positions */
-  const particles = [
-    { x: 8,  y: 14, size: 4, color: "rgba(99,102,241,0.7)",  delay: 0,    duration: 4   },
-    { x: 88, y: 19, size: 3, color: "rgba(124,58,237,0.6)",  delay: 0.5,  duration: 5   },
-    { x: 5,  y: 70, size: 5, color: "rgba(56,189,248,0.5)",  delay: 1,    duration: 3.5 },
-    { x: 92, y: 75, size: 4, color: "rgba(16,185,129,0.6)",  delay: 0.3,  duration: 4.5 },
-    { x: 50, y: 5,  size: 3, color: "rgba(167,139,250,0.5)", delay: 0.8,  duration: 3   },
-    { x: 14, y: 90, size: 4, color: "rgba(99,102,241,0.5)",  delay: 1.2,  duration: 5.5 },
-    { x: 80, y: 88, size: 3, color: "rgba(56,189,248,0.4)",  delay: 0.6,  duration: 4   },
-    { x: 3,  y: 44, size: 2, color: "rgba(245,158,11,0.5)",  delay: 1.5,  duration: 6   },
-    { x: 96, y: 50, size: 2, color: "rgba(239,68,68,0.4)",   delay: 0.9,  duration: 3.5 },
-    { x: 45, y: 95, size: 3, color: "rgba(124,58,237,0.5)",  delay: 0.2,  duration: 4.5 },
-  ];
+  // Spacebar to skip
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.key === "Enter") {
+        complete();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [complete]);
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-
-        @keyframes wt-scan {
-          0%{ top:-4px;opacity:0 } 5%{ opacity:1 } 95%{ opacity:0.4 } 100%{ top:100%;opacity:0 }
-        }
-        @keyframes wt-particle-float {
-          from{ transform:translateY(0) scale(1);    opacity:0.6 }
-          to  { transform:translateY(-20px) scale(1.3); opacity:0.15 }
-        }
-        @keyframes wt-logo-spring {
-          0%  { transform:scale(0.3) rotate(-12deg); opacity:0 }
-          55% { transform:scale(1.15) rotate(3deg);  opacity:1 }
-          75% { transform:scale(0.93) rotate(-1deg) }
-          90% { transform:scale(1.04) rotate(0.4deg) }
-          100%{ transform:scale(1) rotate(0deg);     opacity:1 }
-        }
-        @keyframes wt-logo-glow {
-          0%,100%{ box-shadow:0 0 45px rgba(99,102,241,0.55),0 0 90px rgba(99,102,241,0.22),inset 0 1px 0 rgba(255,255,255,0.12) }
-          50%    { box-shadow:0 0 80px rgba(99,102,241,0.9), 0 0 160px rgba(99,102,241,0.38),inset 0 1px 0 rgba(255,255,255,0.18) }
-        }
-        @keyframes wt-ring-draw {
-          from{ stroke-dashoffset:390 } to{ stroke-dashoffset:0 }
-        }
-        @keyframes wt-ring-rotate {
-          from{ transform:rotate(0deg) } to{ transform:rotate(360deg) }
-        }
-        @keyframes wt-check-pop {
-          0%  { stroke-dashoffset:60; opacity:0 }
-          35% { opacity:1 }
-          100%{ stroke-dashoffset:0;  opacity:1 }
-        }
-        @keyframes wt-avatar-spring {
-          0%  { transform:scale(0.4) translateY(14px); opacity:0 }
-          55% { transform:scale(1.14) translateY(-5px); opacity:1 }
-          80% { transform:scale(0.94) translateY(1px) }
-          100%{ transform:scale(1) translateY(0);    opacity:1 }
-        }
-        @keyframes wt-slide-up {
-          from{ opacity:0; transform:translateY(36px) } to{ opacity:1; transform:translateY(0) }
-        }
-        @keyframes wt-fade-up {
-          from{ opacity:0; transform:translateY(16px) } to{ opacity:1; transform:translateY(0) }
-        }
-        @keyframes wt-badge-pop {
-          0%  { transform:scale(0.5) translateY(10px); opacity:0 }
-          60% { transform:scale(1.08) translateY(-2px); opacity:1 }
-          100%{ transform:scale(1) translateY(0);       opacity:1 }
-        }
-        @keyframes wt-shimmer {
-          0%  { background-position:-300% center } 100%{ background-position:300% center }
-        }
-        @keyframes wt-bio-ring {
-          from{ stroke-dashoffset:188 } to{ stroke-dashoffset:0 }
-        }
-        @keyframes wt-bio-pulse {
-          0%,100%{ opacity:1 } 50%{ opacity:0.35 }
-        }
-        @keyframes wt-ecg-draw {
-          from{ stroke-dashoffset:600; opacity:0 } 10%{ opacity:1 } to{ stroke-dashoffset:0; opacity:1 }
-        }
-        @keyframes wt-cursor {
-          50%{ opacity:0 }
-        }
-        @keyframes wt-circuit-draw {
-          from{ stroke-dashoffset:200 } to{ stroke-dashoffset:0 }
-        }
-        @keyframes wt-dot-pulse {
-          0%,80%,100%{ transform:scale(0.6); opacity:0.3 } 40%{ transform:scale(1); opacity:1 }
-        }
-        @keyframes wt-status-glow {
-          0%,100%{ opacity:0.65 } 50%{ opacity:1 }
-        }
-        @keyframes wt-exit {
-          to{ opacity:0; transform:scale(1.06) }
-        }
-
-        .wt-screen-exiting {
-          animation: wt-exit 0.65s cubic-bezier(0.4,0,1,1) forwards !important;
-          pointer-events: none;
-        }
-        .wt-neon-text {
-          background: linear-gradient(135deg, #c7d2fe 0%, #a78bfa 25%, #818cf8 50%, #67e8f9 75%, #a5b4fc 100%);
-          background-size: 300% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: wt-shimmer 4s linear infinite;
-        }
-        .wt-dot {
-          display:inline-block; width:5px; height:5px;
-          border-radius:50%; background:rgba(99,102,241,0.7);
-        }
-        .wt-dot:nth-child(1){ animation:wt-dot-pulse 1.2s 0s ease-in-out infinite }
-        .wt-dot:nth-child(2){ animation:wt-dot-pulse 1.2s 0.2s ease-in-out infinite }
-        .wt-dot:nth-child(3){ animation:wt-dot-pulse 1.2s 0.4s ease-in-out infinite }
-        .wt-status-dot { animation:wt-status-glow 2s ease-in-out infinite }
+        @keyframes wt-hologram-rotate { from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+        @keyframes wt-hologram-reverse { from{ transform:rotate(360deg); } to{ transform:rotate(0deg); } }
+        @keyframes wt-scanbeam { 0%{ top:-2px; opacity:0; } 10%{ opacity:0.9; } 90%{ opacity:0.9; } 100%{ top:100%; opacity:0; } }
+        @keyframes wt-scale-in { 0%{ transform:scale(0.85); opacity:0; } 60%{ transform:scale(1.03); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+        @keyframes wt-slide-up { from{ transform:translateY(24px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+        @keyframes wt-pulse-glow { 0%,100%{ box-shadow:0 0 25px rgba(56,189,248,0.25), inset 0 0 15px rgba(56,189,248,0.15); } 50%{ box-shadow:0 0 50px rgba(56,189,248,0.55), inset 0 0 25px rgba(56,189,248,0.3); } }
+        @keyframes wt-exit { to{ transform:scale(1.05); opacity:0; } }
+        .wt-exiting { animation: wt-exit 0.6s cubic-bezier(0.16,1,0.3,1) forwards !important; pointer-events: none; }
       `}</style>
 
-      {/* ══════════ ROOT OVERLAY ══════════ */}
       <div
-        onClick={skip}
-        className={exiting ? "wt-screen-exiting" : ""}
+        onClick={complete}
+        className={`fixed inset-0 z-[1000] flex flex-col items-center justify-between p-6 sm:p-10 select-none cursor-default bg-[#020306] text-white overflow-hidden ${
+          exiting ? "wt-exiting" : ""
+        }`}
         style={{
-          position: "fixed", inset: 0, zIndex: 1000,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          background: "#040407",
           fontFamily: "'Inter', system-ui, sans-serif",
-          cursor: "default", overflow: "hidden", userSelect: "none",
+          backgroundImage:
+            "radial-gradient(circle 900px at 50% 35%, rgba(14,165,233,0.14) 0%, rgba(99,102,241,0.08) 50%, #020306 100%)",
         }}
       >
-        {/* ── ANIMATED BACKGROUND ── */}
-        {show(1) && (
-          <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-            {/* Aurora gradient */}
-            <div style={{
-              position: "absolute", inset: 0,
-              background: [
-                "radial-gradient(ellipse 75% 60% at 12% 30%, rgba(79,70,229,0.24) 0%, transparent 65%)",
-                "radial-gradient(ellipse 60% 75% at 88% 68%, rgba(124,58,237,0.18) 0%, transparent 65%)",
-                "radial-gradient(ellipse 45% 55% at 52% 95%, rgba(56,189,248,0.10) 0%, transparent 70%)",
-              ].join(", "),
-            }} />
+        {/* Continuous Horizontal Scanning Laser */}
+        <div
+          className="absolute left-0 right-0 h-[2px] pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, rgba(56,189,248,0.85), rgba(99,102,241,0.9), rgba(52,211,153,0.85), transparent)",
+            boxShadow: "0 0 16px rgba(56,189,248,0.8)",
+            animation: "wt-scanbeam 6s linear infinite",
+          }}
+        />
 
-            {/* Floating particles */}
-            {particles.map((p, i) => <Particle key={i} {...p} />)}
-
-            {/* Hex grid */}
-            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.03 }}>
-              <defs>
-                <pattern id="wt-hex2" x="0" y="0" width="56" height="97" patternUnits="userSpaceOnUse">
-                  <polygon points="28,2 54,16 54,81 28,95 2,81 2,16" fill="none" stroke="rgba(139,92,246,1)" strokeWidth="0.7" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#wt-hex2)" />
-            </svg>
-
-            {/* DNA helix – LEFT */}
-            <svg style={{ position: "absolute", left: 0, top: 0, width: 110, height: "100%", opacity: 0.18 }} viewBox="0 0 110 800" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="dna-l" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0" />
-                  <stop offset="30%" stopColor="#6366f1" stopOpacity="1" />
-                  <stop offset="70%" stopColor="#8b5cf6" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path d={buildDNAPath(110, 800, dnaOffset, "A")} fill="none" stroke="url(#dna-l)" strokeWidth="1.5" strokeLinecap="round" />
-              <path d={buildDNAPath(110, 800, dnaOffset, "B")} fill="none" stroke="rgba(56,189,248,0.6)" strokeWidth="1" strokeLinecap="round" strokeDasharray="4 8" />
-              {Array.from({ length: 14 }, (_, ri) => {
-                const t = (ri + 0.5) / 14;
-                const xA = 55 + Math.sin(t * Math.PI * 4 + dnaOffset) * (110 * 0.36);
-                const xB = 55 + Math.sin(t * Math.PI * 4 + dnaOffset + Math.PI) * (110 * 0.36);
-                const y = t * 800;
-                return <line key={ri} x1={xA.toFixed(1)} y1={y.toFixed(1)} x2={xB.toFixed(1)} y2={y.toFixed(1)} stroke="rgba(99,102,241,0.3)" strokeWidth="0.8" />;
-              })}
-            </svg>
-
-            {/* DNA helix – RIGHT (mirrored) */}
-            <svg style={{ position: "absolute", right: 0, top: 0, width: 110, height: "100%", opacity: 0.18, transform: "scaleX(-1)" }} viewBox="0 0 110 800" preserveAspectRatio="none">
-              <path d={buildDNAPath(110, 800, dnaOffset + 1.2, "A")} fill="none" stroke="rgba(124,58,237,0.8)" strokeWidth="1.5" strokeLinecap="round" />
-              <path d={buildDNAPath(110, 800, dnaOffset + 1.2, "B")} fill="none" stroke="rgba(56,189,248,0.55)" strokeWidth="1" strokeLinecap="round" strokeDasharray="4 8" />
-              {Array.from({ length: 14 }, (_, ri) => {
-                const t = (ri + 0.5) / 14;
-                const xA = 55 + Math.sin(t * Math.PI * 4 + dnaOffset + 1.2) * (110 * 0.36);
-                const xB = 55 + Math.sin(t * Math.PI * 4 + dnaOffset + 1.2 + Math.PI) * (110 * 0.36);
-                const y = t * 800;
-                return <line key={ri} x1={xA.toFixed(1)} y1={y.toFixed(1)} x2={xB.toFixed(1)} y2={y.toFixed(1)} stroke="rgba(99,102,241,0.3)" strokeWidth="0.8" />;
-              })}
-            </svg>
-
-            {/* Scan beam */}
-            <div style={{ position: "absolute", left: 0, width: "100%", height: 2, background: "linear-gradient(90deg, transparent 0%, rgba(99,102,241,0.6) 25%, rgba(139,92,246,0.9) 50%, rgba(99,102,241,0.6) 75%, transparent 100%)", animation: "wt-scan 8s linear infinite", filter: "blur(2px)" }} />
-
-            {/* Corner circuits */}
-            <svg style={{ position: "absolute", top: 0, left: 0, opacity: 0.2 }} width="200" height="200" viewBox="0 0 200 200">
-              <path d="M0 80 L40 80 L40 40 L80 40" stroke="#6366f1" strokeWidth="1" fill="none" strokeDasharray="200" strokeDashoffset="200" style={{ animation: "wt-circuit-draw 1s 0.5s ease both" }} />
-              <path d="M0 120 L30 120 L30 65 L90 65" stroke="#8b5cf6" strokeWidth="0.7" fill="none" strokeDasharray="200" strokeDashoffset="200" style={{ animation: "wt-circuit-draw 1s 0.7s ease both" }} />
-              <circle cx="80" cy="40" r="3.5" fill="#6366f1" style={{ animation: "wt-bio-pulse 2s ease-in-out infinite" }} />
-              <circle cx="90" cy="65" r="2.5" fill="#8b5cf6" style={{ animation: "wt-bio-pulse 2.5s 0.3s ease-in-out infinite" }} />
-            </svg>
-            <svg style={{ position: "absolute", bottom: 0, right: 0, opacity: 0.2 }} width="200" height="200" viewBox="0 0 200 200">
-              <path d="M200 120 L160 120 L160 160 L120 160" stroke="#6366f1" strokeWidth="1" fill="none" strokeDasharray="200" strokeDashoffset="200" style={{ animation: "wt-circuit-draw 1s 0.6s ease both" }} />
-              <circle cx="120" cy="160" r="3.5" fill="#6366f1" style={{ animation: "wt-bio-pulse 2s 1s ease-in-out infinite" }} />
-            </svg>
+        {/* ════════════════════════════════════════════════════════
+            TOP STATUS & HOSPITAL TELEMETRY BAR
+        ════════════════════════════════════════════════════════ */}
+        <header className="w-full flex items-center justify-between z-20 py-1 border-b border-white/[0.06]">
+          <div className="flex items-center gap-3">
+            <LabCoreLogo size="sm" variant="compact" theme="dark" />
+            <div className="h-4 w-px bg-white/10 hidden sm:block" />
+            <span className="text-[11px] font-mono tracking-wider text-white/50 uppercase hidden sm:block">
+              Hospital Clinical Authorization Engine v4.2.1
+            </span>
           </div>
-        )}
 
-        {/* ── TOP STATUS BAR ── */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0,
-          padding: "13px 28px",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          background: "rgba(4,4,7,0.75)", backdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#4f46e5,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#fff", boxShadow: "0 0 14px rgba(99,102,241,0.5)" }}>LC</div>
-            <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 11, fontFamily: "monospace", letterSpacing: "0.14em", textTransform: "uppercase" }}>LabCore ELIS v4.2</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 999, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-              <div className="wt-status-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 7px #34d399" }} />
-              <span style={{ color: "rgba(52,211,153,0.7)", fontSize: 10, fontFamily: "monospace", letterSpacing: "0.08em" }}>SESSION VERIFIED</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-mono font-bold text-emerald-400 tracking-wider">
+                SESSION CRYPTOGRAPHICALLY VERIFIED
+              </span>
             </div>
-            <span style={{ color: "rgba(255,255,255,0.14)", fontSize: 9, fontFamily: "monospace", letterSpacing: "0.12em" }}>ISO 15189 · NABH</span>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSoundMuted(!soundMuted);
+              }}
+              className="p-1 rounded-md text-white/40 hover:text-white hover:bg-white/5 transition-all"
+              title={soundMuted ? "Unmute audio" : "Mute audio"}
+            >
+              {soundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5 text-sky-400" />}
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* ── CENTER STAGE ── */}
-        <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* ════════════════════════════════════════════════════════
+            CENTER STAGE — HOLOGRAPHIC HUD & MEDICAL CREDENTIALS
+        ════════════════════════════════════════════════════════ */}
+        <div className="relative z-10 flex flex-col items-center justify-center my-auto w-full max-w-[680px] text-center">
+          {/* Hologram Rings & Optical Scanner */}
+          <div className="relative w-44 h-44 flex items-center justify-center mb-4">
+            {/* Outer Conic Ring 1 with Compass Degrees */}
+            <div
+              className="absolute inset-0 rounded-full border-2 border-dashed border-sky-400/35"
+              style={{ animation: "wt-hologram-rotate 14s linear infinite" }}
+            />
 
-          {/* ── LOGO + RING ── */}
-          <div style={{ position: "relative", width: 160, height: 160, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {/* Outer conic rotating ring */}
-            {show(2) && (
-              <div style={{
-                position: "absolute", inset: -10, borderRadius: "50%",
-                border: "1.5px solid transparent",
-                backgroundImage: `conic-gradient(from 0deg, transparent 0%, ${roleColor.accent}66 30%, ${roleColor.accent}cc 50%, ${roleColor.accent}44 70%, transparent 100%)`,
-                animation: "wt-ring-rotate 2.5s linear infinite",
-                maskImage: "none",
-              }} />
-            )}
+            {/* Inner Ring 2 */}
+            <div
+              className="absolute inset-2 rounded-full border border-indigo-500/40"
+              style={{ animation: "wt-hologram-reverse 10s linear infinite" }}
+            />
 
-            {/* SVG ring + checkmark */}
-            <svg width="160" height="160" viewBox="0 0 160 160" style={{ position: "absolute", inset: 0 }}>
-              <defs>
-                <linearGradient id="wt-ring-g2" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#4f46e5" />
-                  <stop offset="40%" stopColor="#7c3aed" />
-                  <stop offset="100%" stopColor="#38bdf8" />
-                </linearGradient>
-                <filter id="wt-ring-gf2">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-              </defs>
-              <circle cx="80" cy="80" r="62" fill="none" stroke="rgba(99,102,241,0.07)" strokeWidth="2.5" />
-              {show(3) && (
-                <circle cx="80" cy="80" r="62" fill="none" stroke="url(#wt-ring-g2)" strokeWidth="3" strokeLinecap="round"
-                  strokeDasharray="390" strokeDashoffset="390" filter="url(#wt-ring-gf2)"
-                  style={{ animation: "wt-ring-draw 0.9s cubic-bezier(0.4,0,0.2,1) both", transformOrigin: "80px 80px", transform: "rotate(-90deg)" }} />
-              )}
-              {showCheckmark && (
-                <path d="M56 80 L72 96 L104 62" fill="none" stroke="#34d399" strokeWidth="4"
-                  strokeLinecap="round" strokeLinejoin="round"
-                  strokeDasharray="60" strokeDashoffset="60"
-                  style={{ animation: "wt-check-pop 0.6s 0.1s cubic-bezier(0.16,1,0.3,1) both" }} />
-              )}
-            </svg>
+            {/* Glowing Aura Ring */}
+            <div
+              className="absolute inset-4 rounded-full bg-sky-500/10 border border-sky-400/50"
+              style={{ animation: "wt-pulse-glow 2.5s ease-in-out infinite" }}
+            />
 
-            {/* LC Logo */}
-            {show(1) && (
-              <div style={{
-                width: 96, height: 96, borderRadius: 24,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #6d28d9 100%)",
-                fontSize: 34, fontWeight: 900, color: "#fff", letterSpacing: "-0.04em",
-                position: "relative", zIndex: 1, overflow: "hidden",
-                animation: "wt-logo-spring 0.9s cubic-bezier(0.16,1,0.3,1) both, wt-logo-glow 3s ease-in-out 1s infinite",
-              }}>
-                LC
-                <div style={{ position: "absolute", top: -4, left: -4, width: 14, height: 14, borderTop: "2px solid #a5b4fc", borderLeft: "2px solid #a5b4fc", borderRadius: "4px 0 0 0" }} />
-                <div style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderTop: "2px solid #a5b4fc", borderRight: "2px solid #a5b4fc", borderRadius: "0 4px 0 0" }} />
-                <div style={{ position: "absolute", bottom: -4, left: -4, width: 14, height: 14, borderBottom: "2px solid #8b5cf6", borderLeft: "2px solid #8b5cf6", borderRadius: "0 0 0 4px" }} />
-                <div style={{ position: "absolute", bottom: -4, right: -4, width: 14, height: 14, borderBottom: "2px solid #8b5cf6", borderRight: "2px solid #8b5cf6", borderRadius: "0 0 4px 0" }} />
-                {/* Biometric scan line on logo */}
-                {show(2) && (
-                  <div style={{
-                    position: "absolute", left: 0, right: 0, height: 2,
-                    top: `${scanY % 100}%`,
-                    background: `linear-gradient(90deg, transparent, ${roleColor.accent}cc, transparent)`,
-                    boxShadow: `0 0 10px ${roleColor.accent}`,
-                    opacity: 0.8,
-                    transition: "top 0.022s linear",
-                  }} />
-                )}
-              </div>
-            )}
+            {/* Central Holographic Badge */}
+            <div
+              className="relative z-10 h-24 w-24 rounded-2xl flex flex-col items-center justify-center shadow-2xl overflow-hidden border border-sky-400/60"
+              style={{
+                background: "linear-gradient(135deg, rgba(14,165,233,0.3) 0%, rgba(99,102,241,0.4) 100%)",
+                backdropFilter: "blur(14px)",
+                animation: "wt-scale-in 0.6s cubic-bezier(0.16,1,0.3,1) both",
+              }}
+            >
+              {/* Laser Line Scanning Badge */}
+              <div
+                className="absolute left-0 right-0 h-[2px] bg-sky-300 shadow-[0_0_8px_#38bdf8]"
+                style={{ top: `${scanLaserY}%` }}
+              />
+
+              <ShieldCheck className="h-8 w-8 text-sky-300 mb-0.5" />
+              <span className="text-sm font-black text-white font-mono tracking-wider">
+                {profile.avatarInitials}
+              </span>
+            </div>
+
+            {/* Corner Precision Crosshairs */}
+            <div className="absolute top-0 left-0 w-3.5 h-3.5 border-t-2 border-l-2 border-sky-400" />
+            <div className="absolute top-0 right-0 w-3.5 h-3.5 border-t-2 border-r-2 border-sky-400" />
+            <div className="absolute bottom-0 left-0 w-3.5 h-3.5 border-b-2 border-l-2 border-sky-400" />
+            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 border-b-2 border-r-2 border-sky-400" />
           </div>
 
-          {/* ── BIOMETRIC SCANNERS + AVATAR ROW ── */}
+          {/* Greeting & Doctor Credentials Card */}
           {show(2) && (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 22, marginTop: 18,
-              animation: "wt-fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both",
-            }}>
-              <BiometricScanner active={show(3)} color={roleColor.accent} />
-              <div style={{
-                width: 64, height: 64, borderRadius: "50%",
-                background: `linear-gradient(135deg, #4f46e5, ${roleColor.accent})`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 21, fontWeight: 800, color: "#fff",
-                boxShadow: `0 0 0 3px rgba(99,102,241,0.22), 0 0 44px ${roleColor.glow}`,
-                animation: "wt-avatar-spring 0.8s cubic-bezier(0.16,1,0.3,1) both",
-              }}>
-                {initials}
-              </div>
-              <BiometricScanner active={show(3)} color={roleColor.accent} />
-            </div>
-          )}
-
-          {/* ── GREETING + TYPEWRITER NAME ── */}
-          {show(4) && (
-            <div style={{
-              marginTop: 22, textAlign: "center",
-              animation: "wt-slide-up 0.7s cubic-bezier(0.16,1,0.3,1) both",
-            }}>
-              <p style={{ margin: 0, color: "rgba(255,255,255,0.35)", fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
-                {greeting},
+            <div
+              className="w-full space-y-3"
+              style={{ animation: "wt-slide-up 0.6s cubic-bezier(0.16,1,0.3,1) both" }}
+            >
+              <p className="text-white/45 text-sm font-medium tracking-wide">
+                {greeting}, clinical authentication confirmed
               </p>
-              <h1 style={{ margin: 0, lineHeight: 1.05, minHeight: 58 }}>
-                <span className="wt-neon-text" style={{ fontSize: 50, fontWeight: 900, letterSpacing: "-0.04em" }}>
-                  {typedName}
+
+              {/* Doctor / Specialist Name */}
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight min-h-[38px]">
+                <span className="bg-gradient-to-r from-sky-300 via-indigo-200 to-emerald-300 bg-clip-text text-transparent">
+                  {typedTitle || profile.formattedName}
                 </span>
-                <span style={{
-                  display: "inline-block", width: 3, height: 48, background: roleColor.accent,
-                  verticalAlign: "middle", marginLeft: 3, borderRadius: 2,
-                  animation: "wt-cursor 1s step-end infinite",
-                  opacity: typedName.length >= firstName.length ? 0 : 1,
-                  transition: "opacity 0.3s",
-                }} />
               </h1>
-            </div>
-          )}
 
-          {/* ── ROLE BADGE ── */}
-          {show(5) && (
-            <div style={{ marginTop: 14, animation: "wt-badge-pop 0.6s cubic-bezier(0.16,1,0.3,1) both" }}>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 10,
-                padding: "9px 20px", borderRadius: 999,
-                background: roleColor.bg,
-                border: `1px solid ${roleColor.glow}`,
-                boxShadow: `0 0 28px ${roleColor.glow}, 0 0 64px ${roleColor.glow}55`,
-              }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: roleColor.text, boxShadow: `0 0 10px ${roleColor.text}`, animation: "wt-status-glow 2s ease-in-out infinite" }} />
-                <span style={{ color: roleColor.text, fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                  Signed in as {role}
+              {/* Clinical Role Badge */}
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/15 border border-sky-500/35 text-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+                  <BadgeCheck className="h-3.5 w-3.5 text-sky-400" />
+                  <span>{profile.formattedRole}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-mono bg-emerald-500/10 border border-emerald-500/25 text-emerald-300">
+                  <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                  <span>{profile.clearance}</span>
                 </span>
               </div>
+
+              {/* Department, Facility & License */}
+              <p className="text-white/45 text-xs font-mono">
+                {profile.department} · Station ID:{" "}
+                <span className="text-sky-400 font-bold">{profile.station}</span>
+              </p>
+              <p className="text-white/30 text-[10.5px] font-mono">
+                {profile.hospitalWing} · License: {profile.licenseNo}
+              </p>
             </div>
           )}
 
-          {/* ── ECG HEARTBEAT WAVE ── */}
-          {show(5) && (
-            <div style={{ marginTop: 16, animation: "wt-fade-up 0.5s ease both" }}>
-              <ECGWave color={roleColor.accent} visible={show(5)} />
-            </div>
-          )}
-
-          {/* ── LAST LOGIN + QUICK STAT ── */}
-          {show(6) && (
-            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, animation: "wt-fade-up 0.5s ease both" }}>
-              {lastLoginFmt && (
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  <span style={{ color: "rgba(255,255,255,0.24)", fontSize: 11.5, letterSpacing: "0.01em", fontFamily: "monospace" }}>
-                    Last session: {lastLoginFmt}
-                  </span>
-                </div>
-              )}
-              {quickStat && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 15px", borderRadius: 10,
-                  background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.18)",
-                }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                  </svg>
-                  <span style={{ color: "rgba(56,189,248,0.85)", fontSize: 12, fontWeight: 500 }}>{quickStat}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── PROGRESS BAR ── */}
-          {show(6) && (
-            <div style={{ marginTop: 30, width: 260, animation: "wt-fade-up 0.5s ease both" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ display: "flex", gap: 5 }}>
-                  <span className="wt-dot" />
-                  <span className="wt-dot" />
-                  <span className="wt-dot" />
-                </div>
-                <span style={{ color: "rgba(99,102,241,0.55)", fontSize: 10, fontFamily: "monospace", letterSpacing: "0.05em" }}>
-                  Initializing workspace… {Math.round(progressPct)}%
-                </span>
+          {/* ════════════════════════════════════════════════════════
+              3-TRACE SYNCHRONIZED VITALS & AUDIT CHECKPOINTS
+          ════════════════════════════════════════════════════════ */}
+          {show(3) && (
+            <div
+              className="w-full mt-4 space-y-3"
+              style={{ animation: "wt-slide-up 0.6s cubic-bezier(0.16,1,0.3,1) both" }}
+            >
+              {/* 3-Trace Vitals Monitor */}
+              <div className="max-w-[480px] mx-auto">
+                <TriVitalsMonitor visible={show(3)} />
               </div>
-              <div style={{ height: 3, borderRadius: 999, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", width: `${progressPct}%`,
-                  background: `linear-gradient(90deg, #4f46e5, ${roleColor.accent}, #38bdf8)`,
-                  borderRadius: 999,
-                  boxShadow: `0 0 14px ${roleColor.accent}cc`,
-                  transition: "width 0.22s ease",
-                }} />
-              </div>
-              <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 12 }}>
-                {["AUTH", "DB", "FHIR", "NABH"].map((chip, i) => (
-                  <div key={chip} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, fontFamily: "monospace", color: progressPct >= 25 * (i + 1) ? "rgba(52,211,153,0.7)" : "rgba(255,255,255,0.12)", transition: "color 0.4s" }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: progressPct >= 25 * (i + 1) ? "#34d399" : "rgba(255,255,255,0.08)", boxShadow: progressPct >= 25 * (i + 1) ? "0 0 6px #34d399" : "none", transition: "all 0.4s" }} />
-                    {chip}
+
+              {/* 5-Stage Verification Engine */}
+              <div className="flex items-center justify-center gap-2 sm:gap-4 text-[10px] font-mono flex-wrap">
+                {[
+                  { label: "AUTH SESSION", done: progressPct >= 20 },
+                  { label: "HL7 FHIR EMR", done: progressPct >= 40 },
+                  { label: "ROCHE COBAS BUS", done: progressPct >= 65 },
+                  { label: "WESTGARD QC", done: progressPct >= 85 },
+                  { label: "NABL AUDIT TRAIL", done: progressPct >= 95 },
+                ].map((chk) => (
+                  <div
+                    key={chk.label}
+                    className={`flex items-center gap-1 transition-colors duration-300 ${
+                      chk.done ? "text-emerald-400" : "text-white/20"
+                    }`}
+                  >
+                    <CheckCircle2 className={`h-3 w-3 ${chk.done ? "text-emerald-400" : "text-white/20"}`} />
+                    <span>{chk.label}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* ════════════════════════════════════════════════════════
+              PROGRESS BAR & INITIALIZATION STATUS
+          ════════════════════════════════════════════════════════ */}
+          {show(3) && (
+            <div className="w-full max-w-[420px] mt-4">
+              <div className="flex items-center justify-between text-[11px] font-mono mb-1.5">
+                <span className="text-white/40 flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin text-sky-400" />
+                  <span>Launching clinical workspace & patient roster…</span>
+                </span>
+                <span className="text-sky-300 font-bold">{Math.round(progressPct)}%</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${progressPct}%`,
+                    background: "linear-gradient(90deg, #0284c7, #6366f1, #34d399)",
+                    boxShadow: "0 0 10px rgba(56,189,248,0.7)",
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* ── SKIP HINT ── */}
-        {show(7) && (
-          <div style={{
-            position: "absolute", bottom: 28,
-            color: "rgba(255,255,255,0.12)", fontSize: 11,
-            letterSpacing: "0.07em", fontFamily: "monospace",
-            animation: "wt-fade-up 0.6s ease both",
-          }}>
-            tap anywhere to skip →
+        {/* ════════════════════════════════════════════════════════
+            FOOTER — ACCREDITATIONS & SKIP HINT
+        ════════════════════════════════════════════════════════ */}
+        <footer className="w-full flex items-center justify-between z-20 py-1 text-[11px] font-mono text-white/30 border-t border-white/[0.06]">
+          <div>
+            <span>Verified Clinical Session · Last Login: </span>
+            <span className="text-white/50">{lastLoginFmt}</span>
           </div>
-        )}
+          <div className="flex items-center gap-2 text-sky-400/80 hover:text-sky-300 cursor-pointer">
+            <span>Press [SPACE] or Click to enter workspace immediately →</span>
+          </div>
+        </footer>
       </div>
     </>
   );

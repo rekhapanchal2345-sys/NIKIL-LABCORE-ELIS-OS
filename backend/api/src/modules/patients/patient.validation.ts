@@ -25,6 +25,20 @@ export const sanitizePhone = (val: string | null | undefined): string | undefine
   return digits || undefined;
 };
 
+const MARITAL_STATUS_VALUES = ["SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"] as const;
+
+export const normalizeMaritalStatus = (val: unknown) => {
+  if (val === undefined) return undefined;
+  if (val === null || val === '') return null;
+  if (typeof val === 'string') {
+    const upper = val.trim().toUpperCase();
+    if ((MARITAL_STATUS_VALUES as readonly string[]).includes(upper)) {
+      return upper;
+    }
+  }
+  return val;
+};
+
 export const createPatientSchema = {
   body: z.object({
     // Basic Information (Required)
@@ -177,9 +191,10 @@ export const createPatientSchema = {
 
     isActive: z.boolean().optional().default(true),
     
-    maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"])
-      .optional().or(z.literal('')).or(z.null())
-      .transform(val => (val as any) || undefined),
+    maritalStatus: z.preprocess(
+      normalizeMaritalStatus,
+      z.enum(MARITAL_STATUS_VALUES).optional().nullable()
+    ).transform(val => val || undefined),
 
     occupation: z.string().max(100).optional().or(z.literal('')).or(z.null())
       .transform(val => val?.trim() || undefined),
@@ -235,11 +250,17 @@ export const createPatientSchema = {
       .or(z.null())
       .transform(val => (val as any) || undefined),
 
-    height: z.number().min(1, "Height must be greater than 0").max(300).optional().or(z.null())
-      .transform(val => val || undefined), // in cm
+    height: z.preprocess((val) => {
+      if (val === "" || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return Number.isFinite(num) ? num : undefined;
+    }, z.number().min(1, "Height must be greater than 0").max(300, "Height cannot exceed 300 cm").optional()),
     
-    weight: z.number().min(1, "Weight must be greater than 0").max(500).optional().or(z.null())
-      .transform(val => val || undefined), // in kg
+    weight: z.preprocess((val) => {
+      if (val === "" || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return Number.isFinite(num) ? num : undefined;
+    }, z.number().min(0.5, "Weight must be at least 0.5 kg").max(500, "Weight cannot exceed 500 kg").optional()),
 
     // Doctor & Insurance
     doctorId: z.string().optional().or(z.literal('')).or(z.null())
@@ -298,10 +319,10 @@ export const createPatientSchema = {
       .optional().or(z.literal('')).or(z.null())
       .transform(val => (val as any) || undefined),
 
-    // Additional Notes
-    notes: z.string().max(1000).optional().or(z.literal('')).or(z.null())
+    // Additional Notes & Clinical Vitals Payload
+    notes: z.string().max(10000).optional().or(z.literal('')).or(z.null())
       .transform(val => val?.trim() || undefined),
-    additionalInformation: z.string().max(1000).optional().or(z.literal('')).or(z.null())
+    additionalInformation: z.string().max(2000).optional().or(z.literal('')).or(z.null())
       .transform(val => val?.trim() || undefined),
 
     // Draft support
@@ -396,7 +417,10 @@ export const updatePatientSchema = {
       return "GENERAL";
     }, z.enum(["GENERAL", "VIP", "STAFF", "SENIOR_CITIZEN", "CHILD", "INPATIENT", "OUTPATIENT", "EMERGENCY"]).optional()),
     isActive: z.boolean().optional(),
-    maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"]).optional(),
+    maritalStatus: z.preprocess(
+      normalizeMaritalStatus,
+      z.enum(MARITAL_STATUS_VALUES).optional().nullable()
+    ).transform(val => val ?? undefined),
     occupation: z.string().max(100).optional().or(z.literal('')).or(z.null()).transform(val => val?.trim() || undefined),
     nationality: z.string().max(50).optional(),
 
@@ -441,9 +465,24 @@ export const updatePatientSchema = {
       frequency: z.string().optional(),
     })).optional()),
 
-    fastingStatus: z.enum(["YES", "NO", "NOT_APPLICABLE"]).optional().or(z.literal('')).or(z.null()).transform(val => (val as any) || undefined),
-    height: z.number().min(1, "Height must be greater than 0").max(300).optional().or(z.null()),
-    weight: z.number().min(1, "Weight must be greater than 0").max(500).optional().or(z.null()),
+    fastingStatus: z.preprocess((val) => {
+      if (!val || typeof val !== 'string') return undefined;
+      const upper = val.trim().toUpperCase();
+      if (upper === 'YES' || upper.startsWith('FASTING')) return 'YES';
+      if (upper === 'NO' || upper === 'NON_FASTING' || upper === 'RANDOM') return 'NO';
+      if (upper === 'NOT_APPLICABLE' || upper === 'NA') return 'NOT_APPLICABLE';
+      return 'NOT_APPLICABLE';
+    }, z.enum(["YES", "NO", "NOT_APPLICABLE"]).optional().or(z.literal('')).or(z.null()).transform(val => (val as any) || undefined)),
+    height: z.preprocess((val) => {
+      if (val === "" || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return Number.isFinite(num) ? num : undefined;
+    }, z.number().min(1, "Height must be greater than 0").max(300, "Height cannot exceed 300 cm").optional()),
+    weight: z.preprocess((val) => {
+      if (val === "" || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return Number.isFinite(num) ? num : undefined;
+    }, z.number().min(0.5, "Weight must be at least 0.5 kg").max(500, "Weight cannot exceed 500 kg").optional()),
 
     doctorId: z.string().optional().or(z.literal('')).or(z.null()).transform(val => val || undefined),
     insuranceProvider: z.string().max(100).optional().or(z.literal('')).or(z.null()).transform(val => val?.trim() || undefined),
@@ -480,8 +519,8 @@ export const updatePatientSchema = {
     familyHeadId: z.string().optional().or(z.literal('')).or(z.null()).transform(val => val || undefined),
     relationshipToHead: z.enum(["SELF", "SPOUSE", "CHILD", "PARENT", "SIBLING", "OTHER"]).optional().or(z.literal('')).or(z.null()).transform(val => (val as any) || undefined),
 
-    notes: z.string().max(1000).optional().or(z.literal('')).or(z.null()).transform(val => val?.trim() || undefined),
-    additionalInformation: z.string().max(1000).optional().or(z.literal('')).or(z.null()).transform(val => val?.trim() || undefined),
+    notes: z.string().max(10000).optional().or(z.literal('')).or(z.null()).transform(val => val?.trim() || undefined),
+    additionalInformation: z.string().max(2000).optional().or(z.literal('')).or(z.null()).transform(val => val?.trim() || undefined),
   }).passthrough(),
 };
 
@@ -659,7 +698,10 @@ export const createPatientWithOrderSchema = {
         .refine((val) => !val || panRegex.test(val), "Invalid PAN card format"),
       nationalId: z.string().max(50).optional(),
       patientType: z.enum(["GENERAL", "VIP", "STAFF", "SENIOR_CITIZEN", "CHILD", "INPATIENT", "OUTPATIENT", "EMERGENCY"]).default("GENERAL"),
-      maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"]).optional(),
+      maritalStatus: z.preprocess(
+        normalizeMaritalStatus,
+        z.enum(MARITAL_STATUS_VALUES).optional().nullable()
+      ).transform(val => val || undefined),
       occupation: z.string().max(100).optional(),
       nationality: z.string().max(50).default("Indian"),
       allergies: z.array(z.string()).optional().default([]),
@@ -696,8 +738,8 @@ export const createPatientWithOrderSchema = {
       privacyConsent: z.boolean().optional(),
       registrationSource: z.enum(["WALK_IN", "ONLINE", "PHONE", "MOBILE_APP", "REFERRAL"]).default("WALK_IN"),
       referralSource: z.string().max(200).optional(),
-      notes: z.string().max(1000).optional(),
-      additionalInformation: z.string().max(1000).optional(),
+      notes: z.string().max(10000).optional(),
+      additionalInformation: z.string().max(2000).optional(),
     }),
     order: z.object({
       doctorId: z.string().optional(),

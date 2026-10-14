@@ -1,5 +1,6 @@
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
+import { generateSampleBarcode } from "../barcode/barcode.service";
 
 export const createSample = async (
   data: any
@@ -15,34 +16,48 @@ export const createSample = async (
     throw new HttpError("Order not found", 404);
   }
 
-  if (
-    order.orderStatus === "CANCELLED"
-  ) {
+  if (order.orderStatus === "CANCELLED") {
     throw new HttpError("Cannot create sample for cancelled order", 400);
   }
 
-  const sampleNumber =
-    `SMP-${Date.now()}-${Math.floor(
-      Math.random() * 1000
-    )}`;
+  // Level 1: Vacutainer Specimen & Color-Code Mapping & Minimum Volume Check
+  const VACUTAINER_MAP: Record<string, { color: string; additive: string; minVolume: number }> = {
+    BLOOD_CBC: { color: 'LAVENDER', additive: 'EDTA', minVolume: 2.0 },
+    BLOOD_BIOCHEM: { color: 'GOLD', additive: 'SST Gel', minVolume: 3.0 },
+    BLOOD_SEROLOGY: { color: 'RED', additive: 'Plain Clot', minVolume: 4.0 },
+    BLOOD_GLUCOSE: { color: 'GREY', additive: 'Fluoride', minVolume: 2.0 },
+    BLOOD_COAG: { color: 'LIGHT_BLUE', additive: 'Sodium Citrate', minVolume: 2.7 },
+    BLOOD_GAS: { color: 'GREEN', additive: 'Sodium Heparin', minVolume: 2.0 },
+    SERUM: { color: 'GOLD', additive: 'SST Gel', minVolume: 3.0 },
+    PLASMA: { color: 'LAVENDER', additive: 'EDTA', minVolume: 2.0 },
+    URINE: { color: 'YELLOW', additive: 'None', minVolume: 10.0 },
+  };
 
-  const barcode =
-    `SBC-${Date.now()}-${Math.floor(
-      Math.random() * 1000
-    )}`;
+  const mapKey = data.testCategory === 'HEMATOLOGY' ? 'BLOOD_CBC' :
+                 data.testCategory === 'BIOCHEMISTRY' ? 'BLOOD_BIOCHEM' :
+                 data.testCategory === 'SEROLOGY' ? 'BLOOD_SEROLOGY' : 
+                 data.sampleType;
+                 
+  const vacutainer = VACUTAINER_MAP[mapKey] || { color: 'DEFAULT', additive: 'None', minVolume: 1.0 };
 
-  return prisma.sample.create({
+  if (data.volumeMl !== undefined && data.volumeMl < vacutainer.minVolume) {
+    throw new HttpError(`Insufficient sample volume. Minimum required for ${vacutainer.color} (${vacutainer.additive}) is ${vacutainer.minVolume}mL (QNS)`, 400);
+  }
+
+  // Delegate barcode generation to barcode service to ensure Level 1 Checksum Modulo 103 compliance
+  // Instead of doing it inline here. Wait, I can't await generateSampleBarcode here easily without creating sample first.
+  // Actually I can just inline sequence logic here or let it be generated post-creation.
+  // But for now, we'll use a temporary placeholder and update it via barcode module.
+  const tempNumber = `TMP-SMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  const createdSample = await prisma.sample.create({
     data: {
-      sampleNumber,
-      barcode,
-
+      sampleNumber: tempNumber,
+      barcode: tempNumber,
       orderId: data.orderId,
       patientId: order.patientId,
       testId: data.testId,
-
-      sampleType:
-        data.sampleType,
-
+      sampleType: data.sampleType,
       status: "PENDING",
     },
 
@@ -55,6 +70,22 @@ export const createSample = async (
       },
     },
   });
+
+  // Now properly apply sequence and checksum via Barcode module
+  const finalBarcode = await generateSampleBarcode(createdSample.id);
+  
+  // Also fix sampleNumber
+  const finalSample = await prisma.sample.update({
+    where: { id: createdSample.id },
+    data: { sampleNumber: finalBarcode },
+    include: {
+      order: {
+        include: { patient: true, doctor: true },
+      },
+    }
+  });
+
+  return finalSample;
 };
 
 export const getSamples = async (

@@ -591,12 +591,32 @@ export const verifyWhatsAppConnection = async (customSettings?: any): Promise<{ 
     if (phoneId && phoneId !== 'me') {
       try {
         const apiVersion = settings.whatsappApiVersion || 'v19.0';
-        const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${settings.whatsappApiKey}`,
-          },
-        });
+        let response;
+        let retries = 3;
+        while (retries > 0) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          try {
+            response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneId}`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${settings.whatsappApiKey}`,
+              },
+              signal: controller.signal as any
+            });
+            clearTimeout(timeoutId);
+            break;
+          } catch (err: any) {
+            clearTimeout(timeoutId);
+            retries--;
+            if (retries === 0) throw err;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        if (!response) {
+           throw new Error('Verification fetch failed after retries');
+        }
         
         if (!response.ok) {
           const resJson: any = await response.json();
@@ -812,14 +832,35 @@ async function sendMetaCloudWhatsApp(data: WhatsAppInput, settings: any): Promis
       payload.text = { preview_url: true, body: data.message };
     }
 
-    const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${settings.whatsappApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    let response;
+    let retries = 3;
+    while (retries > 0) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${settings.whatsappApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal as any
+        });
+        clearTimeout(timeoutId);
+        break;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        retries--;
+        if (retries === 0) throw err;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Fallback if response is undefined
+    if (!response) {
+       throw new Error('Fetch failed after retries');
+    }
 
     const resJson: any = await response.json();
     if (!response.ok) {

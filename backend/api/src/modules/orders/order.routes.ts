@@ -64,7 +64,7 @@ router.get(
 
 router.get(
   "/analytics/revenue-by-doctor",
-  authorize(UserRole.ADMIN, UserRole.PATHOLOGIST),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.PATHOLOGIST),
   revenueByDoctor
 );
 

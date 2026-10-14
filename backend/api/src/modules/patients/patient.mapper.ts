@@ -55,15 +55,30 @@ const LENGTH_LIMITS: Record<string, number> = {
   pincode: 10,
   aadhaarNumber: 12,
   panNumber: 10,
+  abhaNumber: 20,
+  abhaAddress: 100,
+  healthIdNumber: 20,
 };
 
 const invalid = (field: string, message: string) =>
   new HttpError(`Invalid value for ${field}: ${message}`, 400, "INVALID_FIELD");
 
+const sanitizeText = (str: string): string => {
+  return str
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/javascript:/gi, "")
+    .replace(/onload\s*=/gi, "")
+    .replace(/onerror\s*=/gi, "")
+    .replace(/onclick\s*=/gi, "")
+    .replace(/<iframe/gi, "")
+    .replace(/<embed/gi, "")
+    .trim();
+};
+
 const text = (value: unknown): string | null | undefined => {
   if (value === undefined) return undefined;
   if (value === null) return null;
-  const trimmed = String(value).trim();
+  const trimmed = sanitizeText(String(value));
   return trimmed === "" ? null : trimmed;
 };
 
@@ -180,6 +195,9 @@ const resolveCommunicationPreference = (input: Record<string, any>) => {
       email: Boolean(direct.email),
       whatsapp: Boolean(direct.whatsapp),
       call: Boolean(direct.call),
+      ...(direct.whatsappNumber || input.whatsappNumber
+        ? { whatsappNumber: sanitizePhone(direct.whatsappNumber || input.whatsappNumber) }
+        : {}),
     };
   }
 
@@ -192,6 +210,19 @@ const resolveCommunicationPreference = (input: Record<string, any>) => {
       email: preferences.includes("email"),
       whatsapp: preferences.includes("whatsapp"),
       call: preferences.includes("phone call") || preferences.includes("call"),
+      ...(input.whatsappNumber
+        ? { whatsappNumber: sanitizePhone(input.whatsappNumber) }
+        : {}),
+    };
+  }
+
+  if (input.whatsappNumber) {
+    return {
+      sms: true,
+      email: true,
+      whatsapp: true,
+      call: false,
+      whatsappNumber: sanitizePhone(input.whatsappNumber),
     };
   }
 
@@ -227,10 +258,14 @@ const computeAgeParts = (dateOfBirth: Date | null) => {
 };
 
 const computeBmi = (height?: number | null, weight?: number | null) => {
-  if (!height || !weight) return undefined;
+  if (height === undefined || height === null || weight === undefined || weight === null) return undefined;
+  if (!Number.isFinite(height) || !Number.isFinite(weight)) return undefined;
+  if (height <= 0 || weight <= 0) return undefined;
   const metres = height / 100;
   if (metres <= 0) return undefined;
-  return Number((weight / (metres * metres)).toFixed(2));
+  const rawBmi = weight / (metres * metres);
+  if (!Number.isFinite(rawBmi) || rawBmi <= 0 || rawBmi > 500) return undefined;
+  return Number(rawBmi.toFixed(2));
 };
 
 const FREE_TEXT_FIELDS = [
@@ -288,6 +323,25 @@ export const buildPatientData = (
     Object.assign(data, computeAgeParts(dateOfBirth ?? null));
   }
 
+  // Handle explicit age input (fallback or standalone when DOB is absent/approximate)
+  if (input.age !== undefined && (data.age === undefined || data.age === null)) {
+    const ageNum = toNumber(input.age);
+    if (ageNum !== undefined && ageNum !== null) {
+      if (ageNum < 0 || ageNum > 130) {
+        throw invalid("age", "must be between 0 and 130");
+      }
+      data.age = Math.trunc(ageNum);
+    }
+  }
+  if (input.ageMonth !== undefined && (data.ageMonth === undefined || data.ageMonth === null)) {
+    const m = toNumber(input.ageMonth);
+    if (m !== undefined && m !== null) data.ageMonth = Math.trunc(m);
+  }
+  if (input.ageDay !== undefined && (data.ageDay === undefined || data.ageDay === null)) {
+    const d = toNumber(input.ageDay);
+    if (d !== undefined && d !== null) data.ageDay = Math.trunc(d);
+  }
+
   if (input.bloodGroup !== undefined) {
     data.bloodGroup = oneOf(input.bloodGroup, BLOOD_GROUPS, "bloodGroup");
   }
@@ -298,7 +352,14 @@ export const buildPatientData = (
     data.maritalStatus = oneOf(input.maritalStatus, MARITAL_STATUS, "maritalStatus");
   }
   if (input.fastingStatus !== undefined) {
-    data.fastingStatus = oneOf(input.fastingStatus, FASTING_STATUS, "fastingStatus");
+    let normalizedFasting = input.fastingStatus;
+    if (typeof normalizedFasting === 'string') {
+      const upper = normalizedFasting.toUpperCase();
+      if (upper.startsWith('FASTING') || upper === 'YES') normalizedFasting = 'YES';
+      else if (upper === 'NON_FASTING' || upper === 'RANDOM' || upper === 'NO') normalizedFasting = 'NO';
+      else if (upper === 'NOT_APPLICABLE' || upper === 'NA') normalizedFasting = 'NOT_APPLICABLE';
+    }
+    data.fastingStatus = oneOf(normalizedFasting, FASTING_STATUS, "fastingStatus");
   }
   if (input.relationshipToHead !== undefined) {
     data.relationshipToHead = oneOf(
@@ -336,6 +397,27 @@ export const buildPatientData = (
     data.panNumber = value ? clamp("panNumber", value.toUpperCase()) : null;
   }
 
+  // ABHA (Ayushman Bharat Digital Health Account) & KYC Tokens
+  if (input.abhaNumber !== undefined) {
+    const value = text(input.abhaNumber);
+    data.abhaNumber = value ? clamp("abhaNumber", value.replace(/\s+/g, "")) : null;
+    if (data.abhaNumber) {
+      data.abhaStatus = "LINKED";
+      data.abhaLinkedAt = new Date();
+    }
+  }
+  if (input.abhaAddress !== undefined) {
+    const value = text(input.abhaAddress);
+    data.abhaAddress = value ? clamp("abhaAddress", value) : null;
+  }
+  if (input.healthIdNumber !== undefined) {
+    const value = text(input.healthIdNumber);
+    data.healthIdNumber = value ? clamp("healthIdNumber", value) : null;
+  }
+  if (input.aadhaarReferenceToken !== undefined) {
+    data.aadhaarReferenceToken = text(input.aadhaarReferenceToken) ?? null;
+  }
+
   for (const field of FREE_TEXT_FIELDS) {
     if (input[field] !== undefined) data[field] = text(input[field]) ?? null;
   }
@@ -353,6 +435,8 @@ export const buildPatientData = (
   if (input.phone !== undefined) data.phone = clamp("phone", sanitizePhone(input.phone));
   if (input.alternatePhone !== undefined) {
     data.alternatePhone = clamp("alternatePhone", sanitizePhone(input.alternatePhone));
+  } else if (input.whatsappNumber !== undefined) {
+    data.alternatePhone = clamp("alternatePhone", sanitizePhone(input.whatsappNumber));
   }
   if (input.emergencyContactPhone !== undefined) {
     data.emergencyContact = clamp("emergencyContact", sanitizePhone(input.emergencyContactPhone));
@@ -364,7 +448,8 @@ export const buildPatientData = (
     const digits = text(input.postalCode);
     data.pincode = digits ? clamp("pincode", digits.replace(/\D/g, "")) : null;
   } else if (input.pincode !== undefined) {
-    data.pincode = clamp("pincode", text(input.pincode));
+    const digits = text(input.pincode);
+    data.pincode = digits ? clamp("pincode", digits.replace(/\D/g, "")) : null;
   }
 
   if (input.doctorId !== undefined) data.referredById = text(input.doctorId) ?? null;

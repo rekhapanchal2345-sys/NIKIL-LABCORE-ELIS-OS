@@ -16,6 +16,7 @@ import {
   analyzeCoagulation,
   generateSmartReport,
 } from "./ai.service";
+import { interpretOrderWithGemini } from "./gemini.service";
 
 export const trainClassical = async (
   req: Request,
@@ -277,6 +278,31 @@ export const smartReportGenerate = async (
     res.status(200).json({
       success: true,
       message: "Smart report narrative generated",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const interpretOrderGemini = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const orderId = (req.params.orderId || req.body.orderId) as string;
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "orderId is required for clinical AI interpretation",
+      });
+    }
+
+    const result = await interpretOrderWithGemini(orderId);
+    res.status(200).json({
+      success: true,
+      message: "Diagnostic interpretation generated successfully",
       data: result,
     });
   } catch (error) {

@@ -4,9 +4,14 @@
   "description": "LabCore ELIS & Hospital Information System - Advanced Doctor & Pathology Module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "node test/aiStudio.test.js"
+    "start": "npm --prefix backend start",
+    "dev": "npm --prefix backend run dev",
+    "start:dev": "npm --prefix backend run start:dev",
+    "build": "npm --prefix backend run build",
+    "typecheck": "npm --prefix backend run typecheck",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:migrate": "npm --prefix backend run prisma:migrate",
+    "test": "npm --prefix backend test"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^1.4.0",

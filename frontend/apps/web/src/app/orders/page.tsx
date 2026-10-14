@@ -42,7 +42,16 @@ import {
 } from "@/components/orders/OrdersAdvancedUI";
 import OrderQuickDrawer, { DrawerOrder } from "@/components/orders/OrderQuickDrawer";
 import OrderPipelineKanban from "@/components/orders/OrderPipelineKanban";
+import SpecimenAccessioningModal from "@/components/orders/SpecimenAccessioningModal";
+import RegisterOrderWizard from "@/components/orders/RegisterOrderWizard";
+import PhlebotomyBarcodeGeneratorModal from "@/components/orders/PhlebotomyBarcodeGeneratorModal";
+
+// Orders Integration Engine Modules
+import OrdersIntegrationEngine from "@/components/orders/OrdersIntegrationEngine";
+import OrdersIntegrationWidget from "@/components/orders/OrdersIntegrationWidget";
+
 import {
+  Barcode,
   Search,
   Plus,
   Filter,
@@ -78,7 +87,12 @@ import {
   ChevronRight,
   PackageCheck,
   Receipt,
-  Phone
+  Phone,
+  Server,
+  Award,
+  QrCode,
+  MapPin,
+  Split
 } from "lucide-react";
 
 export interface Order {
@@ -171,7 +185,8 @@ export default function OrdersPage() {
   useEffect(() => { showToastRef.current = showToast; }, [showToast]);
 
   // Master Workstation Tab
-  const [workstationTab, setWorkstationTab] = useState<"worklist" | "kanban" | "tat" | "analytics" | "comms">("worklist");
+  const [workstationTab, setWorkstationTab] = useState<"worklist" | "kanban" | "tat" | "analytics" | "comms" | "integration">("worklist");
+  const [activeBranch, setActiveBranch] = useState("Main Hospital Central Lab (Block A - Level 1)");
 
   // Data states
   const [orders, setOrders] = useState<Order[]>([]);
@@ -191,6 +206,7 @@ export default function OrdersPage() {
   const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedDepartment, setSelectedDepartment] = useState("ALL");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Analytics data states
@@ -212,8 +228,9 @@ export default function OrdersPage() {
   // Bulk action states
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
-  // Slide-over Drawer
+  // Slide-over Drawer & Accessioning
   const [drawerOrder, setDrawerOrder] = useState<Order | null>(null);
+  const [accessioningOrder, setAccessioningOrder] = useState<Order | null>(null);
 
   // Modals
   const [activeModalOrder, setActiveModalOrder] = useState<Order | null>(null);
@@ -227,10 +244,52 @@ export default function OrdersPage() {
   >(null);
   const [showRunSheetModal, setShowRunSheetModal] = useState(false);
   const [showBulkNotifyModal, setShowBulkNotifyModal] = useState(false);
+  const [showNewRequisitionWizard, setShowNewRequisitionWizard] = useState(false);
+  const [showPhlebotomyBarcodeModal, setShowPhlebotomyBarcodeModal] = useState(false);
+  const [phlebotomyBarcodeOrder, setPhlebotomyBarcodeOrder] = useState<Order | null>(null);
 
   // Notification Dispatch Modal
   const [orderNotifyModalOpen, setOrderNotifyModalOpen] = useState(false);
   const [orderNotifyPayload, setOrderNotifyPayload] = useState<NotificationPayload | null>(null);
+
+  // URL State Synchronization (Level 4)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('tab')) setWorkstationTab(urlParams.get('tab') as any);
+      if (urlParams.has('status')) setStatusFilter(urlParams.get('status') || "all");
+      if (urlParams.has('payment')) setPaymentFilter(urlParams.get('payment') || "all");
+      if (urlParams.has('priority')) setPriorityFilter(urlParams.get('priority') || "all");
+      if (urlParams.has('dateFrom')) setDateFrom(urlParams.get('dateFrom') || "");
+      if (urlParams.has('dateTo')) setDateTo(urlParams.get('dateTo') || "");
+      if (urlParams.has('search')) setSearchTerm(urlParams.get('search') || "");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (workstationTab !== "worklist") url.searchParams.set("tab", workstationTab);
+      else url.searchParams.delete("tab");
+      
+      if (statusFilter !== "all") url.searchParams.set("status", statusFilter);
+      else url.searchParams.delete("status");
+
+      if (paymentFilter !== "all") url.searchParams.set("payment", paymentFilter);
+      else url.searchParams.delete("payment");
+
+      if (dateFrom) url.searchParams.set("dateFrom", dateFrom);
+      else url.searchParams.delete("dateFrom");
+
+      if (dateTo) url.searchParams.set("dateTo", dateTo);
+      else url.searchParams.delete("dateTo");
+
+      if (searchTerm) url.searchParams.set("search", searchTerm);
+      else url.searchParams.delete("search");
+
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, [workstationTab, statusFilter, paymentFilter, dateFrom, dateTo, searchTerm]);
 
   const handleNotifyOrder = (order: Order) => {
     setOrderNotifyPayload({
@@ -375,6 +434,15 @@ export default function OrdersPage() {
       result = result.filter((o) => o.collectionType === collectionTypeFilter);
     }
 
+    if (selectedDepartment !== "ALL") {
+      result = result.filter((o) =>
+        (o.items || []).some((i) => {
+          const dept = (i.test?.processingDepartment || i.test?.testName || "").toLowerCase();
+          return dept.includes(selectedDepartment.toLowerCase());
+        })
+      );
+    }
+
     // Sort
     result.sort((a, b) => {
       let valA: any = a[sortBy as keyof Order] ?? "";
@@ -397,7 +465,7 @@ export default function OrdersPage() {
     });
 
     return result;
-  }, [orders, searchTerm, statusFilter, paymentFilter, priorityFilter, collectionTypeFilter, sortBy, sortOrder]);
+  }, [orders, searchTerm, statusFilter, paymentFilter, priorityFilter, collectionTypeFilter, selectedDepartment, sortBy, sortOrder]);
 
   // Metrics
   const computedMetrics = useMemo(() => {
@@ -444,6 +512,30 @@ export default function OrdersPage() {
       }
     } catch (err: any) {
       showToast(err.message || "Failed to update order status", "error");
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  // 1-Click STAT Emergency Escalation Handler
+  const handleToggleStat = async (order: Order) => {
+    const isCurrentlyStat = order.priority === "STAT";
+    const nextPriority = isCurrentlyStat ? "ROUTINE" : "STAT";
+    try {
+      setUpdatingOrderId(order.id);
+      await orderApi.update(order.id, { priority: nextPriority });
+      showToast(
+        nextPriority === "STAT"
+          ? `Order #${order.orderNumber} escalated to STAT Emergency priority!`
+          : `Order #${order.orderNumber} reverted to Routine priority`,
+        nextPriority === "STAT" ? "warning" : "info"
+      );
+      await fetchOrders(true);
+      if (drawerOrder?.id === order.id) {
+        setDrawerOrder((prev) => (prev ? { ...prev, priority: nextPriority } : null));
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to update priority", "error");
     } finally {
       setUpdatingOrderId(null);
     }
@@ -529,163 +621,233 @@ export default function OrdersPage() {
         <ToastContainer toasts={toasts} onRemove={removeToast} />
 
         <div className="space-y-6 pb-12">
-          {/* Top Medical Center Requisitions Command Header */}
-          <div className="relative overflow-hidden rounded-3xl border border-indigo-500/40 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-2xl sm:p-8">
-            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-gradient-to-br from-cyan-400/20 to-blue-500/20 blur-3xl animate-pulse" />
-            <div className="pointer-events-none absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-gradient-to-br from-violet-400/20 to-purple-500/20 blur-3xl" />
+          {/* ========================================================
+              EXECUTIVE CLINICAL HOSPITAL REQUISITIONS COMMAND HEADER
+              (Light White Medical Aesthetic with Hospital Emblem & Accreditation)
+              ======================================================== */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 relative overflow-hidden transition-all duration-300">
+            {/* Subtle medical ambient accent glow */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-100/40 via-teal-50/30 to-transparent rounded-full pointer-events-none -mr-24 -mt-24 blur-3xl" />
 
-            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-3">
-                {/* Accreditation & Quality Badges */}
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/40 bg-cyan-400/10 px-3 py-1 text-cyan-200 backdrop-blur-md">
-                    <Building2 className="h-3.5 w-3.5 text-cyan-300" /> Hospital CPOE &amp; Requisitions Workstation
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-emerald-200 backdrop-blur-md">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" /> NABL &amp; CAP / ISO 15189 Quality Validated
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/40 bg-indigo-400/10 px-3 py-1 text-indigo-200 backdrop-blur-md">
-                    <Clock className="h-3.5 w-3.5 text-indigo-300" /> Live TAT SLA Telemetry
-                  </span>
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
+              
+              {/* Left Column: Hospital Emblem Logo, Institution Name, Accreditations */}
+              <div className="flex items-start gap-4">
+                {/* Official Medical Heraldic Logo Emblem */}
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-sky-500 p-0.5 shadow-md flex-shrink-0">
+                  <div className="h-full w-full bg-white rounded-[14px] flex flex-col items-center justify-center p-1 text-center shadow-inner relative overflow-hidden">
+                    <div className="absolute -top-3 -right-3 h-8 w-8 bg-sky-100 rounded-full blur-xs pointer-events-none" />
+                    <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-10 sm:w-10 text-sky-600" fill="currentColor">
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z" />
+                      <circle cx="18" cy="6" r="2" fill="#0d9488" />
+                    </svg>
+                    <span className="text-[8px] font-black uppercase tracking-wider text-slate-800 leading-none mt-0.5">
+                      LABCORE
+                    </span>
+                    <span className="text-[6.5px] font-bold text-sky-700 tracking-tighter">
+                      CPOE ORDERS
+                    </span>
+                  </div>
                 </div>
 
-                <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl bg-gradient-to-r from-white via-slate-100 via-cyan-100 to-indigo-100 bg-clip-text text-transparent">
-                  Orders &amp; Requisitions Center
-                </h1>
-                <p className="text-sm text-slate-300 max-w-2xl">
-                  Centralized patient test requisition hub with automated phlebotomy dispatch, diagnostic analyzer routing, real-time SLA breach alarms, and billing ledger.
-                </p>
+                {/* Institution Identity & Accreditations */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Order Bus Online • 0 Loss Ingest
+                    </span>
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                      <Award className="h-3 w-3 text-sky-600" />
+                      NABL ISO 15189:2022 (MC-5421)
+                    </span>
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                      <QrCode className="h-3 w-3 text-indigo-600" />
+                      ABDM e-Prescription (FHIR R4)
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setWorkstationTab("integration")}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-300 hover:bg-sky-100 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Server className="h-3 w-3 text-sky-600" />
+                      Integration Engine: 6 Feeds Active &rarr;
+                    </button>
+                  </div>
+
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      APEX MULTI-SPECIALTY HOSPITAL &amp; REFERENCE DIAGNOSTICS
+                    </h1>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Centralized clinical test requisition hub with automated phlebotomy dispatch, diagnostic analyzer routing, real-time SLA breach alarms, and billing ledger.
+                    </p>
+                  </div>
+
+                  {/* Branch Location Selector */}
+                  <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
+                    <span className="flex items-center gap-1 font-bold text-slate-800">
+                      <MapPin className="h-3.5 w-3.5 text-rose-500" /> Ordering Unit:
+                    </span>
+                    <select
+                      value={activeBranch}
+                      onChange={(e) => setActiveBranch(e.target.value)}
+                      className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="Main Hospital Central Lab (Block A - Level 1)">Main Hospital Central Lab (Block A - Level 1)</option>
+                      <option value="OPD Phlebotomy & Day-Care Collection Centre">OPD Phlebotomy & Day-Care Collection Centre</option>
+                      <option value="Emergency / Casualty STAT Satellite Unit">Emergency / Casualty STAT Satellite Unit</option>
+                      <option value="North City B2B Referral Annex">North City B2B Referral Annex</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              {/* Action Hub */}
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => setAutoRefreshEnabled((v) => !v)}
-                  className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-bold transition-all duration-300 backdrop-blur-md ${
-                    autoRefreshEnabled
-                      ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100 shadow-xl shadow-emerald-950/50"
-                      : "border-slate-700 bg-slate-800/80 text-slate-300 hover:border-slate-600"
-                  }`}
-                >
-                  <RefreshCw className={`h-4 w-4 ${autoRefreshEnabled ? "animate-spin text-emerald-300" : ""}`} />
-                  Live Sync {autoRefreshEnabled ? `(${countdown}s)` : "OFF"}
-                </button>
+              {/* Right Column: Actions Hub */}
+              <div className="flex flex-wrap items-center gap-2 xl:flex-col xl:items-end justify-between flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setAutoRefreshEnabled((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-all shadow-2xs ${
+                      autoRefreshEnabled
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${autoRefreshEnabled ? "animate-spin text-emerald-600" : ""}`} />
+                    Live Sync {autoRefreshEnabled ? `(${countdown}s)` : "OFF"}
+                  </button>
 
-                <button
-                  onClick={() => setShowRunSheetModal(true)}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/40 bg-violet-950/40 px-4 py-3 text-xs font-bold text-violet-300 hover:bg-violet-900/50 transition-all backdrop-blur-md"
-                >
-                  <FlaskConical className="h-4 w-4 text-violet-400" /> Phlebotomy Run-Sheet
-                </button>
+                  <button
+                    onClick={() => setShowRunSheetModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 px-3 py-2 text-xs font-bold text-purple-700 transition-all shadow-2xs"
+                  >
+                    <FlaskConical className="h-3.5 w-3.5 text-purple-600" /> Phlebotomy Run-Sheet
+                  </button>
 
-                <button
-                  onClick={handleExportCSV}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-800/90 px-4 py-3 text-xs font-bold text-slate-200 hover:border-slate-600 hover:text-white transition-all backdrop-blur-md"
-                >
-                  <Download className="h-4 w-4 text-cyan-400" /> Export CSV
-                </button>
+                  <button
+                    onClick={() => {
+                      setPhlebotomyBarcodeOrder(null);
+                      setShowPhlebotomyBarcodeModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 text-xs font-bold text-indigo-700 transition-all shadow-2xs"
+                  >
+                    <Barcode className="h-3.5 w-3.5 text-indigo-600" /> Phlebotomy Tube Barcodes
+                  </button>
 
-                <Link
-                  href="/orders/new"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-cyan-400/60 bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-xs font-black text-slate-950 shadow-xl shadow-cyan-950/50 hover:from-cyan-400 hover:to-blue-500 hover:scale-105 transition-all duration-300"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>New Clinical Requisition</span>
-                  <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-slate-950 text-cyan-300 rounded font-bold">N</kbd>
-                </Link>
+                  <button
+                    onClick={handleExportCSV}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition-all shadow-2xs"
+                  >
+                    <Download className="h-3.5 w-3.5 text-sky-600" /> Export CSV
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowNewRequisitionWizard(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>New Requisition</span>
+                    <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.2 text-[9px] font-mono bg-white/20 rounded">N</kbd>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Real-Time Glass KPI Strip */}
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 border-t border-white/10 pt-6">
-              <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/40 to-slate-900/60 p-3.5 backdrop-blur-md">
+            {/* Real-Time Light Professional KPI Strip */}
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 border-t border-slate-100 pt-5">
+              <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">Total Booked</span>
-                  <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Booked</span>
+                  <span className="h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
                 </div>
-                <p className="mt-1 text-2xl font-black text-white">{computedMetrics.totalOrders}</p>
+                <p className="mt-1 text-2xl font-black text-slate-900">{computedMetrics.totalOrders}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Active requisitions</p>
               </div>
 
-              <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-slate-900/60 p-3.5 backdrop-blur-md">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">Phlebotomy Due</span>
-                <p className="mt-1 text-2xl font-black text-white">{computedMetrics.pendingDraw}</p>
-                <p className="text-[10px] text-amber-200/80 mt-0.5">Awaiting sample draw</p>
+              <div className="rounded-xl border border-amber-200/90 bg-amber-50/50 p-3 shadow-2xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Phlebotomy Due</span>
+                <p className="mt-1 text-2xl font-black text-amber-900">{computedMetrics.pendingDraw}</p>
+                <p className="text-[10px] text-amber-700/80 mt-0.5">Awaiting sample draw</p>
               </div>
 
-              <div className="rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-950/40 to-slate-900/60 p-3.5 backdrop-blur-md">
+              <div className="rounded-xl border border-rose-200/90 bg-rose-50/50 p-3 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300">STAT / Critical</span>
-                  {computedMetrics.statCount > 0 && <Flame className="h-3.5 w-3.5 text-rose-400 fill-rose-400 animate-bounce" />}
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-800">STAT / Critical</span>
+                  {computedMetrics.statCount > 0 && <Flame className="h-3.5 w-3.5 text-rose-600 fill-rose-600 animate-bounce" />}
                 </div>
-                <p className="mt-1 text-2xl font-black text-white">{computedMetrics.statCount}</p>
-                <p className="text-[10px] text-rose-200/80 mt-0.5">Emergency priorities</p>
+                <p className="mt-1 text-2xl font-black text-rose-900">{computedMetrics.statCount}</p>
+                <p className="text-[10px] text-rose-700/80 mt-0.5">Emergency priorities</p>
               </div>
 
-              <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-950/40 to-slate-900/60 p-3.5 backdrop-blur-md">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300">In-Analyzer Run</span>
-                <p className="mt-1 text-2xl font-black text-white">{computedMetrics.inAnalyzer}</p>
-                <p className="text-[10px] text-blue-200/80 mt-0.5">On diagnostic bays</p>
+              <div className="rounded-xl border border-indigo-200/90 bg-indigo-50/50 p-3 shadow-2xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-800">In-Analyzer Run</span>
+                <p className="mt-1 text-2xl font-black text-indigo-900">{computedMetrics.inAnalyzer}</p>
+                <p className="text-[10px] text-indigo-700/80 mt-0.5">On diagnostic bays</p>
               </div>
 
-              <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 to-slate-900/60 p-3.5 backdrop-blur-md">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Revenue Billed</span>
-                <p className="mt-1 text-2xl font-black text-white">₹{computedMetrics.totalBilled.toLocaleString()}</p>
-                <p className="text-[10px] text-emerald-300/80 mt-0.5">₹{computedMetrics.totalCollected.toLocaleString()} Collected</p>
+              <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/50 p-3 shadow-2xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Revenue Billed</span>
+                <p className="mt-1 text-2xl font-black text-emerald-900">₹{computedMetrics.totalBilled.toLocaleString()}</p>
+                <p className="text-[10px] text-emerald-700/80 mt-0.5">₹{computedMetrics.totalCollected.toLocaleString()} Collected</p>
               </div>
 
-              <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-950/40 to-slate-900/60 p-3.5 backdrop-blur-md">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Balance Due</span>
-                <p className={`mt-1 text-2xl font-black ${computedMetrics.totalDue > 0 ? "text-amber-300" : "text-white"}`}>
+              <div className="rounded-xl border border-purple-200/90 bg-purple-50/50 p-3 shadow-2xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-800">Balance Due</span>
+                <p className={`mt-1 text-2xl font-black ${computedMetrics.totalDue > 0 ? "text-amber-800" : "text-purple-900"}`}>
                   ₹{computedMetrics.totalDue.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-purple-200/80 mt-0.5">Outstanding ledger</p>
+                <p className="text-[10px] text-purple-700/80 mt-0.5">Outstanding ledger</p>
               </div>
             </div>
           </div>
 
           {/* Master Workstation Mode Tabs */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/90 pb-3">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200 overflow-x-auto max-w-full">
               <button
                 onClick={() => setWorkstationTab("worklist")}
-                className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black transition-all duration-300 ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   workstationTab === "worklist"
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-xl shadow-cyan-950/50 scale-105"
-                    : "border border-slate-800 bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-white"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <TableIcon className="h-4 w-4" />
+                <TableIcon className="h-3.5 w-3.5 text-sky-600" />
                 <span>1. Requisitions Worklist</span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${workstationTab === "worklist" ? "bg-slate-950 text-white" : "bg-slate-800 text-slate-300"}`}>
+                <span className="rounded-full bg-slate-200/80 text-slate-700 px-2 py-0.2 text-[10px] font-mono">
                   {filteredOrders.length}
                 </span>
               </button>
 
               <button
                 onClick={() => setWorkstationTab("kanban")}
-                className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black transition-all duration-300 ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   workstationTab === "kanban"
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-xl shadow-cyan-950/50 scale-105"
-                    : "border border-slate-800 bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-white"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <LayoutGrid className="h-4 w-4" />
+                <LayoutGrid className="h-3.5 w-3.5 text-indigo-600" />
                 <span>2. Clinical Pipeline Kanban</span>
               </button>
 
               <button
                 onClick={() => setWorkstationTab("tat")}
-                className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black transition-all duration-300 ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   workstationTab === "tat"
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-xl shadow-cyan-950/50 scale-105"
-                    : "border border-slate-800 bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-white"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <Timer className="h-4 w-4" />
+                <Timer className="h-3.5 w-3.5 text-teal-600" />
                 <span>3. TAT &amp; SLA Breach Watch</span>
                 {tatData && tatData.breached > 0 && (
-                  <span className="rounded-full bg-rose-500 px-1.5 py-0.2 text-[9px] font-bold text-white animate-pulse">
+                  <span className="rounded-full bg-rose-600 px-1.5 py-0.2 text-[9px] font-bold text-white animate-pulse">
                     {tatData.breached} Breached
                   </span>
                 )}
@@ -693,26 +855,39 @@ export default function OrdersPage() {
 
               <button
                 onClick={() => setWorkstationTab("analytics")}
-                className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black transition-all duration-300 ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   workstationTab === "analytics"
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-xl shadow-cyan-950/50 scale-105"
-                    : "border border-slate-800 bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-white"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <BarChart3 className="h-4 w-4" />
-                <span>4. Financial &amp; Operational Analytics</span>
+                <BarChart3 className="h-3.5 w-3.5 text-cyan-600" />
+                <span>4. Analytics</span>
               </button>
 
               <button
                 onClick={() => setWorkstationTab("comms")}
-                className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black transition-all duration-300 ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   workstationTab === "comms"
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-950/50 scale-105"
-                    : "border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/50"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <MessageCircle className="h-4 w-4" />
-                <span>5. Patient WhatsApp &amp; SMS Hub</span>
+                <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                <span>5. WhatsApp &amp; SMS</span>
+              </button>
+
+              <button
+                onClick={() => setWorkstationTab("integration")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  workstationTab === "integration"
+                    ? "bg-white text-sky-800 shadow-xs border border-sky-300 ring-1 ring-sky-200"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Server className="h-3.5 w-3.5 text-sky-600" />
+                <span>6. Orders Integration Engine</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               </button>
             </div>
           </div>
@@ -720,8 +895,44 @@ export default function OrdersPage() {
           {/* TAB 1: MASTER REQUISITIONS WORKLIST */}
           {workstationTab === "worklist" && (
             <div className="space-y-5">
+              {/* STAT Emergency Fast-Track Triage Alert Banner */}
+              {computedMetrics.statCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-300 bg-gradient-to-r from-rose-50 via-red-50/60 to-rose-50 p-4 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
+                      <Flame className="h-5 w-5 fill-white animate-bounce" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-rose-800">
+                          CRITICAL STAT EMERGENCY TRIAGE ALERT
+                        </span>
+                        <span className="h-2 w-2 rounded-full bg-rose-600 animate-ping" />
+                      </div>
+                      <p className="text-xs text-rose-950 font-bold mt-0.5">
+                        {computedMetrics.statCount} Requisition(s) require immediate laboratory processing (Sub-60 min SLA).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPriorityFilter(priorityFilter === "STAT" ? "all" : "STAT")}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shadow-2xs ${
+                        priorityFilter === "STAT"
+                          ? "bg-rose-700 text-white"
+                          : "bg-white text-rose-800 border border-rose-300 hover:bg-rose-100"
+                      }`}
+                    >
+                      {priorityFilter === "STAT" ? "Show All Requisitions" : "⚡ Isolate STAT Orders"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Filter Toolbar */}
-              <div className="rounded-3xl border border-slate-800 bg-slate-950/90 p-5 shadow-2xl backdrop-blur-xl space-y-4">
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     {([
@@ -735,39 +946,67 @@ export default function OrdersPage() {
                       <button
                         key={val}
                         onClick={() => setStatusFilter(val)}
-                        className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
+                        className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
                           statusFilter === val
-                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-md"
-                            : "border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200"
+                            ? "bg-sky-50 text-sky-800 border border-sky-300 shadow-2xs font-extrabold"
+                            : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
                         }`}
                       >
                         <span>{label}</span>
-                        <span className="rounded-md bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-300 font-bold">
+                        <span className="rounded-md bg-slate-200/80 px-1.5 py-0.2 font-mono text-[10px] text-slate-800 font-bold">
                           {count}
                         </span>
                       </button>
                     ))}
                   </div>
 
-                  <span className="text-xs text-slate-400 font-medium">
+                  <span className="text-xs text-slate-500 font-medium">
                     Showing {filteredOrders.length} of {orders.length} orders
                   </span>
+                </div>
+
+                {/* Laboratory Department Routing Filter Strip */}
+                <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-slate-100 pb-1">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1 shrink-0">
+                    <FlaskConical className="h-3.5 w-3.5 text-sky-600" /> Department:
+                  </span>
+                  {([
+                    ["ALL", "All Departments"],
+                    ["Biochemistry", "Biochemistry & Immunochemistry"],
+                    ["Hematology", "Hematology & Coagulation"],
+                    ["Pathology", "Clinical Pathology & Urine"],
+                    ["Microbiology", "Microbiology & Serology"],
+                    ["Molecular", "Molecular / RT-PCR"],
+                  ] as const).map(([deptKey, deptLabel]) => (
+                    <button
+                      key={deptKey}
+                      type="button"
+                      onClick={() => setSelectedDepartment(deptKey)}
+                      className={`px-3 py-1 rounded-xl text-xs transition-all whitespace-nowrap font-bold ${
+                        selectedDepartment === deptKey
+                          ? "bg-sky-600 text-white shadow-2xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60"
+                      }`}
+                    >
+                      {deptLabel}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Filter Inputs Grid */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <div className="relative lg:col-span-2">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       ref={searchInputRef}
                       type="text"
                       placeholder="Search Order #, Barcode, UHID, Patient, Phone, Doctor, Test..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 pl-10 pr-4 py-2.5 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-sky-500 transition-all font-medium"
                     />
                     {searchTerm && (
-                      <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                      <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -777,7 +1016,7 @@ export default function OrdersPage() {
                     <select
                       value={paymentFilter}
                       onChange={(e) => setPaymentFilter(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-cyan-500/50 transition-all"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 transition-all font-medium cursor-pointer"
                     >
                       <option value="all">All Payment Statuses</option>
                       <option value="PAID">Fully Paid</option>
@@ -790,7 +1029,7 @@ export default function OrdersPage() {
                     <select
                       value={priorityFilter}
                       onChange={(e) => setPriorityFilter(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-cyan-500/50 transition-all"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 transition-all font-medium cursor-pointer"
                     >
                       <option value="all">All Priorities</option>
                       <option value="ROUTINE">Routine Requisition</option>
@@ -803,7 +1042,7 @@ export default function OrdersPage() {
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-cyan-500/50 transition-all"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 transition-all font-medium cursor-pointer"
                     >
                       <option value="createdAt">Sort: Requisition Date</option>
                       <option value="patient">Sort: Patient Name</option>
@@ -814,16 +1053,22 @@ export default function OrdersPage() {
                 </div>
               </div>
 
+              {/* Orders Integration Engine Telemetry Card Widget */}
+              <OrdersIntegrationWidget
+                onOpenEngine={() => setWorkstationTab("integration")}
+                ordersToday={computedMetrics.totalOrders}
+              />
+
               {/* Bulk Operations Toolbar */}
               {selectedOrders.size > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-500/50 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 p-4 text-white shadow-2xl animate-in fade-in duration-200">
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-200 bg-cyan-50/80 p-4 text-slate-800 shadow-xs animate-in fade-in duration-200">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400 text-slate-950 font-black text-sm">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-600 text-white font-black text-sm shadow-xs">
                       {selectedOrders.size}
                     </span>
                     <div>
-                      <p className="text-xs font-bold text-slate-200">Selected Orders for Batch Operations</p>
-                      <p className="text-[10px] text-slate-400">Perform mass status progression, label printing, or patient dispatch</p>
+                      <p className="text-xs font-bold text-cyan-950">Selected Orders for Batch Operations</p>
+                      <p className="text-[10px] text-slate-600">Perform mass status progression, label printing, or patient dispatch</p>
                     </div>
                   </div>
 
@@ -831,7 +1076,7 @@ export default function OrdersPage() {
                     <button
                       onClick={() => handleBulkStatusUpdate("SAMPLE_COLLECTED")}
                       disabled={bulkOpLoading}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 px-3.5 py-2 text-xs font-black text-white shadow-md hover:from-purple-400 hover:to-indigo-500 transition-all disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-700 transition-all disabled:opacity-50"
                     >
                       <FlaskConical className="h-4 w-4" /> Batch Mark Drawn
                     </button>
@@ -839,28 +1084,28 @@ export default function OrdersPage() {
                     <button
                       onClick={() => handleBulkStatusUpdate("PROCESSING")}
                       disabled={bulkOpLoading}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-3.5 py-2 text-xs font-black text-slate-950 shadow-md hover:from-cyan-400 hover:to-blue-500 transition-all disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-cyan-700 transition-all disabled:opacity-50"
                     >
                       <Activity className="h-4 w-4" /> Route to Analyzers
                     </button>
 
                     <button
                       onClick={handleBulkPrintLabels}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-200 hover:text-white transition-all"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
                     >
-                      <Printer className="h-4 w-4 text-cyan-400" /> Print Tube Barcodes
+                      <Printer className="h-4 w-4 text-cyan-600" /> Print Tube Barcodes
                     </button>
 
                     <button
                       onClick={() => setShowBulkNotifyModal(true)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-3.5 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-900/50 transition-all"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-all shadow-2xs"
                     >
-                      <MessageCircle className="h-4 w-4" /> Batch WhatsApp
+                      <MessageCircle className="h-4 w-4 text-emerald-600" /> Batch WhatsApp
                     </button>
 
                     <button
                       onClick={() => setSelectedOrders(new Set())}
-                      className="rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors"
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
                     >
                       Clear
                     </button>
@@ -869,7 +1114,7 @@ export default function OrdersPage() {
               )}
 
               {/* Master Clinical Table */}
-              <div className="overflow-hidden rounded-3xl border border-slate-800/90 bg-slate-950 shadow-2xl">
+              <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
                 {loading ? (
                   <OrdersTableSkeleton />
                 ) : filteredOrders.length === 0 ? (
@@ -877,14 +1122,14 @@ export default function OrdersPage() {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                      <thead className="border-b border-slate-800 bg-slate-900/80 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-600">
                         <tr>
                           <th className="px-5 py-4 w-10">
                             <input
                               type="checkbox"
                               checked={selectedOrders.size === currentOrders.length && currentOrders.length > 0}
                               onChange={handleSelectAllCurrentPage}
-                              className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-400 focus:ring-0"
+                              className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                             />
                           </th>
                           <th className="px-5 py-4">Requisition ID</th>
@@ -896,7 +1141,7 @@ export default function OrdersPage() {
                           <th className="px-5 py-4 text-right">Workflow Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/70 text-xs text-slate-300">
+                      <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                         {currentOrders.map((order) => {
                           const isStat = order.priority === "STAT" || order.priority === "URGENT";
                           const isUpdating = updatingOrderId === order.id;
@@ -904,8 +1149,8 @@ export default function OrdersPage() {
                           return (
                             <tr
                               key={order.id}
-                              className={`group transition-all duration-200 hover:bg-slate-900/60 ${
-                                isStat ? "bg-rose-950/15" : ""
+                              className={`group transition-all duration-150 hover:bg-slate-50/80 ${
+                                isStat ? "bg-rose-50/50" : ""
                               }`}
                             >
                               <td className="px-5 py-4">
@@ -913,46 +1158,57 @@ export default function OrdersPage() {
                                   type="checkbox"
                                   checked={selectedOrders.has(order.id)}
                                   onChange={() => handleToggleSelectOrder(order.id)}
-                                  className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-400 focus:ring-0"
+                                  className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                                 />
                               </td>
 
-                              {/* Requisition ID & Barcode */}
+                              {/* Requisition ID & Barcode with 1-Click STAT Escalator */}
                               <td className="px-5 py-4">
                                 <div className="space-y-1">
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <button
                                       onClick={() => setDrawerOrder(order)}
-                                      className="font-mono text-xs font-black text-white hover:text-cyan-300 transition-colors"
+                                      className="font-mono text-xs font-black text-slate-900 hover:text-sky-600 transition-colors"
                                     >
                                       {order.orderNumber}
                                     </button>
-                                    {isStat && (
-                                      <span className="rounded bg-rose-600 px-1.5 py-0.2 text-[8px] font-black uppercase text-white shadow-sm flex items-center gap-0.5">
-                                        <Flame className="h-2.5 w-2.5 fill-white" /> STAT
-                                      </span>
-                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleStat(order)}
+                                      title={isStat ? "Click to revert to Routine" : "Click to escalate to STAT Emergency"}
+                                      className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all flex items-center gap-0.5 cursor-pointer ${
+                                        isStat
+                                          ? "bg-rose-600 text-white shadow-2xs hover:bg-rose-700 animate-pulse"
+                                          : "bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-700 border border-slate-200"
+                                      }`}
+                                    >
+                                      <Flame className={`h-2.5 w-2.5 ${isStat ? "fill-white" : ""}`} />
+                                      {isStat ? "STAT" : "Escalate"}
+                                    </button>
                                   </div>
                                   <p className="font-mono text-[10px] text-slate-500 flex items-center gap-1">
-                                    <ScanLine className="h-3 w-3 text-cyan-400" /> {order.barcode}
+                                    <ScanLine className="h-3 w-3 text-sky-600" /> {order.barcode}
                                   </p>
-                                  <span className="text-[10px] text-slate-600">
-                                    {new Date(order.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+                                  <span className="text-[10px] text-slate-400 font-medium">
+                                    {new Date(order.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                   </span>
                                 </div>
                               </td>
 
-                              {/* Patient Demographics */}
+                              {/* Patient Demographics & ABDM Health ID */}
                               <td className="px-5 py-4">
                                 <div className="space-y-1">
-                                  <p className="font-bold text-slate-100 flex items-center gap-1.5">
-                                    <UserRound className="h-3.5 w-3.5 text-cyan-400" />
+                                  <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                                    <UserRound className="h-3.5 w-3.5 text-sky-600" />
                                     {order.patient.firstName} {order.patient.lastName}
                                   </p>
-                                  <p className="text-[11px] text-slate-400">
-                                    UHID: <span className="font-mono text-slate-300 font-bold">{order.patient.uhid}</span>
-                                  </p>
-                                  <p className="text-[10px] text-slate-500">
+                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap">
+                                    <span>UHID: <strong className="font-mono text-slate-800">{order.patient.uhid}</strong></span>
+                                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                      ABDM Linked ✓
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400">
                                     {order.patient.age || "—"} yrs · {order.patient.gender} · {order.patient.phone || "No phone"}
                                   </p>
                                 </div>
@@ -992,7 +1248,7 @@ export default function OrdersPage() {
                                       );
                                     })}
                                     {order.items.length > 2 && (
-                                      <span className="rounded bg-slate-800 px-1 py-0.5 text-[9px] font-mono text-slate-400 font-bold">
+                                      <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-mono text-slate-600 font-bold border border-slate-200">
                                         +{order.items.length - 2}
                                       </span>
                                     )}
@@ -1000,10 +1256,17 @@ export default function OrdersPage() {
                                 </div>
                               </td>
 
-                              {/* Status & Phlebotomy Stepper */}
+                              {/* Status, Phlebotomy & TAT SLA */}
                               <td className="px-5 py-4">
                                 <div className="space-y-1.5 min-w-[130px]">
-                                  <StatusBadge status={order.orderStatus as any} />
+                                  <div className="flex items-center gap-1.5">
+                                    <StatusBadge status={order.orderStatus as any} />
+                                    {isStat && (
+                                      <span className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">
+                                        &lt;1h SLA
+                                      </span>
+                                    )}
+                                  </div>
                                   <SampleStatusStepper
                                     orderStatus={order.orderStatus as any}
                                     sampleCollected={order.sampleCollected}
@@ -1014,11 +1277,11 @@ export default function OrdersPage() {
                               {/* Billing & Ledger */}
                               <td className="px-5 py-4">
                                 <div className="space-y-1 min-w-[110px]">
-                                  <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+                                  <div className="flex items-center justify-between text-xs font-bold text-slate-900">
                                     <span>₹{order.grandTotal}</span>
                                     <span className={`text-[10px] font-bold ${
-                                      order.paymentStatus === "PAID" ? "text-emerald-400" :
-                                      order.paymentStatus === "PARTIAL" ? "text-amber-400" : "text-rose-400"
+                                      order.paymentStatus === "PAID" ? "text-emerald-600" :
+                                      order.paymentStatus === "PARTIAL" ? "text-amber-600" : "text-rose-600"
                                     }`}>
                                       {order.paymentStatus}
                                     </span>
@@ -1044,7 +1307,7 @@ export default function OrdersPage() {
                                         setActiveModalOrder(order);
                                         setModalType("collectSample");
                                       }}
-                                      className="rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 px-2.5 py-1.5 text-[11px] font-black text-white shadow-md hover:from-purple-400 hover:to-indigo-500 transition-all flex items-center gap-1"
+                                      className="rounded-xl bg-purple-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-xs hover:bg-purple-700 transition-all flex items-center gap-1"
                                       title="Draw Sample / Phlebotomy"
                                     >
                                       <FlaskConical className="h-3 w-3" /> Draw
@@ -1052,21 +1315,30 @@ export default function OrdersPage() {
                                   )}
 
                                   {order.orderStatus === "SAMPLE_COLLECTED" && (
-                                    <button
-                                      onClick={() => handleAdvanceStatus(order, "PROCESSING")}
-                                      disabled={isUpdating}
-                                      className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-2.5 py-1.5 text-[11px] font-black text-slate-950 shadow-md hover:from-cyan-400 hover:to-blue-500 transition-all"
-                                      title="Load on Analyzer"
-                                    >
-                                      Run Lab
-                                    </button>
+                                    <>
+                                      <button
+                                        onClick={() => setAccessioningOrder(order)}
+                                        className="rounded-xl border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-[11px] font-black text-sky-800 shadow-2xs hover:bg-sky-100 transition-all flex items-center gap-1"
+                                        title="Lab Specimen Accessioning & Centrifuge Queue"
+                                      >
+                                        <PackageCheck className="h-3 w-3 text-sky-600" /> Accession
+                                      </button>
+                                      <button
+                                        onClick={() => handleAdvanceStatus(order, "PROCESSING")}
+                                        disabled={isUpdating}
+                                        className="rounded-xl bg-sky-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-xs hover:bg-sky-700 transition-all"
+                                        title="Load on Analyzer"
+                                      >
+                                        Run Lab
+                                      </button>
+                                    </>
                                   )}
 
                                   {order.orderStatus === "PROCESSING" && (
                                     <button
                                       onClick={() => handleAdvanceStatus(order, "COMPLETED")}
                                       disabled={isUpdating}
-                                      className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-2.5 py-1.5 text-[11px] font-black text-white shadow-md hover:from-emerald-400 hover:to-teal-500 transition-all"
+                                      className="rounded-xl bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-xs hover:bg-emerald-700 transition-all"
                                       title="Sign-off & Validate"
                                     >
                                       Validate
@@ -1074,8 +1346,27 @@ export default function OrdersPage() {
                                   )}
 
                                   <button
+                                    onClick={() => {
+                                      setPhlebotomyBarcodeOrder(order);
+                                      setShowPhlebotomyBarcodeModal(true);
+                                    }}
+                                    className="rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-indigo-700 hover:bg-indigo-100 transition-colors shadow-2xs"
+                                    title="Phlebotomy Specimen Tube Barcodes"
+                                  >
+                                    <Barcode className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => window.open(`/orders/${order.id}/barcode`, "_blank")}
+                                    className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-slate-600 hover:text-sky-600 hover:bg-slate-100 transition-colors shadow-2xs"
+                                    title="Print Tube Barcodes"
+                                  >
+                                    <Printer className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  <button
                                     onClick={() => setDrawerOrder(order)}
-                                    className="rounded-xl border border-slate-700 bg-slate-800/80 px-2 py-1.5 text-slate-300 hover:text-white transition-colors"
+                                    className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs"
                                     title="Inspect Order Dossier"
                                   >
                                     <Eye className="h-3.5 w-3.5" />
@@ -1086,7 +1377,7 @@ export default function OrdersPage() {
                                       setActiveModalOrder(order);
                                       setModalType("whatsApp");
                                     }}
-                                    className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-2 py-1.5 text-emerald-300 hover:bg-emerald-900/50 transition-colors"
+                                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-2xs"
                                     title="WhatsApp Requisition Receipt"
                                   >
                                     <MessageCircle className="h-3.5 w-3.5" />
@@ -1094,6 +1385,7 @@ export default function OrdersPage() {
 
                                   <OrderRowQuickActions
                                     order={order as any}
+                                    onView={() => router.push(`/orders/${order.id}`)}
                                     onAssignDoctor={() => {
                                       setActiveModalOrder(order);
                                       setModalType("assignDoctor");
@@ -1127,21 +1419,21 @@ export default function OrdersPage() {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between border-t border-slate-800 px-6 py-4">
+                  <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-6 py-4">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 shadow-2xs"
                     >
                       Previous
                     </button>
-                    <span className="text-xs text-slate-400">
-                      Page <span className="font-bold text-white">{currentPage}</span> of <span className="font-bold text-white">{totalPages}</span>
+                    <span className="text-xs text-slate-500">
+                      Page <span className="font-bold text-slate-900">{currentPage}</span> of <span className="font-bold text-slate-900">{totalPages}</span>
                     </span>
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 shadow-2xs"
                     >
                       Next
                     </button>
@@ -1168,19 +1460,19 @@ export default function OrdersPage() {
 
           {/* TAB 3: TAT & SLA BREACH WATCH */}
           {workstationTab === "tat" && (
-            <div className="rounded-3xl border border-slate-800 bg-slate-950 p-6 space-y-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-5">
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-6 shadow-xs">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Timer className="h-5 w-5 text-cyan-400" /> Real-time Turnaround Time (TAT) Telemetry
+                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <Timer className="h-5 w-5 text-cyan-600" /> Real-time Turnaround Time (TAT) Telemetry
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Continuous monitoring of requisition test delivery against NABL / CAP SLA targets.
                   </p>
                 </div>
                 <button
                   onClick={() => setShowTATMonitor(true)}
-                  className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg"
+                  className="rounded-xl bg-cyan-600 hover:bg-cyan-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors"
                 >
                   Open Dedicated TAT Modal
                 </button>
@@ -1188,20 +1480,20 @@ export default function OrdersPage() {
 
               {tatData ? (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">On-Time Requisitions</p>
-                    <p className="mt-2 text-3xl font-black text-white">{tatData.active - tatData.breached}</p>
-                    <p className="text-xs text-slate-400 mt-1">Within standard protocol</p>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">On-Time Requisitions</p>
+                    <p className="mt-2 text-3xl font-black text-slate-900">{tatData.active - tatData.breached}</p>
+                    <p className="text-xs text-emerald-700 mt-1">Within standard protocol</p>
                   </div>
-                  <div className="rounded-2xl border border-amber-500/40 bg-amber-950/20 p-5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-amber-400">Critical TAT Alert (&gt;80%)</p>
-                    <p className="mt-2 text-3xl font-black text-white">{tatData.critical}</p>
-                    <p className="text-xs text-slate-400 mt-1">Approaching breach threshold</p>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-amber-800">Critical TAT Alert (&gt;80%)</p>
+                    <p className="mt-2 text-3xl font-black text-slate-900">{tatData.critical}</p>
+                    <p className="text-xs text-amber-700 mt-1">Approaching breach threshold</p>
                   </div>
-                  <div className="rounded-2xl border border-rose-500/40 bg-rose-950/20 p-5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-rose-400">TAT Breached Orders</p>
-                    <p className="mt-2 text-3xl font-black text-white">{tatData.breached}</p>
-                    <p className="text-xs text-rose-300 mt-1">Immediate escalation required</p>
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-rose-800">TAT Breached Orders</p>
+                    <p className="mt-2 text-3xl font-black text-slate-900">{tatData.breached}</p>
+                    <p className="text-xs text-rose-700 mt-1">Immediate escalation required</p>
                   </div>
                 </div>
               ) : (
@@ -1249,19 +1541,19 @@ export default function OrdersPage() {
 
           {/* TAB 5: PATIENT WHATSAPP & COMMUNICATIONS */}
           {workstationTab === "comms" && (
-            <div className="rounded-3xl border border-emerald-500/40 bg-slate-950 p-6 space-y-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-5">
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-6 shadow-xs">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <MessageCircle className="h-5 w-5 text-emerald-400" /> Patient Multi-Channel Communication Gateway
+                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5 text-emerald-600" /> Patient Multi-Channel Communication Gateway
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Direct automated WhatsApp &amp; SMS delivery of requisition booking confirmations, payment links, and test reports.
                   </p>
                 </div>
                 <button
                   onClick={() => setShowBulkNotifyModal(true)}
-                  className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-lg"
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors"
                 >
                   Send Bulk Broadcast Notification
                 </button>
@@ -1269,25 +1561,25 @@ export default function OrdersPage() {
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 {orders.slice(0, 6).map((order) => (
-                  <div key={order.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+                  <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-bold text-slate-100 text-sm">{order.patient.firstName} {order.patient.lastName}</p>
-                        <p className="font-mono text-xs text-slate-400">{order.patient.phone || "No phone"}</p>
+                        <p className="font-bold text-slate-900 text-sm">{order.patient.firstName} {order.patient.lastName}</p>
+                        <p className="font-mono text-xs text-slate-500">{order.patient.phone || "No phone"}</p>
                       </div>
-                      <span className="font-mono text-[10px] text-cyan-300 bg-slate-800 px-2 py-0.5 rounded">
+                      <span className="font-mono text-[10px] text-cyan-800 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded font-bold">
                         {order.orderNumber}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-slate-800/80 pt-2 text-xs">
-                      <span className="text-slate-400">{order.items.length} Test Panel(s)</span>
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-xs">
+                      <span className="text-slate-600">{order.items.length} Test Panel(s)</span>
                       <button
                         onClick={() => {
                           setActiveModalOrder(order);
                           setModalType("whatsApp");
                         }}
-                        className="rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-3 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30 transition-colors"
+                        className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-2xs"
                       >
                         Send WhatsApp
                       </button>
@@ -1295,6 +1587,18 @@ export default function OrdersPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* TAB 6: ORDERS INTEGRATION ENGINE */}
+          {workstationTab === "integration" && (
+            <div className="space-y-6">
+              <OrdersIntegrationEngine
+                onInjectOrderToWorklist={() => {
+                  fetchOrders();
+                  fetchAnalytics();
+                }}
+              />
             </div>
           )}
         </div>
@@ -1325,7 +1629,21 @@ export default function OrdersPage() {
             setModalType("whatsApp");
           }}
           onPrintBarcode={(o) => window.open(`/orders/${o.id}/barcode`, "_blank")}
-          onPrintInvoice={(o) => window.open(`/orders/${o.id}/invoice`, "_blank")}
+          onPrintInvoice={(o) => window.open(`/orders/${o.id}/receipt`, "_blank")}
+        />
+
+        {/* Specimen Intake & Laboratory Accessioning Modal */}
+        <SpecimenAccessioningModal
+          order={accessioningOrder as any}
+          isOpen={!!accessioningOrder}
+          onClose={() => setAccessioningOrder(null)}
+          onAccessionSuccess={async (data) => {
+            showToast(`Order #${accessioningOrder?.orderNumber} accessioned into ${data.rackId} (${data.slotPosition})`, "success");
+            if (accessioningOrder) {
+              await handleAdvanceStatus(accessioningOrder, "PROCESSING");
+            }
+            setAccessioningOrder(null);
+          }}
         />
 
         {/* TAT Monitor Modal */}
@@ -1448,6 +1766,29 @@ export default function OrdersPage() {
             payload={orderNotifyPayload}
           />
         )}
+
+        {/* Register New Requisition Wizard Modal (Exact RegisterPatientWizard Design) */}
+        <RegisterOrderWizard
+          isOpen={showNewRequisitionWizard}
+          onClose={() => setShowNewRequisitionWizard(false)}
+          onSuccess={async (createdOrder) => {
+            setShowNewRequisitionWizard(false);
+            showToast(`Requisition #${createdOrder?.orderNumber || "New"} registered successfully!`, "success");
+            await fetchOrders(true);
+          }}
+        />
+
+        {/* Phlebotomy Specimen Tube Barcode Generator Modal */}
+        <PhlebotomyBarcodeGeneratorModal
+          isOpen={showPhlebotomyBarcodeModal}
+          onClose={() => {
+            setShowPhlebotomyBarcodeModal(false);
+            setPhlebotomyBarcodeOrder(null);
+          }}
+          order={phlebotomyBarcodeOrder}
+          orders={orders}
+          onSelectOrder={(sel) => setPhlebotomyBarcodeOrder(sel)}
+        />
       </DashboardLayout>
     </ProtectedRoute>
   );

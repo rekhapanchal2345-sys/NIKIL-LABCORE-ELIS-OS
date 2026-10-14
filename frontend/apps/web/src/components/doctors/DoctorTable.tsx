@@ -22,6 +22,10 @@ import {
   PlusCircle,
   Crown,
   Calendar,
+  Bike,
+  FileBadge,
+  BarChart3,
+  FileSpreadsheet,
 } from "lucide-react";
 import { showSuccess } from "@/lib/notifications";
 
@@ -76,6 +80,12 @@ interface DoctorTableProps {
   onPayout?: (doctor: Doctor) => void;
   onEdit?: (doctor: Doctor) => void;
   onRequisitionSlip?: (doctor: Doctor) => void;
+  onWhatsAppDoctor?: (doctor: Doctor) => void;
+  onEmailDoctor?: (doctor: Doctor) => void;
+  onSamplePickup?: (doctor: Doctor) => void;
+  onIdBadge?: (doctor: Doctor) => void;
+  onTariffSheet?: (doctor: Doctor) => void;
+  onAnalytics?: (doctor: Doctor) => void;
   canEdit?: boolean;
   canDelete?: boolean;
   canPayout?: boolean;
@@ -113,6 +123,12 @@ export default function DoctorTable({
   onPayout,
   onEdit,
   onRequisitionSlip,
+  onWhatsAppDoctor,
+  onEmailDoctor,
+  onSamplePickup,
+  onIdBadge,
+  onTariffSheet,
+  onAnalytics,
   canEdit = true,
   canDelete = true,
   canPayout = true,
@@ -136,6 +152,21 @@ export default function DoctorTable({
       `Respected ${docName},\n\nGreetings from LabCore Enterprise Diagnostic Center.\nWe appreciate your valuable clinical referrals. If you need any patient investigation reports or special diagnostic panels, please feel free to message our desk.\n\nThank you!`
     );
     window.open(`https://wa.me/${cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`}?text=${message}`, "_blank");
+  };
+
+  const handleEmail = (e: React.MouseEvent, doctor: Doctor) => {
+    e.stopPropagation();
+    const docEmail = doctor.email || "";
+    if (!docEmail) {
+      alert("Doctor email address not available");
+      return;
+    }
+    const docName = getDoctorName(doctor);
+    const subject = encodeURIComponent(`LabCore Enterprise Diagnostics - Requisition Slip & Referral Summary - Dr. ${docName}`);
+    const body = encodeURIComponent(
+      `Dear Dr. ${docName},\n\nGreetings from LabCore Enterprise Diagnostic Center.\nWe appreciate your valuable clinical referrals.\n\nPlease find our contact and referral details.\n\nThank you!`
+    );
+    window.open(`mailto:${docEmail}?subject=${subject}&body=${body}`, "_blank");
   };
 
   if (loading) {
@@ -377,12 +408,84 @@ export default function DoctorTable({
                         {/* 1-Click WhatsApp */}
                         <button
                           type="button"
-                          onClick={(e) => handleWhatsApp(e, doctor)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onWhatsAppDoctor) {
+                              onWhatsAppDoctor(doctor);
+                            } else {
+                              handleWhatsApp(e, doctor);
+                            }
+                          }}
                           className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 border border-emerald-200 transition-colors"
-                          title="WhatsApp Doctor Referral Summary"
+                          title="WhatsApp Doctor (Dispatch Requisition Slip & Referral Summary)"
                         >
                           <MessageCircle className="w-4 h-4" />
                         </button>
+
+                        {/* 1-Click Email */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onEmailDoctor) {
+                              onEmailDoctor(doctor);
+                            } else {
+                              handleEmail(e, doctor);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 border border-sky-200 transition-colors"
+                          title="Email Doctor (Dispatch Requisition Slip & Clinical Dossier)"
+                        >
+                          <Mail className="w-4 h-4" />
+                        </button>
+
+                        {/* 1-Click Phlebotomy Sample Pickup Dispatch */}
+                        {onSamplePickup && (
+                          <button
+                            type="button"
+                            onClick={() => onSamplePickup(doctor)}
+                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors"
+                            title="Schedule Phlebotomy Specimen Pickup (Rider Dispatch)"
+                          >
+                            <Bike className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Doctor ID & Liaison Privilege Card */}
+                        {onIdBadge && (
+                          <button
+                            type="button"
+                            onClick={() => onIdBadge(doctor)}
+                            className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 border border-purple-200 transition-colors"
+                            title="Doctor Privilege ID Badge & Chamber Certificate"
+                          >
+                            <FileBadge className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Doctor Rate Master & Tariff Book */}
+                        {onTariffSheet && (
+                          <button
+                            type="button"
+                            onClick={() => onTariffSheet(doctor)}
+                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 border border-amber-200 transition-colors"
+                            title="Diagnostic Rate Master & B2B Tariff Sheet"
+                          >
+                            <FileSpreadsheet className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Clinical Analytics & Prescribing Matrix */}
+                        {onAnalytics && (
+                          <button
+                            type="button"
+                            onClick={() => onAnalytics(doctor)}
+                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 border border-blue-200 transition-colors"
+                            title="Doctor Clinical Analytics & Panic Value Alerts"
+                          >
+                            <BarChart3 className="w-4 h-4" />
+                          </button>
+                        )}
 
                         {/* Quick View */}
                         <button

@@ -179,7 +179,8 @@ export const registerUser = async (data: {
 
 async function registerFailedLogin(
   userId: string,
-  req: Request
+  req: Request,
+  customMessage?: string
 ): Promise<never> {
   const user = await prisma.user.update({
     where: { id: userId },
@@ -234,8 +235,8 @@ async function registerFailedLogin(
 
   throw new HttpError(
     remaining <= 2
-      ? `${INVALID_CREDENTIALS}. ${remaining} attempt${remaining === 1 ? "" : "s"} left before the account is locked.`
-      : INVALID_CREDENTIALS,
+      ? `${customMessage || INVALID_CREDENTIALS}. ${remaining} attempt${remaining === 1 ? "" : "s"} left before the account is locked.`
+      : (customMessage || INVALID_CREDENTIALS),
     401,
     "INVALID_CREDENTIALS"
   );
@@ -458,7 +459,7 @@ export const verifyMfaLogin = async (
 
     const secret = decryptField(user.totpPendingEnc);
     if (!verifyTotp(secret, code)) {
-      throw new HttpError("Invalid authenticator code", 401);
+      return registerFailedLogin(user.id, req, "Invalid authenticator code");
     }
 
     const codes = backupCodes();
@@ -510,7 +511,7 @@ export const verifyMfaLogin = async (
     });
 
     if (consumed.count !== 1) {
-      throw new HttpError("Invalid authenticator or backup code", 401);
+      return registerFailedLogin(user.id, req, "Invalid authenticator or backup code");
     }
   }
 
@@ -611,6 +612,48 @@ export const listUserSessions = async (userId: string) => {
       revokeReason: true,
     },
   });
+};
+
+export const revokeSessionById = async (
+  sessionId: string,
+  requestingUser: AuthUser
+) => {
+  const session = await prisma.userSession.findUnique({
+    where: { id: sessionId },
+  });
+  if (!session) {
+    throw new HttpError("Session not found", 404);
+  }
+
+  const isAdmin =
+    requestingUser.role === "ADMIN" || requestingUser.role === "SUPER_ADMIN";
+
+  if (!isAdmin && session.userId !== requestingUser.id) {
+    throw new HttpError(
+      "You do not have permission to revoke this session",
+      403
+    );
+  }
+
+  await prisma.userSession.update({
+    where: { id: sessionId },
+    data: {
+      revokedAt: new Date(),
+      revokeReason:
+        isAdmin && session.userId !== requestingUser.id
+          ? "admin_force_logout"
+          : "user_revoked",
+    },
+  });
+
+  await logAudit({
+    userId: requestingUser.id,
+    action: "SESSION_REVOKED",
+    recordId: sessionId,
+    newData: { targetUserId: session.userId, byAdmin: isAdmin },
+  });
+
+  return { ok: true };
 };
 
 export const revokeSessionAsAdmin = async (sessionId: string) => {

@@ -101,7 +101,7 @@ router.use(authenticate);
 
 router.post(
   "/categories",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     body: createCategorySchema,
   }),
@@ -137,7 +137,7 @@ router.get(
 
 router.patch(
   "/categories/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: categoryIdSchema,
     body: updateCategoryEnhancedSchema,
@@ -147,7 +147,7 @@ router.patch(
 
 router.delete(
   "/categories/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: categoryIdSchema,
   }),
@@ -160,7 +160,7 @@ router.delete(
 
 router.post(
   "/packages",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     body: createPackageSchema,
   }),
@@ -199,7 +199,7 @@ router.get(
 
 router.patch(
   "/packages/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: packageIdSchema,
     body: updatePackageSchema,
@@ -209,7 +209,7 @@ router.patch(
 
 router.delete(
   "/packages/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: packageIdSchema,
   }),
@@ -218,7 +218,7 @@ router.delete(
 
 router.post(
   "/packages/:id/items",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: packageIdSchema,
     body: createPackageItemSchema,
@@ -228,7 +228,7 @@ router.post(
 
 router.delete(
   "/packages/:id/items/:testId",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: packageItemParamsSchema,
   }),
@@ -241,7 +241,7 @@ router.delete(
 
 router.patch(
   "/parameters/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: parameterIdSchema,
     body: updateParameterSchema,
@@ -251,7 +251,7 @@ router.patch(
 
 router.delete(
   "/parameters/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: parameterIdSchema,
   }),
@@ -264,7 +264,7 @@ router.delete(
 
 router.post(
   "/parameters/:id/reference-ranges",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: parameterIdSchema,
     body: createReferenceRangeSchema,
@@ -274,7 +274,7 @@ router.post(
 
 router.patch(
   "/reference-ranges/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: referenceRangeIdSchema,
     body: updateReferenceRangeSchema,
@@ -284,7 +284,7 @@ router.patch(
 
 router.delete(
   "/reference-ranges/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: referenceRangeIdSchema,
   }),
@@ -297,13 +297,13 @@ router.delete(
 
 router.get(
   "/catalog/export",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   exportCatalogController
 );
 
 router.post(
   "/catalog/import",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     body: importCatalogSchema,
   }),
@@ -316,49 +316,49 @@ router.post(
 
 router.post(
   "/premium/check-duplicate",
-  authorize(UserRole.ADMIN, UserRole.PATHOLOGIST),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.PATHOLOGIST),
   validate({ body: checkDuplicateSchema }),
   checkDuplicateController
 );
 
 router.post(
   "/premium/bulk-price-update",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({ body: bulkPriceUpdateSchema }),
   bulkUpdatePricesController
 );
 
 router.post(
   "/premium/bulk-toggle-active",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({ body: bulkToggleActiveSchema }),
   bulkToggleActiveController
 );
 
 router.post(
   "/premium/bulk-delete",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({ body: bulkDeleteSchema }),
   bulkDeleteController
 );
 
 router.post(
   "/premium/reorder",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({ body: reorderTestsSchema }),
   reorderTestsController
 );
 
 router.get(
   "/premium/analytics",
-  authorize(UserRole.ADMIN, UserRole.PATHOLOGIST),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.PATHOLOGIST),
   validate({ query: testAnalyticsQuerySchema }),
   getTestAnalyticsController
 );
 
 router.post(
   "/packages/:id/recalculate-pricing",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: packageIdSchema,
     body: recalculatePackagePricingSchema,
@@ -368,7 +368,7 @@ router.post(
 
 router.post(
   "/:id/clone",
-  authorize(UserRole.ADMIN, UserRole.PATHOLOGIST),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.PATHOLOGIST),
   validate({
     params: testIdSchema,
     body: cloneTestSchema,
@@ -382,7 +382,7 @@ router.post(
 
 router.post(
   "/",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     body: createTestSchema,
   }),
@@ -422,7 +422,7 @@ router.get(
 
 router.post(
   "/:id/parameters",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: testIdSchema,
     body: createParameterSchema,
@@ -447,7 +447,7 @@ router.get(
 
 router.patch(
   "/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: testIdSchema,
     body: updateTestSchema,
@@ -457,7 +457,7 @@ router.patch(
 
 router.delete(
   "/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({
     params: testIdSchema,
   }),

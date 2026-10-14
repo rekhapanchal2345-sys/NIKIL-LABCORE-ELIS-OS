@@ -12,6 +12,15 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log("======================================");
 });
 
+server.on("error", (err: any) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`❌ Port ${PORT} is already in use. Ensure no duplicate backend instance is running.`);
+  } else {
+    console.error("❌ Server startup error:", err);
+  }
+  process.exit(1);
+});
+
 // Graceful Shutdown
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} received. Shutting down...`);
@@ -26,3 +35,5 @@ const shutdown = async (signal: string) => {
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+export default server;

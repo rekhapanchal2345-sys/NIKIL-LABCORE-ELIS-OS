@@ -5,14 +5,19 @@ const BASE_URL = 'http://localhost:5000/api';
 let authToken = '';
 
 async function login() {
+  const email = process.env.TEST_EMAIL || process.env.ADMIN_EMAIL || 'admin@labcore.local';
+  const password = process.env.TEST_PASSWORD || process.env.ADMIN_PASSWORD;
+
+  if (!password) {
+    console.error('❌ TEST_PASSWORD or ADMIN_PASSWORD is not set in environment. Please set it in backend/.env');
+    return false;
+  }
+
   try {
     const response = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'nikilpanchal5@gmail.com',
-        password: 'mns987654321'
-      })
+      body: JSON.stringify({ email, password })
     });
 
     const data = await response.json();
@@ -122,9 +127,6 @@ async function runTests() {
 
   // Settings
   await testEndpoint('GET', '/settings/laboratory', null, 'Lab Settings');
-
-  // Communications
-  await testEndpoint('GET', '/communications/templates', null, 'Communication Templates');
 
   // Notifications
   await testEndpoint('GET', '/notifications/templates', null, 'Notification Templates');

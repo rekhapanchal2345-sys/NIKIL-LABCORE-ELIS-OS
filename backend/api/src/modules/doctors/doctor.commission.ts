@@ -1,5 +1,5 @@
 import prisma from "../../../config/database";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export type CommissionType =
   | "PERCENTAGE"
@@ -49,9 +49,9 @@ type OrderRow = {
   }>;
 };
 
-/** Round to 2 decimals. */
-export const money = (value: number): number =>
-  Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+/** Round to 2 decimals using Prisma.Decimal to avoid float math bugs. */
+export const money = (value: number | string | Prisma.Decimal): number =>
+  Number(new Prisma.Decimal(value || 0).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP).toNumber());
 
 /** Orders that are financially settled and therefore commission-bearing. */
 export const COMMISSION_ELIGIBLE_ORDER = {
@@ -319,33 +319,55 @@ export const getDoctorCommissionTotals = async (
   client: any = prisma
 ): Promise<DoctorCommissionTotals> => {
   try {
-    const grouped = await (client as any).doctorCommissionEntry.groupBy({
-      by: ["status"],
-      where: { doctorId },
-      _sum: { commissionAmount: true, baseAmount: true },
-      _count: { _all: true },
-    });
+    const [grouped, payouts] = await Promise.all([
+      (client as any).doctorCommissionEntry.groupBy({
+        by: ["status"],
+        where: { doctorId },
+        _sum: { commissionAmount: true, baseAmount: true },
+        _count: { _all: true },
+      }),
+      (client as any).doctorPayout.aggregate({
+        where: { doctorId, status: "SETTLED" },
+        _sum: { grossAmount: true },
+      })
+    ]);
 
-    return grouped.reduce((acc: DoctorCommissionTotals, row: any) => {
-      const amount = money(Number(row._sum.commissionAmount ?? 0));
-      const base = money(Number(row._sum.baseAmount ?? 0));
+    const totals = emptyTotals();
+
+    let earned = new Prisma.Decimal(0);
+    let paidRevenue = new Prisma.Decimal(0);
+    let pendingRevenue = new Prisma.Decimal(0);
+    let paidOrderCount = 0;
+    let pendingOrderCount = 0;
+
+    for (const row of grouped) {
+      const amount = new Prisma.Decimal(row._sum.commissionAmount ?? 0);
+      const base = new Prisma.Decimal(row._sum.baseAmount ?? 0);
       const count = row._count._all ?? 0;
 
-      if (row.status === "SETTLED") {
-        acc.settled = money(acc.settled + amount);
-        acc.earned = money(acc.earned + amount);
-        acc.paidRevenue = money(acc.paidRevenue + base);
-        acc.paidOrderCount += count;
-      } else if (row.status === "PENDING") {
-        acc.pending = money(acc.pending + amount);
-        acc.earned = money(acc.earned + amount);
-        acc.paidRevenue = money(acc.paidRevenue + base);
-        acc.pendingRevenue = money(acc.pendingRevenue + base);
-        acc.paidOrderCount += count;
-        acc.pendingOrderCount += count;
+      earned = earned.plus(amount);
+      paidRevenue = paidRevenue.plus(base);
+      paidOrderCount += count;
+
+      if (row.status === "PENDING") {
+        pendingRevenue = pendingRevenue.plus(base);
+        pendingOrderCount += count;
       }
-      return acc;
-    }, emptyTotals());
+    }
+
+    const settled = new Prisma.Decimal(payouts._sum.grossAmount ?? 0);
+    let pending = earned.minus(settled);
+    if (pending.isNegative()) pending = new Prisma.Decimal(0);
+
+    totals.earned = money(earned);
+    totals.paidRevenue = money(paidRevenue);
+    totals.pendingRevenue = money(pendingRevenue);
+    totals.paidOrderCount = paidOrderCount;
+    totals.pendingOrderCount = pendingOrderCount;
+    totals.settled = money(settled);
+    totals.pending = money(pending);
+
+    return totals;
   } catch (err) {
     console.warn(`[DoctorCommission] getDoctorCommissionTotals fallback for doctor ${doctorId}:`, err);
     return emptyTotals();
@@ -365,33 +387,67 @@ export const getBulkCommissionTotals = async (
   if (doctorIds.length === 0) return out;
 
   try {
-    const grouped = await (prisma as any).doctorCommissionEntry.groupBy({
-      by: ["doctorId", "status"],
-      where: { doctorId: { in: doctorIds } },
-      _sum: { commissionAmount: true, baseAmount: true },
-      _count: { _all: true },
-    });
+    const [grouped, payouts] = await Promise.all([
+      (prisma as any).doctorCommissionEntry.groupBy({
+        by: ["doctorId", "status"],
+        where: { doctorId: { in: doctorIds } },
+        _sum: { commissionAmount: true, baseAmount: true },
+        _count: { _all: true },
+      }),
+      (prisma as any).doctorPayout.groupBy({
+        by: ["doctorId"],
+        where: { doctorId: { in: doctorIds }, status: "SETTLED" },
+        _sum: { grossAmount: true },
+      }),
+    ]);
+
+    const decimalSums: Record<string, { earned: Prisma.Decimal; paidRevenue: Prisma.Decimal; pendingRevenue: Prisma.Decimal; settled: Prisma.Decimal }> = {};
+    for (const id of doctorIds) {
+      decimalSums[id] = {
+        earned: new Prisma.Decimal(0),
+        paidRevenue: new Prisma.Decimal(0),
+        pendingRevenue: new Prisma.Decimal(0),
+        settled: new Prisma.Decimal(0),
+      };
+    }
 
     for (const row of grouped) {
       const acc = out[row.doctorId];
-      if (!acc) continue;
-      const amount = money(Number(row._sum.commissionAmount ?? 0));
-      const base = money(Number(row._sum.baseAmount ?? 0));
+      const sums = decimalSums[row.doctorId];
+      if (!acc || !sums) continue;
+      
+      const amount = new Prisma.Decimal(row._sum.commissionAmount ?? 0);
+      const base = new Prisma.Decimal(row._sum.baseAmount ?? 0);
       const count = row._count._all ?? 0;
 
-      if (row.status === "SETTLED" || row.status === "PENDING") {
-        acc.earned = money(acc.earned + amount);
-        acc.paidRevenue = money(acc.paidRevenue + base);
-        acc.paidOrderCount += count;
-      }
-      if (row.status === "SETTLED") {
-        acc.settled = money(acc.settled + amount);
-      }
+      sums.earned = sums.earned.plus(amount);
+      sums.paidRevenue = sums.paidRevenue.plus(base);
+      acc.paidOrderCount += count;
+
       if (row.status === "PENDING") {
-        acc.pending = money(acc.pending + amount);
-        acc.pendingRevenue = money(acc.pendingRevenue + base);
+        sums.pendingRevenue = sums.pendingRevenue.plus(base);
         acc.pendingOrderCount += count;
       }
+    }
+
+    for (const row of payouts) {
+      const sums = decimalSums[row.doctorId];
+      if (!sums) continue;
+      sums.settled = new Prisma.Decimal(row._sum.grossAmount ?? 0);
+    }
+
+    for (const id of doctorIds) {
+      const acc = out[id];
+      const sums = decimalSums[id];
+      
+      let pending = sums.earned.minus(sums.settled);
+      if (pending.isNegative()) pending = new Prisma.Decimal(0);
+      
+      acc.earned = money(sums.earned);
+      acc.paidRevenue = money(sums.paidRevenue);
+      acc.pendingRevenue = money(sums.pendingRevenue);
+      acc.settled = money(sums.settled);
+      acc.pending = money(pending);
     }
   } catch (err) {
     console.warn("[DoctorCommission] getBulkCommissionTotals fallback:", err);

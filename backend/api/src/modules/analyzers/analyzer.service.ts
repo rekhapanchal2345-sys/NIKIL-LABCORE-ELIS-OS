@@ -2099,3 +2099,112 @@ export const deleteAnalyzerLog = async (id: string) => {
     where: { id },
   });
 };
+// =======================================================
+// ASTM & HL7 PARSING ENGINE (Level 1)
+// =======================================================
+export const parseASTMFrame = (frame: string) => {
+  // Graceful malformed frame handling
+  if (!frame || frame.trim() === '') {
+    return { type: 'MALFORMED', error: 'Empty frame' };
+  }
+
+  try {
+    const lines = frame.split(/[\r\n]+/);
+    const parsed: any = { patient: null, order: null, results: [] };
+
+    for (const line of lines) {
+      const parts = line.split('|');
+      const segmentType = parts[0]?.trim();
+
+      if (segmentType === 'P') {
+        parsed.patient = { pid: parts[2], name: parts[5] };
+      } else if (segmentType === 'O') {
+        parsed.order = { sampleId: parts[2]?.split('^')[0] };
+      } else if (segmentType === 'R') {
+        parsed.results.push({
+          parameterCode: parts[2]?.split('^')[3] || parts[2],
+          value: parseFloat(parts[3]),
+          units: parts[4],
+          flags: parts[6] // e.g., H, L, N, LL, HH
+        });
+      }
+    }
+    return { type: 'ASTM', data: parsed };
+  } catch (error: any) {
+    return { type: 'MALFORMED', error: error.message };
+  }
+};
+
+// =======================================================
+// WESTGARD MULTI-RULE QC GATE (Level 3)
+// =======================================================
+export const evaluateWestgardRules = (
+  currentValue: number,
+  mean: number,
+  sd: number,
+  history: number[]
+): { valid: boolean; triggeredRule?: string } => {
+  const zScore = Math.abs((currentValue - mean) / sd);
+
+  // 1-3s rule (Random error)
+  if (zScore > 3) return { valid: false, triggeredRule: '1-3s' };
+
+  // 1-2s rule (Warning - logic for consecutive would require history)
+  if (zScore > 2 && history.length > 0) {
+    const prevZScore = Math.abs((history[0] - mean) / sd);
+    // 2-2s rule (Systematic error)
+    if (prevZScore > 2) return { valid: false, triggeredRule: '2-2s' };
+  }
+
+  // R-4s rule
+  if (history.length > 0) {
+    const diff = Math.abs(currentValue - history[0]);
+    if (diff > 4 * sd) return { valid: false, triggeredRule: 'R-4s' };
+  }
+
+  // 4-1s rule
+  if (history.length >= 3) {
+    const prev3 = history.slice(0, 3);
+    const allAbove1Sd = [currentValue, ...prev3].every(val => Math.abs((val - mean) / sd) > 1);
+    if (allAbove1Sd) return { valid: false, triggeredRule: '4-1s' };
+  }
+
+  return { valid: true };
+};
+
+// =======================================================
+// DEAD LETTER QUEUE (DLQ) & RECOVERY (Level 2)
+// =======================================================
+export const processDeadLetterQueue = async () => {
+  const failedLogs = await prisma.analyzerLog.findMany({
+    where: { isProcessed: false, errorMessage: { not: null } },
+    take: 50,
+  });
+
+  let recovered = 0;
+  for (const log of failedLogs) {
+    try {
+      // Attempt re-parse of raw message
+      const result = parseASTMFrame(log.rawMessage);
+      if (result.type === 'ASTM') {
+        await prisma.analyzerLog.update({
+          where: { id: log.id },
+          data: {
+            isProcessed: true,
+            parsedJson: result.data as any,
+            errorMessage: null,
+            processedAt: new Date(),
+          },
+        });
+        recovered++;
+      }
+    } catch (e: any) {
+      // Remains in DLQ
+      await prisma.analyzerLog.update({
+        where: { id: log.id },
+        data: { errorMessage: `DLQ Retry Failed: ${e?.message || 'Unknown error'}` },
+      });
+    }
+  }
+  return { attempted: failedLogs.length, recovered };
+};

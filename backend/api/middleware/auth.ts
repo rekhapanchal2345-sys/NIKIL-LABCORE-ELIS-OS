@@ -9,6 +9,7 @@ import type { ParamsDictionary } from "express-serve-static-core";
 import {
   extractBearerToken,
   verifyAccessToken,
+  verifyOwnerToken,
   type AuthUser,
 } from "../src/lib/auth";
 
@@ -180,6 +181,7 @@ export const authenticate: RequestHandler =
             fullName: true,
             role: true,
             status: true,
+            passwordChangedAt: true,
           },
         });
 
@@ -201,6 +203,25 @@ export const authenticate: RequestHandler =
         unauthorized(
           res,
           `Account is ${user.status.toLowerCase()}.`
+        );
+
+        return;
+      }
+
+      /**
+       * -------------------------------------
+       * Token invalidation on password change
+       * -------------------------------------
+       * Tokens issued before passwordChangedAt are immediately rejected.
+       */
+      if (
+        user.passwordChangedAt &&
+        payload.iat &&
+        Math.floor(user.passwordChangedAt.getTime() / 1000) > payload.iat
+      ) {
+        unauthorized(
+          res,
+          "Password was recently changed. Please sign in again with your new credentials."
         );
 
         return;
@@ -550,4 +571,42 @@ export const requireAllPermissions = (
 
     next();
   };
+};
+
+/**
+ * =========================================
+ * REQUIRE OWNER TOKEN
+ * =========================================
+ *
+ * Validates the `x-owner-token` header.
+ * Must be used after `authenticate`.
+ */
+export const requireOwnerToken: RequestHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const request = req as AuthenticatedRequest;
+
+  if (!request.user) {
+    unauthorized(res);
+    return;
+  }
+
+  const token = req.headers["x-owner-token"];
+  if (!token || typeof token !== "string") {
+    unauthorized(res, "Owner token is required for this action.");
+    return;
+  }
+
+  try {
+    verifyOwnerToken(token, request.user.id, request.sid);
+    next();
+  } catch (error) {
+    if (error instanceof HttpError) {
+      unauthorized(res, error.message);
+    } else {
+      unauthorized(res, "Invalid owner token.");
+    }
+  }
 };

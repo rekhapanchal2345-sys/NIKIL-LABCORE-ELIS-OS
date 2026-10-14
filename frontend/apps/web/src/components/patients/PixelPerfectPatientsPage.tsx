@@ -7,7 +7,15 @@ import DashboardLayout from "@/components/layout/dashboardlayout";
 import { patientApi, orderApi } from "@/lib/api";
 import { showSuccess, showError, showInfo } from "@/lib/notifications";
 import { PatientQuickRegisterModal } from "@/components/orders/PatientQuickRegisterModal";
+import RegisterPatientWizard from "@/components/patients/RegisterPatientWizard";
 import BarcodeLabelModal, { BarcodeLabelItem } from "@/components/barcodes/BarcodeLabelModal";
+import ClinicalVitalsTriageCenter from "@/components/vitals/ClinicalVitalsTriageCenter";
+import {
+  CLSI_VACUTAINER_CATALOG,
+  detectRequiredTubes,
+  formatTubeBarcode,
+  VacutainerTubeDefinition,
+} from "@/lib/phlebotomy-tubes";
 import {
   formatPatientFullName,
   calculateClinicalAge,
@@ -60,6 +68,8 @@ import {
   Tag,
   MapPin,
   FileCheck,
+  Barcode,
+  Info,
 } from "lucide-react";
 
 export type Patient = {
@@ -220,8 +230,7 @@ export default function PixelPerfectPatientsPage() {
 
   // URL Parameter Synchronization Helper
   const updateUrlParams = useCallback((updates: Record<string, string | number | null | undefined>) => {
-    if (typeof window === "undefined") return;
-    const currentParams = new URLSearchParams(window.location.search);
+    const currentParams = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, val]) => {
       if (
         val === null ||
@@ -242,8 +251,8 @@ export default function PixelPerfectPatientsPage() {
     });
     const qs = currentParams.toString();
     const newUrl = `${pathname}${qs ? `?${qs}` : ""}`;
-    window.history.replaceState(null, "", newUrl);
-  }, [pathname]);
+    router.replace(newUrl, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   // Search & Filtering initial state from URL
   const initialSearch = searchParams.get("q") || searchParams.get("search") || "";
@@ -314,6 +323,7 @@ export default function PixelPerfectPatientsPage() {
   const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
   const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
   const [barcodeItems, setBarcodeItems] = useState<BarcodeLabelItem[]>([]);
+  const [selectedBarcodeToPrint, setSelectedBarcodeToPrint] = useState<string | undefined>(undefined);
   const [whatsappModalPatient, setWhatsappModalPatient] = useState<Patient | null>(null);
   const [whatsappMessage, setWhatsappMessage] = useState("");
 
@@ -674,6 +684,16 @@ export default function PixelPerfectPatientsPage() {
     updateUrlParams({ view: null, tab: null });
   };
 
+  // Live Sync Callback when Vitals & Triage are updated
+  const handlePatientVitalsUpdated = (updatedPatient: any) => {
+    if (!updatedPatient) return;
+    setDrawerFullPatient((prev: any) => ({ ...(prev || {}), ...updatedPatient }));
+    setSelectedPatient((prev: any) => (prev ? { ...prev, ...updatedPatient } : null));
+    setPatients((prev) =>
+      prev.map((p) => (p.id === updatedPatient.id ? { ...p, ...updatedPatient } : p))
+    );
+  };
+
   // 1-Click Copy UHID with feedback
   const handleCopyUhid = (e: React.MouseEvent, uhid: string) => {
     e.stopPropagation();
@@ -685,8 +705,12 @@ export default function PixelPerfectPatientsPage() {
     }, 2000);
   };
 
-  // Prepare and open Barcode Label Modal for Patient
-  const handlePrintBarcode = (e: React.MouseEvent, patient: Patient) => {
+  // Prepare and open Barcode Label Modal for Patient (with intelligent test-to-tube detection)
+  const handlePrintBarcode = (
+    e: React.MouseEvent,
+    patient: Patient,
+    specificTubeCode?: string
+  ) => {
     e.stopPropagation();
     const ageStr = patient.age !== null && patient.age !== undefined ? (patient.age === 0 ? "Newborn" : `${patient.age}Y`) : "";
     const genChar = patient.gender === "MALE" ? "M" : patient.gender === "FEMALE" ? "F" : "O";
@@ -697,70 +721,48 @@ export default function PixelPerfectPatientsPage() {
       year: "numeric",
     });
 
-    const items: BarcodeLabelItem[] = [
-      {
-        id: `bc-badge-${patient.id}`,
-        barcode: patient.uhid,
-        patientName,
-        uhid: patient.uhid,
-        testName: "Patient Identification / Accession Badge",
-        specimenType: "Patient Badge",
-        tubeType: "Standard ID Tag",
-        tubeColor: "Blue",
-        tubeColorHex: "#2563EB",
-        gender: genChar,
-        age: ageStr,
-        date: dateStr,
-        priority: patient.isCritical ? "STAT (CRITICAL)" : "ROUTINE",
-      },
-      {
-        id: `bc-edta-${patient.id}`,
-        barcode: `${patient.uhid}-EDTA`,
-        patientName,
-        uhid: patient.uhid,
-        testName: "Hematology / Whole Blood (CBC, ESR, HbA1c)",
-        specimenType: "EDTA Whole Blood",
-        tubeType: "Lavender Top (EDTA K2/K3)",
-        tubeColor: "Lavender",
-        tubeColorHex: "#9333EA",
-        gender: genChar,
-        age: ageStr,
-        date: dateStr,
-        priority: patient.isCritical ? "STAT" : "ROUTINE",
-      },
-      {
-        id: `bc-serum-${patient.id}`,
-        barcode: `${patient.uhid}-SERUM`,
-        patientName,
-        uhid: patient.uhid,
-        testName: "Biochemistry / Serology (LFT, KFT, Lipids)",
-        specimenType: "Serum (Clotted)",
-        tubeType: "Gold / Red Top (SST Gel Clot Activator)",
-        tubeColor: "Gold / Red",
-        tubeColorHex: "#DC2626",
-        gender: genChar,
-        age: ageStr,
-        date: dateStr,
-        priority: patient.isCritical ? "STAT" : "ROUTINE",
-      },
-      {
-        id: `bc-fluoride-${patient.id}`,
-        barcode: `${patient.uhid}-FLUO`,
-        patientName,
-        uhid: patient.uhid,
-        testName: "Glycolysis / Blood Glucose (FBS / PPBS)",
-        specimenType: "Fluoride Plasma",
-        tubeType: "Grey Top (Sodium Fluoride)",
-        tubeColor: "Grey",
-        tubeColorHex: "#64748B",
-        gender: genChar,
-        age: ageStr,
-        date: dateStr,
-        priority: patient.isCritical ? "STAT" : "ROUTINE",
-      },
-    ];
+    // Extract tests from patient orders if available
+    const orderTests: Array<{ testName: string; sampleType?: string }> = [];
+    patientOrders.forEach((o: any) => {
+      if (o.items && Array.isArray(o.items)) {
+        o.items.forEach((item: any) => {
+          if (item.test?.testName) {
+            orderTests.push({ testName: item.test.testName, sampleType: item.test.sampleType });
+          }
+        });
+      }
+    });
+
+    const tubes = detectRequiredTubes(orderTests);
+
+    const items: BarcodeLabelItem[] = tubes.map((tube) => ({
+      id: `bc-${tube.code.toLowerCase()}-${patient.id}`,
+      barcode: formatTubeBarcode(patient.uhid, tube.code),
+      patientName,
+      uhid: patient.uhid,
+      testName: tube.commonTests.slice(0, 2).join(", ") || tube.name,
+      specimenType: tube.specimenType,
+      tubeType: tube.name,
+      tubeColor: tube.capColor,
+      tubeColorHex: tube.capColorHex,
+      gender: genChar,
+      age: ageStr,
+      date: dateStr,
+      priority: patient.isCritical ? "STAT (CRITICAL)" : "ROUTINE",
+      orderOfDraw: tube.orderOfDraw,
+      orderOfDrawLabel: tube.orderOfDrawLabel,
+      inversions: tube.inversions,
+      minVolume: tube.minVolume,
+      centrifugeGuide: tube.centrifugeGuide,
+      clinicalWarning: tube.clinicalWarning,
+    }));
 
     setBarcodeItems(items);
+    if (specificTubeCode) {
+      setSelectedBarcodeToPrint(formatTubeBarcode(patient.uhid, specificTubeCode));
+    } else {
+      setSelectedBarcodeToPrint(undefined);
+    }
     setBarcodeModalOpen(true);
   };
 
@@ -776,8 +778,32 @@ export default function PixelPerfectPatientsPage() {
 
     const fullName = formatPatientFullName(patient);
     const msg = hasOrders
-      ? `Dear ${fullName},\n\nGreetings from LabCore Diagnostics.\nYour registered Patient ID (UHID) is *${patient.uhid}*.\nYour diagnostic order is logged in our system, and your verified reports will be accessible online.\n\nHelpline: +91 9106161228 | LabCore Diagnostics Portal`
-      : `Dear ${fullName},\n\nWelcome to LabCore Diagnostics.\nYour registered Patient ID (UHID) is *${patient.uhid}*.\n\nHelpline: +91 9106161228 | LabCore Diagnostics Portal`;
+      ? `*🏥 LABCORE DIAGNOSTICS & CLINICAL RESEARCH*\n` +
+        `_Accredited Reference Laboratory | ISO 15189:2022 & NABL Standards_\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*ACTIVE DIAGNOSTIC ORDER & SPECIMEN TRACKING*\n\n` +
+        `Dear *${fullName}*,\n\n` +
+        `Your clinical diagnostic requisition is officially recorded in the Laboratory Information System (LIS).\n\n` +
+        `📋 *CLINICAL PARTICULARS:*\n` +
+        `• *Patient UHID:* \`${patient.uhid}\`\n` +
+        `• *Demographics:* ${patient.gender || "N/A"} | ${patient.age ? `${patient.age} Yrs` : "N/A"}\n` +
+        `• *Order Status:* Accessioned & Processing in Analyzer Queue\n` +
+        `• *Quality Control:* Verified Internal QC Calibration\n\n` +
+        `🔒 Digital reports will be delivered immediately upon final pathologist verification.\n\n` +
+        `📞 *24/7 Clinical Support:* +91 9106161228 | helpdesk@labcore.health\n` +
+        `_Accurate Diagnostics • Evidence-Based Medicine_`
+      : `*🏥 LABCORE DIAGNOSTICS & CLINICAL RESEARCH*\n` +
+        `_Accredited Reference Laboratory | ISO 15189:2022 & NABL Standards_\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*OFFICIAL PATIENT REGISTRATION & EHR ACTIVATION*\n\n` +
+        `Dear *${fullName}*,\n\n` +
+        `Welcome to LabCore Diagnostics. Your electronic medical dossier has been registered and verified in our LIS repository.\n\n` +
+        `📋 *PATIENT IDENTIFIER:*\n` +
+        `• *Universal Health ID (UHID):* \`${patient.uhid}\`\n` +
+        `• *Clinical Stream:* Registered Outpatient Profile\n` +
+        `• *Data Security:* 256-Bit SSL Encrypted & ABDM/HIPAA Compliant\n\n` +
+        `📞 *24/7 Clinical Support:* +91 9106161228 | helpdesk@labcore.health\n` +
+        `_Excellence in Medical Laboratory Services_`;
 
     setWhatsappModalPatient(patient);
     setWhatsappMessage(msg);
@@ -977,176 +1003,180 @@ export default function PixelPerfectPatientsPage() {
 
   return (
     <DashboardLayout title="Patients">
-      <div className="space-y-6 pb-20">
+      <div className="space-y-6 pb-20 w-full px-4 sm:px-6 lg:px-8 max-w-full">
         {/* =========================================================================
-            1. PREMIUM ENTERPRISE HERO & KPI SECTION
+            1. LIGHT WHITE PROFESSIONAL CLINICAL HERO & KPI SECTION
         ========================================================================= */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-7 text-white shadow-xl ring-1 ring-white/10">
-          {/* Premium Background Effects */}
-          <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-          <div className="absolute right-1/3 -bottom-16 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="relative overflow-hidden rounded-2xl bg-white p-7 text-slate-900 shadow-sm border border-slate-200/90">
+          {/* Subtle Clinical Ambient Lighting Effects */}
+          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
+          <div className="absolute right-1/3 -bottom-20 h-64 w-64 rounded-full bg-indigo-100/50 blur-3xl pointer-events-none" />
           
-          {/* Premium LabCore Logo Banner */}
-          <div className="absolute top-4 left-4 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-            <div className="flex items-center gap-1.5">
-              <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg">
-                <FlaskConical className="h-3.5 w-3.5 text-white" />
+          {/* Premium LabCore LIS Live Status Pill */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/80">
+              <div className="flex items-center gap-1.5">
+                <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-xs">
+                  <FlaskConical className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-extrabold tracking-wider text-slate-900 uppercase">LabCore ELIS</span>
+                  <span className="text-[8px] font-semibold tracking-wider text-slate-500 uppercase">Hospital & Diagnostics OS</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-widest text-cyan-300 uppercase">LabCore</span>
-                <span className="text-[7px] font-medium tracking-wider text-slate-400">Diagnostics</span>
-              </div>
+              <div className="h-4 w-[1px] bg-slate-200" />
+              <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                CLINICAL LIS ONLINE
+              </span>
             </div>
-            <div className="h-4 w-[1px] bg-white/20" />
-            <span className="text-[9px] font-semibold text-emerald-300 flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              LIVE
-            </span>
+
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 border border-blue-200">
+                NABH & NABL Ready
+              </span>
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 border border-indigo-200">
+                ABDM / ABHA v0.5
+              </span>
+            </div>
           </div>
 
-          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between pt-8">
+          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30 backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live LIS Directory
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live OPD Register
                 </span>
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300 backdrop-blur-sm border border-white/10">
-                  Master Roster
-                </span>
-                <span className="rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 px-2.5 py-0.5 text-xs font-medium text-cyan-300 backdrop-blur-sm border border-cyan-400/30">
-                  Enterprise Edition
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-slate-200">
+                  Master Patient Index
                 </span>
               </div>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                Patient Medical Dossier
+              <h1 className="mt-2.5 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+                Patients Directory
               </h1>
-              <p className="mt-1.5 text-sm text-slate-300 max-w-xl leading-relaxed">
-                Comprehensive clinical records, automated phlebotomy specimen labeling, and real-time diagnostic test history.
+              <p className="mt-1 text-sm text-slate-600 max-w-xl leading-relaxed">
+                Centralized hospital registration, real-time diagnostic accessioning, phlebotomy tube classification, and historical laboratory records.
               </p>
             </div>
 
-            {/* Premium Quick Actions Header Toolbar */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* Light Professional Header Actions Toolbar */}
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 onClick={() => fetchPatients(1, true)}
                 disabled={refreshing}
-                className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-white/15 backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:ring-white/25 active:scale-95 disabled:opacity-50 group"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-700 border border-slate-200 shadow-xs hover:bg-slate-100 hover:text-slate-900 active:scale-95 transition-all disabled:opacity-50 group cursor-pointer"
                 title="Refresh patient roster"
               >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""} group-hover:rotate-180 transition-transform duration-500`} />
+                <RefreshCw className={`h-3.5 w-3.5 text-slate-500 ${refreshing ? "animate-spin" : ""} group-hover:rotate-180 transition-transform duration-500`} />
                 <span>{refreshing ? "Syncing..." : "Sync"}</span>
               </button>
 
               <button
                 onClick={() => handleExportCSV(filteredPatients)}
-                className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-white/15 backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:ring-white/25 active:scale-95 group"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-700 border border-slate-200 shadow-xs hover:bg-slate-100 hover:text-slate-900 active:scale-95 transition-all group cursor-pointer"
                 title="Export current view to CSV"
               >
-                <Download className="h-4 w-4 text-slate-200 group-hover:translate-y-0.5 transition-transform" />
-                <span>Export</span>
+                <Download className="h-3.5 w-3.5 text-slate-500 group-hover:translate-y-0.5 transition-transform" />
+                <span>Export CSV</span>
               </button>
 
               <button
                 onClick={() => setIsQuickRegisterOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/30 ring-1 ring-white/20 transition-all duration-300 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 hover:shadow-indigo-500/50 hover:ring-white/30 active:scale-95 group"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all group cursor-pointer"
               >
-                <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
+                <Plus className="h-3.5 w-3.5 group-hover:rotate-90 transition-transform duration-300" />
                 <span>Register Patient</span>
               </button>
             </div>
           </div>
 
-          {/* 4 Premium KPI Cards */}
-          <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* 4 Light Professional KPI Cards */}
+          <div className="mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
             {/* Card 1: Total Patients */}
-            <div className="group relative rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-blue-400/30 hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)]">
-              <div className="absolute top-0 right-0 h-1 w-1 rounded-tr-lg bg-blue-400" />
+            <div className="group relative rounded-xl border border-slate-200 bg-white p-4.5 shadow-xs transition-all duration-200 hover:border-blue-400/80 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Total Roster
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  ALL REGISTERED PATIENTS
                 </span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 ring-1 ring-blue-400/30 group-hover:bg-blue-500/30 group-hover:ring-blue-400/50 transition-all">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100 group-hover:bg-blue-100 transition-all">
                   <Users className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white group-hover:text-blue-200 transition-colors">
+              <div className="mt-2.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-slate-900">
                   {loading ? "..." : totalPatientsCount.toLocaleString()}
                 </span>
-                <span className="inline-flex items-center text-xs font-semibold text-blue-300">
-                  Total Registered
+                <span className="inline-flex items-center text-[11px] font-bold text-blue-600">
+                  Registered
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">All registered diagnostic subjects</p>
+              <p className="mt-1 text-[11px] text-slate-500">All registered diagnostic subjects</p>
             </div>
 
             {/* Card 2: Active Patients */}
-            <div className="group relative rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30 hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)]">
-              <div className="absolute top-0 right-0 h-1 w-1 rounded-tr-lg bg-emerald-400" />
+            <div className="group relative rounded-xl border border-slate-200 bg-white p-4.5 shadow-xs transition-all duration-200 hover:border-emerald-400/80 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Active Clinical
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  In-Process
                 </span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-400/30 group-hover:bg-emerald-500/30 group-hover:ring-emerald-400/50 transition-all">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:bg-emerald-100 transition-all">
                   <HeartPulse className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white group-hover:text-emerald-200 transition-colors">
+              <div className="mt-2.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-slate-900">
                   {loading ? "..." : activePatientsCount.toLocaleString()}
                 </span>
-                <span className="inline-flex items-center text-xs font-semibold text-emerald-400">
+                <span className="inline-flex items-center text-[11px] font-bold text-emerald-600">
                   {totalPatientsCount > 0
-                    ? `${Math.round((activePatientsCount / totalPatientsCount) * 100)}% active`
+                    ? `${Math.round((activePatientsCount / totalPatientsCount) * 100)}% In-Process`
                     : "100%"}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">Currently active on pipeline</p>
+              <p className="mt-1 text-[11px] text-slate-500">Currently in-process on pipeline</p>
             </div>
 
             {/* Card 3: OPD Walk-In Today */}
-            <div className="group relative rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-indigo-400/30 hover:shadow-[0_8px_24px_rgba(99,102,241,0.15)]">
-              <div className="absolute top-0 right-0 h-1 w-1 rounded-tr-lg bg-indigo-400" />
+            <div className="group relative rounded-xl border border-slate-200 bg-white p-4.5 shadow-xs transition-all duration-200 hover:border-indigo-400/80 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Today's Walk-in OPD
                 </span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-400/30 group-hover:bg-indigo-500/30 group-hover:ring-indigo-400/50 transition-all">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 group-hover:bg-indigo-100 transition-all">
                   <Sparkles className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white group-hover:text-indigo-200 transition-colors">
+              <div className="mt-2.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-slate-900">
                   {loading ? "..." : todayWalkinCount}
                 </span>
-                <span className="inline-flex items-center text-xs font-semibold text-indigo-300">
+                <span className="inline-flex items-center text-[11px] font-bold text-indigo-600">
                   New Today
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">Immediate specimen accessions</p>
+              <p className="mt-1 text-[11px] text-slate-500">Immediate specimen accessions</p>
             </div>
 
             {/* Card 4: Critical / Attention */}
-            <div className="group relative rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-rose-400/30 hover:shadow-[0_8px_24px_rgba(244,63,94,0.15)]">
-              <div className="absolute top-0 right-0 h-1 w-1 rounded-tr-lg bg-rose-400" />
+            <div className="group relative rounded-xl border border-slate-200 bg-white p-4.5 shadow-xs transition-all duration-200 hover:border-rose-400/80 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Critical / Attention
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Critical / Priority
                 </span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/20 text-rose-400 ring-1 ring-rose-400/30 group-hover:bg-rose-500/30 group-hover:ring-rose-400/50 transition-all">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 group-hover:bg-rose-100 transition-all">
                   <AlertTriangle className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white group-hover:text-rose-200 transition-colors">
+              <div className="mt-2.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-slate-900">
                   {loading ? "..." : criticalCount}
                 </span>
-                <span className="inline-flex items-center text-xs font-semibold text-rose-400">
+                <span className="inline-flex items-center text-[11px] font-bold text-rose-600">
                   High Priority
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">Requires rapid lab attention</p>
+              <p className="mt-1 text-[11px] text-slate-500">Requires rapid lab attention</p>
             </div>
           </div>
         </div>
@@ -1284,7 +1314,7 @@ export default function PixelPerfectPatientsPage() {
               { id: "TODAY", label: "Today's OPD", count: kpiStats.todayCount },
               { id: "CRITICAL", label: "Critical Priority", count: kpiStats.criticalCount },
               { id: "PENDING", label: "Pending Lab Reports", count: kpiStats.pendingCount },
-              { id: "SENIOR", label: "Senior Citizens (60+)", count: kpiStats.seniorCount },
+              { id: "SENIOR", label: "GERIATRIC (60+)", count: kpiStats.seniorCount },
             ].map((chip) => {
               const isActive = activeChip === chip.id;
               return (
@@ -1679,24 +1709,6 @@ export default function PixelPerfectPatientsPage() {
                             >
                               <Plus className="h-4 w-4" />
                             </Link>
-
-                            {/* Barcode Print */}
-                            <button
-                              onClick={(e) => handlePrintBarcode(e, patient)}
-                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                              title="Print Specimen Tube Barcodes"
-                            >
-                              <Printer className="h-4 w-4" />
-                            </button>
-
-                            {/* WhatsApp Dispatch */}
-                            <button
-                              onClick={(e) => handleOpenWhatsApp(e, patient)}
-                              className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 transition-colors"
-                              title="Send WhatsApp Update"
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1913,7 +1925,7 @@ export default function PixelPerfectPatientsPage() {
 
                     {/* Card Actions Footer */}
                     <div
-                      className="mt-4 grid grid-cols-4 gap-1.5 border-t border-slate-100 pt-3"
+                      className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link
@@ -1924,28 +1936,21 @@ export default function PixelPerfectPatientsPage() {
                             handleOpenDrawer(patient);
                           }
                         }}
-                        className="rounded-lg bg-indigo-50 p-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1 col-span-2 cursor-pointer"
+                        className="flex-1 rounded-lg bg-indigo-50 p-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                         title="View Patient Drawer (Ctrl+Click for Full Page)"
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        <span>Inspect</span>
+                        <span>Inspect Dossier</span>
                       </Link>
 
                       <Link
                         href={`/orders/new?patientId=${patient.id}`}
-                        className="rounded-lg bg-slate-100 p-2 text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center"
+                        className="rounded-lg bg-slate-100 p-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1 px-3"
                         title="Book New Lab Order"
                       >
                         <Plus className="h-4 w-4" />
+                        <span>New Order</span>
                       </Link>
-
-                      <button
-                        onClick={(e) => handlePrintBarcode(e, patient)}
-                        className="rounded-lg bg-slate-100 p-2 text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center"
-                        title="Print Barcode Labels"
-                      >
-                        <Printer className="h-4 w-4" />
-                      </button>
                     </div>
                   </div>
                 );
@@ -2084,15 +2089,15 @@ export default function PixelPerfectPatientsPage() {
 
               <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
                 <div className="w-screen max-w-xl bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200">
-                  {/* Drawer Header */}
-                  <div className="relative border-b border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 py-5 text-white">
+                  {/* Drawer Header - Light White Professional Clinical Design */}
+                  <div className="relative border-b border-slate-200 bg-white px-6 py-5 text-slate-900">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="rounded-md bg-indigo-500/20 px-2 py-0.5 text-xs font-bold text-indigo-300 ring-1 ring-indigo-400/30">
+                        <span className="rounded-md bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-200">
                           Clinical Dossier
                         </span>
                         {activePatient.status === "Critical" && (
-                          <span className="rounded-md bg-rose-500/20 px-2 py-0.5 text-xs font-bold text-rose-300 ring-1 ring-rose-400/30">
+                          <span className="rounded-md bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200">
                             Critical Alert
                           </span>
                         )}
@@ -2104,19 +2109,19 @@ export default function PixelPerfectPatientsPage() {
                           onClick={() => setMaskPii(!maskPii)}
                           className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
                             maskPii
-                              ? "bg-amber-400/20 text-amber-300 ring-1 ring-amber-400/40"
-                              : "bg-white/10 text-slate-300 hover:bg-white/20 hover:text-white"
+                              ? "bg-amber-50 text-amber-800 border border-amber-300"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
                           }`}
                           title="Toggle DPDP Act 2023 PII Masking"
                         >
-                          <ShieldCheck className="h-3.5 w-3.5" />
+                          <ShieldCheck className="h-3.5 w-3.5 text-slate-600" />
                           <span>{maskPii ? "PII Masked" : "Mask PII"}</span>
                         </button>
 
                         {/* Seamless internal route if user wants full page */}
                         <Link
                           href={`/patients/${activePatient.uhid || activePatient.id}`}
-                          className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-white/20 hover:text-white transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors"
                           title="Open Full Clinical Dossier"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -2125,7 +2130,7 @@ export default function PixelPerfectPatientsPage() {
 
                         <button
                           onClick={handleCloseDrawer}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
                           title="Close (Esc)"
                         >
                           <X className="h-5 w-5" />
@@ -2144,21 +2149,21 @@ export default function PixelPerfectPatientsPage() {
                       />
 
                       <div className="min-w-0 flex-1">
-                        <h2 className="text-xl font-extrabold text-white truncate">
+                        <h2 className="text-xl font-black text-slate-900 truncate">
                           {formatPatientFullName(activePatient)}
                         </h2>
 
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                           <button
                             onClick={(e) => handleCopyUhid(e, activePatient.uhid)}
-                            className="inline-flex items-center gap-1 font-mono font-bold text-indigo-300 hover:text-white"
+                            className="inline-flex items-center gap-1 font-mono font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200"
                             title="Click to copy UHID"
                           >
                             <span>{activePatient.uhid}</span>
                             <Copy className="h-3 w-3" />
                           </button>
-                          <span className="text-slate-500">•</span>
-                          <span className="text-slate-300">
+                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-600 font-medium">
                             {calculateClinicalAge(activePatient.dateOfBirth, activePatient.age).formatted} •{" "}
                             {activePatient.gender === "MALE"
                               ? "Male"
@@ -2166,8 +2171,8 @@ export default function PixelPerfectPatientsPage() {
                               ? "Female"
                               : "Other"}
                           </span>
-                          <span className="text-slate-500">•</span>
-                          <span className="font-bold text-rose-300">
+                          <span className="text-slate-400">•</span>
+                          <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                             {formatBloodGroup(activePatient.bloodGroup)}
                           </span>
                         </div>
@@ -2175,37 +2180,13 @@ export default function PixelPerfectPatientsPage() {
                     </div>
 
                     {/* Drawer Fast Action Bar */}
-                    <div className="mt-5 grid grid-cols-4 gap-2">
+                    <div className="mt-5 flex items-center gap-2">
                       <Link
                         href={`/orders/new?patientId=${activePatient.id}&uhid=${encodeURIComponent(activePatient.uhid)}`}
-                        className="rounded-xl bg-indigo-600 px-3 py-2 text-center text-xs font-bold text-white shadow-md hover:bg-indigo-700 transition-all flex flex-col items-center gap-1"
+                        className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                       >
                         <Plus className="h-4 w-4" />
-                        <span>New Order</span>
-                      </Link>
-
-                      <button
-                        onClick={(e) => handlePrintBarcode(e, activePatient)}
-                        className="rounded-xl bg-white/10 px-3 py-2 text-center text-xs font-bold text-white hover:bg-white/20 transition-all flex flex-col items-center gap-1 cursor-pointer"
-                      >
-                        <Printer className="h-4 w-4" />
-                        <span>Barcodes</span>
-                      </button>
-
-                      <button
-                        onClick={(e) => handleOpenWhatsApp(e, activePatient)}
-                        className="rounded-xl bg-emerald-600/80 px-3 py-2 text-center text-xs font-bold text-white hover:bg-emerald-600 transition-all flex flex-col items-center gap-1 cursor-pointer"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        <span>WhatsApp</span>
-                      </button>
-
-                      <Link
-                        href={`/patients/${activePatient.uhid || activePatient.id}`}
-                        className="rounded-xl bg-white/10 px-3 py-2 text-center text-xs font-bold text-white hover:bg-white/20 transition-all flex flex-col items-center gap-1"
-                      >
-                        <FileText className="h-4 w-4" />
-                        <span>Dossier</span>
+                        <span>New Lab Order</span>
                       </Link>
                     </div>
                   </div>
@@ -2214,9 +2195,9 @@ export default function PixelPerfectPatientsPage() {
                   <div className="flex border-b border-slate-200 bg-slate-50 px-6">
                     {[
                       { id: "overview", label: "Overview & Vitals", icon: Activity },
-                      { id: "orders", label: "Lab Orders", icon: FlaskConical },
+                      { id: "orders", label: "Visit History", icon: FlaskConical },
                       { id: "vitals", label: "Clinical Profile", icon: HeartPulse },
-                      { id: "documents", label: "Barcodes & Docs", icon: FileText },
+                      { id: "documents", label: "LEGAL AND CONSENTS", icon: FileText },
                     ].map((tab) => {
                       const Icon = tab.icon;
                       const isActive = drawerTab === tab.id;
@@ -2238,13 +2219,19 @@ export default function PixelPerfectPatientsPage() {
 
                   {/* Drawer Tab Content */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {/* TAB 1: OVERVIEW */}
+                    {/* TAB 1: OVERVIEW & CLINICAL VITALS TRIAGE */}
                     {drawerTab === "overview" && (
                       <div className="space-y-6">
-                        {/* Vitals Summary Card */}
+                        {/* A. Clinical Vitals & Triage Center */}
+                        <ClinicalVitalsTriageCenter
+                          patient={activePatient}
+                          onVitalsUpdated={handlePatientVitalsUpdated}
+                        />
+
+                        {/* B. Core Demographics Summary Card */}
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
                           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                            Clinical Key Metrics
+                            CLINICAL FLAGS
                           </h4>
                           <div className="grid grid-cols-3 gap-3">
                             <div className="rounded-xl bg-white p-3 border border-slate-200/80">
@@ -2279,7 +2266,7 @@ export default function PixelPerfectPatientsPage() {
                         {/* Contact & Demographics */}
                         <div>
                           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                            Demographics & Contact Information
+                            CONTACT DETAILS
                           </h4>
                           <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100 text-xs">
                             <div className="flex justify-between p-3.5">
@@ -2327,33 +2314,48 @@ export default function PixelPerfectPatientsPage() {
                           </div>
                         </div>
 
-                        {/* Emergency & Insurance */}
+                        {/* Emergency Contact */}
                         <div>
                           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                            Emergency & Insurance Coverage
+                            Emergency Contact
                           </h4>
                           <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 text-xs">
                             <div className="flex items-center justify-between">
-                              <span className="text-slate-500">Emergency Contact Name</span>
+                              <span className="text-slate-500">Contact Name</span>
                               <span className="font-bold text-slate-800">
                                 {activePatient.emergencyContactName || "Self / Family"}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-slate-500">Emergency Contact Phone</span>
-                              <span className="font-bold text-slate-800">
+                              <span className="text-slate-500">Contact Phone</span>
+                              <span className="font-bold text-slate-800 font-mono">
                                 {activePatient.emergencyContactPhone || activePatient.emergencyContact || "Not recorded"}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                          </div>
+                        </div>
+
+                        {/* INSURANCE DETAILS */}
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                            Insurance Details
+                          </h4>
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 text-xs">
+                            <div className="flex items-center justify-between">
                               <span className="text-slate-500">Insurance Provider</span>
                               <span className="font-semibold text-slate-800">
                                 {activePatient.insuranceProvider || "Cash / Self-Pay (No TPA)"}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
+                              <span className="text-slate-500 font-medium">Insurance ID</span>
+                              <span className="font-bold font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                {activePatient.insuranceId || activePatient.insuranceNumber || (activePatient.policyNumber ? `INS-${activePatient.policyNumber}` : "N/A")}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
                               <span className="text-slate-500">Policy / Member ID</span>
-                              <span className="font-semibold text-slate-800">
+                              <span className="font-semibold text-slate-800 font-mono">
                                 {activePatient.policyNumber || "N/A"}
                               </span>
                             </div>
@@ -2362,12 +2364,12 @@ export default function PixelPerfectPatientsPage() {
                       </div>
                     )}
 
-                    {/* TAB 2: LAB ORDERS */}
+                    {/* TAB 2: VISIT HISTORY */}
                     {drawerTab === "orders" && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                            Diagnostic Orders & Specimens
+                            Visit History
                           </h4>
                           <Link
                             href={`/orders/new?patientId=${activePatient.id}`}
@@ -2506,72 +2508,52 @@ export default function PixelPerfectPatientsPage() {
                       </div>
                     )}
 
-                    {/* TAB 4: BARCODES & DOCUMENTS */}
+                    {/* TAB 4: CLINICAL DOSSIER DOCUMENTS & REGISTRATION */}
                     {drawerTab === "documents" && (
                       <div className="space-y-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                              Specimen Tube Barcode Generator
-                            </h4>
-                            <button
-                              onClick={(e) => handlePrintBarcode(e, activePatient)}
-                              className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 shadow-sm"
-                            >
-                              <Printer className="h-3.5 w-3.5" />
-                              <span>Print All Labels</span>
-                            </button>
-                          </div>
-                          <p className="text-xs text-slate-500 mb-4">
-                            Generate diagnostic tube stickers (EDTA Purple, Fluoride Grey, Serum Gold) for phlebotomy vacutainers.
-                          </p>
-
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between rounded-xl border border-purple-200 bg-purple-50/60 p-3 text-xs">
-                              <div className="flex items-center gap-2.5">
-                                <span className="h-3 w-3 rounded-full bg-purple-600" />
-                                <div>
-                                  <p className="font-bold text-purple-900">EDTA K2 Whole Blood</p>
-                                  <p className="font-mono text-[11px] text-purple-700">
-                                    {activePatient.uhid}-EDTA
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="rounded bg-purple-200 px-2 py-0.5 text-[10px] font-bold text-purple-800">
-                                Lavender Top
-                              </span>
-                            </div>
-
-                            <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs">
-                              <div className="flex items-center gap-2.5">
-                                <span className="h-3 w-3 rounded-full bg-amber-500" />
-                                <div>
-                                  <p className="font-bold text-amber-900">Serum Gel Clot Activator</p>
-                                  <p className="font-mono text-[11px] text-amber-700">
-                                    {activePatient.uhid}-SERUM
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="rounded bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                                Gold / Red Top
-                              </span>
-                            </div>
-                          </div>
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            LEGAL AND CONSENTS
+                          </h4>
+                          <span className="text-[11px] font-semibold text-slate-500">
+                            DPDP 2023 Compliant
+                          </span>
                         </div>
 
                         {/* Printable Lab Registration Card */}
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 flex items-center justify-between">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 flex items-center justify-between shadow-2xs">
                           <div>
-                            <p className="text-xs font-bold text-slate-900">Patient ID Card & Registration Form</p>
+                            <p className="text-xs font-bold text-slate-900">Patient ID Card &amp; Registration Form</p>
                             <p className="text-[11px] text-slate-400 mt-0.5">
-                              Full printable clinical face-sheet with QR code.
+                              Full printable clinical face-sheet with demographic barcode and patient UHID.
                             </p>
                           </div>
                           <Link
                             href={`/patients/${activePatient.id}/print`}
-                            className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                            className="rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
                           >
-                            Print Form
+                            Print Registration Form
+                          </Link>
+                        </div>
+
+                        {/* DPDP Consent & Clinical Authorization */}
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 flex items-center justify-between shadow-2xs">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-slate-900">General Treatment &amp; DPDP Consent</p>
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                                Active &amp; Recorded
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Treatment consent, electronic report delivery, and digital record authorization.
+                            </p>
+                          </div>
+                          <Link
+                            href={`/patients/${activePatient.uhid || activePatient.id}`}
+                            className="rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors shadow-2xs"
+                          >
+                            View Consent Dossier
                           </Link>
                         </div>
                       </div>
@@ -2594,7 +2576,7 @@ export default function PixelPerfectPatientsPage() {
                         onClick={() => router.push(`/patients/${activePatient.uhid || activePatient.id}`)}
                         className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 shadow-sm flex items-center gap-1.5"
                       >
-                        <span>Open Full Dossier</span>
+                        <span>Full Patient Information</span>
                         <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -2608,12 +2590,11 @@ export default function PixelPerfectPatientsPage() {
         {/* =========================================================================
             6. MODALS INTEGRATION
         ========================================================================= */}
-        {/* Modal 1: Quick OPD Walk-in Registration Modal */}
-        <PatientQuickRegisterModal
+        {/* Modal 1: Enterprise Multi-Step Patient Registration Wizard (identical to Doctor Wizard) */}
+        <RegisterPatientWizard
           isOpen={isQuickRegisterOpen}
           onClose={() => setIsQuickRegisterOpen(false)}
-          onPatientCreated={(newPatient) => {
-            showSuccess(`Patient ${newPatient.firstName || ""} registered successfully!`);
+          onSuccess={(newPatient) => {
             fetchPatients();
             setIsQuickRegisterOpen(false);
           }}
@@ -2624,6 +2605,8 @@ export default function PixelPerfectPatientsPage() {
           isOpen={barcodeModalOpen}
           onClose={() => setBarcodeModalOpen(false)}
           labels={barcodeItems}
+          initialSelectedBarcode={selectedBarcodeToPrint}
+          patient={selectedPatient || undefined}
         />
 
         {/* Modal 3: WhatsApp Diagnostic Notification Dispatch Modal */}
@@ -2655,12 +2638,22 @@ export default function PixelPerfectPatientsPage() {
 
                 <div>
                   <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Quick Templates</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     <button
                       type="button"
                       onClick={() =>
                         setWhatsappMessage(
-                          `Dear ${formatPatientFullName(whatsappModalPatient)},\n\nWelcome to LabCore Diagnostics.\nYour registered Patient ID (UHID) is *${whatsappModalPatient.uhid}*.\nYour diagnostic medical profile is registered under NABL & ABDM standards.\n\nHelpline: +91 9106161228 | LabCore Diagnostics Portal`
+                          `*🏥 LABCORE DIAGNOSTICS & CLINICAL RESEARCH*\n` +
+                          `_NABL Accredited Medical Laboratory | ISO 15189:2022_\n` +
+                          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                          `*OFFICIAL PATIENT REGISTRATION & EHR CONFIRMATION*\n\n` +
+                          `Dear *${formatPatientFullName(whatsappModalPatient)}*,\n\n` +
+                          `Your clinical diagnostic profile is formally registered and validated in our Laboratory Information System.\n\n` +
+                          `• *Universal Health ID (UHID):* \`${whatsappModalPatient.uhid}\`\n` +
+                          `• *Registry Status:* Active EHR Dossier • ABDM & HIPAA Compliant\n` +
+                          `• *Diagnostic Portal:* 24/7 Cumulative History & Digital Reports\n\n` +
+                          `📞 *Clinical Support Desk:* +91 9106161228 | support@labcore.health\n` +
+                          `_Dedicated to Diagnostic Precision & Patient Care_`
                         )
                       }
                       className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 transition-all text-center"
@@ -2671,7 +2664,18 @@ export default function PixelPerfectPatientsPage() {
                       type="button"
                       onClick={() =>
                         setWhatsappMessage(
-                          `Dear ${formatPatientFullName(whatsappModalPatient)},\n\nYour specimen has been collected & accessioned at LabCore Central Laboratory.\nUHID: *${whatsappModalPatient.uhid}*\nStatus: Processing in Analyzer Queue.\n\nVerified reports will be dispatched upon pathologist review.`
+                          `*🏥 LABCORE DIAGNOSTICS | SPECIMEN CHAIN OF CUSTODY*\n` +
+                          `_Quality Assurance & Clinical Pathology Department_\n` +
+                          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                          `*BIOLOGICAL SPECIMEN ACCESSIONING CONFIRMATION*\n\n` +
+                          `Dear *${formatPatientFullName(whatsappModalPatient)}*,\n\n` +
+                          `Your biological specimens for UHID \`${whatsappModalPatient.uhid}\` have been safely collected under cold-chain logistics and formally accessioned.\n\n` +
+                          `• *Patient UHID:* \`${whatsappModalPatient.uhid}\`\n` +
+                          `• *Specimen Barcode:* ACC-${whatsappModalPatient.uhid}-QC\n` +
+                          `• *Status:* Automated Dual-Analyzer Queue & Calibration\n` +
+                          `• *Turnaround Time:* Estimated 4–6 Hours for Pathologist Sign-off\n\n` +
+                          `Verified reports will be dispatched immediately upon medical authorization.\n` +
+                          `_Department of Laboratory Medicine • LabCore Diagnostics_`
                         )
                       }
                       className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 transition-all text-center"
@@ -2682,7 +2686,16 @@ export default function PixelPerfectPatientsPage() {
                       type="button"
                       onClick={() =>
                         setWhatsappMessage(
-                          `Dear ${formatPatientFullName(whatsappModalPatient)},\n\nYour diagnostic laboratory test reports are now ready and authorized.\nUHID: *${whatsappModalPatient.uhid}*\n\nView & download your verified PDF report at:\nhttps://labcore.health/reports?search=${encodeURIComponent(whatsappModalPatient.uhid)}\n\nThank you for choosing LabCore!`
+                          `*🏥 LABCORE DIAGNOSTICS | PATHOLOGY REPORT RELEASE*\n` +
+                          `_Accredited Reference Laboratory | ISO 15189:2022 Standards_\n` +
+                          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                          `*AUTHORIZED CLINICAL INVESTIGATION REPORT RELEASE*\n\n` +
+                          `Dear *${formatPatientFullName(whatsappModalPatient)}*,\n\n` +
+                          `Your diagnostic laboratory investigation reports (UHID: \`${whatsappModalPatient.uhid}\`) have been completed and digitally authorized by our Consultant Pathologist.\n\n` +
+                          `📑 *Authorized Report Access:* \n` +
+                          `🔗 https://labcore.health/reports?search=${encodeURIComponent(whatsappModalPatient.uhid)}\n\n` +
+                          `⚠️ *Clinical Notice:* Please review this report in consultation with your treating physician for accurate clinical correlation.\n\n` +
+                          `📞 *Laboratory Helpdesk:* +91 9106161228 | reports@labcore.health`
                         )
                       }
                       className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 transition-all text-center"
@@ -2693,7 +2706,17 @@ export default function PixelPerfectPatientsPage() {
                       type="button"
                       onClick={() =>
                         setWhatsappMessage(
-                          `Dear ${formatPatientFullName(whatsappModalPatient)},\n\nThank you for your payment at LabCore Diagnostic Center.\nUHID: *${whatsappModalPatient.uhid}*\nYour billing ledger is updated.\n\nFor queries: +91 9106161228 | accounts@labcore.health`
+                          `*🏥 LABCORE DIAGNOSTICS | FINANCIAL SERVICES*\n` +
+                          `_Hospital Administration & Billing Division_\n` +
+                          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                          `*OFFICIAL CLINICAL BILLING RECEIPT & LEDGER UPDATE*\n\n` +
+                          `Dear *${formatPatientFullName(whatsappModalPatient)}*,\n\n` +
+                          `We confirm receipt of payment for your diagnostic investigations under UHID \`${whatsappModalPatient.uhid}\`.\n\n` +
+                          `• *Patient UHID:* \`${whatsappModalPatient.uhid}\`\n` +
+                          `• *Billing Status:* Reconciled & Closed in LIS Ledger\n` +
+                          `• *Compliance:* GST-Compliant Tax Invoice Filed\n\n` +
+                          `Your digital receipt is archived in your patient portal dossier.\n` +
+                          `📞 *Accounts & Billing:* +91 9106161228 | accounts@labcore.health`
                         )
                       }
                       className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 transition-all text-center"

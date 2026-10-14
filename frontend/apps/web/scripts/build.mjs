@@ -41,7 +41,7 @@ const MAX_ATTEMPTS = Math.max(1, Number(process.env.NEXT_BUILD_RETRIES) || 5);
 // generic "UNKNOWN: unknown error". These patterns describe that transient lock;
 // a genuine compile/type/prerender error will NOT match and exits immediately.
 const TRANSIENT =
-  /UNKNOWN: unknown error|os error 1224|user-mapped section open|ERROR_USER_MAPPING_NOT_MEM_MAP|The requested operation cannot be performed on a file with a user-mapped section|EBUSY|ENOTEMPTY|resource temporarily unavailable|too many open files|Device or resource busy/i;
+  /UNKNOWN: unknown error|os error 1224|user-mapped section open|ERROR_USER_MAPPING_NOT_MEM_MAP|The requested operation cannot be performed on a file with a user-mapped section|EBUSY|ENOTEMPTY|resource temporarily unavailable|too many open files|Device or resource busy|PageNotFoundError|Cannot find module for page/i;
 
 function runOnce() {
   return new Promise((resolve) => {

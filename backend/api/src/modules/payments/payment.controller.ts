@@ -7,6 +7,8 @@ import {
 import type { AuthenticatedRequest } from "../../../middleware/auth";
 import prisma from "../../../config/database";
   
+import cache from "../../utils/cache";
+  
   import {
     createPayment,
     createSplitPayment,
@@ -29,12 +31,28 @@ import prisma from "../../../config/database";
     ) => {
       try {
         const body = (req as any).validated?.body || req.body;
+        const idempotencyKey = body.idempotencyKey || req.headers['x-idempotency-key'];
+        
+        if (idempotencyKey) {
+          const cachedPayment = cache.get(`idempotency:split:${idempotencyKey}`);
+          if (cachedPayment) {
+            return res.status(200).json({
+              success: true,
+              message: "Split payment created successfully (idempotent)",
+              data: cachedPayment,
+            });
+          }
+        }
         
         const payments =
           await createSplitPayment(
             body,
             req.user?.id
           );
+
+        if (idempotencyKey) {
+          cache.set(`idempotency:split:${idempotencyKey}`, payments, 3600);
+        }
 
         res.status(201).json({
           success: true,
@@ -60,12 +78,28 @@ import prisma from "../../../config/database";
       try {
         // Use validated data if available, otherwise fall back to original request
         const body = (req as any).validated?.body || req.body;
+        const idempotencyKey = body.idempotencyKey || req.headers['x-idempotency-key'];
+
+        if (idempotencyKey) {
+          const cachedPayment = cache.get(`idempotency:pay:${idempotencyKey}`);
+          if (cachedPayment) {
+            return res.status(200).json({
+              success: true,
+              message: "Payment created successfully (idempotent)",
+              data: cachedPayment,
+            });
+          }
+        }
         
         const payment =
           await createPayment(
             body,
             req.user?.id
           );
+  
+        if (idempotencyKey) {
+          cache.set(`idempotency:pay:${idempotencyKey}`, payment, 3600);
+        }
   
         res.status(201).json({
           success: true,

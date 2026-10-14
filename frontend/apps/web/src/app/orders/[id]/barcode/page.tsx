@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { orderApi } from "@/lib/api";
@@ -182,11 +182,11 @@ function SvgBarcode({ code, width = 160, height = 38 }: { code: string; width?: 
 export default function OrderBarcodePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params?: any;
 }) {
   const router = useRouter();
-  const resolvedParams = use(params);
-  const orderId = resolvedParams.id;
+  const routeParams = useParams();
+  const orderId = (routeParams?.id as string) || (params && typeof params === "object" && "id" in params ? params.id : "");
 
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -218,13 +218,17 @@ export default function OrderBarcodePage({
             copies[item.id] = 1;
             selected[item.id] = true;
 
-            const qrPayload = `${data.orderNumber}|${data.barcode}|${item.test.testCode}|${data.patient.uhid}`;
-            const qrUrl = await QRCode.toDataURL(qrPayload, {
-              width: 80,
-              margin: 0,
-              color: { dark: "#000000", light: "#ffffff" },
-            });
-            qrs[item.id] = qrUrl;
+            const qrPayload = `${data.orderNumber || ""}|${data.barcode || ""}|${item.test?.testCode || "TEST"}|${data.patient?.uhid || ""}`;
+            try {
+              const qrUrl = await QRCode.toDataURL(qrPayload, {
+                width: 80,
+                margin: 0,
+                color: { dark: "#000000", light: "#ffffff" },
+              });
+              qrs[item.id] = qrUrl;
+            } catch (qrErr) {
+              console.error("QR generation error:", qrErr);
+            }
           }
 
           setCopiesPerTube(copies);
@@ -424,7 +428,7 @@ export default function OrderBarcodePage({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
               {(order.items || []).map((item) => {
-                const spec = getVacutainerSpec(item.test.testName, item.test.sampleType);
+                const spec = getVacutainerSpec(item.test?.testName || "Sample", item.test?.sampleType || "Blood");
                 const isChecked = !!selectedTubes[item.id];
                 const count = copiesPerTube[item.id] || 1;
 
@@ -448,11 +452,11 @@ export default function OrderBarcodePage({
                         <div className="flex items-center gap-1.5">
                           <span className={`h-2.5 w-2.5 rounded-full ${spec.capColor}`} />
                           <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                            {item.test.testName}
+                            {item.test?.testName || "Laboratory Assay"}
                           </p>
                         </div>
                         <p className="text-[10px] text-slate-500 font-mono">
-                          {spec.short} • {item.test.testCode}
+                          {spec.short} • {item.test?.testCode || "TEST"}
                         </p>
                       </div>
                     </label>
@@ -497,7 +501,7 @@ export default function OrderBarcodePage({
           >
             {itemsToPrint.flatMap((item) => {
               const copies = copiesPerTube[item.id] || 1;
-              const spec = getVacutainerSpec(item.test.testName, item.test.sampleType);
+              const spec = getVacutainerSpec(item.test?.testName || "Sample", item.test?.sampleType || "Blood");
               const qr = qrMap[item.id];
 
               return Array.from({ length: copies }, (_, copyIndex) => (
@@ -532,15 +536,15 @@ export default function OrderBarcodePage({
                   {/* Patient Demographics */}
                   <div className="pt-1 pb-0.5 flex justify-between items-baseline">
                     <span className="font-black text-xs uppercase truncate max-w-[190px]">
-                      {order.patient.lastName}, {order.patient.firstName}
+                      {order.patient?.lastName || ""}{order.patient?.firstName ? `, ${order.patient.firstName}` : "Patient"}
                     </span>
                     <span className="font-bold text-[10px] font-mono">
-                      {order.patient.gender?.charAt(0)}
+                      {order.patient?.gender?.charAt(0) || "U"}
                     </span>
                   </div>
 
                   <div className="flex justify-between text-[9px] font-mono pb-1 border-b border-black/40">
-                    <span className="font-bold">UHID: {order.patient.uhid}</span>
+                    <span className="font-bold">UHID: {order.patient?.uhid || "—"}</span>
                     <span>{order.items.length > 1 ? `Tube ${copyIndex + 1}/${copies}` : "Single"}</span>
                   </div>
 
@@ -565,7 +569,7 @@ export default function OrderBarcodePage({
                   {/* Footer: Test Code & Collection Date */}
                   <div className="pt-1 mt-0.5 border-t border-black flex justify-between items-center text-[9px]">
                     <span className="font-black uppercase truncate max-w-[150px]">
-                      {item.test.testCode} ({item.test.testName})
+                      {item.test?.testCode || "TEST"} ({item.test?.testName || "Sample"})
                     </span>
                     <span className="font-mono text-[8px]">
                       {new Date(order.createdAt).toLocaleDateString("en-IN", {
@@ -602,7 +606,7 @@ export default function OrderBarcodePage({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 pt-4">
               {itemsToPrint.map((item) => {
-                const spec = getVacutainerSpec(item.test.testName, item.test.sampleType);
+                const spec = getVacutainerSpec(item.test?.testName || "Sample", item.test?.sampleType || "Blood");
 
                 return (
                   <div
@@ -610,7 +614,7 @@ export default function OrderBarcodePage({
                     className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex flex-col items-center"
                   >
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                      {item.test.testName}
+                      {item.test?.testName || "Sample Test"}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono mb-6">
                       {spec.label}
@@ -640,12 +644,12 @@ export default function OrderBarcodePage({
                           <span className="text-[7px]">LabCore</span>
                         </div>
                         <p className="font-bold text-[8px] truncate pt-0.5">
-                          {order.patient.lastName}, {order.patient.firstName.charAt(0)}
+                          {order.patient?.lastName || ""}{order.patient?.firstName ? `, ${order.patient.firstName.charAt(0)}` : "Patient"}
                         </p>
-                        <p className="text-[7px]">{order.patient.uhid}</p>
+                        <p className="text-[7px]">{order.patient?.uhid || "UHID"}</p>
                         <div className="my-0.5 bg-black h-4 w-full" />
                         <p className="text-[7px] font-bold truncate">{order.barcode}</p>
-                        <p className="text-[7px] text-purple-700 font-bold">{item.test.testCode}</p>
+                        <p className="text-[7px] text-purple-700 font-bold">{item.test?.testCode || "TEST"}</p>
                       </div>
 
                       {/* Blood specimen simulation */}

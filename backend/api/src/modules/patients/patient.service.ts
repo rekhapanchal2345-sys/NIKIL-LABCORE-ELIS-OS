@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
@@ -28,34 +29,45 @@ const duplicateSelect = {
   panNumber: true,
 } satisfies Prisma.PatientSelect;
 
-const UHID_SEQUENCE = /^LC-(\d{6})$/;
+const UHID_SEQUENCE = /^UHID-\d{4}-(\d+)$/;
 
 export const generateUHID = async (tx: Tx | typeof prisma = prisma): Promise<string> => {
-  // Zero-padded fixed-width UHIDs sort lexicographically the same as numerically,
-  // so ordering by the string itself gives the highest sequence number.
+  const currentYear = new Date().getUTCFullYear();
+  const prefix = `UHID-${currentYear}-`;
+
+  // Fetch recent UHIDs ordered by true creation timestamp to find the real numerical ceiling
   const recent = await tx.patient.findMany({
-    where: { uhid: { startsWith: "LC-" } },
-    orderBy: { uhid: "desc" },
-    take: 25,
+    where: { uhid: { startsWith: prefix } },
     select: { uhid: true },
+    orderBy: { createdAt: "desc" },
+    take: 100,
   });
 
-  const highest = recent
-    .map((row) => UHID_SEQUENCE.exec(row.uhid))
-    .filter((match): match is RegExpExecArray => match !== null)
-    .reduce((max, match) => Math.max(max, Number(match[1])), 0);
-
-  for (let candidate = highest + 1; candidate <= highest + 25; candidate += 1) {
-    const uhid = `LC-${String(candidate).padStart(6, "0")}`;
-    const clash = await tx.patient.findUnique({ where: { uhid }, select: { id: true } });
-    if (!clash) return uhid;
+  let highest = 0;
+  for (const row of recent) {
+    const match = UHID_SEQUENCE.exec(row.uhid);
+    if (match) {
+      const num = Number(match[1]);
+      if (Number.isFinite(num) && num > highest) {
+        highest = num;
+      }
+    }
   }
 
-  throw new HttpError(
-    "Patient unique ids are exhausted for this range. Please contact support.",
-    500,
-    "UHID_EXHAUSTED"
-  );
+  // Random jitter increment breaks lockstep synchronization between simultaneous receptionists
+  const jitter = Math.floor(Math.random() * 3);
+  let candidate = highest + 1 + jitter;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const uhid = `${prefix}${String(candidate).padStart(5, "0")}`;
+    const clash = await tx.patient.findUnique({ where: { uhid }, select: { id: true } });
+    if (!clash) return uhid;
+    candidate += 1 + Math.floor(Math.random() * 2);
+  }
+
+  // High-entropy timestamp fallback guarantee: registration is never blocked
+  const entropy = Date.now().toString().slice(-6);
+  return `${prefix}${entropy}`;
 };
 
 export const checkDuplicatePatient = async (
@@ -119,7 +131,7 @@ export const generatePatientQRData = (patientId: string, uhid: string) =>
  * field names the forms use (postalCode, emergencyContactPhone, doctorId,
  * medicalConditions) alongside the stored column names.
  */
-export const formatPatientResponse = (patient: any) => {
+export const formatPatientResponse = (patient: any, maskPii = false) => {
   if (!patient) return patient;
 
   const chronic = Array.isArray(patient.chronicDiseases) ? patient.chronicDiseases : [];
@@ -146,8 +158,21 @@ export const formatPatientResponse = (patient: any) => {
   const emergencyPhone = patient.emergencyContact ?? null;
   const pincode = patient.pincode ?? null;
 
+  let phone = patient.phone;
+  let aadhaarNumber = patient.aadhaarNumber;
+  let panNumber = patient.panNumber;
+
+  if (maskPii) {
+    if (phone && phone.length >= 4) phone = phone.slice(0, 3) + "******" + phone.slice(-4);
+    if (aadhaarNumber && aadhaarNumber.length >= 4) aadhaarNumber = "********" + aadhaarNumber.slice(-4);
+    if (panNumber && panNumber.length >= 4) panNumber = panNumber.slice(0, 2) + "******" + panNumber.slice(-2);
+  }
+
   return {
     ...patient,
+    phone,
+    aadhaarNumber,
+    panNumber,
     isActive: patient.isActive !== false,
     isCritical,
     isVip: Boolean(patient.patientType === "VIP"),
@@ -243,29 +268,46 @@ export const createPatient = async (data: PatientInput, createdById?: string) =>
     validCreatedById = user.id;
   }
 
-  const patient = await prisma.$transaction(async (tx) => {
-    const uhid = await generateUHID(tx);
+  let retries = 5;
+  let patient;
+  
+  while (true) {
+    try {
+      patient = await prisma.$transaction(async (tx) => {
+        const uhid = await generateUHID(tx);
+        const patientId = crypto.randomUUID();
+        const qrCode = generatePatientQRData(patientId, uhid);
 
-    const created = await tx.patient.create({
-      data: {
-        ...payload,
-        uhid,
-        createdById: validCreatedById,
-        verificationStatus: "UNVERIFIED",
-        phoneVerified: false,
-        emailVerified: false,
-        kycVerified: false,
-        qrCode: generatePatientQRData("PENDING", uhid),
-      },
-    });
+        const created = await tx.patient.create({
+          data: {
+            ...payload,
+            id: patientId,
+            uhid,
+            createdById: validCreatedById,
+            verificationStatus: "UNVERIFIED",
+            phoneVerified: false,
+            emailVerified: false,
+            kycVerified: false,
+            qrCode,
+          },
+        });
 
-    // The QR payload must carry the real patient id, which only exists after insert.
-    const qrCode = generatePatientQRData(created.id, created.uhid);
-    if (created.qrCode !== qrCode) {
-      return tx.patient.update({ where: { id: created.id }, data: { qrCode } });
+        return created;
+      });
+      break; // Success
+    } catch (error: any) {
+      if (error.code === 'P2002' && (error.meta?.target?.includes('uhid') || String(error.message).includes('uhid'))) {
+        retries--;
+        if (retries <= 0) {
+          throw new HttpError("Failed to generate unique UHID after multiple attempts. Please try again.", 500, "UHID_GENERATION_FAILED");
+        }
+        // Jitter delay between 15ms and 60ms to let competing transactions clear
+        await new Promise((resolve) => setTimeout(resolve, 15 + Math.random() * 45));
+        continue;
+      }
+      throw error;
     }
-    return created;
-  });
+  }
 
   await createAuditLog({
     userId: validCreatedById ?? undefined,
@@ -306,18 +348,35 @@ export const getPatients = async (options: {
 
   const search = options.search?.trim();
   if (search) {
-    filters.push({
-      OR: [
-        { firstName: { contains: search, mode: "insensitive" } },
-        { middleName: { contains: search, mode: "insensitive" } },
-        { lastName: { contains: search, mode: "insensitive" } },
-        { uhid: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } },
-        { aadhaarNumber: { contains: search, mode: "insensitive" } },
-        { panNumber: { contains: search, mode: "insensitive" } },
-      ],
-    });
+    const isDigitsOnly = /^\d+$/.test(search);
+    const isUhidPattern = /^UHID/i.test(search);
+    const hasEmailSign = search.includes("@");
+
+    if (isUhidPattern) {
+      filters.push({ uhid: { contains: search, mode: "insensitive" } });
+    } else if (hasEmailSign) {
+      filters.push({ email: { contains: search, mode: "insensitive" } });
+    } else if (isDigitsOnly) {
+      // Numeric query: check indexed phone, aadhaarNumber, or UHID fragment
+      filters.push({
+        OR: [
+          { phone: { contains: search } },
+          { aadhaarNumber: { contains: search } },
+          { uhid: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    } else {
+      // Name and textual identifiers
+      filters.push({
+        OR: [
+          { firstName: { contains: search, mode: "insensitive" } },
+          { lastName: { contains: search, mode: "insensitive" } },
+          { middleName: { contains: search, mode: "insensitive" } },
+          { uhid: { contains: search, mode: "insensitive" } },
+          { phone: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
   }
 
   const gender = options.gender?.trim();
@@ -416,7 +475,7 @@ export const getPatients = async (options: {
     ]);
 
   return {
-    patients: patients.map(formatPatientResponse),
+    patients: patients.map((p) => formatPatientResponse(p, true)),
     pagination: {
       page,
       limit,
@@ -476,6 +535,27 @@ export const getPatientById = async (id: string) => {
           phone: true,
         },
       },
+      familyMembers: {
+        select: {
+          id: true,
+          uhid: true,
+          firstName: true,
+          middleName: true,
+          lastName: true,
+          gender: true,
+          age: true,
+          relationshipToHead: true,
+          phone: true,
+          bloodGroup: true,
+          createdAt: true,
+        },
+      },
+      medicalHistories: {
+        orderBy: { createdAt: "desc" },
+      },
+      consents: {
+        orderBy: { consentDate: "desc" },
+      },
       _count: { select: { orders: true } },
       orders: {
         take: 10,
@@ -490,9 +570,12 @@ export const getPatientById = async (id: string) => {
   return formatPatientResponse(patient);
 };
 
-export const updatePatient = async (id: string, data: PatientInput) => {
-  const existing = await prisma.patient.findUnique({ where: { id } });
+export const updatePatient = async (idOrUhid: string, data: PatientInput) => {
+  const existing = await prisma.patient.findFirst({ 
+    where: { OR: [{ id: idOrUhid }, { uhid: idOrUhid }] } 
+  });
   if (!existing) throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  const id = existing.id;
 
   const payload = buildPatientData(data as Record<string, any>, existing, { strict: true });
 
@@ -554,9 +637,9 @@ export const updatePatient = async (id: string, data: PatientInput) => {
  * because Order/Sample/Invoice relations are ON DELETE RESTRICT. Drafts have no
  * such dependents and are removed outright.
  */
-export const deletePatient = async (id: string, deletedById?: string) => {
-  const patient = await prisma.patient.findUnique({
-    where: { id },
+export const deletePatient = async (idOrUhid: string, deletedById?: string) => {
+  const patient = await prisma.patient.findFirst({
+    where: { OR: [{ id: idOrUhid }, { uhid: idOrUhid }] },
     include: {
       _count: {
         select: {
@@ -571,6 +654,7 @@ export const deletePatient = async (id: string, deletedById?: string) => {
   });
 
   if (!patient) throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  const id = patient.id;
 
   if (patient.isDraft) {
     await prisma.patient.delete({ where: { id } });
@@ -622,8 +706,10 @@ export const createPatientWithOrder = async (
     throw new HttpError("At least one test is required.", 400, "ORDER_ITEMS_REQUIRED");
   }
 
-  return prisma
-    .$transaction(async (tx) => {
+  let retries = 3;
+  while (true) {
+    try {
+      const result = await prisma.$transaction(async (tx) => {
       const payload = buildPatientData(patientData as Record<string, any>, undefined, {
         strict: true,
       });
@@ -663,19 +749,18 @@ export const createPatientWithOrder = async (
       await assertRelationsExist(payload, tx);
 
       const uhid = await generateUHID(tx);
+      const patientId = crypto.randomUUID();
+      const qrCode = generatePatientQRData(patientId, uhid);
+
       const patient = await tx.patient.create({
         data: {
           ...payload,
+          id: patientId,
           uhid,
           createdById: validCreatedById,
           verificationStatus: "UNVERIFIED",
-          qrCode: generatePatientQRData("PENDING", uhid),
+          qrCode,
         },
-      });
-
-      await tx.patient.update({
-        where: { id: patient.id },
-        data: { qrCode: generatePatientQRData(patient.id, patient.uhid) },
       });
 
       // Order-level referral doctor overrides the patient's standing referral.
@@ -889,12 +974,21 @@ export const createPatientWithOrder = async (
       });
 
       return { patient: formatPatientResponse(finalizedPatient), order };
-    })
-    .catch((error) => {
-      if (error instanceof HttpError || error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw error;
-      }
-      console.error("Transaction error in createPatientWithOrder:", error);
-      throw error;
     });
+    return result;
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002' && (error.meta?.target as any)?.includes?.('uhid')) {
+      retries--;
+      if (retries <= 0) {
+        throw new HttpError("Failed to generate unique UHID after multiple attempts. Please try again.", 500, "UHID_GENERATION_FAILED");
+      }
+      continue;
+    }
+    if (error instanceof HttpError || error instanceof Prisma.PrismaClientKnownRequestError) {
+      throw error;
+    }
+    console.error("Transaction error in createPatientWithOrder:", error);
+    throw error;
+  }
+}
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { 
   PenTool, 
   RotateCcw, 
@@ -34,6 +34,7 @@ export default function DigitalSignatureModal({
   registrationNo = "MCI-LAB-2024-8849",
 }: DigitalSignatureModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [penColor, setPenColor] = useState<string>("#1e3a8a"); // Medical Navy Blue
   const [lineWidth, setLineWidth] = useState<number>(2.5);
@@ -42,9 +43,24 @@ export default function DigitalSignatureModal({
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
   const [stampHash, setStampHash] = useState<string>("");
 
+  const initCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = penColor;
+    ctx.lineWidth = lineWidth;
+  }, [penColor, lineWidth]);
+
   useEffect(() => {
     if (isOpen) {
-      // Generate simulated SHA-256 cryptographic verification token
       const randomHex = Array.from({ length: 16 }, () => 
         Math.floor(Math.random() * 16).toString(16)
       ).join("");
@@ -52,60 +68,69 @@ export default function DigitalSignatureModal({
       setHasDrawn(false);
       setUploadedPreview(null);
 
-      // Initialize canvas
-      setTimeout(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.strokeStyle = penColor;
-        ctx.lineWidth = lineWidth;
-      }, 50);
+      // Initialize canvas with dynamic high-DPI resolution
+      const timer = setTimeout(initCanvas, 50);
+      window.addEventListener("resize", initCanvas);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener("resize", initCanvas);
+      };
     }
-  }, [isOpen]);
+  }, [isOpen, initCanvas]);
 
   if (!isOpen) return null;
 
-  // Drawing Handlers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  // Ultra-Accurate Zero-Latency Pointer Event Handlers
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
+    lastPointRef.current = { x, y };
     ctx.beginPath();
     ctx.moveTo(x, y);
     setIsDrawing(true);
     setHasDrawn(true);
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx || !lastPointRef.current) return;
 
     const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const events = (e.nativeEvent as any).getCoalescedEvents?.() || [e];
+    for (const ce of events) {
+      const currentX = ce.clientX - rect.left;
+      const currentY = ce.clientY - rect.top;
 
-    ctx.lineTo(x, y);
-    ctx.stroke();
+      const midX = (lastPointRef.current.x + currentX) / 2;
+      const midY = (lastPointRef.current.y + currentY) / 2;
+      ctx.quadraticCurveTo(lastPointRef.current.x, lastPointRef.current.y, midX, midY);
+      ctx.stroke();
+      lastPointRef.current = { x: currentX, y: currentY };
+    }
   };
 
-  const stopDrawing = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
     setIsDrawing(false);
+    lastPointRef.current = null;
   };
 
   const clearCanvas = () => {
@@ -303,16 +328,11 @@ export default function DigitalSignatureModal({
             <div className="relative rounded-2xl border-2 border-dashed border-slate-700 bg-white shadow-inner overflow-hidden">
               <canvas
                 ref={canvasRef}
-                width={590}
-                height={200}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                className="w-full h-[200px] cursor-crosshair touch-none"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                className="w-full h-[200px] cursor-crosshair touch-none select-none"
               />
               {!hasDrawn && (
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-slate-400">

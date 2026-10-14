@@ -177,7 +177,7 @@ export default function PatientPrintPage({ params }: { params: Promise<{ id: str
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center py-4 sm:py-6">
       <PatientRegistrationPrintForm
         patientData={formData}
         patientId={patient.id}

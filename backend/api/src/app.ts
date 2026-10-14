@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "path";
 
 // =======================================================
 // ROUTES
@@ -237,6 +238,16 @@ app.get("/health", (_req: Request, res: Response) => {
   });
 });
 
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: "online",
+    timestamp: new Date().toISOString(),
+    system: "LabCore ELIS & Hospital Information System",
+    module: "Doctor & Pathologist Advanced Portal",
+    version: "2.5.0-PRO",
+  });
+});
+
 // =======================================================
 // API ROOT
 // =======================================================
@@ -304,6 +315,8 @@ app.use("/api/patients", patientRoutes);
 // =======================================================
 
 app.use("/api/doctors", doctorRoutes);
+app.use("/api/v1/doctor-module", doctorRoutes);
+app.use("/api/v1/doctors", doctorRoutes);
 
 // =======================================================
 // TESTS
@@ -449,7 +462,25 @@ app.use("/api/v0.5", abdmWebhookRouter);         // for Next.js /api/* proxy (si
 // =======================================================
 
 app.use("/api/ai", aiRoutes);
+app.use("/api/v1/ai-studio", aiRoutes);
 app.use("/api/abdm/v0.5", abdmWebhookRouter);
+
+// =======================================================
+// STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)
+// =======================================================
+const publicDir = path.resolve(__dirname, "../../../public");
+app.use(express.static(publicDir));
+
+app.use((req: Request, res: Response, next) => {
+  // Only serve index.html for GET requests that are not API or ABDM webhook routes
+  if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/v0.5")) {
+    const indexPath = path.join(publicDir, "index.html");
+    return res.sendFile(indexPath, (err) => {
+      if (err) next();
+    });
+  }
+  next();
+});
 
 // =======================================================
 // 404 HANDLER

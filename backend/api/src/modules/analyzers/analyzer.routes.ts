@@ -147,7 +147,7 @@ router.patch(
 // Archive Analyzer - Admin only
 router.post(
   "/:id/archive",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({ params: analyzerIdSchema }),
   archive
 );
@@ -155,7 +155,7 @@ router.post(
 // Delete Analyzer - Admin only (soft delete via archive)
 router.delete(
   "/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({ params: analyzerIdSchema }),
   remove
 );
@@ -479,7 +479,7 @@ router.post(
 // Delete Log - Admin only
 router.delete(
   "/logs/:id",
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate({ params: analyzerIdSchema }),
   removeLog
 );

@@ -158,6 +158,7 @@ router.post(
  */
 router.post(
   "/register",
+  authLimiter,
   authenticate,
   requireRoles("ADMIN", "SUPER_ADMIN"),
   validate({ body: registerSchema }),

@@ -34,6 +34,12 @@ import {
   previewFhirBundle,
   addCareContext,
   listPatientConsents,
+  listCareContexts,
+  linkOrderToCareContext,
+  bulkVerifyAbha,
+  listAllConsents,
+  createConsentRequest,
+  fetchExternalPatientRecords,
   // Gateway Webhooks
   hipDiscover,
   hipLinkInit,
@@ -159,11 +165,58 @@ router.get(
   listPatientConsents
 );
 
+// ── Enterprise Care Contexts ──
+router.get(
+  "/care-contexts",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK, UserRole.LAB_TECH),
+  listCareContexts
+);
+
+router.post(
+  "/care-contexts/link-order",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  linkOrderToCareContext
+);
+
+// ── Bulk ABHA Verification (Camps / Corporate) ──
+router.post(
+  "/bulk-verify",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  bulkVerifyAbha
+);
+
+// ── Consents (All Facility Consents & HIU Request) ──
+router.get(
+  "/consents",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  listAllConsents
+);
+
+router.post(
+  "/consent/request",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  createConsentRequest
+);
+
+router.get(
+  "/hiu/external-records/:consentId",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.PATHOLOGIST),
+  fetchExternalPatientRecords
+);
+
 // ─────────────────────────────────────────────────────────────
 // ABDM Gateway Webhook Router (no authentication — open for ABDM Gateway)
 // ─────────────────────────────────────────────────────────────
+import { verifyAbdmGatewaySignature } from "./abdm.middleware";
 
 export const abdmWebhookRouter = Router();
+abdmWebhookRouter.use(verifyAbdmGatewaySignature);
 
 // Care Context Discovery (ABDM Gateway → HIP)
 abdmWebhookRouter.post("/care-contexts/discover", hipDiscover);

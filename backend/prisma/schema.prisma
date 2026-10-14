@@ -307,6 +307,7 @@ model Doctor {
   @@index([organizationId])
   @@index([isArchived])
   @@index([registrationNumber])
+  @@index([phone], map: "doctors_phone_idx")
   @@map("doctors")
 }
 
@@ -335,7 +336,7 @@ model DoctorOrganization {
   bankAccountHolderName String? @db.VarChar(200)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime @default(now()) @updatedAt
   doctors        Doctor[]
 
   @@index([name])
@@ -363,7 +364,7 @@ model DoctorCommissionEntry {
   status           CommissionStatus @default(PENDING)
   remarks          String?
   createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  updatedAt        DateTime @default(now()) @updatedAt
   doctor           Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   payout           DoctorPayout? @relation(fields: [payoutId], references: [id])
@@ -491,6 +492,8 @@ model Patient {
   qrCode                       String?
   abhaNumber                   String?                    @db.VarChar(20)
   abhaAddress                  String?                    @db.VarChar(100)
+  healthIdNumber               String?                    @db.VarChar(20)
+  aadhaarReferenceToken        String?                    // Encrypted
   abhaStatus                   String                     @default("UNLINKED")
   abhaLinkedAt                 DateTime?
   formStep                     Int?
@@ -600,6 +603,7 @@ model TestParameter {
   id                      String                        @id @default(cuid())
   testId                  String
   parameterName           String
+  loincCode               String?
   unit                    String?
   dataType                ParameterType
   displayOrder            Int                           @default(1)
@@ -2265,6 +2269,8 @@ model abdm_care_contexts {
   orderId              String?
   hiTypes              String[]  @default([])
   isLinked             Boolean   @default(false)
+  linkingStatus        String    @default("DISCOVERED")
+  hipId                String?
   linkedAt             DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @default(now())
@@ -2280,6 +2286,8 @@ model abdm_consents {
   consentId     String    @unique
   patientId     String
   status        String    @default("REQUESTED")
+  consentStatus String    @default("REQUESTED")
+  signature     String?
   hiTypes       String[]  @default([])
   dateFrom      DateTime?
   dateTo        DateTime?
@@ -2298,6 +2306,8 @@ model abdm_consents {
 model abdm_transactions {
   id            String   @id
   requestId     String   @unique
+  correlationId String?
+  apiEndpoint   String?
   transactionId String?
   action        String
   status        String   @default("INITIATED")
@@ -2312,6 +2322,19 @@ model abdm_transactions {
   @@index([createdAt])
   @@index([patientId])
   @@index([status])
+}
+
+model accounting_sequences {
+  id             String    @id @default(cuid()) @db.VarChar(255)
+  sequenceName   String    @map("series_type") @db.VarChar(50)
+  financialYear  String    @map("financial_year") @db.VarChar(20)
+  branchId       String    @default("DEFAULT") @map("branch_id") @db.VarChar(100)
+  prefix         String?   @db.VarChar(50)
+  currentValue   Int       @default(0) @map("current_value")
+  updatedAt      DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([sequenceName, financialYear, branchId], map: "unique_series_fy_branch")
+  @@map("accounting_sequences")
 }
 
 enum UserRole {

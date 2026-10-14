@@ -31,6 +31,16 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
+canvas {
+  touch-action: none;
 }
 
 /* Custom Scrollbar */

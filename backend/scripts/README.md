@@ -22,7 +22,7 @@ If you have direct access to the PostgreSQL database:
 psql -U postgres -d labcore_elis -f scripts/create-admin.sql
 
 # Or if using the connection string from .env
-psql "postgresql://postgres:nikil%407041@localhost:5432/labcore_elis" -f scripts/create-admin.sql
+psql "postgresql://postgres:YOUR_PASSWORD@localhost:5432/labcore_elis" -f scripts/create-admin.sql
 ```
 
 ### Method 2: TypeScript Script (Using Application Database Connection)

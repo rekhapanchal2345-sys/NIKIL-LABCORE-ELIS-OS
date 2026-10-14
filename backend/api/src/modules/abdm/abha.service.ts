@@ -396,6 +396,7 @@ export async function getAbhaCardData(patientId: string) {
       abhaAddress: true,
       abhaStatus: true,
       abhaLinkedAt: true,
+      photoUrl: true,
     },
   });
 
@@ -413,6 +414,7 @@ export async function getAbhaCardData(patientId: string) {
     address: [patient.address, patient.city, patient.state].filter(Boolean).join(", "),
     linkedAt: patient.abhaLinkedAt,
     status: patient.abhaStatus,
+    photo: patient.photoUrl,
     // QR data follows ABDM spec: abhaAddress encoded in QR
     qrData: JSON.stringify({
       hiType: "patient",

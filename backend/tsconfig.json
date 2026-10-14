@@ -19,7 +19,8 @@
   "include": [
     "api/**/*.ts",
     "scripts/**/*.ts",
-    "prisma.config.ts"
+    "prisma.config.ts",
+    "test-phase2-billing.ts"
   ],
   "exclude": [
     "node_modules",

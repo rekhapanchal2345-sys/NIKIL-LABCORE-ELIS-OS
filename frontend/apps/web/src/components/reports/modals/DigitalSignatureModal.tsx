@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { X, PenTool, Check } from "lucide-react";
 import { reportsApi } from "@/lib/api";
 
@@ -18,53 +18,88 @@ export default function DigitalSignatureModal({
   onSuccess,
 }: DigitalSignatureModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [hasSignature, setHasSignature] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.strokeStyle = "#000";
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-      }
-    }
-  }, [isOpen]);
-
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        const rect = canvas.getBoundingClientRect();
-        ctx.beginPath();
-        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-      }
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(initCanvas, 50);
+      window.addEventListener("resize", initCanvas);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener("resize", initCanvas);
+      };
     }
+  }, [isOpen, initCanvas]);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    lastPointRef.current = { x, y };
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+    setHasSignature(true);
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     if (!isDrawing) return;
     const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        const rect = canvas.getBoundingClientRect();
-        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-        ctx.stroke();
-        setHasSignature(true);
-      }
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx || !lastPointRef.current) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const events = (e.nativeEvent as any).getCoalescedEvents?.() || [e];
+    for (const ce of events) {
+      const currentX = ce.clientX - rect.left;
+      const currentY = ce.clientY - rect.top;
+      const midX = (lastPointRef.current.x + currentX) / 2;
+      const midY = (lastPointRef.current.y + currentY) / 2;
+      ctx.quadraticCurveTo(lastPointRef.current.x, lastPointRef.current.y, midX, midY);
+      ctx.stroke();
+      lastPointRef.current = { x: currentX, y: currentY };
     }
   };
 
-  const stopDrawing = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
     setIsDrawing(false);
+    lastPointRef.current = null;
   };
 
   const clearSignature = () => {
@@ -141,13 +176,11 @@ export default function DigitalSignatureModal({
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50">
               <canvas
                 ref={canvasRef}
-                width={500}
-                height={200}
-                className="w-full h-48 bg-white rounded cursor-crosshair"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                className="w-full h-48 bg-white rounded cursor-crosshair touch-none select-none"
               />
             </div>
             <div className="flex justify-between mt-2">

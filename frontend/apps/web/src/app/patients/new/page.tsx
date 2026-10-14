@@ -1,268 +1,83 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import PixelPerfectPatientRegistration from "@/components/patients/PixelPerfectPatientRegistration";
-import { clearAuthSession } from "@/lib/auth";
-import { getAccessToken } from "@/lib/auth-storage";
+import RegisterPatientWizard from "@/components/patients/RegisterPatientWizard";
+import { ArrowLeft, UserPlus, Sparkles, Heart, ShieldCheck, Activity } from "lucide-react";
 
 export default function NewPatientPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handlePixelPerfectSubmit = async (formData: any) => {
-    setLoading(true);
-    setError("");
-
-    try {
-      // Robust phone sanitization: strips ALL non-digit chars, then strips country prefix
-      const cleanPhone = (phone: string) => {
-        if (!phone) return '';
-        let digits = phone.replace(/\D/g, ''); // remove ALL non-digits (brackets, dashes, spaces, +)
-        if (digits.length === 12 && digits.startsWith('91')) {
-          digits = digits.slice(2); // strip +91 country code
-        } else if (digits.length === 11 && digits.startsWith('0')) {
-          digits = digits.slice(1); // strip leading 0
-        }
-        return digits;
-      };
-
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const endpoint = `${apiBase}/api/patients`;
-
-      if (!formData.firstName?.trim()) {
-        throw new Error('First name is required');
-      }
-      if (!formData.lastName?.trim()) {
-        throw new Error('Last name is required');
-      }
-      if (!formData.dateOfBirth) {
-        throw new Error('Date of birth is required');
-      }
-      if (!formData.gender) {
-        throw new Error('Gender is required');
-      }
-
-      const requestData: Record<string, any> = {
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        gender: String(formData.gender).toUpperCase(),
-        dateOfBirth: formData.dateOfBirth,
-      };
-
-      if (formData.middleName?.trim()) requestData.middleName = formData.middleName.trim();
-      
-      const phoneCleaned = cleanPhone(formData.phone);
-      if (phoneCleaned) requestData.phone = phoneCleaned;
-
-      if (formData.email?.trim()) requestData.email = formData.email.trim();
-      if (formData.address?.trim()) requestData.address = formData.address.trim();
-      if (formData.city?.trim()) requestData.city = formData.city.trim();
-      if (formData.state?.trim()) requestData.state = formData.state.trim();
-      // Strip non-digits from postal code so backend 6-digit PIN validation passes
-      const postalCodeDigits = formData.postalCode ? formData.postalCode.replace(/\D/g, '') : '';
-      if (postalCodeDigits) requestData.postalCode = postalCodeDigits;
-      if (formData.country?.trim()) requestData.country = formData.country.trim();
-
-      // Only pass valid blood group (non-empty)
-      if (formData.bloodGroup && formData.bloodGroup.trim() !== '') {
-        requestData.bloodGroup = formData.bloodGroup;
-      }
-
-      if (formData.maritalStatus) requestData.maritalStatus = formData.maritalStatus;
-      if (formData.nationality?.trim()) requestData.nationality = formData.nationality.trim();
-      requestData.patientType = formData.patientType || 'GENERAL';
-
-      if (formData.emergencyContactName?.trim()) {
-        requestData.emergencyContactName = formData.emergencyContactName.trim();
-      }
-      const ecPhoneCleaned = cleanPhone(formData.emergencyContactPhone);
-      if (ecPhoneCleaned) {
-        requestData.emergencyContactPhone = ecPhoneCleaned;
-      }
-      if (formData.emergencyContactRelationship?.trim()) {
-        requestData.emergencyContactRelationship = formData.emergencyContactRelationship.trim();
-      }
-      if (formData.emergencyContactAddress?.trim()) {
-        requestData.emergencyContactAddress = formData.emergencyContactAddress.trim();
-      }
-
-      // Convert allergies text to array
-      if (typeof formData.allergies === 'string' && formData.allergies.trim()) {
-        requestData.allergies = formData.allergies.split(/[\n,]+/).map((s: string) => s.trim()).filter(Boolean);
-      } else if (Array.isArray(formData.allergies)) {
-        requestData.allergies = formData.allergies;
-      }
-
-      // Map medicalConditions to chronicDiseases array and pass medicalConditions
-      if (typeof formData.medicalConditions === 'string' && formData.medicalConditions.trim()) {
-        const conds = formData.medicalConditions.split(/[\n,]+/).map((s: string) => s.trim()).filter(Boolean);
-        requestData.chronicDiseases = conds;
-        requestData.medicalConditions = conds;
-      } else if (Array.isArray(formData.medicalConditions)) {
-        requestData.chronicDiseases = formData.medicalConditions;
-        requestData.medicalConditions = formData.medicalConditions;
-      }
-
-      // Map currentMedications to array of objects
-      if (typeof formData.currentMedications === 'string' && formData.currentMedications.trim()) {
-        requestData.currentMedications = formData.currentMedications
-          .split(/[\n,]+/)
-          .map((s: string) => s.trim())
-          .filter(Boolean)
-          .map((name: string) => ({ name }));
-      } else if (Array.isArray(formData.currentMedications)) {
-        requestData.currentMedications = formData.currentMedications;
-      }
-
-      if (formData.insuranceProvider?.trim()) requestData.insuranceProvider = formData.insuranceProvider.trim();
-      if (formData.insuranceNumber?.trim()) requestData.insuranceNumber = formData.insuranceNumber.trim();
-      if (formData.insuranceGroupNumber?.trim()) requestData.insuranceGroupNumber = formData.insuranceGroupNumber.trim();
-      if (formData.insuranceExpiryDate) requestData.insuranceExpiryDate = formData.insuranceExpiryDate;
-
-      if (formData.additionalInformation?.trim()) {
-        requestData.notes = formData.additionalInformation.trim();
-        requestData.additionalInformation = formData.additionalInformation.trim();
-      }
-
-      if (formData.preferredLanguage) requestData.preferredLanguage = formData.preferredLanguage;
-      if (formData.preferredCommunicationMethod) requestData.preferredCommunicationMethod = formData.preferredCommunicationMethod;
-      
-      // Map notificationPreferences checkboxes to communicationPreference object
-      // Use exact boolean values from user selection — never default to true
-      const notifs = Array.isArray(formData.notificationPreferences) ? formData.notificationPreferences : [];
-      requestData.notificationPreferences = notifs;
-      requestData.communicationPreference = {
-        sms: notifs.includes('SMS'),
-        email: notifs.includes('Email'),
-        whatsapp: notifs.includes('WhatsApp'),
-        call: notifs.includes('Phone Call'),
-      };
-
-      // Privacy consent: map to individual consent fields & DPDP Act 2023 versioned record
-      const consent = Boolean(formData.privacyConsent);
-      requestData.consentForTreatment = consent;
-      requestData.consentForDataSharing = consent;
-      requestData.consentForMarketing = false; // never default marketing consent to true
-      requestData.privacyConsent = consent;
-      requestData.dpdpConsent = {
-        version: "DPDP-v1.0-2024",
-        timestamp: new Date().toISOString(),
-        clinicalDiagnostics: consent,
-        digitalCommunication: formData.dpdpDigitalCommConsent !== false,
-        abhaRecordExchange: Boolean(formData.dpdpAbhaExchangeConsent),
-      };
-
-      // Get auth token
-      const token = getAccessToken();
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: 'Bearer ' + token } : {}),
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
-          errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
-        }
-        console.error('Patient creation error:', errorData);
-
-        if (response.status === 401) {
-          clearAuthSession();
-          const returnUrl = encodeURIComponent(
-            window.location.pathname + window.location.search
-          );
-          router.replace(`/login?returnUrl=${returnUrl}`);
-          throw new Error('Your session has expired. Please login again.');
-        }
-
-        // Handle validation errors
-        if (errorData.errors) {
-          const errorMessages = Object.entries(errorData.errors)
-            .map(([field, fieldError]: [string, any]) => {
-              if (fieldError && fieldError._errors) {
-                return `${field}: ${fieldError._errors.join(', ')}`;
-              }
-              if (typeof fieldError === 'string') return `${field}: ${fieldError}`;
-              return null;
-            })
-            .filter(Boolean)
-            .join('; ');
-          throw new Error(errorMessages || errorData.message || 'Failed to create patient');
-        }
-
-        throw new Error(errorData.message || 'Failed to create patient');
-      }
-
-      const result = await response.json();
-      const newPatientId = result.data?.id || result.id;
-      
-      if (window.confirm("Patient registered successfully!\n\nWould you like to book a new order for this patient now?\nClick OK to Create Order, Cancel to view Patient Profile.")) {
-        router.push(`/orders/new?patientId=${newPatientId}`);
-      } else {
-        router.push(newPatientId ? `/patients/${newPatientId}` : '/patients');
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create patient');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [wizardOpen, setWizardOpen] = useState(true);
 
   return (
     <ProtectedRoute requiredRoles={["ADMIN", "SUPER_ADMIN", "BRANCH_ADMIN", "FRONT_DESK", "LAB_TECH", "DOCTOR", "PATHOLOGIST"]}>
-      <DashboardLayout title="Add New Patient">
-        <div className="min-h-screen bg-gray-50">
-          {/* Breadcrumbs */}
-          <div className="max-w-7xl mx-auto px-4 pt-4 flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <Link href="/dashboard" className="hover:text-indigo-600 transition-colors">Dashboard</Link>
-            <span>/</span>
-            <Link href="/patients" className="hover:text-indigo-600 transition-colors">Patients</Link>
-            <span>/</span>
-            <span className="text-slate-900 font-bold">New Patient Registration</span>
+      <DashboardLayout title="Register New Patient">
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Back Link */}
+          <Link
+            href="/patients"
+            className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Patient Directory
+          </Link>
+
+          {/* Hero Banner */}
+          <div className="rounded-3xl bg-gradient-to-r from-blue-700 via-sky-700 to-indigo-900 p-8 text-white shadow-xl relative overflow-hidden">
+            <div className="absolute -right-8 -bottom-8 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                <UserPlus className="w-8 h-8" />
+              </div>
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-sky-100 uppercase tracking-wider inline-flex items-center gap-1 mb-1">
+                  <Sparkles className="w-3 h-3" /> NABL & ABDM Enterprise LIS
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Register New Diagnostic Subject</h1>
+                <p className="text-xs text-sky-100 mt-1 max-w-xl">
+                  Register patients with NABL demographics, ABHA health records, emergency contacts, clinical allergies, and statutory DPDP Act 2023 consents.
+                </p>
+              </div>
+            </div>
           </div>
 
-          {error && (
-            <div className="max-w-7xl mx-auto px-4 pt-4">
-              <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start">
-                <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-sm text-red-700">{error}</p>
+          {/* Action card if modal was closed */}
+          {!wizardOpen && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-4 shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                <Activity className="w-6 h-6" />
               </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Ready to register a new patient?</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  The 7-step wizard handles personal demographics, contact, emergency kin, clinical allergies, insurance, and ABDM/DPDP consents.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWizardOpen(true)}
+                className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition shadow-md"
+              >
+                Open Registration Wizard
+              </button>
             </div>
           )}
 
-          <Suspense
-            fallback={
-              <div className="flex h-96 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-              </div>
-            }
-          >
-            <PixelPerfectPatientRegistration
-              onSubmit={handlePixelPerfectSubmit}
-              onCancel={() => router.push('/patients')}
-              loading={loading}
-            />
-          </Suspense>
+          {/* 7-Step Enterprise Patient Wizard Modal (Exact styling of Doctor Wizard) */}
+          <RegisterPatientWizard
+            isOpen={wizardOpen}
+            onClose={() => {
+              setWizardOpen(false);
+              router.push("/patients");
+            }}
+            onSuccess={(createdPatient) => {
+              router.push("/patients");
+            }}
+          />
         </div>
       </DashboardLayout>
     </ProtectedRoute>
   );
 }
-

@@ -23,6 +23,9 @@ import {
   patientTimeline,
   amendReportHandler,
   sendReportToDoctorHandler,
+  orderReportPdf,
+  downloadOrderReportPdf,
+  publicVerifyReport,
 } from "./report.controller";
 
 import {
@@ -40,6 +43,13 @@ import {
 } from "./report.validation";
 
 const router = Router();
+
+// =======================================================
+// PUBLIC REPORT VERIFICATION (UNAUTHENTICATED FOR QR SCAN)
+// =======================================================
+
+router.get("/public/verify/:reportId", publicVerifyReport);
+router.get("/verify/:reportId", publicVerifyReport);
 
 router.use(
   authenticate
@@ -123,6 +133,32 @@ router.get(
     params: orderReportSchema,
   }),
   orderReport
+);
+
+// Stream Server-side NABL PDF / HTML
+router.get(
+  "/order/:orderId/pdf",
+  authorize(
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST,
+    UserRole.DOCTOR
+  ),
+  orderReportPdf
+);
+
+// Download Server-side NABL PDF / HTML
+router.get(
+  "/order/:orderId/download",
+  authorize(
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST,
+    UserRole.DOCTOR
+  ),
+  downloadOrderReportPdf
 );
 
 // (Moved GET /:id down below to avoid route conflict)

@@ -15,6 +15,7 @@ import {
   thyroidClassify,
   coagulationAnalyze,
   smartReportGenerate,
+  interpretOrderGemini,
 } from "./ai.controller";
 import { authenticate } from "../../../middleware/auth";
 
@@ -63,5 +64,9 @@ router.post("/coagulation/analyze", coagulationAnalyze);
 
 // Engine 6: Smart Report Narrative Generator (AI Auto-Report)
 router.post("/report/generate", smartReportGenerate);
+
+// Engine 7: Google Gemini AI Pathology Reasoning & Differential Diagnosis
+router.post("/gemini/interpret", interpretOrderGemini);
+router.get("/gemini/order/:orderId", interpretOrderGemini);
 
 export default router;

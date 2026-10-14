@@ -1,13 +1,17 @@
 node_modules/
 .env
 .env.*
-!.env.example
+.env.backup
+*.env.backup
+**/.env
+**/.env.*
+!**/.env.example
 venv/
 __pycache__/
 *.pyc
 
 # ─── Data leak prevention ───────────────────────────────────────────────
-# Database dumps, backups and encrypted archives must never reach git.
+# Database dumps, backups, uploads and encrypted archives must never reach git.
 # These contain real patient PHI, credentials and clinical results.
 *.sql
 *.dump
@@ -16,14 +20,27 @@ __pycache__/
 backups/
 .backend-backups/
 .backups/
+backend/uploads/
+uploads/
+**/uploads/
 
 # Prisma migration files are the one exception: they are schema, not data.
 !backend/prisma/migrations/**/*.sql
 
-# Next.js build output
+# Next.js and build output
 .next/
 out/
 build/backend/dist/
 backend/dist/
 frontend/apps/web/.next/
 login-portal/dist/
+
+# Debug and temporary log files
+*.log
+tsc_err.txt
+tsc_out.txt
+fe2.txt
+ts3.txt
+query
+*.tsbuildinfo
+.freebuff/

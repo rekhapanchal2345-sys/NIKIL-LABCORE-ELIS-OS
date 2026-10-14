@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { sampleApi, orderApi } from "@/lib/api";
@@ -14,21 +14,32 @@ function SignaturePad({ accent, onSigned }: { accent: "blue" | "emerald"; onSign
     ? { border: "border-blue-300", ink: "#1d4ed8", label: "text-blue-500", button: "text-blue-700" }
     : { border: "border-emerald-300", ink: "#047857", label: "text-emerald-600", button: "text-emerald-700" };
 
-  useEffect(() => {
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
     const ratio = window.devicePixelRatio || 1;
-    canvas.width = canvas.clientWidth * ratio;
-    canvas.height = canvas.clientHeight * ratio;
+    const w = rect.width || canvas.clientWidth || 300;
+    const h = rect.height || canvas.clientHeight || 80;
+    canvas.width = Math.round(w * ratio);
+    canvas.height = Math.round(h * ratio);
     const context = canvas.getContext("2d");
     if (context) {
       context.scale(ratio, ratio);
       context.lineCap = "round";
       context.lineJoin = "round";
-      context.lineWidth = 2.2;
+      context.lineWidth = 2.5;
       context.strokeStyle = colors.ink;
     }
   }, [colors.ink]);
+
+  useEffect(() => {
+    initCanvas();
+    window.addEventListener("resize", initCanvas);
+    return () => window.removeEventListener("resize", initCanvas);
+  }, [initCanvas]);
 
   const point = (event: PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -38,33 +49,60 @@ function SignaturePad({ accent, onSigned }: { accent: "blue" | "emerald"; onSign
   };
 
   const start = (event: PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
     const context = canvasRef.current?.getContext("2d");
     const position = point(event);
     if (!context || !position) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {}
     drawingRef.current = true;
+    lastPointRef.current = position;
     context.beginPath();
     context.moveTo(position.x, position.y);
   };
 
   const draw = (event: PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
     if (!drawingRef.current) return;
-    const context = canvasRef.current?.getContext("2d");
-    const position = point(event);
-    if (!context || !position) return;
-    context.lineTo(position.x, position.y);
-    context.stroke();
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context || !lastPointRef.current) return;
+
+    const events = (event.nativeEvent as any).getCoalescedEvents?.() || [event];
+    for (const ce of events) {
+      const rect = canvas.getBoundingClientRect();
+      const currentX = ce.clientX - rect.left;
+      const currentY = ce.clientY - rect.top;
+      const midX = (lastPointRef.current.x + currentX) / 2;
+      const midY = (lastPointRef.current.y + currentY) / 2;
+      context.quadraticCurveTo(lastPointRef.current.x, lastPointRef.current.y, midX, midY);
+      context.stroke();
+      lastPointRef.current = { x: currentX, y: currentY };
+    }
+
     if (!hasInkRef.current) {
       hasInkRef.current = true;
       onSigned(true);
     }
   };
 
+  const handlePointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {}
+    drawingRef.current = false;
+    lastPointRef.current = null;
+  };
+
   const clear = () => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
-    context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.restore();
     hasInkRef.current = false;
     onSigned(false);
   };
@@ -79,8 +117,8 @@ function SignaturePad({ accent, onSigned }: { accent: "blue" | "emerald"; onSign
         ref={canvasRef}
         onPointerDown={start}
         onPointerMove={draw}
-        onPointerUp={() => { drawingRef.current = false; }}
-        onPointerCancel={() => { drawingRef.current = false; }}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         className="h-20 w-full cursor-crosshair touch-none rounded-lg border-b-2 border-slate-200 bg-gradient-to-br from-white to-slate-50"
         aria-label="Handwritten digital signature pad"
       />
@@ -422,39 +460,35 @@ export default function SampleCollectionSheetPage() {
 
   return (
     <ProtectedRoute>
-      <div className="print-page-shell min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 py-8">
+      <div className="print-page-shell min-h-screen bg-slate-100/80 py-8">
         {/* Advanced Level Screen-only controls */}
         <div className="max-w-4xl mx-auto px-4 mb-5 no-print">
-          <div className="relative flex justify-between items-center rounded-2xl border border-white/10 bg-white/5 p-4 shadow-2xl shadow-blue-900/40 backdrop-blur-xl">
-            {/* Animated glow orbs */}
-            <div className="pointer-events-none absolute -top-8 -left-8 h-32 w-32 rounded-full bg-cyan-500/20 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-emerald-500/20 blur-2xl" />
+          <div className="relative flex justify-between items-center rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-4 relative">
               <button
                 onClick={() => router.back()}
-                className="flex items-center gap-2 text-slate-300 hover:text-white font-semibold transition-colors duration-200"
+                className="flex items-center gap-2 text-slate-700 hover:text-slate-950 font-semibold transition-colors duration-200 text-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                Back
+                Back to Sample
               </button>
-              <div className="h-4 w-px bg-white/20" />
+              <div className="h-4 w-px bg-slate-200" />
               <div className="flex items-center gap-2">
-                <span className="relative inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-950 shadow-lg shadow-amber-500/30">
-                  <span className="animate-pulse h-1.5 w-1.5 rounded-full bg-amber-800"></span>
-                  ⭐ Premium
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-bold text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
+                  Phlebotomy Manifest
                 </span>
-                <span className="relative inline-flex items-center gap-1.5 rounded-full border border-violet-400/40 bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-600 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/40">
-                  <span className="animate-pulse h-1.5 w-1.5 rounded-full bg-white/80"></span>
-                  Advanced Level
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[10px] font-bold text-sky-800">
+                  CLSI GP41 Protocol
                 </span>
               </div>
             </div>
             <div className="flex gap-2 relative">
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 font-bold text-white shadow-lg shadow-cyan-500/30 hover:from-cyan-400 hover:to-blue-500 border border-cyan-400/30 transition-all duration-200 hover:shadow-cyan-500/50"
+                className="flex items-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -463,7 +497,7 @@ export default function SampleCollectionSheetPage() {
               </button>
               <button
                 onClick={handleDownloadPDF}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 font-bold text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-400 hover:to-teal-500 border border-emerald-400/30 transition-all duration-200 hover:shadow-emerald-500/50"
+                className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

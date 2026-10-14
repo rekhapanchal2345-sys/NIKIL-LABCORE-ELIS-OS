@@ -492,27 +492,27 @@ export default function SampleLabelPrint({ sample, mode, onClose, onPrint }: Pro
       : "bg-slate-700 text-slate-300 border-slate-600";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="relative flex flex-col w-full max-w-4xl max-h-[92vh] bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="relative flex flex-col w-full max-w-4xl max-h-[92vh] bg-white border border-slate-200 text-slate-900 rounded-2xl shadow-2xl overflow-hidden">
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center border ${
               mode === "label"
-                ? "bg-violet-500/20 border-violet-500/40"
-                : "bg-blue-500/20 border-blue-500/40"
+                ? "bg-sky-50 border-sky-200"
+                : "bg-indigo-50 border-indigo-200"
             }`}>
               {mode === "label" ? (
-                <Tag className="h-5 w-5 text-violet-400" />
+                <Tag className="h-5 w-5 text-sky-700" />
               ) : (
-                <ClipboardList className="h-5 w-5 text-blue-400" />
+                <ClipboardList className="h-5 w-5 text-indigo-700" />
               )}
             </div>
             <div>
-              <h2 className="font-bold text-white text-base">
-                {mode === "label" ? "Specimen Label Preview" : "Collection Sheet Preview"}
+              <h2 className="font-black text-slate-900 text-base">
+                {mode === "label" ? "Specimen Label Print Station" : "Collection Manifest Preview"}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 {sample.sampleNumber} · {sample.test.testName}
               </p>
             </div>
@@ -524,13 +524,13 @@ export default function SampleLabelPrint({ sample, mode, onClose, onPrint }: Pro
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs font-black transition-all shadow-sm"
             >
-              <Printer className="h-3.5 w-3.5" /> Print
+              <Printer className="h-3.5 w-3.5" /> Print Now
             </button>
             <button
               onClick={onClose}
-              className="h-9 w-9 rounded-xl hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition"
+              className="h-9 w-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition shadow-sm"
             >
               <X className="h-5 w-5" />
             </button>
@@ -538,34 +538,34 @@ export default function SampleLabelPrint({ sample, mode, onClose, onPrint }: Pro
         </div>
 
         {/* ── Tab switcher (label vs sheet) ── */}
-        <div className="flex items-center gap-0 border-b border-slate-800 bg-slate-950 px-6 shrink-0">
+        <div className="flex items-center gap-0 border-b border-slate-200 bg-slate-50/50 px-6 shrink-0">
           {(["label", "sheet"] as const).map((t) => (
             <a
               key={t}
               href={`/samples/${sample.id}/${t === "label" ? "label" : "collection-sheet"}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 px-4 py-3 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent hover:border-blue-500 transition-all"
+              className="flex items-center gap-2 px-4 py-3 text-xs font-bold text-slate-600 hover:text-sky-700 border-b-2 border-transparent hover:border-sky-500 transition-all"
             >
               {t === "label" ? <Tag className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-              Open {t === "label" ? "Label" : "Sheet"} Page
+              Open Dedicated {t === "label" ? "Label" : "Sheet"} Page
               <Download className="h-3 w-3 opacity-60" />
             </a>
           ))}
         </div>
 
         {/* ── Preview ── */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-950/50">
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-100/70">
           <div className="flex justify-center">
             <div
               ref={printRef}
-              className="bg-white rounded-xl shadow-2xl p-4 border border-slate-200"
+              className="bg-white rounded-xl shadow-md p-4 border border-slate-200"
               style={{ display: "inline-block" }}
             >
               {mode === "label" ? (
                 <div className="flex flex-col gap-3">
                   {/* Show 3 copies of label as labs typically print in sheets */}
-                  <div className="text-[9px] text-gray-400 mb-1">Preview — 3 label copies per sheet</div>
+                  <div className="text-[10px] text-slate-400 font-bold mb-1">Standard 62mm × 29mm Thermal Vacuum Tube Labels (3-Up)</div>
                   <div className="flex flex-wrap gap-3">
                     {[0, 1, 2].map((i) => (
                       <ThermalLabel key={i} sample={sample} />
@@ -580,21 +580,21 @@ export default function SampleLabelPrint({ sample, mode, onClose, onPrint }: Pro
         </div>
 
         {/* ── Footer info ── */}
-        <div className="flex items-center gap-4 px-6 py-3 border-t border-slate-800 bg-slate-900 text-[11px] text-slate-500 shrink-0">
-          <span className="flex items-center gap-1.5">
-            <FlaskConical className="h-3 w-3" /> {sample.test.sampleContainer}
+        <div className="flex items-center gap-4 px-6 py-3 border-t border-slate-200 bg-slate-50 text-[11px] text-slate-600 shrink-0">
+          <span className="flex items-center gap-1.5 font-medium">
+            <FlaskConical className="h-3 w-3 text-sky-600" /> {sample.test.sampleContainer}
+          </span>
+          <span className="flex items-center gap-1.5 font-mono">
+            <Hash className="h-3 w-3 text-sky-600" /> {sample.barcode}
+          </span>
+          <span className="flex items-center gap-1.5 font-mono">
+            <User2 className="h-3 w-3 text-sky-600" /> {sample.order.patient.uhid}
           </span>
           <span className="flex items-center gap-1.5">
-            <Hash className="h-3 w-3" /> {sample.barcode}
+            <Building2 className="h-3 w-3 text-sky-600" /> {sample.test.processingDepartment || "General Lab"}
           </span>
-          <span className="flex items-center gap-1.5">
-            <User2 className="h-3 w-3" /> {sample.order.patient.uhid}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Building2 className="h-3 w-3" /> {sample.test.processingDepartment || "General Lab"}
-          </span>
-          <span className="ml-auto flex items-center gap-1.5 text-emerald-500">
-            <ShieldCheck className="h-3 w-3" /> Verified for print
+          <span className="ml-auto flex items-center gap-1.5 text-emerald-700 font-bold">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> NABL Format Verified
           </span>
         </div>
       </div>

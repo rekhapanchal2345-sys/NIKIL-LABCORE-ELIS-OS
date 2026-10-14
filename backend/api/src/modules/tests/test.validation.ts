@@ -126,46 +126,40 @@ export const parameterIdSchema = z.object({
   id: z.string().cuid(),
 });
 
-export const createReferenceRangeSchema =
-  z.object({
-    gender: z
-      .enum(["MALE", "FEMALE", "OTHER"])
-      .optional(),
+export const baseReferenceRangeSchema = z.object({
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  minAge: z.coerce.number().int().min(0).optional(),
+  maxAge: z.coerce.number().int().min(0).optional(),
+  criticalLow: z.coerce.number().optional(),
+  normalLow: z.coerce.number().optional(),
+  normalHigh: z.coerce.number().optional(),
+  criticalHigh: z.coerce.number().optional(),
+  interpretation: z.string().max(500).optional(),
+  minAgeUnit: z.enum(["DAYS", "MONTHS", "YEARS"]).optional(),
+  maxAgeUnit: z.enum(["DAYS", "MONTHS", "YEARS"]).optional(),
+  ageGroup: z.string().max(100).optional(),
+  notes: z.string().max(1000).optional(),
+  displayOrder: z.coerce.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
+});
 
-    minAge: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional(),
+const referenceRangeRefinement = (data: any) => {
+  const { criticalLow, normalLow, normalHigh, criticalHigh } = data;
+  if (criticalLow !== undefined && normalLow !== undefined && criticalLow >= normalLow) return false;
+  if (normalLow !== undefined && normalHigh !== undefined && normalLow > normalHigh) return false;
+  if (normalHigh !== undefined && criticalHigh !== undefined && normalHigh >= criticalHigh) return false;
+  return true;
+};
 
-    maxAge: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional(),
+export const createReferenceRangeSchema = baseReferenceRangeSchema.refine(referenceRangeRefinement, {
+  message: "Range boundaries must satisfy: criticalLow < normalLow <= normalHigh < criticalHigh",
+  path: ["normalLow"],
+});
 
-    criticalLow: z.coerce
-      .number()
-      .optional(),
-
-    normalLow: z.coerce
-      .number()
-      .optional(),
-
-    normalHigh: z.coerce
-      .number()
-      .optional(),
-
-    criticalHigh: z.coerce
-      .number()
-      .optional(),
-
-    interpretation:
-      z.string().max(500).optional(),
-  });
-
-export const updateReferenceRangeSchema =
-  createReferenceRangeSchema.partial();
+export const updateReferenceRangeSchema = baseReferenceRangeSchema.partial().refine(referenceRangeRefinement, {
+  message: "Range boundaries must satisfy: criticalLow < normalLow <= normalHigh < criticalHigh",
+  path: ["normalLow"],
+});
 
 export const referenceRangeIdSchema =
   z.object({

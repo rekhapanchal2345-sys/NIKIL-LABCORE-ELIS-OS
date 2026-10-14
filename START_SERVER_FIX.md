@@ -73,7 +73,7 @@ psql -U postgres -d labcore_elis -h localhost
 ## Environment Variables
 Verify your `.env` file has the correct database URL:
 ```
-DATABASE_URL="postgresql://postgres:nikil%407041@localhost:5432/labcore_elis"
+DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/labcore_elis"
 ```
 
 ## Frontend Connection

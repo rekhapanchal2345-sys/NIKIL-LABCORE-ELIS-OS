@@ -33,7 +33,8 @@ import {
   Radio,
   MessageSquare,
   Brain,
-  X
+  X,
+  Server
 } from "lucide-react";
 import { approvalApi, invoiceApi } from "@/lib/api";
 import LabCoreLogo from "@/components/common/LabCoreLogo";
@@ -223,6 +224,7 @@ const menuSections: MenuSection[] = [
         },
         children: [
           { label: "Fleet Dashboard", href: "/analyzers" },
+          { label: "📑 DOCUMINICATION (PDF SOP)", href: "/analyzers?tab=interactive_docs", badge: "PDF SOP", badgeVariant: "emerald" },
           { label: "🚨 STAT Emergency Lane", href: "/analyzers?tab=stat_lane", badge: "15m TAT", badgeVariant: "red" },
           { label: "Reagents & Consumables", href: "/analyzers?tab=reagents" },
           { label: "Shift QC & Westgard Gate", href: "/analyzers?tab=shift_qc" },
@@ -232,6 +234,27 @@ const menuSections: MenuSection[] = [
           { label: "Virtual Protocol Simulator", href: "/analyzers?tab=simulator" },
           { label: "🧪 Hematology Suite", href: "/analyzers?tab=hematology" },
           { label: "Diagnostics & Error Logs", href: "/analyzers?tab=diagnostics" },
+        ],
+      },
+      {
+        label: "Integration Engine",
+        href: "/integrations",
+        icon: Server,
+        accent: {
+          bg: "bg-sky-500/10 text-sky-400 group-hover:bg-sky-500/20 group-hover:text-sky-300",
+          text: "text-sky-400",
+          activeBorder: "border-sky-400",
+          activeIconBg: "bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-[0_0_12px_rgba(56,189,248,0.4)]",
+          activeText: "text-white font-semibold",
+        },
+        children: [
+          { label: "Channel Matrix", href: "/integrations" },
+          { label: "Live Message Stream", href: "/integrations", badge: "Live", badgeVariant: "emerald" },
+          { label: "Protocol Simulator", href: "/integrations", badge: "Sandbox", badgeVariant: "blue" },
+          { label: "Dead Letter Queue (DLQ)", href: "/integrations", badge: "Auto-Heal", badgeVariant: "red" },
+          { label: "LOINC Code Crosswalk", href: "/integrations" },
+          { label: "Cold-Chain IoT Telemetry", href: "/integrations" },
+          { label: "Compliance & Security Audit", href: "/integrations" },
         ],
       },
     ],

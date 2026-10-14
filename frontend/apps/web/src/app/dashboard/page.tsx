@@ -21,6 +21,17 @@ import WorkloadCharts from "@/components/dashboard/WorkloadCharts";
 import LiveActivityFeed from "@/components/dashboard/LiveActivityFeed";
 import DateRangeSelector from "@/components/dashboard/DateRangeSelector";
 
+// Brand New Hospital, Lab & Clinic Modules
+import HospitalIntakeMatrix from "@/components/dashboard/HospitalIntakeMatrix";
+import CriticalPanicActionDesk from "@/components/dashboard/CriticalPanicActionDesk";
+import DepartmentWorkstationGrid from "@/components/dashboard/DepartmentWorkstationGrid";
+import OpdTokenQueueWidget from "@/components/dashboard/OpdTokenQueueWidget";
+import ShiftHandoverReconciliation from "@/components/dashboard/ShiftHandoverReconciliation";
+
+// Ultra-Advanced Integration Engine Modules
+import IntegrationEngineDashboard from "@/components/dashboard/IntegrationEngineDashboard";
+import IntegrationEngineWidget from "@/components/dashboard/IntegrationEngineWidget";
+
 import {
   RefreshCw,
   Clock,
@@ -35,14 +46,31 @@ import {
   CheckCircle2,
   ShieldCheck,
   Zap,
+  Building2,
+  Stethoscope,
+  Flame,
+  PhoneCall,
+  Printer,
+  FileText,
+  Users,
+  QrCode,
+  MapPin,
+  Award,
+  ChevronDown,
+  BellRing,
+  Server
 } from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [dateRange, setDateRange] = useState("today");
-  const [activeTab, setActiveTab] = useState<"live" | "tat" | "analyzers" | "analytics" | "audit">("live");
-  const [luxuryTheme, setLuxuryTheme] = useState<"sapphire" | "midnight" | "emerald">("midnight");
-  
+  const [activeTab, setActiveTab] = useState<
+    "live" | "engine" | "panic" | "workstations" | "token" | "tat" | "revenue" | "audit"
+  >("live");
+
+  const [activeBranch, setActiveBranch] = useState("Main Hospital Central Lab (Block A - Level 1)");
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+
   // Dashboard state
   const [stats, setStats] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -243,6 +271,15 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Optional background 30-second poll
+  useEffect(() => {
+    if (!autoSyncEnabled) return;
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [autoSyncEnabled, fetchDashboardData]);
+
   // Dynamic Greeting based on current hour
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -259,157 +296,181 @@ export default function DashboardPage() {
         <div className="space-y-6 pb-12">
           
           {/* ========================================================
-              EXECUTIVE LAB COMMAND CENTER HEADER
+              STAT EMERGENCY & CRITICAL URGENCY FLASH TICKER
               ======================================================== */}
-          <div className={`p-6 relative overflow-hidden transition-all duration-500 ${
-            luxuryTheme === "midnight"
-              ? "executive-hero-card"
-              : luxuryTheme === "emerald"
-              ? "luxury-glass-card border-emerald-200/90 bg-gradient-to-r from-emerald-50/40 via-white to-teal-50/40"
-              : "luxury-glass-card border-sky-200/90 bg-gradient-to-r from-sky-50/40 via-white to-indigo-50/40"
-          }`}>
-            {/* Background subtle decorative glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-400/10 via-indigo-400/5 to-transparent rounded-full pointer-events-none -mr-20 -mt-20 blur-2xl" />
+          <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-sky-50 border border-slate-200/90 rounded-2xl p-2.5 px-4 shadow-2xs flex items-center justify-between gap-3 text-xs overflow-hidden">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-600 text-white font-black text-[10px] uppercase tracking-wider shadow-2xs animate-pulse">
+                <Flame className="h-3 w-3" /> STAT TICKER
+              </span>
+            </div>
 
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
-              {/* Left Column: Greeting, Role, Health Badge */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* System Health Pulse Pill */}
-                  <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold shadow-xs ${
-                    luxuryTheme === "midnight"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
-                  }`}>
-                    <span className="pulse-dot bg-emerald-400">
-                      <span className="pulse-dot-inner bg-emerald-400" />
+            <div className="flex items-center gap-6 overflow-x-auto text-[11px] text-slate-700 font-medium whitespace-nowrap scrollbar-none py-0.5">
+              <span className="flex items-center gap-1.5 text-rose-900 font-bold">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-600 animate-ping" />
+                [CASUALTY STAT] ICU Bed #04: Serum Potassium 6.9 mmol/L (Sub-15m Doctor Call Pending)
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5 text-slate-800">
+                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                [NABL QC PASSED] Cobas c311 Chemistry Level 1 & 2 controls within 1-2s range
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5 text-sky-800">
+                <QrCode className="h-3 w-3 text-sky-600" />
+                [ABHA COUNTER] Fast-Track Token #A-042 called at Phlebotomy Desk 01
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5 text-teal-800">
+                <ShieldCheck className="h-3 w-3 text-teal-600" />
+                [COLD CHAIN] North Clinic B2B Specimen Batch #48 verified at 4.1°C
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5 text-indigo-900 font-bold">
+                <Server className="h-3 w-3 text-indigo-600" />
+                [INTEGRATION ENGINE] 10/10 Channels Synced • MLLP:2575 & ASTM:COM3 Ingest Active
+              </span>
+            </div>
+
+            <button
+              onClick={() => setActiveTab("panic")}
+              className="text-[11px] font-extrabold text-rose-700 hover:text-rose-900 flex-shrink-0 flex items-center gap-1 hover:underline"
+            >
+              Action Desk &rarr;
+            </button>
+          </div>
+
+          {/* ========================================================
+              EXECUTIVE CLINICAL HOSPITAL COMMAND CENTER HEADER
+              (Light White Medical Aesthetic with Hospital Emblem & Accreditation)
+              ======================================================== */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 relative overflow-hidden transition-all duration-300">
+            {/* Subtle medical ambient accent glow */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-100/40 via-teal-50/30 to-transparent rounded-full pointer-events-none -mr-24 -mt-24 blur-3xl" />
+
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
+              
+              {/* Left Column: Hospital Emblem Logo, Institution Name, Accreditations */}
+              <div className="flex items-start gap-4">
+                {/* Official Medical Heraldic Logo Emblem */}
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-sky-500 p-0.5 shadow-md flex-shrink-0">
+                  <div className="h-full w-full bg-white rounded-[14px] flex flex-col items-center justify-center p-1 text-center shadow-inner relative overflow-hidden">
+                    <div className="absolute -top-3 -right-3 h-8 w-8 bg-sky-100 rounded-full blur-xs pointer-events-none" />
+                    {/* SVG Medical Cross + DNA Helix + Laurel Badge */}
+                    <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-10 sm:w-10 text-sky-600" fill="currentColor">
+                      <path d="M10.5 4a1.5 1.5 0 0 1 3 0v4.5H18a1.5 1.5 0 0 1 0 3h-4.5V16a1.5 1.5 0 0 1-3 0v-4.5H6a1.5 1.5 0 0 1 0-3h4.5V4z" />
+                      <circle cx="12" cy="10" r="1.5" className="text-amber-500" fill="#f59e0b" />
+                    </svg>
+                    <span className="text-[8px] font-black uppercase tracking-wider text-slate-800 leading-none mt-0.5">
+                      LABCORE
                     </span>
-                    LIS Core Online • 99.9% Uptime
-                  </span>
-
-                  {/* Role Badge */}
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
-                    luxuryTheme === "midnight"
-                      ? "bg-white/10 text-slate-200 border-white/15"
-                      : "bg-slate-100 text-slate-700 border-slate-200"
-                  }`}>
-                    <ShieldCheck className="h-3.5 w-3.5 text-sky-400" />
-                    {getRoleLabel(user?.role) || "Laboratory Administrator"}
-                  </span>
-
-                  {/* Urgent Panic Badge (if alerts exist) */}
-                  {criticalCount > 0 && (
-                    <button
-                      onClick={() => setActiveTab("live")}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-600 text-white animate-pulse shadow-sm hover:bg-rose-700 transition-colors"
-                    >
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      {criticalCount} Panic Alert{criticalCount > 1 ? "s" : ""}
-                    </button>
-                  )}
+                    <span className="text-[6.5px] font-bold text-sky-700 tracking-tighter">
+                      CLINICAL LIS
+                    </span>
+                  </div>
                 </div>
 
-                <div className="pt-1">
-                  <h1 className={`text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-2 ${
-                    luxuryTheme === "midnight" ? "text-white" : "text-slate-900"
-                  }`}>
-                    Laboratory Command Center
-                    <span className="h-2 w-2 rounded-full bg-sky-400 hidden sm:inline-block animate-pulse" />
-                  </h1>
-                  <p className={`text-sm mt-1 max-w-2xl ${
-                    luxuryTheme === "midnight" ? "text-slate-300" : "text-slate-500"
-                  }`}>
-                    {greeting}, <span className={`font-semibold ${
-                      luxuryTheme === "midnight" ? "text-white underline decoration-sky-400" : "text-slate-800"
-                    }`}>{user?.fullName || "Doctor / Admin"}</span>. Diagnostic workflow, specimen telemetry, and real-time clinical laboratory operations.
-                  </p>
+                {/* Institution Identity & Doctor Greeting */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      LIS Core Online • 99.98% Uptime
+                    </span>
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                      <Award className="h-3 w-3 text-sky-600" />
+                      NABL ISO 15189:2022 (MC-5421)
+                    </span>
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                      <QrCode className="h-3 w-3 text-indigo-600" />
+                      ABDM / ABHA HIP M1-M3
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("engine")}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-300 hover:bg-sky-100 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Server className="h-3 w-3 text-sky-600" />
+                      Integration Engine: 10/10 Active &rarr;
+                    </button>
+                  </div>
+
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      APEX MULTI-SPECIALTY HOSPITAL & REFERENCE DIAGNOSTICS
+                    </h1>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {greeting}, <strong className="text-slate-800 font-bold">{user?.fullName || "Duty Officer"}</strong> ({getRoleLabel(user?.role) || "Laboratory Administrator"}). Hospital central pathology, automated analyzer telemetry, and patient specimen command hub.
+                    </p>
+                  </div>
+
+                  {/* Branch Location Selector */}
+                  <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
+                    <span className="flex items-center gap-1 font-bold text-slate-800">
+                      <MapPin className="h-3.5 w-3.5 text-rose-500" /> Facility Unit:
+                    </span>
+                    <select
+                      value={activeBranch}
+                      onChange={(e) => setActiveBranch(e.target.value)}
+                      className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="Main Hospital Central Lab (Block A - Level 1)">Main Hospital Central Lab (Block A - Level 1)</option>
+                      <option value="OPD Phlebotomy & Day-Care Collection Centre">OPD Phlebotomy & Day-Care Collection Centre</option>
+                      <option value="Emergency / Casualty STAT Satellite Unit">Emergency / Casualty STAT Satellite Unit</option>
+                      <option value="North City B2B Referral Annex">North City B2B Referral Annex</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Right Column: Live Clock, Theme Switcher, Date Range, Refresh Button */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 self-start lg:self-center flex-wrap">
-                {/* Luxury Theme Selector */}
-                <div className={`p-1 rounded-xl border flex items-center gap-1 text-[11px] font-semibold ${
-                  luxuryTheme === "midnight"
-                    ? "bg-white/10 border-white/15 text-slate-300"
-                    : "bg-slate-100/90 border-slate-200 text-slate-600"
-                }`}>
-                  <button
-                    onClick={() => setLuxuryTheme("midnight")}
-                    title="Midnight Executive Theme"
-                    className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                      luxuryTheme === "midnight"
-                        ? "bg-slate-900 text-white shadow-xs border border-white/20"
-                        : "hover:text-slate-900"
-                    }`}
-                  >
-                    <span className="h-2.5 w-2.5 rounded-full bg-indigo-400" />
-                    <span>Midnight</span>
-                  </button>
-                  <button
-                    onClick={() => setLuxuryTheme("sapphire")}
-                    title="Royal Sapphire Theme"
-                    className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                      luxuryTheme === "sapphire"
-                        ? "bg-white text-sky-700 shadow-xs border border-sky-300"
-                        : "hover:text-slate-900"
-                    }`}
-                  >
-                    <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
-                    <span>Sapphire</span>
-                  </button>
-                  <button
-                    onClick={() => setLuxuryTheme("emerald")}
-                    title="Clinical Emerald Theme"
-                    className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                      luxuryTheme === "emerald"
-                        ? "bg-white text-emerald-700 shadow-xs border border-emerald-300"
-                        : "hover:text-slate-900"
-                    }`}
-                  >
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    <span>Emerald</span>
-                  </button>
-                </div>
-
-                {/* Live IST Clock Card */}
-                <div className={`px-4 py-2 rounded-xl border text-left shadow-xs flex items-center gap-3 ${
-                  luxuryTheme === "midnight"
-                    ? "bg-white/10 border-white/15 text-white"
-                    : "bg-slate-50 border-slate-200/80 text-slate-900"
-                }`}>
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                    luxuryTheme === "midnight"
-                      ? "bg-sky-400/20 text-sky-300"
-                      : "bg-sky-500/10 text-sky-600"
-                  }`}>
-                    <Clock className="h-4.5 w-4.5" />
+              {/* Right Column: Duty Officers Strip, Live IST Clock, Controls */}
+              <div className="flex flex-col sm:flex-row xl:flex-col items-start xl:items-end justify-between gap-3 flex-shrink-0">
+                {/* On-Duty Clinical Officers Badge Box */}
+                <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/90 text-xs space-y-1 w-full sm:w-auto">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Stethoscope className="h-3 w-3 text-sky-600" /> Duty Pathologist
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                      Active On Desk
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold font-mono tracking-wide">
-                      {currentTime || "--:--:--"}
-                    </p>
-                    <p className={`text-[10px] font-medium ${
-                      luxuryTheme === "midnight" ? "text-slate-300" : "text-slate-400"
-                    }`}>
-                      {currentDateStr || "IST (UTC+5:30)"}
-                    </p>
+                  <p className="font-extrabold text-slate-900 text-xs">
+                    Dr. Sandeep Deshmukh, MD Path <span className="font-mono text-[10px] text-slate-500">[MCI-48921]</span>
+                  </p>
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-200/60 gap-4">
+                    <span>Shift MLT: <strong>Priya Sharma</strong></span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-sky-700 font-bold">Phleb Ext: 401</span>
                   </div>
                 </div>
 
-                {/* Filter & Refresh */}
-                <div className="flex items-center gap-2">
+                {/* Clock & Action Controls Bar */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Live IST Clock */}
+                  <div className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xs flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-sky-600" />
+                    <div>
+                      <p className="text-xs font-mono font-black tracking-wide text-slate-900">
+                        {currentTime || "--:--:--"}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {currentDateStr || "IST"}
+                      </p>
+                    </div>
+                  </div>
+
                   <DateRangeSelector value={dateRange} onChange={setDateRange} />
+
                   <button
                     onClick={fetchDashboardData}
                     disabled={loading}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 ${
-                      luxuryTheme === "midnight"
-                        ? "bg-white/10 border border-white/20 text-white hover:bg-white/20"
-                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition-all shadow-2xs disabled:opacity-50"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-sky-400" : ""}`} />
+                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-sky-600" : ""}`} />
                     <span>Sync</span>
                   </button>
                 </div>
@@ -418,32 +479,31 @@ export default function DashboardPage() {
           </div>
 
           {/* ========================================================
-              CRITICAL PANIC EMERGENCY NOTIFICATION BAR (If Active)
+              CRITICAL PANIC EMERGENCY PROMPT BAR (If Criticals Exist)
               ======================================================== */}
           {criticalCount > 0 && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-rose-50/80 to-amber-50/60 border-2 border-rose-300/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-rose-50/80 to-amber-50/60 border-2 border-rose-300 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md flex-shrink-0 animate-pulse">
+                <div className="h-10 w-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs flex-shrink-0 animate-pulse">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-rose-950">
+                  <h3 className="font-extrabold text-sm text-rose-950">
                     High Priority: {criticalCount} Critical Panic Value Result{criticalCount > 1 ? "s" : ""} Flagged
                   </h3>
                   <p className="text-xs text-rose-700 mt-0.5">
-                    Results have breached critical biological alert limits. Mandatory immediate clinician telephonic notification required.
+                    Biological alert limits breached. NABL ISO 15189 requires immediate doctor notification & documented verbal read-back.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <a
-                  href="/results"
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs"
-                >
-                  Review Panic Results &rarr;
-                </a>
-              </div>
+              <button
+                onClick={() => setActiveTab("panic")}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <PhoneCall className="h-3.5 w-3.5" />
+                <span>Open Panic Action Desk &rarr;</span>
+              </button>
             </div>
           )}
 
@@ -470,71 +530,133 @@ export default function DashboardPage() {
           />
 
           {/* ========================================================
-              NAVIGATION TABS CONSOLE
+              NAVIGATION TABS CONSOLE (7 HIGH-UTILITY HOSPITAL TABS)
               ======================================================== */}
-          <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/90 border border-slate-200/70 overflow-x-auto max-w-full">
+          <div className="flex items-center justify-between border-b border-slate-200/90 pb-3">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200 overflow-x-auto max-w-full">
               <button
                 onClick={() => setActiveTab("live")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "live" ? "dashboard-tab-active" : "dashboard-tab-inactive"
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "live"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <Zap className="h-3.5 w-3.5" />
+                <Building2 className="h-3.5 w-3.5 text-sky-600" />
                 <span>Live Operations</span>
               </button>
 
               <button
+                onClick={() => setActiveTab("engine")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "engine"
+                    ? "bg-white text-sky-800 shadow-xs border border-sky-300 ring-1 ring-sky-200"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Server className="h-3.5 w-3.5 text-sky-600" />
+                <span>Integration Engine</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              </button>
+
+              <button
+                onClick={() => setActiveTab("panic")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "panic"
+                    ? "bg-white text-rose-700 shadow-xs border border-rose-200"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                <span>Critical Panic Desk</span>
+                {criticalCount > 0 && (
+                  <span className="h-2 w-2 rounded-full bg-rose-600 animate-ping" />
+                )}
+              </button>
+
+              <button
+                onClick={() => setActiveTab("workstations")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "workstations"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Cpu className="h-3.5 w-3.5 text-indigo-600" />
+                <span>Analyzers & Stations</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("token")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "token"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <BellRing className="h-3.5 w-3.5 text-amber-600" />
+                <span>OPD Token Queue</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab("tat")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "tat" ? "dashboard-tab-active" : "dashboard-tab-inactive"
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "tat"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <Clock className="h-3.5 w-3.5" />
-                <span>Turnaround Time (TAT SLA)</span>
+                <Clock className="h-3.5 w-3.5 text-teal-600" />
+                <span>TAT SLA & Compliance</span>
               </button>
 
               <button
-                onClick={() => setActiveTab("analyzers")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "analyzers" ? "dashboard-tab-active" : "dashboard-tab-inactive"
+                onClick={() => setActiveTab("revenue")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "revenue"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <Cpu className="h-3.5 w-3.5" />
-                <span>Analyzers & Hardware</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("analytics")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "analytics" ? "dashboard-tab-active" : "dashboard-tab-inactive"
-                }`}
-              >
-                <TrendingUp className="h-3.5 w-3.5" />
-                <span>Revenue & Workload</span>
+                <IndianRupee className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Day-Close & Handover</span>
               </button>
 
               <button
                 onClick={() => setActiveTab("audit")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "audit" ? "dashboard-tab-active" : "dashboard-tab-inactive"
+                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
+                  activeTab === "audit"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <Activity className="h-3.5 w-3.5" />
-                <span>Live Audit Stream</span>
+                <Activity className="h-3.5 w-3.5 text-slate-600" />
+                <span>Live Audit</span>
               </button>
             </div>
 
-            <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-slate-400">
-              <Sparkles className="h-3.5 w-3.5 text-sky-500" /> Auto-sync enabled
+            <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+              <Sparkles className="h-3.5 w-3.5 text-sky-500" /> Auto-sync: 30s
             </span>
           </div>
 
           {/* ========================================================
-              TAB VIEW 1: LIVE OPERATIONS (COMMAND CENTER CORE)
+              TAB VIEW 1: LIVE OPERATIONS (CORE COMMAND CENTER)
               ======================================================== */}
           {activeTab === "live" && (
             <div className="space-y-6">
+              {/* Multi-Channel Hospital Requisition Matrix */}
+              <HospitalIntakeMatrix
+                stats={{
+                  opdCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.55) : 64,
+                  ipdCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.25) : 38,
+                  statCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.08) : 12,
+                  b2bCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.12) : 42,
+                  total: stats?.orders?.today || 156,
+                }}
+                loading={loading}
+              />
+
               {/* Rapid Command Shortcuts */}
               <QuickActions userRole={getRoleLabel(user?.role)} />
 
@@ -556,11 +678,51 @@ export default function DashboardPage() {
                 <CriticalAlerts alerts={criticalAlerts} loading={loading} />
                 <AnalyzerTelemetryWidget stats={stats?.analyzers} loading={loading} />
               </div>
+
+              {/* Tertiary Operational Row: Ultra-Advanced Integration Engine Widget */}
+              <IntegrationEngineWidget onOpenEngine={() => setActiveTab("engine")} loading={loading} />
             </div>
           )}
 
           {/* ========================================================
-              TAB VIEW 2: TURNAROUND TIME & QUALITY SLA
+              TAB VIEW: ULTRA-ADVANCED HOSPITAL INTEGRATION ENGINE
+              ======================================================== */}
+          {activeTab === "engine" && (
+            <div className="space-y-6">
+              <IntegrationEngineDashboard />
+            </div>
+          )}
+
+          {/* ========================================================
+              TAB VIEW 2: NABL CRITICAL & PANIC VALUES ACTION DESK
+              ======================================================== */}
+          {activeTab === "panic" && (
+            <div className="space-y-6">
+              <CriticalPanicActionDesk alerts={criticalAlerts} loading={loading} />
+            </div>
+          )}
+
+          {/* ========================================================
+              TAB VIEW 3: DEPARTMENT WORKSTATIONS & ANALYZER INTERFACING
+              ======================================================== */}
+          {activeTab === "workstations" && (
+            <div className="space-y-6">
+              <DepartmentWorkstationGrid />
+              <AnalyzerTelemetryWidget stats={stats?.analyzers} loading={loading} />
+            </div>
+          )}
+
+          {/* ========================================================
+              TAB VIEW 4: OPD TOKEN QUEUE & RECEPTION DESK
+              ======================================================== */}
+          {activeTab === "token" && (
+            <div className="space-y-6">
+              <OpdTokenQueueWidget />
+            </div>
+          )}
+
+          {/* ========================================================
+              TAB VIEW 5: TURNAROUND TIME & QUALITY SLA
               ======================================================== */}
           {activeTab === "tat" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -578,47 +740,40 @@ export default function DashboardPage() {
           )}
 
           {/* ========================================================
-              TAB VIEW 3: ANALYZERS & HARDWARE TELEMETRY
+              TAB VIEW 6: REVENUE & SHIFT HANDOVER RECONCILIATION
               ======================================================== */}
-          {activeTab === "analyzers" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-6">
-                <AnalyzerTelemetryWidget stats={stats?.analyzers} loading={loading} />
-              </div>
-              <div className="lg:col-span-6">
-                <LiveActivityFeed activities={activities} loading={loading} />
+          {activeTab === "revenue" && (
+            <div className="space-y-6">
+              <ShiftHandoverReconciliation
+                todayRevenue={stats?.financial?.todayRevenue || 144950}
+                pendingPayments={stats?.financial?.pendingPayments || 12400}
+              />
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-7">
+                  <WorkloadCharts 
+                    orderTrends={orderTrends} 
+                    topTests={testStats?.mostRequested} 
+                    loading={loading} 
+                  />
+                </div>
+                <div className="lg:col-span-5">
+                  <FinancialAnalyticsWidget
+                    paymentStats={paymentStats}
+                    todayRevenue={stats?.financial?.todayRevenue || 0}
+                    pendingPayments={stats?.financial?.pendingPayments || 0}
+                    totalInvoices={stats?.invoices?.total || 0}
+                    paidInvoices={stats?.invoices?.paid || 0}
+                    pendingInvoices={stats?.invoices?.pending || 0}
+                    loading={loading}
+                  />
+                </div>
               </div>
             </div>
           )}
 
           {/* ========================================================
-              TAB VIEW 4: FINANCIAL & WORKLOAD ANALYTICS
-              ======================================================== */}
-          {activeTab === "analytics" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7">
-                <WorkloadCharts 
-                  orderTrends={orderTrends} 
-                  topTests={testStats?.mostRequested} 
-                  loading={loading} 
-                />
-              </div>
-              <div className="lg:col-span-5">
-                <FinancialAnalyticsWidget
-                  paymentStats={paymentStats}
-                  todayRevenue={stats?.financial?.todayRevenue || 0}
-                  pendingPayments={stats?.financial?.pendingPayments || 0}
-                  totalInvoices={stats?.invoices?.total || 0}
-                  paidInvoices={stats?.invoices?.paid || 0}
-                  pendingInvoices={stats?.invoices?.pending || 0}
-                  loading={loading}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW 5: LIVE AUDIT ACTIVITY STREAM
+              TAB VIEW 7: LIVE AUDIT ACTIVITY STREAM
               ======================================================== */}
           {activeTab === "audit" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

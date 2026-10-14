@@ -15,6 +15,10 @@ import BulkPriceModal from "@/components/tests/BulkPriceModal";
 import CloneTestModal from "@/components/tests/CloneTestModal";
 import QuickOrderRequisitionModal from "@/components/tests/QuickOrderRequisitionModal";
 import ClinicalTrainingEngine from "@/components/tests/ClinicalTrainingEngine";
+import AnalyzerInterfacingEngine from "@/components/tests/AnalyzerInterfacingEngine";
+import B2BTariffCommissionStudio from "@/components/tests/B2BTariffCommissionStudio";
+import PanicValueAlertMatrix from "@/components/tests/PanicValueAlertMatrix";
+import PreAnalyticalPhlebotomyGuide from "@/components/tests/PreAnalyticalPhlebotomyGuide";
 import {
   FlaskConical,
   Search,
@@ -54,6 +58,16 @@ import {
   Sliders,
   Check,
   Brain,
+  Cpu,
+  ShieldAlert,
+  Thermometer,
+  Award,
+  BadgeCheck,
+  Microscope,
+  Stethoscope,
+  Send,
+  Zap,
+  Info
 } from "lucide-react";
 
 export default function TestsPage() {
@@ -65,9 +79,19 @@ export default function TestsPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Master Workstation Tabs
-  const [workstationTab, setWorkstationTab] = useState<
-    "catalog" | "packages" | "parameters" | "formulas" | "qc" | "training"
-  >("catalog");
+  type WorkstationTabType =
+    | "catalog"
+    | "packages"
+    | "parameters"
+    | "formulas"
+    | "qc"
+    | "interfacing"
+    | "b2b-tariff"
+    | "panic-alerts"
+    | "phlebotomy-sop"
+    | "training";
+
+  const [workstationTab, setWorkstationTab] = useState<WorkstationTabType>("catalog");
 
   // View Mode: Table vs Grid Cards
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -323,33 +347,35 @@ export default function TestsPage() {
         )}
 
         {/* =========================================================================
-            1. LIGHT WHITE CLINICAL COMMAND HEADER & KPI SECTION
+            1. LIGHT WHITE CLINICAL HOSPITAL HEADER & CREDENTIALS
         ========================================================================= */}
         <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 text-slate-900 shadow-xs">
-          {/* Subtle Ambient Clinical Glows */}
-          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-blue-50/80 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-indigo-50/60 blur-3xl" />
+          {/* Subtle medical tricolor accent strip on top */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-600" />
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2.5">
               {/* Quality & Accreditation Badges */}
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-800">
-                  <FlaskConical className="h-3.5 w-3.5 text-blue-600" /> Diagnostic Test Master Directory
+                  <FlaskConical className="h-3.5 w-3.5 text-blue-600" /> Clinical Diagnostic Master Directory
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-800">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> NABL &amp; ISO 15189:2022
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> NABL Accredited (ISO 15189:2022)
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-800">
-                  <Activity className="h-3.5 w-3.5 text-indigo-600" /> LOINC &amp; ABDM Interoperable
+                  <Activity className="h-3.5 w-3.5 text-indigo-600" /> LOINC &amp; ABDM FHIR R4 Ready
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-800">
+                  <Cpu className="h-3.5 w-3.5 text-purple-600" /> ASTM / HL7 Bi-Directional Interfaced
                 </span>
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                Diagnostic Test Directory &amp; Tariff Master
+                Diagnostic Tests &amp; Clinical Integration Engine
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-                Hospital-grade pathology test catalog with multi-tier pricing, age- and gender-stratified biological intervals, vacutainer tube SOPs, automated calculation formulas, and health packages.
+                Hospital-grade pathology investigation catalog with bi-directional analyzer interfacing, multi-tier B2B tariffs, pre-analytical vacutainer SOPs, automated clinical formulas, and NABL panic alert thresholds.
               </p>
             </div>
 
@@ -370,7 +396,7 @@ export default function TestsPage() {
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3.5 py-2.5 text-xs font-bold text-slate-700 transition shadow-xs cursor-pointer"
               >
                 <Printer className="h-4 w-4 text-blue-600" />
-                <span>Print Rate Card</span>
+                <span>Print Tariff Card</span>
               </button>
 
               <button
@@ -400,13 +426,13 @@ export default function TestsPage() {
                 <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
               </div>
               <p className="mt-1 text-2xl font-black text-slate-900">{tests.length}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">{totalActive} Operational</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{totalActive} Operational Tests</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Departments</span>
               <p className="mt-1 text-2xl font-black text-slate-900">{totalCategoriesCount}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Biochem, Hema, Micro</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Biochem, Hema, Micro, Immuno</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
@@ -415,148 +441,82 @@ export default function TestsPage() {
                 <Flame className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
               </div>
               <p className="mt-1 text-2xl font-black text-slate-900">{statAvailableCount}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Sub-4h Turnaround</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Sub-4h Emergency TAT</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Health Packages</span>
               <p className="mt-1 text-2xl font-black text-slate-900">4</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Profiles &amp; Full Body</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Profiles &amp; Executive Wellness</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Quality Standard</span>
               <p className="mt-1 text-xl font-black text-slate-900">ISO 15189</p>
-              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">NABL Compliant</p>
+              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">NABL MC-4129 Certified</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tariff Tiers</span>
-              <p className="mt-1 text-xl font-black text-slate-900">OPD / B2B</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Dual Rate Structure</p>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tariff Structure</span>
+              <p className="mt-1 text-xl font-black text-slate-900">3-Tier B2B</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">0% GST Healthcare Exempt</p>
             </div>
           </div>
         </div>
 
         {/* =========================================================================
-            2. MASTER WORKSTATION TABS (Light White Professional Tabs)
+            2. MASTER WORKSTATION TABS (Professional Clinical Tab Navigation)
         ========================================================================= */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setWorkstationTab("catalog")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                workstationTab === "catalog"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <TableIcon className="h-3.5 w-3.5" />
-              <span>1. Diagnostic Test Menu</span>
-              <span
-                className={`rounded-full px-2 py-0.2 text-[10px] font-mono font-bold ${
-                  workstationTab === "catalog" ? "bg-white text-blue-700" : "bg-slate-100 text-slate-700"
-                }`}
-              >
-                {filteredTests.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setWorkstationTab("packages")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                workstationTab === "packages"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <Package className="h-3.5 w-3.5" />
-              <span>2. Health Packages &amp; Bundles</span>
-            </button>
-
-            <button
-              onClick={() => setWorkstationTab("parameters")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                workstationTab === "parameters"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span>3. Analyte Reference Matrix</span>
-            </button>
-
-            <button
-              onClick={() => setWorkstationTab("formulas")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                workstationTab === "formulas"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <Calculator className="h-3.5 w-3.5" />
-              <span>4. Clinical Formulas &amp; Derivations</span>
-              <span className="rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.2">
-                NEW
-              </span>
-            </button>
-
-            <button
-              onClick={() => setWorkstationTab("qc")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                workstationTab === "qc"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              <span>5. Analyzer QC &amp; Instruments</span>
-              <span className="rounded-full bg-blue-100 text-blue-800 text-[9px] font-bold px-1.5 py-0.2">
-                NABL
-              </span>
-            </button>
-
-            <button
-              onClick={() => setWorkstationTab("training")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                workstationTab === "training"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <Brain className="h-3.5 w-3.5" />
-              <span>6. Clinical AI &amp; Training</span>
-              <span className="rounded-full bg-indigo-100 text-indigo-800 text-[9px] font-bold px-1.5 py-0.2">
-                AI
-              </span>
-            </button>
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-2xs overflow-x-auto">
+          <div className="flex gap-1 min-w-max">
+            {[
+              { id: "catalog" as const, label: "1. Diagnostic Test Menu", icon: TableIcon, count: filteredTests.length },
+              { id: "packages" as const, label: "2. Health Packages & Bundles", icon: Package },
+              { id: "parameters" as const, label: "3. Analyte Reference Matrix", icon: SlidersHorizontal },
+              { id: "formulas" as const, label: "4. Clinical Formulas & Derivations", icon: Calculator, badge: "Automated" },
+              { id: "qc" as const, label: "5. Analyzer QC & Instruments", icon: ShieldCheck, badge: "Westgard" },
+              { id: "interfacing" as const, label: "6. LIMS Analyzer Interfacing", icon: Cpu, badge: "ASTM/HL7" },
+              { id: "b2b-tariff" as const, label: "7. B2B Tariff & Doctor Margin", icon: TrendingUp, badge: "0% GST" },
+              { id: "panic-alerts" as const, label: "8. Panic / Critical Value Alerts", icon: ShieldAlert, badge: "NABL 15m" },
+              { id: "phlebotomy-sop" as const, label: "9. Phlebotomy & Draw SOP", icon: FlaskConical },
+              { id: "training" as const, label: "10. Clinical AI & Training", icon: Brain, badge: "AI" },
+            ].map((tab) => {
+              const isActive = workstationTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setWorkstationTab(tab.id)}
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <Icon className={`h-3.5 w-3.5 ${isActive ? "text-sky-400" : "text-slate-500"}`} />
+                  <span>{tab.label}</span>
+                  {tab.badge && (
+                    <span
+                      className={`rounded-md px-1.5 py-0.2 text-[9px] font-black uppercase ${
+                        isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                  {tab.count !== undefined && (
+                    <span
+                      className={`rounded-full px-2 py-0.2 text-[10px] font-mono font-bold ${
+                        isActive ? "bg-white text-slate-900" : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-
-          {/* Table / Grid Mode Toggle */}
-          {workstationTab === "catalog" && (
-            <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode("table")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  viewMode === "table" ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                <Layers className="h-3.5 w-3.5" />
-                <span>Table</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  viewMode === "grid" ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                <span>Cards</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* =========================================================================
@@ -669,6 +629,29 @@ export default function TestsPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <div className="flex items-center rounded-xl border border-slate-200 bg-white p-0.5 shadow-2xs mr-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("table")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        viewMode === "table" ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      <Layers className="h-3 w-3" />
+                      <span>Table</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("grid")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        viewMode === "grid" ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      <LayoutGrid className="h-3 w-3" />
+                      <span>Cards</span>
+                    </button>
+                  </div>
+
                   <span className="text-slate-500 text-xs">
                     Showing <strong className="text-slate-900">{filteredTests.length}</strong> of {tests.length} tests
                   </span>
@@ -1036,17 +1019,37 @@ export default function TestsPage() {
         {workstationTab === "parameters" && <ParameterMatrixView />}
 
         {/* =========================================================================
-            TAB 4: CLINICAL FORMULAS & DERIVATION ENGINE (NEW REAL-WORLD FEATURE)
+            TAB 4: CLINICAL FORMULAS & DERIVATION ENGINE
         ========================================================================= */}
         {workstationTab === "formulas" && <ClinicalFormulaEngine />}
 
         {/* =========================================================================
-            TAB 5: ANALYZER QC & INSTRUMENTS TRACKER (NEW REAL-WORLD FEATURE)
+            TAB 5: ANALYZER QC & INSTRUMENTS TRACKER
         ========================================================================= */}
         {workstationTab === "qc" && <AnalyzerQCTracker />}
 
         {/* =========================================================================
-            TAB 6: CLINICAL AI DIAGNOSTIC TRAINING & REFLEX ENGINE (ADVANCED TRAINING)
+            TAB 6: LIMS ANALYZER INTERFACING (NEW ENTERPRISE FEATURE)
+        ========================================================================= */}
+        {workstationTab === "interfacing" && <AnalyzerInterfacingEngine />}
+
+        {/* =========================================================================
+            TAB 7: B2B TARIFF & DOCTOR COMMISSION STUDIO (NEW ENTERPRISE FEATURE)
+        ========================================================================= */}
+        {workstationTab === "b2b-tariff" && <B2BTariffCommissionStudio />}
+
+        {/* =========================================================================
+            TAB 8: PANIC / CRITICAL VALUE ALERT MATRIX (NEW ENTERPRISE FEATURE)
+        ========================================================================= */}
+        {workstationTab === "panic-alerts" && <PanicValueAlertMatrix />}
+
+        {/* =========================================================================
+            TAB 9: PRE-ANALYTICAL PHLEBOTOMY & DRAW SOP (NEW ENTERPRISE FEATURE)
+        ========================================================================= */}
+        {workstationTab === "phlebotomy-sop" && <PreAnalyticalPhlebotomyGuide />}
+
+        {/* =========================================================================
+            TAB 10: CLINICAL AI DIAGNOSTIC TRAINING & REFLEX ENGINE
         ========================================================================= */}
         {workstationTab === "training" && <ClinicalTrainingEngine />}
 

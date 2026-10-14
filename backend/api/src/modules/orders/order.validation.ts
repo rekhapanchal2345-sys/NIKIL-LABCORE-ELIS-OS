@@ -10,7 +10,9 @@ export const createOrderSchema = z.object({
   items: z
     .array(
       z.object({
-        testId: z.string().cuid(),
+        itemType: z.enum(["TEST", "PACKAGE"]).default("TEST"),
+        testId: z.string().cuid().optional(),
+        packageId: z.string().cuid().optional(),
 
         discount: z.coerce
           .number()

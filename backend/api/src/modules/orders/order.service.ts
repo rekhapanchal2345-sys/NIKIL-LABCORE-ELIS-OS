@@ -32,83 +32,135 @@ export const createOrder = async (
       }
     }
 
-    const testIds =
-      data.items.map(
-        (item: any) => item.testId
-      );
+    const standaloneTestIds = data.items
+      .filter((item: any) => item.itemType === "TEST" || (!item.itemType && item.testId))
+      .map((item: any) => item.testId);
 
-    // Check for duplicate testIds in the request
-    const uniqueTestIds = new Set(testIds);
-    if (uniqueTestIds.size !== testIds.length) {
-      throw new HttpError("Duplicate tests found in order items", 400);
+    const packageIds = data.items
+      .filter((item: any) => item.itemType === "PACKAGE" || item.packageId)
+      .map((item: any) => item.packageId);
+
+    // Fetch standalone tests
+    const tests = standaloneTestIds.length > 0 ? await prisma.test.findMany({
+      where: { id: { in: standaloneTestIds }, isActive: true },
+    }) : [];
+
+    if (tests.length !== standaloneTestIds.length) {
+      throw new HttpError("One or more tests are invalid or inactive", 400);
     }
 
-    const tests =
-      await prisma.test.findMany({
-        where: {
-          id: {
-            in: testIds,
-          },
-          isActive: true,
-        },
-      });
+    // Fetch user role for discount RBAC
+    let userRole = "FRONT_DESK"; // Default fallback
+    if (userId) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user) {
+        userRole = user.role;
+      }
+    }
 
-  if (
-    tests.length !==
-    data.items.length
-  ) {
-    throw new HttpError("One or more tests are invalid or inactive", 400);
-  }
+    // Fetch packages
+    const packages = packageIds.length > 0 ? await prisma.testPackage.findMany({
+      where: { id: { in: packageIds }, isActive: true },
+      include: { items: { include: { test: true } } },
+    }) : [];
 
-  // Generate unique order number and barcode with collision prevention
-  const timestamp = Date.now();
-  const barcode = `SMP-${timestamp}`;
+    if (packages.length !== packageIds.length) {
+      throw new HttpError("One or more packages are invalid or inactive", 400);
+    }
 
-  let subtotal = 0;
-  let totalDiscount = 0;
+    // Generate unique order number and barcode with collision prevention
+    const timestamp = Date.now();
+    const barcode = `SMP-${timestamp}`;
 
-  const items = data.items.map(
-    (item: any) => {
-      const test = tests.find(
-        (t) => t.id === item.testId
-      );
+    let subtotal = 0;
+    let totalDiscount = 0;
+    
+    const itemsToCreate: any[] = [];
+    const testIdsInPackages = new Set<string>();
 
-      if (!test) {
-        throw new HttpError("Test not found", 404);
+    // Process packages first
+    for (const pkg of packages) {
+      const requestItem = data.items.find((i: any) => i.packageId === pkg.id);
+      const price = Number(pkg.totalPrice);
+      const discount = Number(requestItem?.discount ?? 0);
+
+      if (discount > price) {
+        throw new HttpError(`Discount cannot exceed price for ${pkg.packageName}`, 400);
       }
 
-      const price =
-        Number(test.price);
+      subtotal += price;
+      totalDiscount += discount;
 
-      const discount =
-        Number(item.discount ?? 0);
+      // Add the package line item
+      itemsToCreate.push({
+        itemType: "PACKAGE",
+        packageId: pkg.id,
+        price,
+        discount,
+        finalPrice: price - discount,
+      });
+
+      // Expand tests
+      for (const pItem of pkg.items) {
+        if (!pItem.testId) continue;
+        testIdsInPackages.add(pItem.testId);
+        
+        itemsToCreate.push({
+          itemType: "TEST",
+          testId: pItem.testId,
+          packageId: pkg.id,
+          price: 0,
+          discount: 0,
+          finalPrice: 0,
+        });
+      }
+    }
+
+    // Process standalone tests
+    for (const test of tests) {
+      if (testIdsInPackages.has(test.id)) {
+        throw new HttpError(`Duplicate billing prevented: Test '${test.testName}' is already included in a selected package.`, 400);
+      }
+      
+      const requestItem = data.items.find((i: any) => i.testId === test.id);
+      const price = Number(test.price);
+      const discount = Number(requestItem?.discount ?? 0);
 
       if (discount > price) {
         throw new HttpError(`Discount cannot exceed price for ${test.testName}`, 400);
       }
 
-      const finalPrice =
-        price - discount;
-
       subtotal += price;
       totalDiscount += discount;
 
-      return {
+      itemsToCreate.push({
+        itemType: "TEST",
         testId: test.id,
         price,
         discount,
-        finalPrice,
-      };
+        finalPrice: price - discount,
+      });
     }
-  );
 
-  // Calculate GST and totals
+    // RBAC Discount check
+    if (totalDiscount > 0) {
+      const isManagerOrAdmin = ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(userRole);
+      
+      if (!isManagerOrAdmin) {
+        const maxAllowedDiscount = subtotal * 0.10; // 10% max
+        if (totalDiscount > maxAllowedDiscount) {
+          throw new HttpError(`Unauthorized Discount: Front desk cannot exceed 10% (Max allowed: ₹${maxAllowedDiscount}). Manager override required.`, 403);
+        }
+      }
+    }
+
+  // Calculate GST and totals with strict 2-decimal rounding
   const gstRate = 0.18; // 18% GST
-  const taxableAmount = subtotal - totalDiscount;
-  const gstAmount = taxableAmount * gstRate;
-  const grandTotal = taxableAmount + gstAmount;
-  const paidAmount = Number(data.paidAmount ?? 0);
-  const dueAmount = grandTotal - paidAmount;
+  const taxableAmount = Math.round((subtotal - totalDiscount) * 100) / 100;
+  const gstAmount = Math.round((taxableAmount * gstRate) * 100) / 100;
+  const grandTotal = Math.round((taxableAmount + gstAmount) * 100) / 100;
+  const paidAmount = Math.round(Number(data.paidAmount ?? 0) * 100) / 100;
+  const dueAmount = Math.round((grandTotal - paidAmount) * 100) / 100;
 
   // Determine payment status
   let paymentStatus: PaymentStatus = "PENDING";
@@ -159,7 +211,7 @@ export const createOrder = async (
         homeCollectionAddress: data.homeCollectionAddress,
 
         items: {
-          create: items,
+          create: itemsToCreate,
         },
       },
 
@@ -249,7 +301,7 @@ export const createOrder = async (
 
     // Auto-create Invoice for the order
     const invoiceNumber = await getNextSequenceNumber("INV", "MAIN", tx);
-    await tx.invoice.create({
+    const invoice = await tx.invoice.create({
       data: {
         invoiceNumber,
         orderId: order.id,
@@ -257,8 +309,8 @@ export const createOrder = async (
         discount: totalDiscount,
         taxableAmount,
         gstPercent: 18,
-        cgstAmount: gstAmount / 2,
-        sgstAmount: gstAmount / 2,
+        cgstAmount: Math.round((gstAmount / 2) * 100) / 100,
+        sgstAmount: Math.round((gstAmount / 2) * 100) / 100,
         igstAmount: 0,
         gstAmount,
         grandTotal,
@@ -291,7 +343,10 @@ export const createOrder = async (
       });
     }
 
-    return order;
+    return {
+      ...order,
+      invoice,
+    };
   });
   } catch (error) {
     console.error('Error in createOrder:', error);
@@ -797,12 +852,33 @@ export const cancelOrder =
       );
     }
 
-    return prisma.order.update({
-      where: { id },
+    return prisma.$transaction(async (tx) => {
+      // Mark order as cancelled
+      const updatedOrder = await tx.order.update({
+        where: { id },
+        data: {
+          orderStatus: "CANCELLED",
+          paymentStatus: Number(order.paidAmount) > 0 ? "REFUNDED" : "PENDING",
+        },
+      });
 
-      data: {
-        orderStatus:
-          "CANCELLED",
-      },
+      // Void the invoice
+      await tx.invoice.updateMany({
+        where: { orderId: id },
+        data: {
+          paymentStatus: Number(order.paidAmount) > 0 ? "REFUNDED" : "PENDING",
+        },
+      });
+
+      // Reverse associated payments
+      await tx.payment.updateMany({
+        where: { orderId: id },
+        data: {
+          status: "REFUNDED",
+          remarks: `Refunded due to order cancellation: ${_reason || "No reason provided"}`,
+        },
+      });
+
+      return updatedOrder;
     });
   };

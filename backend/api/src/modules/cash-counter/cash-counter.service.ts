@@ -76,6 +76,18 @@ export const openCashCounter = async (
         throw new Error("Counter is already open");
       }
 
+      // Enforce: A user can only operate ONE open CashCounterSession at a time.
+      const existingUserSession = await tx.cashCounterSession.findFirst({
+        where: {
+          userId: data.userId,
+          closedAt: null,
+        },
+      });
+
+      if (existingUserSession) {
+        throw new Error("User already has an open cash counter session");
+      }
+
       // Update counter
       const updatedCounter = await tx.cashCounter.update({
         where: { id: data.counterId },
@@ -327,6 +339,10 @@ export const addCashMovement = async (
     const amount = Number(data.amount);
     if (amount <= 0) {
       throw new Error("Amount must be greater than zero");
+    }
+
+    if (!data.reason || data.reason.trim().length === 0) {
+      throw new Error("A valid clinical/operational reason must be provided for cash movements");
     }
 
     const result = await prisma.$transaction(async (tx) => {

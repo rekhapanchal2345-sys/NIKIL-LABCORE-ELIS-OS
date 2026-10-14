@@ -45,6 +45,7 @@ import {
   Unlock,
   XCircle,
   FileCheck,
+  FileText,
   Sparkles
 } from "lucide-react";
 
@@ -231,6 +232,8 @@ function Analyzer3DView({ analyzer }: { analyzer: Analyzer }) {
 import ReflexCascadeEngine from "@/components/analyzers/ReflexCascadeEngine";
 import MaintenanceComplianceLogbook from "@/components/analyzers/MaintenanceComplianceLogbook";
 import PredictiveAnomalyEngine from "@/components/analyzers/PredictiveAnomalyEngine";
+import { REAL_WORLD_ANALYZERS } from "@/components/analyzers/realWorldDemoAnalyzers";
+import { BookOpen } from "lucide-react";
 
 export default function AnalyzerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -251,10 +254,18 @@ export default function AnalyzerDetailPage({ params }: { params: Promise<{ id: s
       try {
         response = await analyzersApi.getById(id);
       } catch (detailError) {
-        const demoResponse = await analyzersApi.getDemoData();
-        const demoAnalyzer = demoResponse?.data?.analyzers?.find((item: Analyzer) => item.id === id);
-        if (demoAnalyzer) {
-          setAnalyzer(demoAnalyzer);
+        try {
+          const demoResponse = await analyzersApi.getDemoData();
+          const demoAnalyzer = demoResponse?.data?.analyzers?.find((item: Analyzer) => item.id === id);
+          if (demoAnalyzer) {
+            setAnalyzer(demoAnalyzer);
+            return;
+          }
+        } catch {}
+
+        const realWorld = REAL_WORLD_ANALYZERS.find((item) => item.id === id || item.analyzerId === id);
+        if (realWorld) {
+          setAnalyzer(realWorld);
           return;
         }
         throw detailError;
@@ -299,14 +310,24 @@ export default function AnalyzerDetailPage({ params }: { params: Promise<{ id: s
         <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl space-y-6">
             {/* Back Bar & Fleet Breadcrumb */}
-            <div className="flex items-center justify-between">
-              <Link
-                href="/analyzers"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3.5 py-2 text-xs font-bold text-slate-300 transition-colors hover:border-slate-700 hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Fleet Overview
-              </Link>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/analyzers"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3.5 py-2 text-xs font-bold text-slate-300 transition-colors hover:border-slate-700 hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Fleet Overview
+                </Link>
+
+                <Link
+                  href="/analyzers?tab=interactive_docs"
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-white"
+                >
+                  <FileText className="h-4 w-4 text-emerald-400" />
+                  <span>📑 DOCUMINICATION (PDF SOP)</span>
+                </Link>
+              </div>
 
               {analyzer && (
                 <div className="flex items-center gap-2">

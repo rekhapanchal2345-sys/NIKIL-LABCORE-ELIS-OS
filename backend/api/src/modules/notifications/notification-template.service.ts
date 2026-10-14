@@ -24,7 +24,7 @@ interface UpdateTemplateInput {
 
 export const createNotificationTemplate = async (data: CreateTemplateInput) => {
   return prisma.$queryRaw`
-    INSERT INTO notification_templates (id, name, description, event_type, channel, subject_template, body_template, variables, created_by)
+    INSERT INTO notification_templates (id, name, description, "eventType", channel, "subjectTemplate", "bodyTemplate", variables, "createdBy")
     VALUES (
       gen_random_uuid()::text,
       ${data.name},
@@ -45,7 +45,7 @@ export const getNotificationTemplates = async (eventType?: string, channel?: str
   const params: any[] = [];
   
   if (eventType) {
-    query += ' AND event_type = $' + (params.length + 1);
+    query += ' AND "eventType" = $' + (params.length + 1);
     params.push(eventType);
   }
   
@@ -54,7 +54,7 @@ export const getNotificationTemplates = async (eventType?: string, channel?: str
     params.push(channel);
   }
   
-  query += ' ORDER BY created_at DESC';
+  query += ' ORDER BY "createdAt" DESC';
   
   const templates = await prisma.$queryRawUnsafe(query, ...params);
   
@@ -63,15 +63,15 @@ export const getNotificationTemplates = async (eventType?: string, channel?: str
     id: t.id,
     name: t.name,
     description: t.description,
-    eventType: t.event_type,
+    eventType: t.eventType,
     channel: t.channel,
-    subjectTemplate: t.subject_template,
-    bodyTemplate: t.body_template,
+    subjectTemplate: t.subjectTemplate,
+    bodyTemplate: t.bodyTemplate,
     variables: t.variables,
-    isActive: t.is_active,
-    createdBy: t.created_by,
-    createdAt: t.created_at,
-    updatedAt: t.updated_at,
+    isActive: t.isActive,
+    createdBy: t.createdBy,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
   }));
 };
 
@@ -92,15 +92,15 @@ export const getNotificationTemplateById = async (id: string) => {
     id: template.id,
     name: template.name,
     description: template.description,
-    eventType: template.event_type,
+    eventType: template.eventType,
     channel: template.channel,
-    subjectTemplate: template.subject_template,
-    bodyTemplate: template.body_template,
+    subjectTemplate: template.subjectTemplate,
+    bodyTemplate: template.bodyTemplate,
     variables: template.variables,
-    isActive: template.is_active,
-    createdBy: template.created_by,
-    createdAt: template.created_at,
-    updatedAt: template.updated_at,
+    isActive: template.isActive,
+    createdBy: template.createdBy,
+    createdAt: template.createdAt,
+    updatedAt: template.updatedAt,
   };
 };
 
@@ -110,13 +110,13 @@ export const updateNotificationTemplate = async (id: string, data: UpdateTemplat
     SET 
       name = COALESCE(${data.name || null}, name),
       description = COALESCE(${data.description || null}, description),
-      event_type = COALESCE(${data.eventType || null}, event_type),
+      "eventType" = COALESCE(${data.eventType || null}, "eventType"),
       channel = COALESCE(${data.channel || null}, channel),
-      subject_template = COALESCE(${data.subjectTemplate || null}, subject_template),
-      body_template = COALESCE(${data.bodyTemplate || null}, body_template),
+      "subjectTemplate" = COALESCE(${data.subjectTemplate || null}, "subjectTemplate"),
+      "bodyTemplate" = COALESCE(${data.bodyTemplate || null}, "bodyTemplate"),
       variables = COALESCE(${data.variables ? `ARRAY[${data.variables}]::text[]` : null}, variables),
-      is_active = COALESCE(${data.isActive !== undefined ? data.isActive : null}, is_active),
-      updated_at = CURRENT_TIMESTAMP
+      "isActive" = COALESCE(${data.isActive !== undefined ? data.isActive : null}, "isActive"),
+      "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${id}
     RETURNING *
   `;
@@ -129,15 +129,15 @@ export const updateNotificationTemplate = async (id: string, data: UpdateTemplat
     id: template.id,
     name: template.name,
     description: template.description,
-    eventType: template.event_type,
+    eventType: template.eventType,
     channel: template.channel,
-    subjectTemplate: template.subject_template,
-    bodyTemplate: template.body_template,
+    subjectTemplate: template.subjectTemplate,
+    bodyTemplate: template.bodyTemplate,
     variables: template.variables,
-    isActive: template.is_active,
-    createdBy: template.created_by,
-    createdAt: template.created_at,
-    updatedAt: template.updated_at,
+    isActive: template.isActive,
+    createdBy: template.createdBy,
+    createdAt: template.createdAt,
+    updatedAt: template.updatedAt,
   };
 };
 

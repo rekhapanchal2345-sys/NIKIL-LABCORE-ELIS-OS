@@ -2,6 +2,17 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+// The API applies a server-side HMAC pepper (PASSWORD_PEPPER) BEFORE bcrypt —
+// see api/src/utils/password.ts. Hashing without the pepper produces a hash
+// that can never be verified at login, so the identical transform is applied
+// here.
+const pepperedHash = async (password) =>
+  bcrypt.hash(
+    crypto.createHmac('sha256', process.env.PASSWORD_PEPPER || '').update(password).digest('hex'),
+    12
+  );
 
 const connectionString = process.env.DATABASE_URL;
 const adapter = new PrismaPg({ connectionString });
@@ -31,9 +42,17 @@ async function createAdminUser() {
     console.log('🔐 Creating admin user...');
     
     // Admin user configuration
-    const email = process.env.ADMIN_EMAIL || 'admin@labcore.local';
-    const password = process.env.ADMIN_PASSWORD || 'default_secure_pwd';
-    const passwordHash = await bcrypt.hash(password, 12);
+    const email = (process.env.ADMIN_EMAIL || '').toLowerCase();
+    const password = process.env.ADMIN_PASSWORD;
+
+    if (!email) {
+      throw new Error('ADMIN_EMAIL is not set. Add it to backend/.env first.');
+    }
+    if (!password) {
+      throw new Error('ADMIN_PASSWORD is not set. Add a strong password to backend/.env first.');
+    }
+
+    const passwordHash = await pepperedHash(password);
 
     // Create admin user
     const user = await prisma.user.create({
@@ -74,9 +93,7 @@ async function createAdminUser() {
     console.log('🔑 Login Credentials:');
     console.log('========================================');
     console.log(`Email: ${email}`);
-    console.log(`Password: ${password}`);
-    console.log('========================================');
-    console.log('⚠️  IMPORTANT: Change this password in production!');
+    console.log('Password: [CONFIGURED IN .ENV]');
     console.log('========================================');
 
   } catch (error) {

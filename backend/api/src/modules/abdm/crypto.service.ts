@@ -132,6 +132,7 @@ export function encryptFhirPayload(
   const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
 
   const encrypted = Buffer.concat([
+    iv,
     cipher.update(plaintext, "utf8"),
     cipher.final(),
     cipher.getAuthTag(), // 16 bytes GCM auth tag appended

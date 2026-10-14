@@ -1,4 +1,11 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+// The API applies a server-side HMAC pepper (PASSWORD_PEPPER) BEFORE bcrypt —
+// see api/src/utils/password.ts. A hash generated without the pepper will never
+// verify at login, so the identical transform is applied here.
+const peppered = (pw) =>
+  crypto.createHmac('sha256', process.env.PASSWORD_PEPPER || '').update(pw).digest('hex');
 
 // Get the password from a command line argument or the environment.
 // There is deliberately no fallback: a built-in default would be a published
@@ -12,7 +19,7 @@ if (!password) {
   process.exit(1);
 }
 
-bcrypt.hash(password, rounds, (err, hash) => {
+bcrypt.hash(peppered(password), rounds, (err, hash) => {
   if (err) {
     console.error('Error generating hash:', err);
     process.exit(1);
@@ -22,7 +29,7 @@ bcrypt.hash(password, rounds, (err, hash) => {
   console.log('Hash:', hash);
   
   // Verify the hash
-  bcrypt.compare(password, hash, (err, result) => {
+  bcrypt.compare(peppered(password), hash, (err, result) => {
     if (err) {
       console.error('Error verifying hash:', err);
       process.exit(1);

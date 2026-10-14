@@ -2,6 +2,14 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+// The API applies a server-side HMAC pepper (PASSWORD_PEPPER) BEFORE bcrypt —
+// see api/src/utils/password.ts. Hashing/comparing without the pepper can never
+// match a hash the API produced, so the identical transform is applied here.
+const peppered = (password) =>
+  crypto.createHmac('sha256', process.env.PASSWORD_PEPPER || '').update(password).digest('hex');
+const pepperedHash = async (password) => bcrypt.hash(peppered(password), 12);
 
 const connectionString = process.env.DATABASE_URL;
 const adapter = new PrismaPg({ connectionString });
@@ -41,7 +49,7 @@ async function checkAndCreateAdmin() {
         );
       }
 
-      const isValid = await bcrypt.compare(testPassword, adminUser.passwordHash);
+      const isValid = await bcrypt.compare(peppered(testPassword), adminUser.passwordHash);
       console.log('Password verification check completed:', isValid ? '✅ Valid' : '❌ Invalid');
       
     } else {
@@ -64,7 +72,7 @@ async function checkAndCreateAdmin() {
         }
 
         const adminFullName = process.env.ADMIN_FULL_NAME || 'System Administrator';
-        const passwordHash = await bcrypt.hash(adminPassword, 12);
+        const passwordHash = await pepperedHash(adminPassword);
         
         const updatedAdmin = await prisma.user.update({
           where: { employeeCode: 'ADMIN001' },
@@ -93,7 +101,7 @@ async function checkAndCreateAdmin() {
         }
 
         const adminFullName = process.env.ADMIN_FULL_NAME || 'System Administrator';
-        const passwordHash = await bcrypt.hash(adminPassword, 12);
+        const passwordHash = await pepperedHash(adminPassword);
         
         const newAdmin = await prisma.user.create({
           data: {

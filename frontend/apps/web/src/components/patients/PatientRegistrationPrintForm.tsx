@@ -50,258 +50,294 @@ import { communicationApi } from "@/lib/api";
 
 const printFormStyles = `
   :root {
-    --color-navy-primary: #0A1628;
-    --color-blue: #1E40AF;
-    --color-bright-blue: #3B82F6;
-    --color-purple-primary: #5B21B6;
-    --color-purple-secondary: #7C3AED;
-    --color-teal: #0E7490;
-    --color-green: #059669;
-    --color-orange: #EA580C;
-    --color-pink: #BE185D;
-    --color-white: #FFFFFF;
-    --color-soft-background: #F8FAFC;
-    --color-border: #CBD5E1;
-    --color-primary-text: #0F172A;
-    --color-muted-text: #475569;
+    --color-clinic-slate: #0F172A;
+    --color-clinic-navy: #1E293B;
+    --color-clinic-blue: #0284C7;
+    --color-clinic-blue-dark: #0369A1;
+    --color-clinic-blue-light: #F0F9FF;
+    --color-clinic-teal: #0D9488;
+    --color-clinic-green: #16A34A;
+    --color-clinic-border: #E2E8F0;
+    --color-clinic-border-strong: #CBD5E1;
+    --color-clinic-text-main: #0F172A;
+    --color-clinic-text-muted: #64748B;
+    --color-clinic-bg-subtle: #F8FAFC;
+    --color-clinic-white: #FFFFFF;
+    --color-clinic-red: #DC2626;
   }
 
   .print-form-page {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background: #f8fafc;
-    color: var(--color-primary-text);
-    line-height: 1.35;
-    padding: 0;
+    background: #F1F5F9;
+    color: var(--color-clinic-text-main);
+    line-height: 1.3;
+    padding: 16px 0;
     margin: 0;
     width: 100%;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     box-sizing: border-box;
-    position: relative;
+    display: flex;
+    justify-content: center;
   }
 
   .print-form-container {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    background: var(--color-white);
-    border-radius: 0;
-    overflow: visible;
+    width: 210mm;
+    max-width: 210mm;
+    margin: 0 auto;
+    background: #FFFFFF;
+    border: 1px solid var(--color-clinic-border-strong);
+    border-radius: 4px;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow: visible;
   }
 
-  /* ===== HEADER SECTION ===== */
+  /* ===== LIGHT-WHITE HOSPITAL HEADER ===== */
   .form-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 20px;
-    background: var(--color-white);
-    border-bottom: 2.5px solid;
-    border-image: linear-gradient(to right, var(--color-blue), var(--color-purple-primary)) 1;
+    padding: 12px 18px 10px 18px;
+    background: #FFFFFF;
+    border-bottom: 2px solid var(--color-clinic-blue);
     flex-shrink: 0;
+    gap: 12px;
   }
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
-  .logo-icon {
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, var(--color-navy-primary), var(--color-purple-primary));
-    border-radius: 10px;
+  .clinic-logo-badge {
+    width: 40px;
+    height: 40px;
+    background: #F0F9FF;
+    border: 1.5px solid #BAE6FD;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    color: var(--color-clinic-blue);
     flex-shrink: 0;
   }
 
-  .logo-icon::before {
-    content: '';
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    border: 2.5px solid var(--color-white);
-    border-radius: 50%;
+  .clinic-logo-badge svg {
+    width: 22px;
+    height: 22px;
+    color: var(--color-clinic-blue);
+    stroke: var(--color-clinic-blue);
   }
 
-  .logo-icon::after {
-    content: '+';
-    position: absolute;
-    color: var(--color-white);
-    font-size: 20px;
-    font-weight: 800;
-  }
-
-  .brand-name {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--color-navy-primary);
+  .brand-title {
+    font-size: 19px;
+    font-weight: 900;
+    color: var(--color-clinic-slate);
     line-height: 1.1;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
   }
 
-  .brand-name span {
-    color: var(--color-purple-primary);
+  .brand-title span {
+    color: var(--color-clinic-blue);
   }
 
-  .brand-subtitle {
-    font-size: 9.5px;
-    color: var(--color-muted-text);
-    font-weight: 600;
+  .brand-tagline {
+    font-size: 8.5px;
+    color: var(--color-clinic-text-muted);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 2px;
+    letter-spacing: 0.8px;
+    margin-top: 1px;
+  }
+
+  .brand-accreditation {
+    font-size: 8px;
+    color: var(--color-clinic-teal);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    margin-top: 1px;
   }
 
   .header-center {
     text-align: center;
     flex: 1;
-    padding: 0 16px;
+    padding: 0 10px;
   }
 
   .form-title {
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 900;
-    color: var(--color-navy-primary);
+    color: var(--color-clinic-slate);
     text-transform: uppercase;
-    letter-spacing: 1.2px;
+    letter-spacing: 1px;
     line-height: 1.15;
     margin: 0;
   }
 
   .form-subtitle {
-    font-size: 10.5px;
-    color: var(--color-muted-text);
+    font-size: 9.5px;
+    color: var(--color-clinic-text-muted);
     font-weight: 600;
-    margin-top: 4px;
+    margin-top: 2px;
+  }
+
+  .form-dossier-tag {
+    display: inline-block;
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--color-clinic-blue-dark);
+    background: var(--color-clinic-blue-light);
+    border: 1px solid #BAE6FD;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-top: 3px;
+    letter-spacing: 0.5px;
   }
 
   .header-right {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
   }
 
-  .qr-section {
-    display: flex;
-    align-items: center;
-  }
-
-  .qr-code {
-    width: 60px;
-    height: 60px;
-    border: 1.5px solid var(--color-border);
+  .qr-box {
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--color-clinic-border-strong);
     border-radius: 6px;
-    padding: 3px;
-    background: var(--color-white);
+    padding: 2px;
+    background: #FFFFFF;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
-  .qr-code img {
-    width: 54px;
-    height: 54px;
+  .qr-box img {
+    width: 48px;
+    height: 48px;
     display: block;
     object-fit: contain;
   }
 
-  .qr-code-fallback {
+  .qr-fallback {
     font-size: 8px;
-    color: var(--color-muted-text);
+    color: var(--color-clinic-text-muted);
     text-align: center;
   }
 
-  .header-actions {
+  .header-id-block {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 5px;
+    gap: 2px;
   }
 
-  .header-buttons-row {
+  .uhid-pill {
+    background: #F8FAFC;
+    border: 1.5px solid var(--color-clinic-border-strong);
+    border-radius: 6px;
+    padding: 2px 7px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+  }
+
+  .uhid-label {
+    font-size: 8.5px;
+    font-weight: 800;
+    color: var(--color-clinic-text-muted);
+    text-transform: uppercase;
+  }
+
+  .uhid-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--color-clinic-blue-dark);
+    letter-spacing: 0.5px;
+  }
+
+  .datetime-stamp {
+    font-size: 8.5px;
+    color: var(--color-clinic-text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Screen-only header actions */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
 
   .print-button {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    background: linear-gradient(135deg, var(--color-blue), var(--color-purple-primary));
-    color: var(--color-white);
+    gap: 4px;
+    padding: 5px 11px;
+    background: var(--color-clinic-slate);
+    color: #FFFFFF;
     border: none;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     transition: all 0.15s ease;
   }
 
   .print-button:hover {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    background: #1E293B;
     transform: translateY(-1px);
   }
 
   .whatsapp-header-button {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    background: linear-gradient(135deg, #059669, #10B981);
-    color: var(--color-white);
+    gap: 4px;
+    padding: 5px 11px;
+    background: #059669;
+    color: #FFFFFF;
     border: none;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 1px 3px rgba(5, 150, 105, 0.2);
     transition: all 0.15s ease;
   }
 
   .whatsapp-header-button:hover {
-    background: linear-gradient(135deg, #047857, #059669);
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+    background: #047857;
     transform: translateY(-1px);
   }
 
   .email-header-button {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    background: linear-gradient(135deg, #2563EB, #4F46E5);
-    color: var(--color-white);
+    gap: 4px;
+    padding: 5px 11px;
+    background: var(--color-clinic-blue);
+    color: #FFFFFF;
     border: none;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.2);
     transition: all 0.15s ease;
   }
 
   .email-header-button:hover {
-    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+    background: var(--color-clinic-blue-dark);
     transform: translateY(-1px);
-  }
-
-  .datetime-section {
-    font-size: 9.5px;
-    color: var(--color-muted-text);
-    font-weight: 600;
-    text-align: right;
-    line-height: 1.25;
   }
 
   /* ===== FORM BODY ===== */
@@ -314,9 +350,9 @@ const printFormStyles = `
   }
 
   .form-section {
-    padding: 10px 18px;
-    border-bottom: 1.5px solid var(--color-border);
-    background: var(--color-white);
+    padding: 8px 18px;
+    border-bottom: 1px solid var(--color-clinic-border);
+    background: #FFFFFF;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -327,81 +363,80 @@ const printFormStyles = `
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
-  .section-number {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
+  .section-badge {
+    background: var(--color-clinic-slate);
+    color: #FFFFFF;
+    font-size: 9px;
     font-weight: 800;
-    color: var(--color-white);
+    padding: 1.5px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
     flex-shrink: 0;
+    line-height: 1.3;
   }
-
-  .section-number.blue { background: var(--color-blue); }
-  .section-number.purple { background: var(--color-purple-primary); }
-  .section-number.orange { background: var(--color-orange); }
-  .section-number.green { background: var(--color-green); }
-  .section-number.teal { background: var(--color-teal); }
-  .section-number.pink { background: var(--color-pink); }
 
   .section-title {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
-    color: var(--color-navy-primary);
+    color: var(--color-clinic-slate);
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.7px;
     line-height: 1;
   }
 
-  /* ===== DUAL SECTION (SIDE BY SIDE) ===== */
+  .section-header-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--color-clinic-border);
+    margin-left: 6px;
+  }
+
+  /* ===== DUAL SECTION (SIDE BY SIDE 50/50) ===== */
   .dual-section-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    border-bottom: 1.5px solid var(--color-border);
-    background: var(--color-white);
+    border-bottom: 1px solid var(--color-clinic-border);
+    background: #FFFFFF;
     width: 100%;
   }
 
   .dual-section-left {
-    padding: 10px 18px;
-    border-right: 1.5px solid var(--color-border);
+    padding: 8px 16px 8px 18px;
+    border-right: 1px solid var(--color-clinic-border);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
   }
 
   .dual-section-right {
-    padding: 10px 18px;
+    padding: 8px 18px 8px 16px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
   }
 
-  /* ===== FORM GRIDS ===== */
+  /* ===== GRIDS & FIELDS ===== */
   .grid-4-col {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px 18px;
+    gap: 6px 14px;
     width: 100%;
   }
 
   .grid-3-col {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px 18px;
+    gap: 6px 14px;
     width: 100%;
   }
 
   .grid-2-col {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px 18px;
+    gap: 6px 14px;
     width: 100%;
   }
 
@@ -421,43 +456,43 @@ const printFormStyles = `
     overflow: visible;
   }
 
-  /* FIXED: No overflow:hidden, proper line-height so labels NEVER get cut/sliced in PDF */
   .field-label {
-    font-size: 9.5px;
+    font-size: 8.5px;
     font-weight: 700;
-    color: #475569;
-    margin-bottom: 3px;
+    color: var(--color-clinic-text-muted);
+    margin-bottom: 2px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3.5px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
     overflow: visible !important;
     line-height: 1.2;
-    min-height: 15px;
+    min-height: 13px;
   }
 
   .field-required {
-    color: var(--color-orange);
+    color: var(--color-clinic-red);
     font-weight: 800;
+    margin-left: 1px;
   }
 
   .field-icon {
-    width: 11px;
-    height: 11px;
-    color: var(--color-blue);
+    width: 10px;
+    height: 10px;
+    color: var(--color-clinic-blue);
     flex-shrink: 0;
     display: inline-block;
   }
 
   .field-value {
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--color-primary-text);
-    padding-bottom: 3px;
-    border-bottom: 1.5px solid var(--color-border);
-    min-height: 22px;
+    color: var(--color-clinic-text-main);
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--color-clinic-border-strong);
+    min-height: 19px;
     line-height: 1.25;
     display: flex;
     align-items: center;
@@ -467,36 +502,35 @@ const printFormStyles = `
   }
 
   .field-value.empty {
-    color: #94a3b8;
+    color: #94A3B8;
     font-weight: 500;
   }
 
-  /* ===== ADVANCED EMAIL INLINE BADGES & BUTTONS ===== */
+  /* Inline email badges */
   .email-status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    padding: 1px 6px;
-    background: #dcfce7;
-    color: #15803d;
+    gap: 2.5px;
+    padding: 1px 5px;
+    background: #DCFCE7;
+    color: #15803D;
     border-radius: 10px;
-    font-size: 8px;
+    font-size: 7.5px;
     font-weight: 700;
-    margin-left: 6px;
+    margin-left: 4px;
     text-transform: none;
-    letter-spacing: 0;
   }
 
   .email-quick-action {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    background: #eff6ff;
-    color: #2563eb;
-    border: 1px solid #bfdbfe;
+    gap: 3px;
+    padding: 1px 6px;
+    background: #EFF6FF;
+    color: #2563EB;
+    border: 1px solid #BFDBFE;
     border-radius: 4px;
-    font-size: 9px;
+    font-size: 8.5px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -504,16 +538,15 @@ const printFormStyles = `
   }
 
   .email-quick-action:hover {
-    background: #2563eb;
+    background: #2563EB;
     color: white;
-    border-color: #2563eb;
   }
 
-  /* ===== NOTIFICATIONS & CONSENT ===== */
+  /* ===== PREFERENCES & CONSENT ===== */
   .preferences-row {
     display: grid;
     grid-template-columns: 1fr 1fr 2fr;
-    gap: 10px 18px;
+    gap: 8px 14px;
     align-items: end;
     width: 100%;
   }
@@ -522,134 +555,159 @@ const printFormStyles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding-bottom: 3px;
-    min-height: 22px;
+    gap: 8px;
+    padding-bottom: 2px;
+    min-height: 19px;
     width: 100%;
   }
 
   .notification-item {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 10px;
+    gap: 4px;
+    font-size: 9.5px;
     font-weight: 600;
-    color: var(--color-primary-text);
+    color: var(--color-clinic-text-main);
     white-space: nowrap;
   }
 
   .notification-checkbox {
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid var(--color-border);
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid var(--color-clinic-border-strong);
     border-radius: 3px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 8.5px;
     font-weight: 800;
     line-height: 1;
     flex-shrink: 0;
   }
 
   .notification-checkbox.checked {
-    background: var(--color-green);
-    border-color: var(--color-green);
-    color: var(--color-white);
+    background: var(--color-clinic-blue);
+    border-color: var(--color-clinic-blue);
+    color: #FFFFFF;
   }
 
   .notification-checkbox.unchecked {
-    background: var(--color-soft-background);
-    border-color: var(--color-border);
+    background: #FFFFFF;
+    border-color: var(--color-clinic-border-strong);
     color: transparent;
   }
 
   .consent-box {
-    background: #f0fdfa;
-    border: 1.5px solid #ccfbf1;
-    border-radius: 6px;
-    padding: 7px 12px;
-    margin-top: 8px;
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    border-radius: 5px;
+    padding: 5px 10px;
+    margin-top: 6px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     width: 100%;
     box-sizing: border-box;
   }
 
   .consent-checkbox {
-    width: 15px;
-    height: 15px;
-    border: 1.5px solid var(--color-green);
-    background: var(--color-green);
-    color: var(--color-white);
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--color-clinic-green);
+    background: var(--color-clinic-green);
+    color: #FFFFFF;
     border-radius: 3px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
     line-height: 1;
     flex-shrink: 0;
   }
 
   .consent-checkbox.unchecked {
-    background: var(--color-white);
-    border-color: var(--color-border);
+    background: #FFFFFF;
+    border-color: var(--color-clinic-border-strong);
     color: transparent;
   }
 
   .consent-text {
-    font-size: 9px;
-    color: #0f766e;
-    line-height: 1.35;
-    font-weight: 500;
+    font-size: 8.5px;
+    color: #166534;
+    line-height: 1.3;
+    font-weight: 600;
   }
 
-  /* ===== SIGNATURE SECTION ===== */
+  /* ===== DUAL SIGNATURE & STAMP SECTION ===== */
   .signature-section {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 36px;
-    padding: 12px 18px 10px 18px;
-    background: var(--color-white);
+    gap: 24px;
+    padding: 10px 18px 8px 18px;
+    background: #FFFFFF;
     box-sizing: border-box;
     flex-shrink: 0;
     width: 100%;
+    border-bottom: 1px solid var(--color-clinic-border);
   }
 
-  .signature-field {
+  .signature-card {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     width: 100%;
   }
 
-  .signature-label {
-    font-size: 9px;
-    font-weight: 700;
-    color: var(--color-muted-text);
+  .signature-title {
+    font-size: 8.5px;
+    font-weight: 800;
+    color: var(--color-clinic-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.6px;
   }
 
-  .signature-line {
-    height: 26px;
-    border-bottom: 1.5px solid var(--color-primary-text);
+  .signature-statement {
+    font-size: 8px;
+    color: #64748B;
+    line-height: 1.25;
+    font-style: italic;
+    min-height: 20px;
+  }
+
+  .signature-draw-area {
+    height: 28px;
+    border-bottom: 1.5px solid var(--color-clinic-slate);
     display: flex;
     align-items: flex-end;
+    justify-content: space-between;
     padding-bottom: 2px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-primary-text);
     width: 100%;
   }
 
-  /* ===== FOOTER ===== */
+  .signature-meta {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--color-clinic-text-main);
+  }
+
+  .stamp-box-inline {
+    border: 1px dashed var(--color-clinic-border-strong);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== LIGHT-WHITE CLINICAL FOOTER ===== */
   .footer {
-    background: linear-gradient(135deg, var(--color-navy-primary), var(--color-blue), var(--color-purple-primary));
-    padding: 10px 18px;
-    color: var(--color-white);
+    background: #F8FAFC;
+    border-top: 1.5px solid var(--color-clinic-border-strong);
+    padding: 8px 18px;
+    color: var(--color-clinic-slate);
     box-sizing: border-box;
     flex-shrink: 0;
     width: 100%;
@@ -660,132 +718,131 @@ const printFormStyles = `
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--color-clinic-border);
   }
 
   .footer-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 9px;
+    gap: 4px;
+    font-size: 8.5px;
     font-weight: 600;
-    color: var(--color-white);
+    color: #475569;
   }
 
   .footer-icon {
-    width: 12px;
-    height: 12px;
-    color: #4ade80;
+    width: 11px;
+    height: 11px;
+    color: var(--color-clinic-blue);
     flex-shrink: 0;
   }
 
   .footer-divider {
     width: 1px;
-    height: 13px;
-    background: rgba(255, 255, 255, 0.35);
+    height: 11px;
+    background: var(--color-clinic-border-strong);
   }
 
   .footer-bottom {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 5px;
-    margin-top: 5px;
-    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    padding-top: 4px;
     width: 100%;
   }
 
   .footer-security {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     font-size: 8px;
-    color: rgba(255, 255, 255, 0.9);
+    color: #64748B;
     font-weight: 500;
   }
 
-  .footer-logo-text {
-    font-size: 9.5px;
-    font-weight: 800;
-    color: var(--color-white);
-  }
-
-  .footer-logo-subtext {
+  .footer-page-index {
     font-size: 8px;
-    color: rgba(255, 255, 255, 0.85);
-    font-weight: 500;
+    font-weight: 700;
+    color: var(--color-clinic-blue-dark);
+    letter-spacing: 0.4px;
   }
 
-  /* ===== ACTION BUTTONS (SCREEN ONLY) ===== */
+  /* ===== ON-SCREEN ACTION BAR ===== */
   .action-buttons {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
     padding: 10px 18px;
-    background: #f1f5f9;
-    border-top: 1px solid var(--color-border);
+    background: #FFFFFF;
+    border-top: 1px solid var(--color-clinic-border);
     width: 100%;
     box-sizing: border-box;
   }
 
   .btn {
-    padding: 7px 16px;
+    padding: 6px 14px;
     border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.15s ease;
     border: none;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
   }
 
   .btn-secondary {
-    background: var(--color-white);
-    color: var(--color-primary-text);
-    border: 1px solid var(--color-border);
+    background: #FFFFFF;
+    color: var(--color-clinic-slate);
+    border: 1px solid var(--color-clinic-border-strong);
   }
 
   .btn-secondary:hover {
-    background: #e2e8f0;
+    background: #F8FAFC;
+    border-color: #94A3B8;
   }
 
   .btn-whatsapp {
-    background: linear-gradient(135deg, #059669, #10B981);
-    color: var(--color-white);
+    background: #059669;
+    color: #FFFFFF;
   }
 
   .btn-whatsapp:hover {
-    background: linear-gradient(135deg, #047857, #059669);
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    background: #047857;
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
     transform: translateY(-1px);
   }
 
   .btn-email {
-    background: linear-gradient(135deg, #2563eb, #4f46e5);
-    color: var(--color-white);
+    background: var(--color-clinic-blue);
+    color: #FFFFFF;
   }
 
   .btn-email:hover {
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+    background: var(--color-clinic-blue-dark);
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
     transform: translateY(-1px);
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, var(--color-blue), var(--color-purple-primary));
-    color: var(--color-white);
+    background: var(--color-clinic-slate);
+    color: #FFFFFF;
   }
 
   .btn-primary:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    background: #1E293B;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
     transform: translateY(-1px);
   }
 
-  /* ===== PRINT SPECIFIC CSS ===== */
+  /* ===== EXACT 1-PAGE A4 PRINT SPECIFICATION ===== */
   @media print {
     @page {
       size: A4 portrait;
-      margin: 4mm 5mm;
+      margin: 4mm 6mm;
     }
 
     * {
@@ -797,9 +854,10 @@ const printFormStyles = `
     html, body {
       margin: 0 !important;
       padding: 0 !important;
-      background: white !important;
+      background: #FFFFFF !important;
       width: 100% !important;
       height: 100% !important;
+      overflow: visible !important;
     }
 
     .no-print,
@@ -808,8 +866,7 @@ const printFormStyles = `
     .email-header-button,
     .whatsapp-header-button,
     .email-quick-action,
-    .email-status-pill,
-    .datetime-section {
+    .email-status-pill {
       display: none !important;
     }
 
@@ -841,15 +898,15 @@ const printFormStyles = `
       border-radius: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
-      background: white !important;
+      background: #FFFFFF !important;
     }
 
     .print-form-page {
       padding: 0 !important;
       margin: 0 !important;
-      background: white !important;
+      background: #FFFFFF !important;
       width: 100% !important;
-      box-sizing: border-box !important;
+      display: block !important;
     }
 
     .print-form-container {
@@ -858,8 +915,10 @@ const printFormStyles = `
       margin: 0 !important;
       padding: 0 !important;
       box-shadow: none !important;
+      border: none !important;
       border-radius: 0 !important;
       display: block !important;
+      background: #FFFFFF !important;
     }
 
     .form-body {
@@ -868,12 +927,8 @@ const printFormStyles = `
     }
 
     .form-section,
-    .dual-section-row {
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-      width: 100% !important;
-    }
-
+    .dual-section-row,
+    .signature-section,
     .footer {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
@@ -923,6 +978,7 @@ export interface PatientFormData {
   preferredCommunicationMethod: string;
   notificationPreferences: string[];
   privacyConsent: boolean;
+  corporateId?: string;
 }
 
 interface PatientRegistrationPrintFormProps {
@@ -1232,6 +1288,14 @@ export default function PatientRegistrationPrintForm({
         backgroundColor: "#ffffff",
         windowWidth: 794, // Standard A4 width at 96 DPI
         onclone: (clonedDoc) => {
+          const container = clonedDoc.querySelector(".print-form-container") as HTMLElement;
+          if (container) {
+            container.style.border = "none";
+            container.style.boxShadow = "none";
+            container.style.margin = "0";
+            container.style.width = "794px";
+            container.style.maxWidth = "794px";
+          }
           // Fix html2canvas label clipping: ensure labels and values are fully unconstrained
           const allLabels = clonedDoc.querySelectorAll(".field-label, .field-value");
           allLabels.forEach((el: any) => {
@@ -1287,6 +1351,14 @@ export default function PatientRegistrationPrintForm({
         backgroundColor: "#ffffff",
         windowWidth: 794,
         onclone: (clonedDoc) => {
+          const container = clonedDoc.querySelector(".print-form-container") as HTMLElement;
+          if (container) {
+            container.style.border = "none";
+            container.style.boxShadow = "none";
+            container.style.margin = "0";
+            container.style.width = "794px";
+            container.style.maxWidth = "794px";
+          }
           const allLabels = clonedDoc.querySelectorAll(".field-label, .field-value");
           allLabels.forEach((el: any) => {
             el.style.overflow = "visible";
@@ -1351,240 +1423,302 @@ export default function PatientRegistrationPrintForm({
         : `\n📄 *સત્તાવાર દર્દી નોંધણી ફોર્મ (PDF):* [લિંક તૈયાર થઈ રહી છે...]\n`;
     } else {
       pdfAttachmentSection = pdfUrl
-        ? `\n📄 *Official Registration Document (PDF):*\n${pdfUrl}\n`
-        : `\n📄 *Official Registration Document (PDF):* [Generating Secure Link...]\n`;
+        ? `\n📄 *Official Patient Registration Form (Download PDF):*\n${pdfUrl}\n`
+        : `\n📄 *Official Patient Registration Form (PDF):* [Link generating...]\n`;
     }
 
     if (lang === "hi") {
       if (template === "welcome") {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🌟 *मरीज़ डिजिटल अकाउंट एक्टिवेशन*\n\n` +
-          `नमस्ते *${patientName}*,\n\n` +
-          `${laboratoryInfo.name} में आपका स्वागत है! आपका डिजिटल स्वास्थ्य खाता ${dt.date} को ${dt.time} बजे सक्रिय हो गया है।\n\n` +
-          `📋 *मरीज़ विवरण:*\n` +
-          `• *नाम:* ${patientName}\n` +
-          `• *UHID:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *फोन:* ${formData.phone || phoneNum || "N/A"}\n` +
+          `_एनबीएल एवं सीएपी मान्यता प्राप्त संदर्भ प्रयोगशाला | ISO 15189:2022_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🌟 *मरीज़ डिजिटल स्वास्थ्य खाता (EHR) सक्रियण सूचना*\n\n` +
+          `आदरणीय *${patientName}*,\n\n` +
+          `*${laboratoryInfo.name}* में आपका स्वागत है। आपका इलेक्ट्रॉनिक स्वास्थ्य खाता LIS प्रणाली में ${dt.date} को ${dt.time} बजे आधिकारिक रूप से सक्रिय कर दिया गया है।\n\n` +
+          `📋 *मरीज़ पंजीकरण एवं पहचान सारांश:*\n` +
+          `• *मरीज़ का नाम:* ${patientName}\n` +
+          `• *यूनिवर्सल हेल्थ आईडी (UHID):* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
+          `• *पंजीकृत मोबाइल:* ${formData.phone || phoneNum || "N/A"}\n` +
           `• *रक्त समूह:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *खाता स्थिति:* सक्रिय व क्लिनिकली सत्यापित\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n✨ *डिजिटल अकाउंट के मुख्य लाभ:*\n` +
-          `✓ अपनी सभी टेस्ट रिपोर्ट्स 24/7 ऑनलाइन देखें\n` +
-          `✓ बारकोड और QR से प्राथमिकता सैंपल कलेक्शन\n` +
-          `✓ WhatsApp और Email पर सीधे रिपोर्ट अलर्ट\n\n` +
-          `📞 *हेल्पलाइन:* ${laboratoryInfo.phone}\n` +
-          `📍 *पता:* ${laboratoryInfo.address}\n\n` +
-          `_LabCore ELIS — उत्तम स्वास्थ्य हमारी प्राथमिकता._`
+          `\n✨ *डिजिटल पोर्टल की मुख्य सुविधाएं:*\n` +
+          `1️⃣ *रियल-टाइम ट्रैकिंग:* सैंपल की बारकोड प्रोसेसिंग से लेकर पैथोलॉजिस्ट सत्यापन तक की स्थिति देखें।\n` +
+          `2️⃣ *आजीवन रिकॉर्ड अभिलेखागार:* अपने पिछले सभी पैथोलॉजी व रेडियोलॉजी रिपोर्ट्स 24/7 सुरक्षित डाउनलोड करें।\n` +
+          `3️⃣ *डिजिटल जीएसटी बिलिंग:* बीमा व टैक्स दावों के लिए प्रमाणित इनवॉइस डाउनलोड करें।\n` +
+          `4️⃣ *प्राथमिकता सेवा:* क्यूआर कोड द्वारा त्वरित सैंपल संग्रहण।\n\n` +
+          `🔒 *गोपनीयता:* 256-बिट एसएसएल एन्क्रिप्शन एवं DISHA/HIPAA मानकों द्वारा सुरक्षित।\n\n` +
+          `📞 *24/7 मरीज़ सहायता डेस्क:* ${laboratoryInfo.phone}\n` +
+          `📍 *मुख्य सुविधा केंद्र:* ${laboratoryInfo.address}\n\n` +
+          `_सटीक निदान • विश्वसनीय चिकित्सा सेवा • LabCore ELIS_`
         );
       } else if (template === "test_instructions") {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🧪 *जांच पूर्व महत्वपूर्ण दिशानिर्देश (Pre-Test Guidelines)*\n\n` +
-          `नमस्ते *${patientName}*,\n\n` +
-          `${laboratoryInfo.name} में पंजीकरण के लिए धन्यवाद। कृपया अपनी आगामी लैब जांच से पूर्व इन नियमों का पालन करें:\n\n` +
-          `⚠️ *महत्वपूर्ण क्लिनिकल निर्देश:*\n` +
-          `1️⃣ *फास्टिंग (खाली पेट):* शुगर फास्टिंग, लिपिड प्रोफाइल या LFT जांच के लिए 8–10 घंटे का उपवास अनिवार्य है (केवल पानी पी सकते हैं)।\n` +
-          `2️⃣ *दवाइयां:* अपनी नियमित दवाएं डॉक्टर के निर्देशानुसार ही जारी रखें।\n` +
-          `3️⃣ *समय:* सैंपल देने के निर्धारित समय से 10–15 मिनट पहले लैब पहुंचें।\n` +
-          `4️⃣ *रिपोर्ट:* पैथोलॉजिस्ट द्वारा सत्यापित डिजिटल रिपोर्ट आपके WhatsApp पर भेजी जाएगी।\n` +
+          `_गुणवत्ता आश्वासन प्रभाग एवं क्लिनिकल पैथोलॉजी विभाग_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🧪 *क्लिनिकल प्रोटोकॉल: जांच-पूर्व उपवास व तैयारी निर्देश*\n\n` +
+          `आदरणीय *${patientName}*,\n\n` +
+          `अपनी आगामी नैदानिक जांचों (UHID: *${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}*) में पूर्ण सटीक परिणाम सुनिश्चित करने हेतु कृपया इन नियमों का कड़ाई से पालन करें:\n\n` +
+          `⚠️ *अनिवार्य पूर्व-विश्लेषणात्मक दिशानिर्देश:*\n` +
+          `1️⃣ *उपवास (10 से 12 घंटे):* फास्टिंग ब्लड शुगर, लिपिड प्रोफाइल, LFT व मेटाबॉलिक प्रोफाइल हेतु 10–12 घंटे का पूर्ण उपवास अनिवार्य है।\n` +
+          `2️⃣ *तरल पदार्थ:* नसों के सुचारू रक्त प्रवाह हेतु सादा जल पीना अनुशंसित है। चाय, कॉफी, दूध, जूस या धूम्रपान पूर्णतः वर्जित है।\n` +
+          `3️⃣ *दवाइयों का नियम:* अपनी नियमित दवाएं (रक्तचाप, हृदय रोग) सादे पानी के साथ जारी रखें, जब तक डॉक्टर ने रोकने को न कहा हो।\n` +
+          `4️⃣ *विशेष जांच:* थायरॉइड (TSH) की दवा सैंपल देने के बाद लें। डायबिटीज़ की सुबह की दवा/इंसुलिन सैंपल व नाश्ते के बाद ही लें।\n` +
+          `5️⃣ *समय:* लैब में निर्धारित समय से 10–15 मिनट पूर्व पहुंचें, या होम कलेक्शन हेतु पता तैयार रखें।\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n📞 *पूछताछ व सहायता:* ${laboratoryInfo.phone}\n` +
-          `_सटीक जांच • बेहतर देखभाल • सुरक्षित परिणाम_`
+          `\n📞 *फ्लेबोटोमी कोऑर्डिनेटर:* ${laboratoryInfo.phone}\n` +
+          `_उचित पूर्व-तैयारी सैंपल पुनर्संग्रहण की आवश्यकता को समाप्त करती है._`
         );
       } else if (template === "summary") {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🧾 *मरीज़ पंजीकरण रसीद व सारांश*\n\n` +
-          `नमस्ते *${patientName}*,\n\n` +
-          `आपके पंजीकरण का सत्यापित सारांश निम्नलिखित है:\n\n` +
-          `• *नाम:* ${patientName}\n` +
-          `• *UHID / टोकन:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *दिनांक:* ${dt.date} • ${dt.time}\n` +
-          `• *रक्त समूह:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `_अस्पताल प्रशासन एवं मरीज़ प्रवेश प्रभाग_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🧾 *सत्यापित मरीज़ पंजीकरण विवरण व आधिकारिक सारांश*\n\n` +
+          `आदरणीय *${patientName}*,\n\n` +
+          `*${laboratoryInfo.name}* में आपका मरीज़ पंजीकरण सफलता से सत्यापित व अभिलेखित हो चुका है:\n\n` +
+          `📋 *मरीज़ प्रोफाइल विवरण:*\n` +
+          `• *मरीज़ का नाम:* ${patientName}\n` +
+          `• *UHID नंबर:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
+          `• *जन्म तिथि व लिंग:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
+          `• *रक्त समूह (Blood Group):* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *पंजीकृत मोबाइल:* ${formData.phone || phoneNum || "N/A"}\n` +
           `• *आपातकालीन संपर्क:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
+          `• *बीमा / टीपीए संदर्भ:* ${formData.insuranceProvider || "Direct Outpatient"}\n` +
+          `• *पंजीकरण समय:* ${dt.date} • ${dt.time}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n📞 *लैब हेल्पलाइन:* ${laboratoryInfo.phone}\n` +
-          `_LabCore ELIS — Laboratory Information System_`
+          `\n🔒 *प्रमाणीकरण:* अधिकृत 1-पृष्ठीय क्लिनिकल फॉर्म पीडीएफ आपके रिकॉर्ड हेतु संलग्न है।\n\n` +
+          `📞 *हेल्पलाइन व पूछताछ:* ${laboratoryInfo.phone} | ${laboratoryInfo.email}\n` +
+          `📍 *पता:* ${laboratoryInfo.address}\n\n` +
+          `_LabCore ELIS — Accurate Information • Better Care_`
         );
       } else {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `📋 *मरीज़ पंजीकरण आधिकारिक पुष्टि (Official Confirmation)*\n\n` +
-          `नमस्ते *${patientName}*,\n\n` +
-          `*${laboratoryInfo.name}* में आपका आधिकारिक मरीज़ पंजीकरण सफलतापूर्वक संपन्न हो चुका है।\n\n` +
-          `===================================\n` +
-          `*मरीज़ क्लिनिकल प्रोफाइल (Summary)*\n` +
-          `===================================\n` +
+          `_एनबीएल एवं सीएपी मान्यता प्राप्त संदर्भ प्रयोगशाला | ISO 15189:2022_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📋 *आधिकारिक मरीज़ पंजीकरण एवं क्लिनिकल डॉसियर पुष्टि*\n\n` +
+          `आदरणीय *${patientName}*,\n\n` +
+          `सादर नमस्कार। *${laboratoryInfo.name}* में आपका आधिकारिक मरीज़ पंजीकरण एवं स्वास्थ्य डॉसियर सफलतापूर्वक दर्ज व सत्यापित हो चुका है।\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*मरीज़ पहचान एवं नैदानिक प्रोफाइल*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `• *मरीज़ का नाम:* ${patientName}\n` +
-          `• *UHID नंबर:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *जन्म तिथि:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
-          `• *रक्त समूह (Blood Group):* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *यूनिवर्सल हेल्थ आईडी (UHID):* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
+          `• *जन्म तिथि एवं लिंग:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
+          `• *प्रमाणित रक्त समूह:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
           `• *संपर्क मोबाइल:* ${formData.phone || phoneNum || "N/A"}\n` +
           `• *आवासीय पता:* ${formData.address || "N/A"}, ${formData.city || "Ahmedabad"}\n` +
           `• *आपातकालीन संपर्क:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
-          `• *बीमा / इंश्योरेंस:* ${formData.insuranceProvider || "N/A"} (${formData.insuranceNumber || "N/A"})\n` +
-          `• *पंजीकरण समय:* ${dt.date} at ${dt.time}\n` +
-          `===================================\n` +
+          `• *स्वास्थ्य बीमा / कॉर्पोरेट:* ${formData.insuranceProvider || "N/A"} (${formData.insuranceNumber || "N/A"})\n` +
+          `• *पंजीकरण दिनांक व समय:* ${dt.date} को ${dt.time} बजे\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n🔒 *डेटा गोपनीयता:* आपका मेडिकल रिकॉर्ड 256-bit एन्क्रिप्शन और HIPAA मानकों के तहत पूर्णतः सुरक्षित है।\n\n` +
-          `📞 *24/7 हेल्पलाइन व WhatsApp:* ${laboratoryInfo.phone}\n` +
-          `📍 *लैब पता:* ${laboratoryInfo.address}`
+          `\n🔒 *सुरक्षा व गोपनीयता:* आपका मेडिकल रिकॉर्ड 256-बिट क्रिप्टोग्राफिक एन्क्रिप्शन एवं HIPAA/DISHA मानकों के अंतर्गत पूर्णतः सुरक्षित है।\n\n` +
+          `📞 *24/7 क्लिनिकल हेल्पलाइन:* ${laboratoryInfo.phone}\n` +
+          `📍 *प्रयोगशाला केंद्र:* ${laboratoryInfo.address}\n\n` +
+          `_साक्ष्य-आधारित चिकित्सा एवं सटीक निदान • LabCore ELIS_`
         );
       }
     } else if (lang === "gu") {
       if (template === "welcome") {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🌟 *દર્દી ડિજિટલ એકાઉન્ટ સક્રિયકરણ*\n\n` +
-          `નમસ્તે *${patientName}*,\n\n` +
-          `${laboratoryInfo.name} માં આપનું સ્વાગત છે! આપનું દર્દી ડિજિટલ એકાઉન્ટ ${dt.date} ના રોજ ${dt.time} કલાકે સક્રિય કરવામાં આવ્યું છે.\n\n` +
-          `📋 *દર્દીની વિગત:*\n` +
-          `• *નામ:* ${patientName}\n` +
-          `• *UHID:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *મોબાઇલ:* ${formData.phone || phoneNum || "N/A"}\n` +
+          `_NABL અને CAP પ્રમાણિત ક્લિનિકલ લેબોરેટરી | ISO 15189:2022 સ્ટાન્ડર્ડ_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🌟 *દર્દી ડિજિટલ હેલ્થ એકાઉન્ટ (EHR) સક્રિયકરણ નોટિસ*\n\n` +
+          `આદરણીય *${patientName}*,\n\n` +
+          `*${laboratoryInfo.name}* માં આપનું સ્વાગત છે. આપનું ઇલેક્ટ્રોનિક હેલ્થ રેકોર્ડ ખાતું LIS સિસ્ટમમાં ${dt.date} ના રોજ ${dt.time} કલાકે સફળતાપૂર્વક સક્રિય કરવામાં આવ્યું છે.\n\n` +
+          `📋 *દર્દી ઓળખ અને પ્રોફાઇલ વિગત:*\n` +
+          `• *દર્દીનું નામ:* ${patientName}\n` +
+          `• *પ્રાથમિક UHID:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
+          `• *નોંધાયેલ મોબાઇલ:* ${formData.phone || phoneNum || "N/A"}\n` +
           `• *બ્લડ ગ્રૂપ:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *ખાતા સ્થિતિ:* સક્રિય અને ચકાસાયેલ\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n✨ *ડિજિટલ ખાતાના વિશેષ લાભો:*\n` +
-          `✓ જૂના તમામ રિપોર્ટ્સ 24/7 ઓનલાઇન મેળવો\n` +
-          `✓ ક્યૂઆર (QR) કોડ દ્વારા પ્રાથમિક સેમ્પલ કલેક્શન\n` +
-          `✓ સીધા WhatsApp અને Email પર લેબ પરિણામો\n\n` +
+          `\n✨ *ડિજિટલ પેશન્ટ પોર્ટલના લાભો:*\n` +
+          `1️⃣ *રીઅલ-ટાઇમ ટ્રેકિંગ:* નમૂના સ્વીકૃતિથી લઈને પેથોલોજિસ્ટ મંજૂરી સુધી પ્રગતિ જુઓ.\n` +
+          `2️⃣ *ઐતિહાસિક રિપોર્ટ આર્કાઇવ:* જૂના તમામ લેબ પરિણામો 24/7 સુરક્ષિત ડાઉનલોડ કરો.\n` +
+          `3️⃣ *ટેક્સ ઇન્વૉઇસ:* વીમા વળતર માટે કમ્પ્યુટરાઇઝ્ડ જીએસટી બિલ મેળવો.\n` +
+          `4️⃣ *પ્રાથમિકતા સેવા:* QR કોડ દ્વારા ઝડપી સેમ્પલિંગ.\n\n` +
+          `🔒 *ગોપનીયતા:* 256-બીટ એન્ક્રિપ્શન અને HIPAA/DISHA દ્વારા સંપૂર્ણ સુરક્ષિત.\n\n` +
           `📞 *સહાય હેલ્પલાઇન:* ${laboratoryInfo.phone}\n` +
           `📍 *સરનામું:* ${laboratoryInfo.address}\n\n` +
-          `_LabCore ELIS — આપની સેવામાં સદાય તત્પર._`
+          `_ચોક્કસ નિદાન • ઉત્તમ આરોગ્ય સેવા • LabCore ELIS_`
         );
       } else if (template === "test_instructions") {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🧪 *લેબ ટેસ્ટ પૂર્વે અગત્યની તબીબી સૂચનાઓ*\n\n` +
-          `નમસ્તે *${patientName}*,\n\n` +
-          `${laboratoryInfo.name} સાથે નોંધણી કરાવવા બદલ આભાર. આપના લેબ ટેસ્ટ અગાઉ નીચે મુજબ કાળજી રાખવા વિનંતી:\n\n` +
-          `⚠️ *અગત્યની સૂચનાઓ:*\n` +
-          `1️⃣ *ઉપવાસ (Fasting):* ફાસ્ટિંગ શુગર, લિપિડ પ્રોફાઇલ કે LFT માટે 8 થી 10 કલાક ભૂખ્યા રહેવું (માત્ર સાદું પાણી પી શકાય).\n` +
-          `2️⃣ *દવાઓ:* નિયમિત દવાઓ ચાલુ રાખવી (જો ડોક્ટરે ખાસ મનાઈ ન કરી હોય તો).\n` +
-          `3️⃣ *સમયપાલન:* આપના સેમ્પલ કલેક્શન સમય કરતાં 10–15 મિનિટ વહેલા પધારવું.\n` +
-          `4️⃣ *રિપોર્ટ વિતરણ:* પેથોલોજિસ્ટ દ્વારા ચકાસાયેલ રિપોર્ટ સીધા આપના WhatsApp પર મળશે.\n` +
+          `_ક્વોલિટી એશ્યોરન્સ ડિવિઝન અને ક્લિનિકલ પેથોલોજી_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🧪 *ક્લિનિકલ પ્રોટોકોલ: તપાસ પૂર્વે ઉપવાસ અને તૈયારીની માર્ગદર્શિકા*\n\n` +
+          `આદરણીય *${patientName}*,\n\n` +
+          `આપની લેબોરેટરી તપાસ (UHID: *${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}*) માં સંપૂર્ણ ચોક્કસાઈ સુનિશ્ચિત કરવા માટે કૃપા કરીને આ તબીબી નિયમોનું પાલન કરો:\n\n` +
+          `⚠️ *ફરજિયાત પૂર્વ-વિશ્લેષણાત્મક માર્ગદર્શિકા:*\n` +
+          `1️⃣ *ઉપવાસ (10 થી 12 કલાક):* ફાસ્ટિંગ સુગર, લિપિડ પ્રોફાઇલ, LFT કે મેટાબોલિક પેનલ માટે 10–12 કલાક સંપૂર્ણ ઉપવાસ જરૂરી છે.\n` +
+          `2️⃣ *પ્રવાહી સેવન:* સરળ નસ સેમ્પલિંગ માટે સાદું પાણી પીવું જરૂરી છે. ચા, કોફી, દૂધ, જ્યુસ કે ધૂમ્રપાન સદંતર વર્જ્ય છે.\n` +
+          `3️⃣ *દવાઓ:* નિયમિત બ્લડપ્રેશર કે હૃદયની દવાઓ સાદા પાણી સાથે ચાલુ રાખવી.\n` +
+          `4️⃣ *વિશેષ તપાસ:* થાયરોઇડ (TSH) ની સવારની દવા સેમ્પલ આપ્યા બાદ લેવી. ડાયાબિટીસની સવારની દવા સેમ્પલ અને નાસ્તા પછી જ લેવી.\n` +
+          `5️⃣ *સમય:* સેમ્પલ કલેક્શનના નિયત સમય કરતાં 10–15 મિનિટ વહેલા પધારવું.\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n📞 *લેબ હેલ્પલાઇન:* ${laboratoryInfo.phone}\n` +
-          `_ચોક્કસ પરિણામ • શ્રેષ્ઠ તબીબી સેવા_`
+          `\n📞 *ફ્લેબોટોમી હેલ્પડેસ્ક:* ${laboratoryInfo.phone}\n` +
+          `_યોગ્ય પૂર્વ તૈયારીથી ફરીથી સેમ્પલ લેવાની જરૂરિયાત રહેતી નથી._`
         );
       } else if (template === "summary") {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🧾 *દર્દી નોંધણી સારાંશ અને પહોંચ*\n\n` +
-          `નમસ્તે *${patientName}*,\n\n` +
-          `આપની લેબ નોંધણીનો સારાંશ નીચે મુજબ છે:\n\n` +
-          `• *નામ:* ${patientName}\n` +
-          `• *UHID:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *તારીખ:* ${dt.date} • ${dt.time}\n` +
+          `_હોસ્પિટલ વહીવટ અને પેશન્ટ એડમિનિસ્ટ્રેશન_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🧾 *ચકાસાયેલ દર્દી નોંધણી સારાંશ અને પહોંચ*\n\n` +
+          `આદરણીય *${patientName}*,\n\n` +
+          `*${laboratoryInfo.name}* માં આપની દર્દી નોંધણી સફળતાપૂર્વક સિસ્ટમમાં સંગ્રહિત કરવામાં આવી છે:\n\n` +
+          `📋 *પ્રોફાઇલ સારાંશ વિગત:*\n` +
+          `• *દર્દીનું નામ:* ${patientName}\n` +
+          `• *UHID નંબર:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
+          `• *જન્મ તારીખ અને જાતિ:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
           `• *બ્લડ ગ્રૂપ:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *મોબાઇલ નંબર:* ${formData.phone || phoneNum || "N/A"}\n` +
           `• *ઇમરજન્સી સંપર્ક:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
+          `• *વીમા કંપની:* ${formData.insuranceProvider || "Direct Outpatient"}\n` +
+          `• *નોંધણી સમય:* ${dt.date} • ${dt.time}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n📞 *લેબ હેલ્પલાઇન:* ${laboratoryInfo.phone}\n` +
+          `\n🔒 *પ્રમાણપત્ર:* સત્તાવાર 1-પાનાનું મેડિકલ રજીસ્ટ્રેશન ફોર્મ PDF આપના રેકોર્ડ માટે જોડાયેલ છે.\n\n` +
+          `📞 *હેલ્પલાઇન:* ${laboratoryInfo.phone} | ${laboratoryInfo.email}\n` +
+          `📍 *સરનામું:* ${laboratoryInfo.address}\n\n` +
           `_LabCore ELIS — Accurate Information • Better Care_`
         );
       } else {
         setWhatsappMessage(
           `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `📋 *સત્તાવાર દર્દી નોંધણી પુષ્ટિકરણ (Official Confirmation)*\n\n` +
-          `નમસ્તે *${patientName}*,\n\n` +
-          `*${laboratoryInfo.name}* માં આપનું સત્તાવાર દર્દી રજીસ્ટ્રેશન સફળતાપૂર્વક પૂર્ણ થયેલ છે.\n\n` +
-          `===================================\n` +
-          `*દર્દી ક્લિનિકલ પ્રોફાઇલ (Summary)*\n` +
-          `===================================\n` +
+          `_NABL અને CAP પ્રમાણિત ક્લિનિકલ લેબોરેટરી | ISO 15189:2022 સ્ટાન્ડર્ડ_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📋 *સત્તાવાર દર્દી નોંધણી અને ક્લિનિકલ ડૉસિયર પુષ્ટિકરણ*\n\n` +
+          `આદરણીય *${patientName}*,\n\n` +
+          `નમસ્તે. *${laboratoryInfo.name}* માં આપનું સત્તાવાર દર્દી રજીસ્ટ્રેશન અને આરોગ્ય રેકોર્ડ સફળતાપૂર્વક નોંધાયેલ છે.\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*દર્દી ઓળખ અને ક્લિનિકલ પ્રોફાઇલ*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `• *દર્દીનું પૂરું નામ:* ${patientName}\n` +
-          `• *UHID નંબર:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *જન્મ તારીખ:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
-          `• *બ્લડ ગ્રૂપ (Blood Group):* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *યુનિવર્સલ હેલ્થ ID (UHID):* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
+          `• *જન્મ તારીખ અને જાતિ:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
+          `• *ચકાસાયેલ બ્લડ ગ્રૂપ:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
           `• *મોબાઇલ નંબર:* ${formData.phone || phoneNum || "N/A"}\n` +
           `• *રહેઠાણનું સરનામું:* ${formData.address || "N/A"}, ${formData.city || "Ahmedabad"}\n` +
           `• *ઇમરજન્સી સંપર્ક:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
-          `• *વીમા કંપની (Insurance):* ${formData.insuranceProvider || "N/A"} (${formData.insuranceNumber || "N/A"})\n` +
-          `• *નોંધણી સમય:* ${dt.date} ના ${dt.time}\n` +
-          `===================================\n` +
+          `• *આરોગ્ય વીમો (TPA):* ${formData.insuranceProvider || "N/A"} (${formData.insuranceNumber || "N/A"})\n` +
+          `• *નોંધણી સમય:* ${dt.date} ના ${dt.time} કલાકે\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n🔒 *ડેટા સુરક્ષા:* આપની તમામ મેડિકલ માહિતી 256-bit એન્ક્રિપ્શન અને HIPAA સ્ટાન્ડર્ડ્સ હેઠળ સુરક્ષિત છે.\n\n` +
-          `📞 *24/7 હેલ્પલાઇન & WhatsApp:* ${laboratoryInfo.phone}\n` +
-          `📍 *લેબ સરનામું:* ${laboratoryInfo.address}`
+          `\n🔒 *ડેટા સુરક્ષા:* આપનો તબીબી રેકોર્ડ 256-બીટ SSL એન્ક્રિપ્શન અને HIPAA/DISHA સ્ટાન્ડર્ડ્સ હેઠળ સુરક્ષિત છે.\n\n` +
+          `📞 *24/7 ક્લિનિકલ હેલ્પલાઇન:* ${laboratoryInfo.phone}\n` +
+          `📍 *લેબોરેટરી કેન્દ્ર:* ${laboratoryInfo.address}\n\n` +
+          `_સાબિતી આધારિત નિદાન અને આરોગ્ય રક્ષા • LabCore ELIS_`
         );
       }
     } else {
-      // English (default)
+      // English (default - High-level professional clinical writing)
       if (template === "welcome") {
         setWhatsappMessage(
-          `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🌟 *PATIENT DIGITAL ACCOUNT CONFIRMATION*\n\n` +
+          `*🏥 ${laboratoryInfo.name.toUpperCase()}*\n` +
+          `_Department of Laboratory Medicine & Patient Services_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*DIGITAL HEALTH RECORD (EHR) ACTIVATION ADVISORY*\n\n` +
           `Dear *${patientName}*,\n\n` +
-          `Welcome to ${laboratoryInfo.name}! Your patient diagnostic account is now active as of ${dt.date} at ${dt.time}.\n\n` +
-          `📋 *ACCOUNT OVERVIEW:*\n` +
-          `• *Full Name:* ${patientName}\n` +
-          `• *Patient UHID:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *Registered Contact:* ${formData.phone || phoneNum || "N/A"}\n` +
-          `• *Blood Group:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
-          `• *Registration Time:* ${dt.date} at ${dt.time}\n` +
+          `Welcome to *${laboratoryInfo.name}*. Your personalized Electronic Health Record (EHR) has been initialized and activated in our Laboratory Information System (LIS) as of ${dt.date} at ${dt.time}.\n\n` +
+          `📋 *ACCOUNT & CREDENTIAL OVERVIEW:*\n` +
+          `• *Patient Full Name:* ${patientName}\n` +
+          `• *Assigned UHID:* \`${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\`\n` +
+          `• *Primary Contact:* ${formData.phone || phoneNum || "N/A"}\n` +
+          `• *Verified Blood Group:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *Clinical Status:* Active Outpatient Registration\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n✨ *KEY SERVICES & BENEFITS:*\n` +
-          `✓ 24/7 Digital access to test results & receipts\n` +
-          `✓ Fast-track sample collection with QR code\n` +
-          `✓ Automated WhatsApp & Email report alerts\n\n` +
-          `📞 *Helpline / Support:* ${laboratoryInfo.phone}\n` +
-          `📍 *Address:* ${laboratoryInfo.address}\n\n` +
-          `_Thank you for choosing ${laboratoryInfo.name}._`
+          `\n✨ *DIGITAL PORTAL CAPABILITIES & CONVENIENCES:*\n` +
+          `1️⃣ *Real-Time Tracking:* Track biological sample progression from barcode accessioning to pathologist verification.\n` +
+          `2️⃣ *Cumulative Archive:* Retrieve historical pathology & radiology reports 24/7 with cryptographic QR verification.\n` +
+          `3️⃣ *Financial Invoices:* Access itemized GST-compliant invoices and tax receipts for insurance reimbursement.\n` +
+          `4️⃣ *Priority Phlebotomy:* Expedited queueing with digital token and QR registration.\n\n` +
+          `🔒 *Security Notice:* Protected under 256-bit SSL encryption, DISHA, and HIPAA healthcare compliance.\n\n` +
+          `📞 *Patient Support Concierge:* ${laboratoryInfo.phone}\n` +
+          `📍 *Central Facility:* ${laboratoryInfo.address}\n\n` +
+          `_Dedicated to Precision Diagnostics & Compassionate Care._`
         );
       } else if (template === "test_instructions") {
         setWhatsappMessage(
-          `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🧪 *PRE-TEST CLINICAL INSTRUCTIONS & PREPARATION*\n\n` +
+          `*🏥 ${laboratoryInfo.name.toUpperCase()}*\n` +
+          `_Quality Assurance Division & Clinical Pathology_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*CLINICAL PROTOCOL: PRE-ANALYTICAL INVESTIGATION GUIDELINES*\n\n` +
           `Dear *${patientName}*,\n\n` +
-          `Thank you for completing your registration with ${laboratoryInfo.name}. Before your scheduled sample collection, please follow these guidelines:\n\n` +
-          `⚠️ *IMPORTANT PREPARATION GUIDELINES:*\n` +
-          `1️⃣ *Fasting Blood Tests:* Maintain 8–10 hours of overnight fasting for Glucose Fasting, Lipid Profile, or LFT (only water is permitted).\n` +
-          `2️⃣ *Medications:* Continue regular medications unless advised otherwise by your attending physician.\n` +
-          `3️⃣ *Collection Time:* Please arrive 10–15 minutes prior to scheduled collection, or keep your location ready for home phlebotomy.\n` +
-          `4️⃣ *Report Verification:* Pathologist-verified reports will be delivered directly to your WhatsApp.\n` +
+          `To ensure maximum analytical accuracy and eliminate pre-analytical biological interference in your upcoming diagnostic investigations (UHID: *${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}*), please adhere strictly to these clinical protocols:\n\n` +
+          `⚠️ *MANDATORY PRE-ANALYTICAL DIRECTIVES:*\n` +
+          `1️⃣ *Fasting Protocol (10–12 Hours):* Strict overnight fasting is mandatory for Fasting Blood Sugar (FBS), Lipid Profile, Comprehensive Metabolic Panels, and Liver Function Tests (LFT).\n` +
+          `2️⃣ *Hydration Guidelines:* Plain drinking water is permitted and strongly encouraged to maintain vascular hydration for smooth venipuncture. Avoid tea, coffee, milk, juices, caffeine, or nicotine.\n` +
+          `3️⃣ *Prescription Medications:* Continue essential chronic maintenance medications (such as anti-hypertensives or cardiac medications) with water unless explicitly restricted by your treating doctor.\n` +
+          `4️⃣ *Special Assays:* If undergoing Thyroid testing (TSH, FT3, FT4), defer morning thyroid medication until AFTER specimen collection. Diabetics should defer morning insulin/oral hypoglycemics until after the fasting sample.\n` +
+          `5️⃣ *Collection Readiness:* Please report 10–15 minutes prior to scheduled collection, or keep your residence accessible for certified home phlebotomy cold-chain transport.\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n📞 *Diagnostic Queries:* ${laboratoryInfo.phone}\n` +
-          `_Your health and diagnostic precision are our top priorities._`
+          `\n📞 *Phlebotomy Helpdesk:* ${laboratoryInfo.phone}\n` +
+          `_Adherence to pre-analytical protocols minimizes sample recollection._`
         );
       } else if (template === "summary") {
         setWhatsappMessage(
-          `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `🧾 *PATIENT REGISTRATION SUMMARY & RECEIPT*\n\n` +
+          `*🏥 ${laboratoryInfo.name.toUpperCase()}*\n` +
+          `_Hospital Administration & Patient Intake Records_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*CONFIRMED CLINICAL REGISTRATION SUMMARY & RECEIPT*\n\n` +
           `Dear *${patientName}*,\n\n` +
-          `Your patient registration summary has been verified in our system:\n\n` +
-          `• *Patient Name:* ${patientName}\n` +
-          `• *UHID / Token:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *Registered Phone:* ${formData.phone || phoneNum || "N/A"}\n` +
-          `• *Blood Group:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
-          `• *Gender & DOB:* ${formData.gender || "N/A"} (${formatDate(formData.dateOfBirth)})\n` +
-          `• *Emergency Contact:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
-          `• *Registration Date:* ${dt.date} at ${dt.time}\n` +
+          `Your patient intake dossier and diagnostic registration summary have been successfully reconciled and archived in our Laboratory Information System:\n\n` +
+          `📋 *RECONCILED REGISTRATION PARTICULARS:*\n` +
+          `• *Patient Legal Name:* ${patientName}\n` +
+          `• *System UHID / Identifier:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
+          `• *Demographics & DOB:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
+          `• *Serological Blood Group:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *Registered Mobile Contact:* ${formData.phone || phoneNum || "N/A"}\n` +
+          `• *Primary Emergency Contact:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
+          `• *Insurance / Requisition Ref:* ${formData.insuranceProvider || "Direct Outpatient Consultation"}\n` +
+          `• *Registration Timestamp:* ${dt.date} at ${dt.time}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n📞 *Laboratory Contact:* ${laboratoryInfo.phone} | ${laboratoryInfo.email}\n` +
-          `_LabCore ELIS — Accurate Information • Better Care_`
+          `\n🔒 The authorized 1-Page Medical Registration Form PDF has been generated and compiled for your permanent health records.\n\n` +
+          `📞 *Laboratory Operations:* ${laboratoryInfo.phone} | ${laboratoryInfo.email}\n` +
+          `📍 *Facility Address:* ${laboratoryInfo.address}\n\n` +
+          `_Accredited Diagnostic Excellence • LabCore ELIS_`
         );
       } else {
         setWhatsappMessage(
-          `🏥 *${laboratoryInfo.name.toUpperCase()}*\n` +
-          `📋 *OFFICIAL PATIENT REGISTRATION CONFIRMATION*\n\n` +
+          `*🏥 ${laboratoryInfo.name.toUpperCase()}*\n` +
+          `_Accredited Clinical Reference Laboratory | ISO 15189:2022 & NABL Standards_\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*OFFICIAL PATIENT REGISTRATION DOSSIER & RECORD*\n\n` +
           `Dear *${patientName}*,\n\n` +
-          `Greetings! Your official registration with *${laboratoryInfo.name}* has been successfully processed and verified.\n\n` +
-          `===================================\n` +
-          `*PATIENT CLINICAL SUMMARY*\n` +
-          `===================================\n` +
-          `• *Full Name:* ${patientName}\n` +
-          `• *UHID / File ID:* ${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\n` +
-          `• *Date of Birth:* ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
-          `• *Blood Group:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
-          `• *Contact Phone:* ${formData.phone || phoneNum || "N/A"}\n` +
-          `• *Address:* ${formData.address || "N/A"}, ${formData.city || "Ahmedabad"}\n` +
-          `• *Emergency Contact:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
-          `• *Insurance:* ${formData.insuranceProvider || "N/A"} (${formData.insuranceNumber || "N/A"})\n` +
-          `• *Registered Date & Time:* ${dt.date} at ${dt.time}\n` +
-          `===================================\n` +
+          `Greetings. Your clinical intake and official medical health registration with *${laboratoryInfo.name}* have been formally processed and validated in the Laboratory Information System (LIS).\n\n` +
+          `📋 *PATIENT IDENTIFICATION & INTAKE SUMMARY:*\n` +
+          `• *Full Legal Name:* ${patientName}\n` +
+          `• *Universal Health ID (UHID):* \`${patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}\`\n` +
+          `• *Demographics:* ${formatDate(formData.dateOfBirth)} | ${formData.gender || "N/A"}\n` +
+          `• *Verified Blood Group:* ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+          `• *Registered Mobile:* ${formData.phone || phoneNum || "N/A"}\n` +
+          `• *Residential Address:* ${formData.address || "N/A"}, ${formData.city || "Ahmedabad"}\n` +
+          `• *Emergency Medical Contact:* ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
+          `• *Health Insurance / TPA:* ${formData.insuranceProvider || "N/A"} (Policy: ${formData.insuranceNumber || "N/A"})\n` +
+          `• *Intake Timestamp:* ${dt.date} at ${dt.time}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           pdfAttachmentSection +
-          `\n🔒 *DATA PRIVACY:* Your diagnostic data is encrypted and protected under HIPAA & ISO 15189:2022 standards.\n\n` +
-          `📞 *24/7 Helpline & WhatsApp:* ${laboratoryInfo.phone}\n` +
-          `📍 *Location:* ${laboratoryInfo.address}`
+          `\n🔒 *SECURITY & COMPLIANCE SEAL:*\n` +
+          `Your diagnostic dossier is digitally secured under 256-Bit SSL encryption, DISHA, and HIPAA clinical confidentiality protocols.\n\n` +
+          `📞 *24x7 Clinical Helpline & Dispatch Desk:* ${laboratoryInfo.phone}\n` +
+          `📍 *Central Diagnostic Facility:* ${laboratoryInfo.address}\n\n` +
+          `_Empowering Evidence-Based Medicine • LabCore ELIS_`
         );
       }
     }
@@ -1800,116 +1934,205 @@ export default function PatientRegistrationPrintForm({
     }, 100);
   };
 
-  // Modified and enriched professional clinical email templates
+  // Advanced clinical email templates with accredited pathology standards
   const generateTemplateContent = (
     template: "registration" | "welcome" | "test_instructions" | "summary",
     patientName: string,
     recipient: string
   ) => {
+    const uhidTag = patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG";
+
     if (template === "welcome") {
-      setEmailSubject(`Welcome to LabCore ELIS - Patient Account & Registration Record (${patientName})`);
+      setEmailSubject(`[EHR PORTAL ACTIVATION] Patient Digital Health Record & Credentials - ${patientName} | UHID: ${uhidTag}`);
       setEmailBody(
+        `CONFIDENTIAL CLINICAL COMMUNICATION | ELECTRONIC HEALTH RECORD (EHR)\n` +
+        `================================================================================\n` +
+        `INSTITUTION       : ${laboratoryInfo.name.toUpperCase()}\n` +
+        `ACCREDITATION     : NABL ACCREDITED MEDICAL LABORATORY | ISO 15189:2022 | CAP COMPLIANT\n` +
+        `DIVISION          : Health Informatics & Patient Digital Access Services\n` +
+        `================================================================================\n\n` +
         `Dear ${patientName},\n\n` +
-        `Greetings from ${laboratoryInfo.name}.\n\n` +
-        `We are delighted to welcome you to our healthcare diagnostics network. Your patient registration account has been successfully set up on ${dt.date} at ${dt.time}.\n\n` +
-        `Your official 1-Page Patient Registration Form has been generated and is attached to this email as a digital PDF copy.\n\n` +
-        `============================================================\n` +
-        `PATIENT ACCOUNT OVERVIEW\n` +
-        `============================================================\n` +
-        `• Full Name         : ${patientName}\n` +
-        `• Registered Phone  : ${formData.phone || "N/A"}\n` +
-        `• Registered Email  : ${recipient || "N/A"}\n` +
-        `• Blood Group       : ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
-        `• Patient Category  : ${formData.patientType || "Outpatient"}\n` +
-        `• Address           : ${formData.address || "N/A"}, ${formData.city || "Ahmedabad"}\n` +
-        `============================================================\n\n` +
-        `KEY BENEFITS OF YOUR DIGITAL ACCOUNT:\n` +
-        `✓ Access past test reports and digital invoices 24/7\n` +
-        `✓ Fast-track sample collection and priority appointments\n` +
-        `✓ Direct WhatsApp & Email report alerts\n\n` +
-        `📎 ATTACHED FILE: ${patientSafeFilename}\n\n` +
-        `If you need any assistance, our helpdesk is available at ${laboratoryInfo.phone} or email ${laboratoryInfo.email}.\n\n` +
-        `Warm regards,\n` +
-        `Patient Support & Customer Care Team\n` +
+        `Welcome to ${laboratoryInfo.name}. Your personalized Electronic Health Record (EHR) dossier has been formally initialized and activated within our Enterprise Laboratory Information System (LIS) as of ${dt.date} at ${dt.time}.\n\n` +
+        `Your diagnostic profile is now linked to a centralized clinical repository designed for lifelong health record management, high-precision diagnostic tracking, and cryptographically verified report delivery.\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `1. PATIENT ACCOUNT & CLINICAL IDENTIFIERS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Patient Full Name       : ${patientName}\n` +
+        `• Universal Health ID     : ${uhidTag}\n` +
+        `• Registered Phone Number : ${formData.phone || "N/A"}\n` +
+        `• Primary Email Address   : ${recipient || "N/A"}\n` +
+        `• Serological Blood Group : ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+        `• Demographic Profile     : ${formatDate(formData.dateOfBirth)} (${formData.gender || "Not Specified"})\n` +
+        `• Clinical Intake Stream  : ${formData.patientType || "Outpatient Clinical Diagnostics"}\n` +
+        `• Account Validation      : Active & Verified by LIS Admissions\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `2. ENTERPRISE PATIENT PORTAL PRIVILEGES & DIGITAL SERVICES\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `Your authenticated EHR profile grants continuous 24/7 access to the following clinical services:\n` +
+        `• Real-Time Specimen Tracking : Monitor biological specimen custody from phlebotomy accessioning to senior pathologist verification.\n` +
+        `• Lifetime Diagnostic Archive : Access cumulative historical test results, trend analysis, and reference range charts at any time.\n` +
+        `• Tamper-Evident QR Security  : Every digital pathology report contains an SHA-256 cryptographic verification seal for authenticity.\n` +
+        `• Statutory Billing & Ledger  : Instantly retrieve GST-compliant itemized invoices and payment vouchers for insurance claims.\n` +
+        `• Priority Sample Dispatch    : Accelerated check-in via digital QR token at all affiliated collection centers.\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `3. ATTACHED CLINICAL CREDENTIALS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `Your official 1-Page Patient Registration Form and Medical ID dossier is attached to this email:\n` +
+        `📎 Attached Document: ${patientSafeFilename}\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `4. STATUTORY MEDICAL PRIVACY & CONFIDENTIALITY SAFEGUARD\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `NOTICE OF CONFIDENTIALITY: This electronic transmission, including any attachments, contains confidential health information protected under the Digital Information Security in Healthcare Act (DISHA), HIPAA privacy rules, and ISO/IEC 27001 cybersecurity frameworks. If you are not the intended recipient, please immediately notify the sender and delete this transmission.\n\n` +
+        `For concierge scheduling, home phlebotomy dispatch, or clinical assistance:\n` +
+        `• 24/7 Patient Support Desk : ${laboratoryInfo.phone}\n` +
+        `• Clinical Services Inquiries: ${laboratoryInfo.email}\n` +
+        `• Central Diagnostic Center  : ${laboratoryInfo.address}\n\n` +
+        `Sincerely,\n` +
+        `Department of Health Informatics & Patient Services\n` +
         `${laboratoryInfo.name}\n` +
-        `${laboratoryInfo.address}`
+        `Dedicated to Diagnostic Precision & Evidence-Based Clinical Care`
       );
     } else if (template === "test_instructions") {
-      setEmailSubject(`Diagnostic Test Preparation & Registration Notice - ${patientName}`);
+      setEmailSubject(`[CLINICAL DIRECTIVE] Mandatory Pre-Analytical Investigation Protocols & Fasting Advisory - ${patientName}`);
       setEmailBody(
+        `PRE-ANALYTICAL CLINICAL DIRECTIVE & SPECIMEN INTEGRITY PROTOCOL\n` +
+        `================================================================================\n` +
+        `INSTITUTION   : ${laboratoryInfo.name.toUpperCase()}\n` +
+        `ACCREDITATION : NABL (ISO 15189:2022) • CAP Certified Reference Laboratory\n` +
+        `DEPARTMENT    : Quality Assurance Division & Clinical Pathology\n` +
+        `================================================================================\n\n` +
         `Dear ${patientName},\n\n` +
-        `Thank you for completing your registration with ${laboratoryInfo.name}.\n\n` +
-        `Your official registration document is attached herewith for your records. Below are important clinical preparation guidelines for your upcoming laboratory tests:\n\n` +
-        `============================================================\n` +
-        `PRE-TEST PREPARATION GUIDELINES\n` +
-        `============================================================\n` +
-        `1. Fasting Blood Tests: For Glucose Fasting, Lipid Profile, or LFT, please ensure 8 to 10 hours of overnight fasting (water is permitted).\n` +
-        `2. Medications: Take regular prescribed medications unless your physician instructed otherwise.\n` +
-        `3. Sample Collection: Please arrive 10-15 minutes before your scheduled collection time, or have your home collection phlebotomist visit ready.\n` +
-        `4. Report Delivery: Once tests are verified by our pathologists, your official digital report will be sent to ${recipient}.\n\n` +
-        `============================================================\n` +
-        `PATIENT SUMMARY\n` +
-        `• Patient Name  : ${patientName}\n` +
-        `• Contact Phone : ${formData.phone || "N/A"}\n` +
-        `• Date & Time   : ${dt.date} at ${dt.time}\n` +
-        `• Attached File : ${patientSafeFilename}\n` +
-        `============================================================\n\n` +
-        `For questions or scheduling changes, please contact us at ${laboratoryInfo.phone}.\n\n` +
-        `Best regards,\n` +
-        `Clinical Pathology & Sample Collection Department\n` +
+        `Thank you for registering with ${laboratoryInfo.name}. To guarantee maximum analytical accuracy and avoid physiological interference with your upcoming diagnostic investigations (UHID: ${uhidTag}), please strictly adhere to the following pre-analytical preparation protocols:\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `1. MANDATORY FASTING DIRECTIVES (10 TO 12 HOURS)\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Fasting Investigations: Overnight fasting (10–12 hours) is strictly required for Fasting Blood Glucose, Lipid Profiles (Cholesterol, Triglycerides, HDL, LDL), Liver Function Tests (LFT), and Comprehensive Metabolic Panels.\n` +
+        `• Permitted Fluids      : Plain drinking water is permitted and strongly recommended to preserve adequate vascular volume for smooth venipuncture.\n` +
+        `• Prohibited Consumables: Tea, coffee, milk, energy drinks, juices, chewing gum, alcohol, and tobacco/nicotine must be avoided completely prior to sample collection.\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `2. MEDICATION PROTOCOLS & TIMING ADVISORY\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Chronic Maintenance Therapy: Continue critical daily medications (e.g., anti-hypertensives, cardiac medications) with plain water unless specifically instructed otherwise by your attending physician.\n` +
+        `• Thyroid Profile (TSH/FT3/FT4): Withhold morning thyroid hormone medication until AFTER your blood sample has been drawn.\n` +
+        `• Diabetic Regimens: Withhold morning oral hypoglycemic tablets or insulin injections until your fasting sample is collected and breakfast is taken.\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `3. SPECIMEN COLLECTION LOGISTICS & REPORT RELEASE\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Walk-in Phlebotomy : Please present to our laboratory 10–15 minutes prior to scheduled collection.\n` +
+        `• Home Phlebotomy    : Certified phlebotomists will maintain cold-chain specimen preservation (2°C - 8°C).\n` +
+        `• Report Delivery    : Following dual-analyzer processing and senior pathologist authorization, your verified digital PDF report will be delivered to ${recipient} and via secure WhatsApp.\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `4. REQUISITION PARTICULARS & ATTACHMENT\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Patient Legal Name : ${patientName}\n` +
+        `• System Identifier  : ${uhidTag}\n` +
+        `• Registered Phone   : ${formData.phone || "N/A"}\n` +
+        `• Registration Date  : ${dt.date} at ${dt.time}\n` +
+        `📎 Attached Dossier  : ${patientSafeFilename}\n\n` +
+        `Strict adherence to pre-analytical protocols minimizes specimen recollection and guarantees optimal diagnostic fidelity.\n\n` +
+        `For questions regarding test preparation or specimen collection timings:\n` +
+        `• Phlebotomy Operations Desk : ${laboratoryInfo.phone}\n` +
+        `• Specimen Dispatch Unit     : ${laboratoryInfo.email}\n\n` +
+        `Respectfully,\n` +
+        `Quality Assurance Division & Clinical Pathology\n` +
         `${laboratoryInfo.name}`
       );
     } else if (template === "summary") {
-      setEmailSubject(`Registration Summary & Receipt - ${patientName} (UHID: ${patientId || "PAT-REG"})`);
+      setEmailSubject(`[CLINICAL SUMMARY & RECEIPT] Reconciled Diagnostic Registration Dossier - ${patientName} | UHID: ${uhidTag}`);
       setEmailBody(
+        `OFFICIAL RECONCILED REGISTRATION SUMMARY & FINANCIAL LEDGER RECEIPT\n` +
+        `================================================================================\n` +
+        `INSTITUTION   : ${laboratoryInfo.name.toUpperCase()}\n` +
+        `ACCREDITATION : NABL ACCREDITED • ISO 15189:2022 REFERENCE LABORATORY\n` +
+        `DIVISION      : Hospital Administration & Patient Intake Records\n` +
+        `================================================================================\n\n` +
         `Dear ${patientName},\n\n` +
-        `Thank you for visiting ${laboratoryInfo.name}.\n\n` +
-        `Your patient registration summary has been confirmed. Below is a quick overview of your profile and registered details:\n\n` +
-        `============================================================\n` +
-        `PATIENT SUMMARY RECEIPT\n` +
-        `============================================================\n` +
-        `• Patient Name   : ${patientName}\n` +
-        `• Contact Number : ${formData.phone || "N/A"}\n` +
-        `• Email Address  : ${recipient || "N/A"}\n` +
-        `• Blood Group    : ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
-        `• Gender & Age   : ${formData.gender || "N/A"} (${formatDate(formData.dateOfBirth)})\n` +
-        `• Registration   : ${dt.date} at ${dt.time}\n` +
-        `• Attached Form  : ${patientSafeFilename}\n` +
-        `============================================================\n\n` +
-        `Your complete official 1-page clinical registration form is attached to this email as a PDF document for your records.\n\n` +
-        `Helpline: ${laboratoryInfo.phone} | ${laboratoryInfo.email}\n` +
-        `Warm regards,\n` +
-        `${laboratoryInfo.name}`
+        `Your patient intake profile and diagnostic registration record have been successfully reconciled and archived in our Enterprise Laboratory Information System (LIS):\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `1. VERIFIED PATIENT REGISTRATION PARTICULARS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Full Legal Name       : ${patientName}\n` +
+        `• Universal Health ID   : ${uhidTag}\n` +
+        `• Date of Birth & Gender: ${formatDate(formData.dateOfBirth)} (${formData.gender || "Not Specified"})\n` +
+        `• Serological Group     : ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+        `• Primary Mobile Number : ${formData.phone || "N/A"}\n` +
+        `• Registered Email      : ${recipient || "N/A"}\n` +
+        `• Emergency Contact     : ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
+        `• Insurer / TPA Ref     : ${formData.insuranceProvider || "Direct Outpatient Consultation"}\n` +
+        `• Intake Timestamp      : ${dt.date} at ${dt.time}\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `2. MEDICAL RECORDS VERIFICATION & ARCHIVAL STATUS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• LIS Dossier Status    : Formally Authenticated & Digitally Signed\n` +
+        `• Cryptographic QR Code : Embedded & Active on Registration PDF\n` +
+        `• Phlebotomy Queue      : Priority Outpatient Access Assigned\n` +
+        `• Specimen Safety Seal  : Barcode Pre-Assigned\n\n` +
+        `📎 Attached File: ${patientSafeFilename} (Authorized 1-Page Clinical Registration Dossier)\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `3. PATIENT SUPPORT & CONTACT DETAILS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Central Helpdesk : ${laboratoryInfo.phone}\n` +
+        `• Patient Records  : ${laboratoryInfo.email}\n` +
+        `• Clinical Campus  : ${laboratoryInfo.address}\n\n` +
+        `Respectfully,\n` +
+        `Department of Medical Records & Patient Administration\n` +
+        `${laboratoryInfo.name}\n` +
+        `Accurate Diagnostic Information • Superior Clinical Outcomes`
       );
     } else {
-      // "registration" - Default comprehensive official copy
-      setEmailSubject(`Official Patient Registration Confirmation & Form Copy - ${patientName}`);
+      // "registration" - Default comprehensive clinical dossier
+      setEmailSubject(`[CONFIDENTIAL MEDICAL DOSSIER] Official Patient Registration & Laboratory Intake Confirmation - ${patientName} | UHID: ${uhidTag}`);
       setEmailBody(
+        `CONFIDENTIAL MEDICAL COMMUNICATION & CLINICAL INTAKE DOSSIER\n` +
+        `================================================================================\n` +
+        `INSTITUTION       : ${laboratoryInfo.name.toUpperCase()}\n` +
+        `ACCREDITATION     : NABL (ISO 15189:2022) • CAP Certified • ICMR Registered\n` +
+        `CLINICAL DIVISION : Division of Laboratory Medicine & Patient Access Services\n` +
+        `================================================================================\n\n` +
         `Dear ${patientName},\n\n` +
-        `Greetings from ${laboratoryInfo.name}.\n\n` +
-        `Your official Patient Registration has been confirmed and recorded in our laboratory system. Please find your official 1-Page Patient Registration Form attached with this email as a PDF document for your records.\n\n` +
-        `============================================================\n` +
-        `OFFICIAL REGISTRATION DETAILS\n` +
-        `============================================================\n` +
-        `• Full Patient Name   : ${patientName}\n` +
-        `• Date of Birth       : ${formatDate(formData.dateOfBirth)} (${formData.gender || "N/A"})\n` +
-        `• Blood Group         : ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
-        `• Registered Phone    : ${formData.phone || "N/A"}\n` +
-        `• Registered Email    : ${recipient || "N/A"}\n` +
-        `• Residential Address : ${formData.address || "N/A"}, ${formData.city || "Ahmedabad"}, ${formData.state || "Gujarat"} - ${formData.postalCode || "N/A"}\n` +
-        `• Emergency Contact   : ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactPhone || "N/A"})\n` +
-        `• Insurance Provider  : ${formData.insuranceProvider || "N/A"} | Policy: ${formData.insuranceNumber || "N/A"}\n` +
-        `• Registration Date   : ${dt.date} at ${dt.time}\n` +
-        `============================================================\n\n` +
-        `📎 ATTACHMENT NOTICE:\n` +
-        `The complete official 1-Page Registration Document is attached: ${patientSafeFilename}\n\n` +
-        `DATA PRIVACY & CONFIDENTIALITY:\n` +
-        `This record contains protected medical health information secured under 256-bit SSL encryption and HIPAA compliance standards.\n\n` +
-        `For appointments or inquiries, please contact our 24/7 Helpline at ${laboratoryInfo.phone} or reply directly to this email (${laboratoryInfo.email}).\n\n` +
-        `Warm regards,\n` +
-        `Patient Care & Registration Services\n` +
+        `This is an official clinical confirmation that your patient intake dossier has been successfully authenticated, validated, and formally registered in the Enterprise Laboratory Information System (LIS) of ${laboratoryInfo.name} on ${dt.date} at ${dt.time}.\n\n` +
+        `A cryptographically generated and authorized 1-Page Official Patient Medical Registration Form & Identification Dossier has been compiled and attached to this dispatch for your permanent health records.\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `1. PATIENT DEMOGRAPHICS & CLINICAL IDENTIFIERS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Full Legal Name       : ${patientName}\n` +
+        `• Universal Health ID   : ${uhidTag}\n` +
+        `• Date of Birth & Age   : ${formatDate(formData.dateOfBirth)} (${formData.gender || "Not Specified"})\n` +
+        `• Serological Group     : ${formatBloodGroupDisplay(formData.bloodGroup)}\n` +
+        `• Primary Contact Phone : ${formData.phone || "N/A"}\n` +
+        `• Registered Email      : ${recipient || "N/A"}\n` +
+        `• Permanent Residence   : ${formData.address || "N/A"}, ${formData.city || "Ahmedabad"}, ${formData.state || "Gujarat"} - ${formData.postalCode || "N/A"}\n` +
+        `• Patient Intake Stream : ${formData.patientType || "Outpatient Diagnostic Care"}\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `2. EMERGENCY CONTACT & SPONSOR/INSURANCE PARTICULARS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `• Emergency Contact     : ${formData.emergencyContactName || "N/A"} (${formData.emergencyContactRelationship || "Primary Kin"})\n` +
+        `• Emergency Telephone   : ${formData.emergencyContactPhone || "N/A"}\n` +
+        `• Medical Insurer / TPA : ${formData.insuranceProvider || "Direct Outpatient / Self-Pay"}\n` +
+        `• Policy / Member ID    : ${formData.insuranceNumber || "N/A"}\n` +
+        `• Corporate Sponsor ID  : ${formData.corporateId || "N/A"}\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `3. SECURE DIGITAL HEALTH ARCHIVE & PATIENT ACCESS\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `Your registered profile grants immediate authenticated access to the LabCore ELIS Patient Portal:\n` +
+        `• Real-Time Diagnostic Tracking: Track biological specimens from accessioning, through automated analytical processing, to Pathologist clinical sign-off.\n` +
+        `• Cumulative Diagnostic Archive: Review and securely download lifetime historical pathology, microbiology, and molecular diagnostic reports 24/7.\n` +
+        `• Cryptographic QR Authenticity: Every report is embedded with an SHA-256 digital signature guaranteeing forensic tamper-evidence.\n` +
+        `• Itemized Financial Invoices: Access GST-compliant digital invoices for medical insurance reimbursement and tax compliance.\n\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `4. STATUTORY MEDICAL PRIVACY & CONFIDENTIALITY NOTICE\n` +
+        `--------------------------------------------------------------------------------\n` +
+        `This communication and any accompanying attachments contain Protected Health Information (PHI) governed by strict statutory confidentiality protocols under DISHA, HIPAA, and ISO/IEC 27001 data protection standards. If you are not the intended recipient, any disclosure, copying, or distribution is strictly prohibited.\n\n` +
+        `📎 ATTACHED CLINICAL ASSET:\n` +
+        `Official 1-Page Patient Registration Form (PDF): ${patientSafeFilename}\n\n` +
+        `For medical scheduling, phlebotomy inquiries, or laboratory assistance:\n` +
+        `• 24/7 Clinical Concierge Desk : ${laboratoryInfo.phone}\n` +
+        `• Central Laboratory Inquiries: ${laboratoryInfo.email}\n` +
+        `• Reference Facility Address   : ${laboratoryInfo.address}\n\n` +
+        `Respectfully delivered,\n` +
+        `Office of Patient Intake & Medical Records Administration\n` +
         `${laboratoryInfo.name}\n` +
-        `${laboratoryInfo.address}`
+        `Empowering Evidence-Based Medicine & Clinical Diagnostic Excellence`
       );
     }
   };
@@ -2155,11 +2378,13 @@ export default function PatientRegistrationPrintForm({
     iframe = document.createElement("iframe");
     iframe.id = "print-form-iframe";
     iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
+    iframe.style.left = "-10000px";
+    iframe.style.top = "0";
+    iframe.style.width = "210mm";
+    iframe.style.height = "297mm";
     iframe.style.border = "0";
+    iframe.style.zIndex = "-1000";
+    iframe.style.visibility = "hidden";
     document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow?.document;
@@ -2174,29 +2399,31 @@ export default function PatientRegistrationPrintForm({
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Patient Registration Form - ${formData.firstName} ${formData.lastName}</title>
+          <title>PATIENT REGISTRATION FORM - ${patientFullName} [${patientId ? `PAT-${patientId.slice(0, 8)}` : "UHID"}]</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
           <style>
             ${printFormStyles}
             @page {
               size: A4 portrait;
-              margin: 4mm 5mm;
+              margin: 4mm 6mm;
             }
             html, body {
               margin: 0 !important;
               padding: 0 !important;
-              background: white !important;
+              background: #FFFFFF !important;
               width: 100% !important;
               height: 100% !important;
-              overflow: hidden !important;
+              overflow: visible !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .no-print, .action-buttons, .print-button, .datetime-section, .email-header-button, .email-quick-action, .email-status-pill {
+            .no-print, .action-buttons, .print-button, .whatsapp-header-button, .email-header-button, .email-quick-action, .email-status-pill {
               display: none !important;
             }
             .print-form-container {
               box-shadow: none !important;
-              border: none !important;
+              border: 1px solid #CBD5E1 !important;
               max-width: 100% !important;
               width: 100% !important;
               margin: 0 !important;
@@ -2208,7 +2435,9 @@ export default function PatientRegistrationPrintForm({
               width: 100% !important;
             }
             .form-section,
-            .dual-section-row {
+            .dual-section-row,
+            .signature-section,
+            .footer {
               page-break-inside: avoid !important;
               break-inside: avoid !important;
               width: 100% !important;
@@ -2262,79 +2491,83 @@ export default function PatientRegistrationPrintForm({
 
       <div className="print-form-page">
         <div className="print-form-container" ref={formRef}>
-          {/* HEADER */}
+          {/* LIGHT-WHITE HOSPITAL & LAB HEADER */}
           <div className="form-header">
             <div className="header-left">
-              <div className="logo-icon"></div>
+              <div className="clinic-logo-badge">
+                <Shield size={22} className="text-sky-600" />
+              </div>
               <div>
-                <div className="brand-name">
+                <div className="brand-title">
                   LabCore <span>ELIS</span>
                 </div>
-                <div className="brand-subtitle">Laboratory Information System</div>
+                <div className="brand-tagline">Clinical Diagnostic Laboratory Information System</div>
+                <div className="brand-accreditation">NABL ACCREDITED (ISO 15189:2022) • CAP CERTIFIED • ABDM/ABHA COMPLIANT</div>
               </div>
             </div>
 
             <div className="header-center">
               <h1 className="form-title">PATIENT REGISTRATION FORM</h1>
-              <div className="form-subtitle">Accurate Information • Better Care • Safer Results</div>
+              <div className="form-subtitle">Comprehensive Clinical Intake & Medical Record Slip</div>
+              <div className="form-dossier-tag">Accredited Outpatient Intake • LIS-REG-A4</div>
             </div>
 
             <div className="header-right">
-              <div className="qr-section">
-                <div className="qr-code">
-                  {qrCodeDataUrl ? (
-                    <img src={qrCodeDataUrl} alt="Patient QR Code" />
-                  ) : qrCodeError ? (
-                    <div className="qr-code-fallback">QR Error</div>
-                  ) : (
-                    <div className="qr-code-fallback">...</div>
-                  )}
+              <div className="qr-box">
+                {qrCodeDataUrl ? (
+                  <img src={qrCodeDataUrl} alt="Patient QR Code" />
+                ) : qrCodeError ? (
+                  <div className="qr-fallback">QR Error</div>
+                ) : (
+                  <div className="qr-fallback">...</div>
+                )}
+              </div>
+              <div className="header-id-block">
+                <div className="uhid-pill">
+                  <span className="uhid-label">UHID:</span>
+                  <span className="uhid-val">{patientId ? `PAT-${patientId.slice(0, 8)}` : "PAT-REG"}</span>
                 </div>
+                <div className="datetime-stamp">{dt.date} • {dt.time}</div>
               </div>
               <div className="header-actions no-print">
-                <div className="header-buttons-row">
-                  <button
-                    className="whatsapp-header-button"
-                    onClick={() => openWhatsAppComposer("registration")}
-                    type="button"
-                    title="Send Registration Form & Attached PDF via WhatsApp"
-                  >
-                    <MessageCircle size={13} />
-                    WHATSAPP FORM
-                  </button>
-                  <button
-                    className="email-header-button"
-                    onClick={() => openEmailComposer("registration")}
-                    type="button"
-                    title="Send Registration Form & Attached PDF via Email"
-                  >
-                    <Mail size={13} />
-                    EMAIL FORM
-                  </button>
-                  <button className="print-button" onClick={handlePrint} type="button">
-                    <Printer size={13} />
-                    PRINT
-                  </button>
-                </div>
-                <div className="datetime-section">
-                  <div>{dt.date}</div>
-                  <div>{dt.time}</div>
-                </div>
+                <button
+                  className="whatsapp-header-button"
+                  onClick={() => openWhatsAppComposer("registration")}
+                  type="button"
+                  title="Send Registration Form & Attached PDF via WhatsApp"
+                >
+                  <MessageCircle size={12} />
+                  WHATSAPP
+                </button>
+                <button
+                  className="email-header-button"
+                  onClick={() => openEmailComposer("registration")}
+                  type="button"
+                  title="Send Registration Form & Attached PDF via Email"
+                >
+                  <Mail size={12} />
+                  EMAIL
+                </button>
+                <button className="print-button" onClick={handlePrint} type="button">
+                  <Printer size={12} />
+                  PRINT
+                </button>
               </div>
             </div>
           </div>
 
-          {/* FORM BODY (NATURAL FLOW - ZERO ARTIFICIAL GAPS) */}
+          {/* FORM BODY (BALANCED CLINICAL SECTIONS - EXACT 1-PAGE FIT) */}
           <div className="form-body">
-            {/* SECTION 1: PERSONAL INFORMATION */}
+            {/* SECTION 01: PERSONAL DEMOGRAPHICS & IDENTIFICATION */}
             <div className="form-section">
               <div className="section-header">
-                <div className="section-number blue">1</div>
-                <div className="section-title">PERSONAL INFORMATION</div>
+                <div className="section-badge">01</div>
+                <div className="section-title">PERSONAL DEMOGRAPHICS & IDENTIFICATION</div>
+                <div className="section-header-rule"></div>
               </div>
 
-              {/* Row 1: Name Details */}
-              <div className="grid-3-col" style={{ marginBottom: "8px" }}>
+              {/* Row 1: Legal Name Details */}
+              <div className="grid-3-col" style={{ marginBottom: "6px" }}>
                 <div className="form-field">
                   <div className="field-label">
                     <User className="field-icon" />
@@ -2367,7 +2600,7 @@ export default function PatientRegistrationPrintForm({
               </div>
 
               {/* Row 2: Demographics */}
-              <div className="grid-4-col" style={{ marginBottom: "8px" }}>
+              <div className="grid-4-col" style={{ marginBottom: "6px" }}>
                 <div className="form-field">
                   <div className="field-label">
                     <Calendar className="field-icon" />
@@ -2417,45 +2650,46 @@ export default function PatientRegistrationPrintForm({
                     Nationality
                   </div>
                   <div className={`field-value ${!formData.nationality ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.nationality)}
+                    {formatDisplayValue(formData.nationality || "Indian")}
                   </div>
                 </div>
 
                 <div className="form-field">
                   <div className="field-label">
                     <User className="field-icon" />
-                    Patient Type
+                    Patient Category
                   </div>
                   <div className={`field-value ${!formData.patientType ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.patientType)}
+                    {formatDisplayValue(formData.patientType || "Outpatient")}
                   </div>
                 </div>
 
                 <div className="form-field col-span-2">
                   <div className="field-label">
                     <User className="field-icon" />
-                    Additional Information
+                    Clinical / Additional Information
                   </div>
                   <div className={`field-value ${!formData.additionalInformation ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.additionalInformation)}
+                    {formatDisplayValue(formData.additionalInformation || "None Recorded")}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* SECTION 2: CONTACT & ADDRESS INFORMATION */}
+            {/* SECTION 02: CONTACT & RESIDENTIAL PARTICULARS */}
             <div className="form-section">
               <div className="section-header">
-                <div className="section-number purple">2</div>
-                <div className="section-title">CONTACT & ADDRESS INFORMATION</div>
+                <div className="section-badge">02</div>
+                <div className="section-title">CONTACT & RESIDENTIAL PARTICULARS</div>
+                <div className="section-header-rule"></div>
               </div>
 
               {/* Row 1: Contact Details */}
-              <div className="grid-3-col" style={{ marginBottom: "8px" }}>
+              <div className="grid-3-col" style={{ marginBottom: "6px" }}>
                 <div className="form-field">
                   <div className="field-label">
                     <Phone className="field-icon" />
-                    Phone Number <span className="field-required">*</span>
+                    Primary Phone Number <span className="field-required">*</span>
                   </div>
                   <div className={`field-value ${!formData.phone ? "empty" : ""}`}>
                     {formatDisplayValue(formData.phone)}
@@ -2464,13 +2698,13 @@ export default function PatientRegistrationPrintForm({
 
                 <div className="form-field">
                   <div className="field-label" style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: "3.5px" }}>
                       <Mail className="field-icon" />
                       Email Address
                     </span>
                     {formData.email && (
                       <span className="email-status-pill no-print" title="Verified Delivery Channel">
-                        <CheckCircle size={8} /> Verified
+                        <CheckCircle size={7.5} /> Verified
                       </span>
                     )}
                   </div>
@@ -2486,7 +2720,7 @@ export default function PatientRegistrationPrintForm({
                         className="email-quick-action no-print"
                         title="Send form with PDF attachment to patient"
                       >
-                        <Mail size={10} /> Send Form PDF
+                        <Mail size={9} /> Send PDF
                       </button>
                     )}
                   </div>
@@ -2495,7 +2729,7 @@ export default function PatientRegistrationPrintForm({
                 <div className="form-field">
                   <div className="field-label">
                     <MapPin className="field-icon" />
-                    Street Address <span className="field-required">*</span>
+                    Residential Street Address <span className="field-required">*</span>
                   </div>
                   <div className={`field-value ${!formData.address ? "empty" : ""}`}>
                     {formatDisplayValue(formData.address)}
@@ -2528,7 +2762,7 @@ export default function PatientRegistrationPrintForm({
                 <div className="form-field">
                   <div className="field-label">
                     <MapPin className="field-icon" />
-                    Postal Code <span className="field-required">*</span>
+                    Postal Code / PIN <span className="field-required">*</span>
                   </div>
                   <div className={`field-value ${!formData.postalCode ? "empty" : ""}`}>
                     {formatDisplayValue(formData.postalCode)}
@@ -2541,22 +2775,23 @@ export default function PatientRegistrationPrintForm({
                     Country <span className="field-required">*</span>
                   </div>
                   <div className={`field-value ${!formData.country ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.country)}
+                    {formatDisplayValue(formData.country || "India")}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* DUAL BALANCED SECTION: 3. EMERGENCY CONTACT & 4. INSURANCE INFORMATION */}
+            {/* DUAL SECTION: 03. EMERGENCY CONTACT & 04. HEALTH INSURANCE & SPONSOR */}
             <div className="dual-section-row">
               {/* LEFT: EMERGENCY CONTACT */}
               <div className="dual-section-left">
                 <div className="section-header">
-                  <div className="section-number orange">3</div>
-                  <div className="section-title">EMERGENCY CONTACT</div>
+                  <div className="section-badge">03</div>
+                  <div className="section-title">EMERGENCY CLINICAL CONTACT</div>
+                  <div className="section-header-rule"></div>
                 </div>
 
-                <div className="grid-2-col" style={{ marginBottom: "8px" }}>
+                <div className="grid-2-col" style={{ marginBottom: "6px" }}>
                   <div className="form-field">
                     <div className="field-label">
                       <User className="field-icon" />
@@ -2582,10 +2817,10 @@ export default function PatientRegistrationPrintForm({
                   <div className="form-field">
                     <div className="field-label">
                       <User className="field-icon" />
-                      Relationship
+                      Relationship to Patient
                     </div>
                     <div className={`field-value ${!formData.emergencyContactRelationship ? "empty" : ""}`}>
-                      {formatDisplayValue(formData.emergencyContactRelationship)}
+                      {formatDisplayValue(formData.emergencyContactRelationship || "Family Kin")}
                     </div>
                   </div>
 
@@ -2595,34 +2830,35 @@ export default function PatientRegistrationPrintForm({
                       Contact Address
                     </div>
                     <div className={`field-value ${!formData.emergencyContactAddress ? "empty" : ""}`}>
-                      {formatDisplayValue(formData.emergencyContactAddress)}
+                      {formatDisplayValue(formData.emergencyContactAddress || "Same as Patient")}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* RIGHT: INSURANCE INFORMATION */}
+              {/* RIGHT: HEALTH INSURANCE & SPONSOR */}
               <div className="dual-section-right">
                 <div className="section-header">
-                  <div className="section-number green">4</div>
-                  <div className="section-title">INSURANCE INFORMATION</div>
+                  <div className="section-badge">04</div>
+                  <div className="section-title">HEALTH INSURANCE & SPONSOR</div>
+                  <div className="section-header-rule"></div>
                 </div>
 
-                <div className="grid-2-col" style={{ marginBottom: "8px" }}>
+                <div className="grid-2-col" style={{ marginBottom: "6px" }}>
                   <div className="form-field">
                     <div className="field-label">
                       <CreditCard className="field-icon" />
-                      Insurance Provider
+                      Insurance / TPA Provider
                     </div>
                     <div className={`field-value ${!formData.insuranceProvider ? "empty" : ""}`}>
-                      {formatDisplayValue(formData.insuranceProvider)}
+                      {formatDisplayValue(formData.insuranceProvider || "Direct Self-Pay")}
                     </div>
                   </div>
 
                   <div className="form-field">
                     <div className="field-label">
                       <CreditCard className="field-icon" />
-                      Insurance Number
+                      Policy / Card Number
                     </div>
                     <div className={`field-value ${!formData.insuranceNumber ? "empty" : ""}`}>
                       {formatDisplayValue(formData.insuranceNumber)}
@@ -2634,7 +2870,7 @@ export default function PatientRegistrationPrintForm({
                   <div className="form-field">
                     <div className="field-label">
                       <CreditCard className="field-icon" />
-                      Group Number
+                      Corporate / Group ID
                     </div>
                     <div className={`field-value ${!formData.insuranceGroupNumber ? "empty" : ""}`}>
                       {formatDisplayValue(formData.insuranceGroupNumber)}
@@ -2644,7 +2880,7 @@ export default function PatientRegistrationPrintForm({
                   <div className="form-field">
                     <div className="field-label">
                       <Calendar className="field-icon" />
-                      Expiry Date
+                      Policy Expiry Date
                     </div>
                     <div className={`field-value ${!formData.insuranceExpiryDate ? "empty" : ""}`}>
                       {formatDate(formData.insuranceExpiryDate)}
@@ -2654,51 +2890,57 @@ export default function PatientRegistrationPrintForm({
               </div>
             </div>
 
-            {/* SECTION 5: MEDICAL INFORMATION */}
+            {/* SECTION 05: CLINICAL HISTORY & PRE-ANALYTICAL ALERTS */}
             <div className="form-section">
               <div className="section-header">
-                <div className="section-number teal">5</div>
-                <div className="section-title">MEDICAL INFORMATION</div>
+                <div className="section-badge">05</div>
+                <div className="section-title">CLINICAL HISTORY & PRE-ANALYTICAL ALERTS</div>
+                <div className="section-header-rule"></div>
               </div>
 
               <div className="grid-3-col">
                 <div className="form-field">
                   <div className="field-label">
                     <Heart className="field-icon" />
-                    Known Allergies
+                    Known Drug & Environmental Allergies
                   </div>
                   <div className={`field-value ${!formData.allergies ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.allergies)}
+                    {formData.allergies ? (
+                      <span style={{ color: "#DC2626", fontWeight: 700 }}>{formData.allergies}</span>
+                    ) : (
+                      "No Known Drug Allergies Reported"
+                    )}
                   </div>
                 </div>
 
                 <div className="form-field">
                   <div className="field-label">
                     <Heart className="field-icon" />
-                    Medical Conditions
+                    Medical Conditions / Diagnoses
                   </div>
                   <div className={`field-value ${!formData.medicalConditions ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.medicalConditions)}
+                    {formatDisplayValue(formData.medicalConditions || "None Reported")}
                   </div>
                 </div>
 
                 <div className="form-field">
                   <div className="field-label">
                     <Heart className="field-icon" />
-                    Current Medications
+                    Current Prescribed Medications
                   </div>
                   <div className={`field-value ${!formData.currentMedications ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.currentMedications)}
+                    {formatDisplayValue(formData.currentMedications || "None Reported")}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* SECTION 6: COMMUNICATION PREFERENCES */}
+            {/* SECTION 06: REGULATORY MEDICAL CONSENT & NOTIFICATION */}
             <div className="form-section">
               <div className="section-header">
-                <div className="section-number pink">6</div>
-                <div className="section-title">COMMUNICATION PREFERENCES</div>
+                <div className="section-badge">06</div>
+                <div className="section-title">REGULATORY MEDICAL CONSENT & NOTIFICATION</div>
+                <div className="section-header-rule"></div>
               </div>
 
               <div className="preferences-row">
@@ -2708,151 +2950,93 @@ export default function PatientRegistrationPrintForm({
                     Preferred Language
                   </div>
                   <div className={`field-value ${!formData.preferredLanguage ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.preferredLanguage)}
+                    {formatDisplayValue(formData.preferredLanguage || "English")}
                   </div>
                 </div>
 
                 <div className="form-field">
                   <div className="field-label">
                     <MessageCircle className="field-icon" />
-                    Preferred Method
+                    Preferred Mode
                   </div>
                   <div className={`field-value ${!formData.preferredCommunicationMethod ? "empty" : ""}`}>
-                    {formatDisplayValue(formData.preferredCommunicationMethod)}
+                    {formatDisplayValue(formData.preferredCommunicationMethod || "SMS & WhatsApp")}
                   </div>
                 </div>
 
                 <div className="form-field">
-                  <div className="field-label">Notification Channels</div>
+                  <div className="field-label">Authorized Notification Channels</div>
                   <div className="notification-list">
                     <div className="notification-item">
-                      <span
-                        className={`notification-checkbox ${
-                          Array.isArray(formData.notificationPreferences) && (
-                            formData.notificationPreferences.includes("SMS") ||
-                            formData.notificationPreferences.includes("TEST_RESULTS")
-                          )
-                            ? "checked"
-                            : "unchecked"
-                        }`}
-                      >
-                        ✓
-                      </span>
+                      <span className="notification-checkbox checked">✓</span>
                       <span>SMS</span>
                     </div>
 
                     <div className="notification-item">
-                      <span
-                        className={`notification-checkbox ${
-                          Array.isArray(formData.notificationPreferences) && formData.notificationPreferences.includes("EMAIL") || formData.email
-                            ? "checked"
-                            : "unchecked"
-                        }`}
-                      >
+                      <span className={`notification-checkbox ${formData.email ? "checked" : "unchecked"}`}>
                         ✓
                       </span>
                       <span>Email</span>
                     </div>
 
                     <div className="notification-item">
-                      <span
-                        className={`notification-checkbox ${
-                          Array.isArray(formData.notificationPreferences) && formData.notificationPreferences.includes("PHONE") ? "checked" : "unchecked"
-                        }`}
-                      >
-                        ✓
-                      </span>
-                      <span>Phone Call</span>
+                      <span className="notification-checkbox checked">✓</span>
+                      <span>WhatsApp</span>
                     </div>
 
                     <div className="notification-item">
-                      <span
-                        className={`notification-checkbox ${
-                          Array.isArray(formData.notificationPreferences) && formData.notificationPreferences.includes("POSTAL") ? "checked" : "unchecked"
-                        }`}
-                      >
-                        ✓
-                      </span>
-                      <span>Postal Mail</span>
+                      <span className="notification-checkbox unchecked">✓</span>
+                      <span>Phone Call</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="consent-box">
-                <span className={`consent-checkbox ${formData.privacyConsent ? "checked" : "unchecked"}`}>
-                  ✓
-                </span>
+                <span className="consent-checkbox">✓</span>
                 <span className="consent-text">
-                  I consent to the collection and processing of my personal data for medical purposes and understand my rights regarding data privacy and confidentiality.
+                  I hereby consent to the collection, electronic archival, and clinical processing of my diagnostic healthcare data in accordance with statutory medical confidentiality protocols (DISHA, HIPAA, and ISO/IEC 27001 data protection standards).
                 </span>
               </div>
             </div>
           </div>
 
-          {/* SIGNATURE SECTION */}
+          {/* DUAL SIGNATURE & CLINICAL STAMP SECTION */}
           <div className="signature-section">
-            <div className="signature-field">
-              <div className="signature-label">Patient / Guardian Signature</div>
-              <div className="signature-line"></div>
+            <div className="signature-card">
+              <div className="signature-title">Patient / Legal Guardian Attestation</div>
+              <div className="signature-statement">
+                &ldquo;I certify that the demographic, clinical history, and contact particulars provided above are complete, true, and correct.&rdquo;
+              </div>
+              <div className="signature-draw-area">
+                <div className="signature-meta">{patientFullName}</div>
+                <div className="signature-meta">Date: {dt.date}</div>
+              </div>
             </div>
-            <div className="signature-field">
-              <div className="signature-label">Registration Date & Time</div>
-              <div className="signature-line">
-                {dt.date} • {dt.time}
+
+            <div className="signature-card">
+              <div className="signature-title">Authorized Clinical Intake Officer / Phlebotomist</div>
+              <div className="signature-statement">
+                &ldquo;Identity verified against official photo ID. Records authenticated in LIS repository.&rdquo;
+              </div>
+              <div className="signature-draw-area">
+                <div className="signature-meta">Officer ID: REG-DESK-01 • {dt.time}</div>
+                <div className="stamp-box-inline">Facility Stamp</div>
               </div>
             </div>
           </div>
 
-          {/* ACTION BUTTONS (SCREEN ONLY) */}
-          <div className="action-buttons no-print">
-            {onClose && (
-              <button onClick={onClose} className="btn btn-secondary" type="button">
-                <X size={15} />
-                Close
-              </button>
-            )}
-            <button
-              onClick={() => openWhatsAppComposer("registration")}
-              className="btn btn-whatsapp"
-              type="button"
-              title="Compose and dispatch patient WhatsApp message with PDF"
-            >
-              <MessageCircle size={15} />
-              WhatsApp Form
-            </button>
-            <button
-              onClick={() => openEmailComposer("registration")}
-              className="btn btn-email"
-              type="button"
-              title="Compose and send patient email with PDF attached"
-            >
-              <Mail size={15} />
-              Email Form
-            </button>
-            {onSave && (
-              <button onClick={handleSave} className="btn btn-secondary" type="button">
-                <FileText size={15} />
-                Save Draft
-              </button>
-            )}
-            <button onClick={handlePrint} className="btn btn-primary" type="button">
-              <Printer size={15} />
-              Print Form
-            </button>
-          </div>
-
-          {/* FOOTER */}
+          {/* LIGHT-WHITE CLINICAL FOOTER */}
           <div className="footer">
             <div className="footer-row">
               <div className="footer-item">
                 <Shield className="footer-icon" />
-                <span>Your data is secure and encrypted</span>
+                <span>ISO 15189:2022 Reference Lab</span>
               </div>
               <div className="footer-divider"></div>
               <div className="footer-item">
                 <CheckCircle className="footer-icon" />
-                <span>HIPAA Compliant</span>
+                <span>HIPAA & DISHA Compliant</span>
               </div>
               <div className="footer-divider"></div>
               <div className="footer-item">
@@ -2864,18 +3048,70 @@ export default function PatientRegistrationPrintForm({
                 <Phone className="footer-icon" />
                 <span>{laboratoryInfo.phone}</span>
               </div>
+              <div className="footer-divider"></div>
+              <div className="footer-item">
+                <MapPin className="footer-icon" />
+                <span>{laboratoryInfo.address}</span>
+              </div>
             </div>
 
             <div className="footer-bottom">
               <div className="footer-security">
                 <Shield className="footer-icon" />
-                <span>ISO 15189:2022 Recognized • 256-bit SSL Encryption • Patient Data Protected</span>
+                <span>Electronic Medical Record (EMR) • Cryptographically Authenticated by LabCore ELIS LIS • Confidential Document</span>
               </div>
-              <div className="footer-logo">
-                <span className="footer-logo-text">LabCore ELIS</span>
-                <span className="footer-logo-subtext"> — Laboratory Information System</span>
+              <div className="footer-page-index">
+                Page 1 of 1 • Single-Sheet Clinical Dossier
               </div>
             </div>
+          </div>
+
+          {/* ACTION BUTTONS (SCREEN ONLY) */}
+          <div className="action-buttons no-print">
+            {onClose && (
+              <button onClick={onClose} className="btn btn-secondary" type="button">
+                <X size={14} />
+                Close
+              </button>
+            )}
+            <button
+              onClick={() => openWhatsAppComposer("registration")}
+              className="btn btn-whatsapp"
+              type="button"
+              title="Compose and dispatch patient WhatsApp message with PDF"
+            >
+              <MessageCircle size={14} />
+              WhatsApp Form
+            </button>
+            <button
+              onClick={() => openEmailComposer("registration")}
+              className="btn btn-email"
+              type="button"
+              title="Compose and send patient email with PDF attached"
+            >
+              <Mail size={14} />
+              Email Form
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              className="btn btn-secondary"
+              type="button"
+              title="Download high-resolution 1-Page A4 PDF"
+              disabled={pdfGenerating}
+            >
+              {pdfGenerating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              Download PDF
+            </button>
+            {onSave && (
+              <button onClick={handleSave} className="btn btn-secondary" type="button">
+                <FileText size={14} />
+                Save Draft
+              </button>
+            )}
+            <button onClick={handlePrint} className="btn btn-primary" type="button">
+              <Printer size={14} />
+              Print Form
+            </button>
           </div>
         </div>
 

@@ -13,7 +13,7 @@ export const registerSchema = z.object({
   phone: z
     .string()
     .trim()
-    .regex(/^\d{10,15}$/, "Phone must be 10-15 digits")
+    .regex(/^\+91[6-9]\d{9}$/, "Phone must be in +91 format with 10 digits")
     .optional(),
   password: z
     .string()

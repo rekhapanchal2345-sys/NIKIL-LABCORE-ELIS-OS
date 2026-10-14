@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import prisma from '../api/config/database';
 import bcrypt from 'bcryptjs';
+import { hashPassword } from '../api/src/utils/password';
 
 async function updateUserPassword() {
   try {
@@ -26,7 +27,7 @@ async function updateUserPassword() {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await hashPassword(newPassword);
 
     await prisma.user.update({
       where: { email },

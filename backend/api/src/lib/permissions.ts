@@ -71,11 +71,9 @@ export type Permission =
 const ALL_PERMISSIONS: Permission[] = Object.values(PERMISSIONS);
 
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.AUDIT_READ || true),
+  ADMIN: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.AUDIT_READ),
   SUPER_ADMIN: ALL_PERMISSIONS,
-  BRANCH_ADMIN: ALL_PERMISSIONS.filter(
-    (p) => p !== PERMISSIONS.USER_UNLOCK || true
-  ),
+  BRANCH_ADMIN: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.USER_UNLOCK),
   FRONT_DESK: [
     PERMISSIONS.PATIENT_READ,
     PERMISSIONS.PATIENT_CREATE,
@@ -167,7 +165,7 @@ export const hasPermission = (
   role: UserRole,
   permission: Permission
 ): boolean => {
-  if (role === "SUPER_ADMIN" || role === "ADMIN") {
+  if (role === "SUPER_ADMIN") {
     return true;
   }
   return getPermissionsForRole(role).includes(permission);

@@ -19,7 +19,7 @@
  * re-exports it so the existing import paths keep working. Do not add
  * authentication logic here; add it to ./auth instead.
  */
-export { authenticate } from "./auth";
+export { authenticate, requireOwnerToken } from "./auth";
 
 /**
  * Retained for `rbac.middleware` and other legacy consumers. It is the same

@@ -69,154 +69,152 @@ export default function SampleStatCenter({
   updatingSampleId,
 }: SampleStatCenterProps) {
   const statSamples = samples.filter(
-    (s) => (s.priority === "STAT" || s.priority === "URGENT") && s.status !== "COMPLETED" && s.status !== "REJECTED"
+    (s) => (s.priority === "STAT" || s.priority === "URGENT") && s.status !== "COMPLETED"
   );
-
-  const completedStatCount = samples.filter(
-    (s) => (s.priority === "STAT" || s.priority === "URGENT") && s.status === "COMPLETED"
-  ).length;
 
   return (
     <div className="space-y-6">
-      {/* STAT Command Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-rose-500/40 bg-gradient-to-br from-slate-950 via-rose-950/40 to-slate-950 p-6 text-white shadow-2xl shadow-rose-950/30">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-rose-500/20 blur-3xl animate-pulse" />
-
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/20 px-3.5 py-1.5 text-[11px] font-black uppercase tracking-widest text-rose-200 backdrop-blur-md">
-              <Flame className="h-4 w-4 fill-rose-400 text-rose-400 animate-bounce" /> Emergency / ICU / STAT Turnaround Escalation Desk
+      {/* Top STAT Command Banner */}
+      <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-100 px-3 py-1 text-xs font-black text-rose-800">
+                <Flame className="h-3.5 w-3.5 text-rose-600 fill-rose-600 animate-bounce" />
+                ICU &amp; Emergency Escalation Bay
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                <Clock3 className="h-3.5 w-3.5 text-amber-700" /> Sub-60 / Sub-120 Min TAT Escalation
+              </span>
             </div>
-            <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
-              Critical Specimen Fast-Track Queue
+            <h2 className="text-xl font-black text-slate-900 tracking-tight sm:text-2xl mt-1.5">
+              STAT Critical &amp; Emergency Priority Center
             </h2>
-            <p className="text-xs text-rose-200/80 sm:text-sm max-w-2xl">
-              Real-time turnaround time (TAT) monitoring for high-priority ICU, Emergency, and Cardiac Marker specimens with automated breach prevention.
+            <p className="text-xs text-slate-600 max-w-2xl mt-1">
+              Automated laboratory triage for Intensive Care Units, Emergency Department, Cardiac Troponin runs, and critical surgical pre-ops.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-2xl border border-rose-500/40 bg-rose-950/60 p-3.5 text-center min-w-[120px] shadow-lg">
-              <p className="text-[10px] font-black uppercase tracking-wider text-rose-300">Active STAT</p>
-              <p className="text-2xl font-black text-white mt-0.5">{statSamples.length}</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/60 p-3.5 text-center min-w-[120px] shadow-lg">
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Completed Today</p>
-              <p className="text-2xl font-black text-white mt-0.5">{completedStatCount}</p>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-right shadow-sm">
+              <span className="text-[10px] font-bold uppercase text-rose-600">Active STAT Load</span>
+              <p className="text-2xl font-black text-rose-950 font-mono">{statSamples.length} Urgent</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* STAT Cards Grid */}
+      {/* STAT Cards List */}
       {statSamples.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-800 bg-slate-950/60 p-12 text-center text-slate-500 space-y-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 className="h-8 w-8" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-200">Zero Critical STAT Backlog</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm">
-              All emergency and ICU specimens are currently processed and delivered within clinical SLA targets.
-            </p>
-          </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-sm space-y-3">
+          <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
+          <h3 className="text-base font-black text-slate-900">No Critical STAT Backlog</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            All STAT requisitions have been processed, analyzed, and signed off within laboratory SLA targets.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {statSamples.map((sample) => {
-            const tat = calculateTimeRemaining(sample.createdAt, 2);
+            const { isBreached, text, percentElapsed } = calculateTimeRemaining(sample.createdAt);
             const isUpdating = updatingSampleId === sample.id;
 
-            const nextStep =
-              sample.status === "PENDING" ? { label: "Fast-Track Phlebotomy", next: "COLLECTED" } :
-              sample.status === "COLLECTED" ? { label: "Direct Lab Receive", next: "RECEIVED" } :
-              sample.status === "RECEIVED" ? { label: "Load on STAT Analyzer", next: "PROCESSING" } :
-              sample.status === "PROCESSING" ? { label: "Validate Critical Result", next: "COMPLETED" } : null;
+            const nextActionMap: Record<string, { label: string; nextStatus: string }> = {
+              PENDING: { label: "Fast-Track Collect", nextStatus: "COLLECTED" },
+              COLLECTED: { label: "Receive in STAT Lab", nextStatus: "RECEIVED" },
+              RECEIVED: { label: "Load onto STAT Analyzer", nextStatus: "PROCESSING" },
+              PROCESSING: { label: "Validate Critical Result", nextStatus: "COMPLETED" },
+            };
+
+            const action = nextActionMap[sample.status];
 
             return (
               <div
                 key={sample.id}
-                className={`relative overflow-hidden rounded-3xl border p-5 shadow-xl transition-all duration-300 ${
-                  tat.isBreached
-                    ? "border-rose-500 bg-gradient-to-br from-rose-950/50 via-slate-900 to-slate-950 ring-2 ring-rose-500/40"
-                    : "border-amber-500/50 bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950"
-                }`}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 hover:shadow-md hover:border-rose-300 transition-all duration-200"
               >
-                {/* Header with Countdown Bar */}
-                <div className="flex items-start justify-between gap-4">
+                {/* Header */}
+                <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-black text-white">{sample.sampleNumber}</span>
-                      <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[9px] font-black uppercase text-white shadow-md">
-                        STAT
-                      </span>
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300 uppercase">
-                        {sample.status}
+                      <button
+                        onClick={() => onSelectSample(sample)}
+                        className="font-mono text-sm font-black text-slate-900 hover:text-rose-600 transition-colors"
+                      >
+                        {sample.sampleNumber}
+                      </button>
+                      <span className="flex items-center gap-1 rounded bg-rose-600 px-2 py-0.5 text-[9px] font-black uppercase text-white shadow-sm">
+                        <Flame className="h-2.5 w-2.5 fill-white" /> STAT Priority
                       </span>
                     </div>
-                    <p className="font-mono text-xs text-slate-400 flex items-center gap-1.5">
-                      <ScanLine className="h-3.5 w-3.5 text-cyan-400" /> {sample.barcode}
+                    <p className="font-mono text-xs text-slate-500 flex items-center gap-1">
+                      <ScanLine className="h-3 w-3 text-sky-600" /> {sample.barcode}
                     </p>
                   </div>
 
-                  <div className={`rounded-xl border px-3 py-1.5 text-right font-mono text-xs font-black ${
-                    tat.isBreached
-                      ? "border-rose-500/50 bg-rose-500/20 text-rose-200 animate-pulse"
-                      : "border-amber-500/50 bg-amber-500/20 text-amber-200"
-                  }`}>
-                    <p className="text-[9px] uppercase font-bold text-slate-400">Target TAT (2h)</p>
-                    <p className="mt-0.5">{tat.text}</p>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div className="mt-4 h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      tat.isBreached ? "bg-rose-500" : "bg-gradient-to-r from-amber-400 to-rose-500"
-                    }`}
-                    style={{ width: `${tat.percentElapsed}%` }}
-                  />
-                </div>
-
-                {/* Patient & Test Specs */}
-                <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                    <p className="text-[10px] font-bold uppercase text-slate-500">Patient</p>
-                    <p className="font-bold text-slate-200 mt-0.5">
-                      {sample.order.patient.firstName} {sample.order.patient.lastName}
-                    </p>
-                    <p className="text-slate-400 text-[11px]">UHID: {sample.order.patient.uhid}</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                    <p className="text-[10px] font-bold uppercase text-slate-500">Critical Test</p>
-                    <p className="font-bold text-rose-300 mt-0.5">{sample.test.testName}</p>
-                    <p className="text-slate-400 text-[11px]">{sample.test.sampleContainer}</p>
-                  </div>
-                </div>
-
-                {/* Bottom Actions */}
-                <div className="mt-4 flex items-center gap-2 pt-2 border-t border-slate-800/80">
-                  <button
-                    onClick={() => onSelectSample(sample)}
-                    className="rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-bold text-slate-300 hover:text-white transition-colors"
-                  >
-                    Inspect Dossier
-                  </button>
                   <button
                     onClick={() => onPrintLabel(sample)}
-                    className="rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-bold text-slate-300 hover:text-cyan-300 transition-colors"
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    title="Print STAT Label"
                   >
-                    🏷️ Label
+                    <Printer className="h-4 w-4" />
                   </button>
-                  {nextStep && (
+                </div>
+
+                {/* Patient & Test Row */}
+                <div className="grid grid-cols-2 gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Patient</span>
+                    <p className="text-xs font-black text-slate-900 mt-0.5">
+                      {sample.order.patient.firstName} {sample.order.patient.lastName}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono">
+                      UHID: {sample.order.patient.uhid} · {sample.order.patient.gender}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Test Profile</span>
+                    <p className="text-xs font-black text-slate-900 mt-0.5">{sample.test.testName}</p>
+                    <span className="inline-block rounded bg-white px-1.5 py-0.2 font-mono text-[9px] font-bold text-slate-700 border border-slate-200 mt-0.5">
+                      {sample.test.testCode}
+                    </span>
+                  </div>
+                </div>
+
+                {/* SLA Timer Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-500 flex items-center gap-1">
+                      <Clock3 className="h-3.5 w-3.5 text-slate-400" /> SLA Countdown
+                    </span>
+                    <span className={`font-mono text-xs font-black ${isBreached ? "text-rose-600 font-bold" : "text-amber-700"}`}>
+                      {text}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        isBreached ? "bg-rose-600" : percentElapsed > 75 ? "bg-amber-500" : "bg-emerald-500"
+                      }`}
+                      style={{ width: `${Math.min(100, percentElapsed)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Status and Action */}
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                  <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10px] font-black text-slate-700">
+                    Stage: {sample.status}
+                  </span>
+
+                  {action && (
                     <button
-                      onClick={() => onAdvanceStatus(sample, nextStep.next)}
+                      onClick={() => onAdvanceStatus(sample, action.nextStatus)}
                       disabled={isUpdating}
-                      className="ml-auto flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-rose-900/40 hover:from-rose-400 hover:to-red-500 disabled:opacity-50 transition-all"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-4 py-2 text-xs font-black text-white shadow-sm hover:from-rose-500 hover:to-red-500 transition-all disabled:opacity-50"
                     >
-                      <span>{nextStep.label}</span>
+                      <span>{isUpdating ? "Escalating..." : action.label}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   )}

@@ -13,6 +13,7 @@ import {
   markReceiptSmsed,
   getPaymentReports,
   exportPaymentData,
+  generateThermalReceipt,
 } from "./receipt.service";
 
 // =======================================================
@@ -88,6 +89,28 @@ export const getByNumber =
         message: "Receipt fetched successfully",
         data: receipt,
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+// =======================================================
+// GET THERMAL RECEIPT TEXT
+// =======================================================
+
+export const getThermalReceiptText =
+  async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const params = (req as any).validated?.params || req.params;
+      
+      const text =
+        await generateThermalReceipt(params.id);
+
+      res.status(200).type('text/plain').send(text);
     } catch (error) {
       next(error);
     }

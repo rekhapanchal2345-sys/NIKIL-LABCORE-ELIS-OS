@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import prisma from '../api/config/database';
 import bcrypt from 'bcryptjs';
+import { hashPassword } from '../api/src/utils/password';
 import { UserRole, AccountStatus } from '@prisma/client';
 
 /**
@@ -59,7 +60,7 @@ async function createAdminUser() {
     }
 
     // Hash password
-    const passwordHash = await bcrypt.hash(adminUser.password, 12);
+    const passwordHash = await hashPassword(adminUser.password);
 
     // Create admin user
     const user = await prisma.user.create({
@@ -114,7 +115,7 @@ async function updateAdminPassword() {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await hashPassword(newPassword);
 
     await prisma.user.update({
       where: { email },

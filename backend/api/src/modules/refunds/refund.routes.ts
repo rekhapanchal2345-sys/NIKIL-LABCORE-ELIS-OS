@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
 
-import { authenticate } from "../../../middleware/auth.middleware";
+import { authenticate, requireOwnerToken } from "../../../middleware/auth.middleware";
 import { authorize } from "../../../middleware/rbac.middleware";
 import { validate } from "../../../middleware/validate.middleware";
 
@@ -88,6 +88,7 @@ router.post(
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
+  requireOwnerToken,
   validate({
     body: approveRefundSchema,
   }),
@@ -104,6 +105,7 @@ router.post(
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
+  requireOwnerToken,
   validate({
     body: rejectRefundSchema,
   }),
@@ -120,6 +122,7 @@ router.post(
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
+  requireOwnerToken,
   validate({
     body: processRefundSchema,
   }),

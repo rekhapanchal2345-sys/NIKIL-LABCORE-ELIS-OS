@@ -312,32 +312,28 @@ export default function SampleLabelPage() {
 
   return (
     <ProtectedRoute>
-      <div className="print-page-shell min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 py-8">
+      <div className="print-page-shell min-h-screen bg-slate-100/80 py-8">
         {/* Advanced Level Screen-only controls */}
         <div className="max-w-6xl mx-auto px-4 mb-5 no-print">
-          <div className="relative flex justify-between items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl shadow-blue-900/40 p-4 backdrop-blur-xl">
-            {/* Animated glow orbs */}
-            <div className="pointer-events-none absolute -top-8 -left-8 h-32 w-32 rounded-full bg-cyan-500/20 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-violet-500/20 blur-2xl" />
+          <div className="relative flex justify-between items-center rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
             <div className="flex items-center gap-4 relative">
               <button
                 onClick={() => router.back()}
-                className="flex items-center gap-2 text-slate-300 hover:text-white font-semibold transition-colors duration-200"
+                className="flex items-center gap-2 text-slate-700 hover:text-slate-950 font-semibold transition-colors duration-200 text-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                Back
+                Back to Sample
               </button>
-              <div className="h-4 w-px bg-white/20" />
+              <div className="h-4 w-px bg-slate-200" />
               <div className="flex items-center gap-2">
-                <span className="relative inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-950 shadow-lg shadow-amber-500/30">
-                  <span className="animate-pulse h-1.5 w-1.5 rounded-full bg-amber-800"></span>
-                  ⭐ Premium
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[10px] font-bold text-amber-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
+                  Thermal 300 DPI
                 </span>
-                <span className="relative inline-flex items-center gap-1 rounded-full border border-violet-400/40 bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-600 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/40">
-                  <span className="animate-pulse h-1.5 w-1.5 rounded-full bg-white/80"></span>
-                  Advanced Level
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[10px] font-bold text-sky-800">
+                  Code128 Barcode
                 </span>
               </div>
             </div>
@@ -345,10 +341,10 @@ export default function SampleLabelPage() {
               <select
                 value={labelSize}
                 onChange={(e) => setLabelSize(e.target.value as '4x2' | '2x1' | 'custom')}
-                className="bg-white/10 text-white border border-white/20 px-3 py-2 rounded-xl text-sm font-medium focus:ring-2 focus:ring-cyan-400/50 backdrop-blur placeholder:text-slate-400 hover:bg-white/15 transition-all"
+                className="bg-slate-50 text-slate-800 border border-slate-200 px-3 py-2 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
               >
-                <option value="4x2" className="text-slate-900">4" × 2" Labels</option>
-                <option value="2x1" className="text-slate-900">2" × 1" Labels</option>
+                <option value="4x2" className="text-slate-900">4" × 2" Standard Specimen</option>
+                <option value="2x1" className="text-slate-900">2" × 1" Micro-tainer</option>
                 <option value="custom" className="text-slate-900">Custom Size</option>
               </select>
               {labelSize === 'custom' && (
@@ -358,26 +354,26 @@ export default function SampleLabelPage() {
                     value={customWidth}
                     onChange={(e) => setCustomWidth(Number(e.target.value))}
                     placeholder="Width (px)"
-                    className="bg-white/10 text-white border border-white/20 px-3 py-2 rounded-xl text-sm w-24 font-medium focus:ring-2 focus:ring-cyan-400/50 placeholder:text-slate-500"
+                    className="bg-slate-50 text-slate-800 border border-slate-200 px-3 py-2 rounded-xl text-sm w-24 font-medium focus:ring-2 focus:ring-sky-500/20"
                   />
                   <input
                     type="number"
                     value={customHeight}
                     onChange={(e) => setCustomHeight(Number(e.target.value))}
                     placeholder="Height (px)"
-                    className="bg-white/10 text-white border border-white/20 px-3 py-2 rounded-xl text-sm w-24 font-medium focus:ring-2 focus:ring-cyan-400/50 placeholder:text-slate-500"
+                    className="bg-slate-50 text-slate-800 border border-slate-200 px-3 py-2 rounded-xl text-sm w-24 font-medium focus:ring-2 focus:ring-sky-500/20"
                   />
                 </>
               )}
               <button
                 onClick={() => setShowPreview(!showPreview)}
-                className="bg-white/10 text-slate-200 hover:bg-white/20 border border-white/20 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
               >
-                {showPreview ? '▲ Hide' : '▼ Preview'}
+                {showPreview ? '▲ Hide Grid' : '▼ Grid View'}
               </button>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 font-bold text-white shadow-lg shadow-cyan-500/30 hover:from-cyan-400 hover:to-blue-500 border border-cyan-400/30 transition-all duration-200 hover:shadow-cyan-500/50"
+                className="flex items-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -386,7 +382,7 @@ export default function SampleLabelPage() {
               </button>
               <button
                 onClick={handleDownloadPDF}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 font-bold text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-400 hover:to-teal-500 border border-emerald-400/30 transition-all duration-200 hover:shadow-emerald-500/50"
+                className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -399,33 +395,32 @@ export default function SampleLabelPage() {
 
         {/* Advanced Sample Info Strip */}
         <div className="max-w-6xl mx-auto px-4 mb-5 no-print">
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-blue-500/5 to-violet-500/5" />
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-3 relative">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <div className="flex items-center gap-4 flex-1">
+              <div className="flex items-center gap-6 flex-1">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Sample</span>
-                  <span className="text-sm font-black text-white">{sample.sampleNumber}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Accession No.</span>
+                  <span className="text-sm font-bold text-slate-900 font-mono">{sample.sampleNumber}</span>
                 </div>
-                <div className="h-6 w-px bg-white/10" />
+                <div className="h-6 w-px bg-slate-200" />
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Patient</span>
-                  <span className="text-sm font-black text-white">{sample.order.patient.firstName} {sample.order.patient.lastName}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Patient</span>
+                  <span className="text-sm font-bold text-slate-900">{sample.order.patient.firstName} {sample.order.patient.lastName}</span>
                 </div>
-                <div className="h-6 w-px bg-white/10" />
+                <div className="h-6 w-px bg-slate-200" />
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Test</span>
-                  <span className="text-sm font-black text-cyan-300">{sample.test.testName}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Test Ordered</span>
+                  <span className="text-sm font-bold text-sky-700">{sample.test.testName}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300">Label Ready</span>
+              <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Label Ready</span>
               </div>
             </div>
           </div>
@@ -433,20 +428,18 @@ export default function SampleLabelPage() {
 
         {/* Advanced Label Preview Shell */}
         <div className="max-w-6xl mx-auto px-4">
-          <div className="print-preview-shell rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 shadow-2xl shadow-black/40 print:shadow-none print:rounded-none print:bg-white print:p-0">
+          <div className="print-preview-shell rounded-3xl bg-white border border-slate-200 p-8 shadow-sm print:shadow-none print:rounded-none print:border-none print:p-0">
             <div className="flex items-center justify-between mb-6 no-print">
               <div>
-                <h3 className="text-lg font-black text-white tracking-tight">Sample Label Preview</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider">Print-ready specimen identification label</p>
+                <h3 className="text-base font-bold text-slate-900 tracking-tight">Thermal Label Preview</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Direct thermal 300 DPI specimen barcoding preview</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="relative inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-amber-950 shadow-lg shadow-amber-500/30">
-                  <span className="animate-pulse h-1.5 w-1.5 rounded-full bg-amber-700"></span>
-                  ⭐ Premium Feature
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-[10px] font-bold text-slate-700">
+                  CLSI GP41 Compliant
                 </span>
-                <span className="relative inline-flex items-center gap-1.5 rounded-full border border-violet-400/40 bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-600 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/40">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
-                  Advanced Level
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[10px] font-bold text-sky-800">
+                  NABL / CAP Standard
                 </span>
               </div>
             </div>
@@ -580,22 +573,22 @@ export default function SampleLabelPage() {
 
             {/* Advanced Print Notes */}
             <div className="mt-6 no-print">
-              <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-700 text-slate-300">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 shadow-xs">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-[11px] font-bold text-slate-200">Label Size: {labelWidth}px × {labelHeight}px</p>
-                      <p className="text-[10px] text-slate-400">Code128 · 300 DPI recommended · Thermal printer optimized</p>
+                      <p className="text-xs font-bold text-slate-800">Label Size: {labelWidth}px × {labelHeight}px</p>
+                      <p className="text-[11px] text-slate-500">Code128 · 300 DPI thermal print head calibrated · Smudge-resistant adhesive</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[9px] font-bold text-cyan-300">ISO 15223</span>
-                    <span className="rounded-lg border border-violet-400/30 bg-violet-500/10 px-2 py-1 text-[9px] font-bold text-violet-300">NABL Ready</span>
+                    <span className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-bold text-sky-800">ISO 15223 Medical</span>
+                    <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800">NABL Ready</span>
                   </div>
                 </div>
               </div>

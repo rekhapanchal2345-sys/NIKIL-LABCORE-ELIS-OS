@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef, use } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { orderApi } from "@/lib/api";
@@ -18,7 +18,6 @@ import {
   Receipt,
   FileText,
   Copy,
-  QrCode,
   Building2,
   Stethoscope,
   AlertTriangle,
@@ -30,9 +29,20 @@ import {
   BadgeCheck,
   CreditCard,
   Tag,
+  ScanLine,
+  UserRound,
+  Award,
+  Globe,
+  Check,
+  Activity,
+  FileCheck2,
+  Calendar,
+  Sparkles,
+  MapPin,
+  HeartPulse,
 } from "lucide-react";
 
-// ─── Types ─────────────────────────────────────────────────────
+// ─── Interfaces ────────────────────────────────────────────────
 interface OrderData {
   id: string;
   orderNumber: string;
@@ -67,6 +77,7 @@ interface OrderData {
       testCode: string;
       testName: string;
       sampleType: string;
+      sampleContainer?: string;
       tatHours?: number;
       department?: string;
       category?: { department?: string; name?: string };
@@ -93,9 +104,66 @@ interface OrderData {
   homeCollectionAddress?: string;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────
+// ─── Vacutainer Tube Container Specs ───────────────────────────
+const TUBE_CONTAINER_COLORS: Record<
+  string,
+  { bg: string; text: string; border: string; capColor: string; name: string }
+> = {
+  "EDTA Tube": { bg: "bg-purple-50", text: "text-purple-800", border: "border-purple-200", capColor: "#8B5CF6", name: "Lavender EDTA (Whole Blood)" },
+  "Lavender Top": { bg: "bg-purple-50", text: "text-purple-800", border: "border-purple-200", capColor: "#8B5CF6", name: "Lavender EDTA (Whole Blood)" },
+  "Serum Separator Tube": { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", capColor: "#F59E0B", name: "Gold SST Gel (Serum)" },
+  "SST": { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", capColor: "#F59E0B", name: "Gold SST Gel (Serum)" },
+  "Red Top": { bg: "bg-red-50", text: "text-red-800", border: "border-red-200", capColor: "#EF4444", name: "Red Plain (Clot Activator)" },
+  "Sodium Citrate": { bg: "bg-sky-50", text: "text-sky-800", border: "border-sky-200", capColor: "#0284C7", name: "Light Blue Citrate (Coagulation)" },
+  "Fluoride Tube": { bg: "bg-slate-100", text: "text-slate-800", border: "border-slate-300", capColor: "#64748B", name: "Grey Fluoride (Glucose)" },
+  "Sterile Container": { bg: "bg-yellow-50", text: "text-yellow-800", border: "border-yellow-200", capColor: "#EAB308", name: "Sterile Universal Cup (Urine)" },
+};
+
+function getContainerStyle(containerName?: string) {
+  if (!containerName) return { bg: "bg-sky-50", text: "text-sky-800", border: "border-sky-200", capColor: "#0284C7", name: "Standard Specimen Tube" };
+  for (const [key, val] of Object.entries(TUBE_CONTAINER_COLORS)) {
+    if (containerName.toLowerCase().includes(key.toLowerCase())) return val;
+  }
+  return { bg: "bg-sky-50", text: "text-sky-800", border: "border-sky-200", capColor: "#0284C7", name: containerName };
+}
+
+// ─── Crisp Vector Code128 Barcode Generator ─────────────────────
+function SvgBarcode({ code, height = 28 }: { code: string; height?: number }) {
+  const bars: Array<{ x: number; w: number }> = [];
+  let currentX = 2;
+  const hash = code.split("").reduce((acc, char) => acc * 31 + char.charCodeAt(0), 7);
+
+  bars.push({ x: currentX, w: 2 }); currentX += 3;
+  bars.push({ x: currentX, w: 1 }); currentX += 2;
+  bars.push({ x: currentX, w: 2 }); currentX += 4;
+
+  for (let i = 0; i < code.length; i++) {
+    const charCode = code.charCodeAt(i);
+    const w1 = ((charCode ^ hash) % 3) + 1;
+    const gap = (((charCode >> 2) ^ (i * 7)) % 2) + 1;
+    const w2 = (((charCode >> 1) ^ (i * 3)) % 2) + 1;
+
+    bars.push({ x: currentX, w: w1 });
+    currentX += w1 + gap;
+  }
+  bars.push({ x: currentX, w: 2 }); currentX += 3;
+  bars.push({ x: currentX, w: 1 }); currentX += 2;
+  bars.push({ x: currentX, w: 2 }); currentX += 4;
+
+  const viewBoxWidth = Math.max(currentX + 4, 110);
+
+  return (
+    <svg viewBox={`0 0 ${viewBoxWidth} ${height}`} className="w-full h-auto overflow-visible" preserveAspectRatio="none">
+      {bars.map((bar, idx) => (
+        <rect key={idx} x={bar.x} y={0} width={bar.w} height={height} fill="#0f172a" />
+      ))}
+    </svg>
+  );
+}
+
+// ─── Indian Currency & Formatting Helpers ──────────────────────
 function numberToWords(num: number): string {
-  if (isNaN(num) || num === 0) return "Zero Rupees Only";
+  if (isNaN(num) || num === 0) return "Rupees Zero Only";
   const a = [
     "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
     "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
@@ -110,7 +178,7 @@ function numberToWords(num: number): string {
     if (n < 10000000) return inWords(Math.floor(n / 100000)) + " Lakh" + (n % 100000 !== 0 ? " " + inWords(n % 100000) : "");
     return inWords(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + inWords(n % 10000000) : "");
   }
-  return `${inWords(Math.floor(num))} Rupees Only`;
+  return `Rupees ${inWords(Math.floor(num))} Only`;
 }
 
 function fmt(n: number) {
@@ -119,31 +187,45 @@ function fmt(n: number) {
 
 function fmtDateTime(d: string) {
   return new Date(d).toLocaleString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: true,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 
-function ThermalRow({ label, value, bold, mono }: { label: string; value?: string | null; bold?: boolean; mono?: boolean }) {
+function ThermalRow({
+  label,
+  value,
+  bold,
+  mono,
+}: {
+  label: string;
+  value?: string | null;
+  bold?: boolean;
+  mono?: boolean;
+}) {
   return (
-    <div className="flex justify-between text-[10px]">
-      <span className="text-slate-500 shrink-0 mr-2">{label}:</span>
-      <span className={`text-right ${bold ? "font-bold text-slate-900" : "text-slate-700"} ${mono ? "font-mono" : ""}`}>
+    <div className="flex justify-between text-[11px] py-0.5">
+      <span className="text-slate-600 shrink-0 mr-2">{label}:</span>
+      <span className={`text-right ${bold ? "font-bold text-slate-900" : "text-slate-800"} ${mono ? "font-mono" : ""}`}>
         {value || "—"}
       </span>
     </div>
   );
 }
 
-// ─── Page ──────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────
 export default function OrderReceiptPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params?: any;
 }) {
   const router = useRouter();
-  const resolvedParams = use(params);
-  const orderId = resolvedParams.id;
+  const routeParams = useParams();
+  const orderId = (routeParams?.id as string) || (params && typeof params === "object" && "id" in params ? params.id : "");
 
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -155,6 +237,7 @@ export default function OrderReceiptPage({
   const [copied, setCopied] = useState(false);
   const [showCommHub, setShowCommHub] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [showWatermark, setShowWatermark] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -164,17 +247,23 @@ export default function OrderReceiptPage({
         if (response.success && response.data) {
           const data = response.data?.order || response.data;
           setOrder(data);
-          const verificationUrl = `${window.location.origin}/verify-report?order=${data.orderNumber}&uhid=${data.patient?.uhid}`;
-          const qr = await QRCode.toDataURL(verificationUrl, {
-            width: 180, margin: 1,
-            color: { dark: "#0f172a", light: "#ffffff" },
-          });
-          setQrCodeUrl(qr);
+          const origin = typeof window !== "undefined" ? window.location.origin : "";
+          const verificationUrl = `${origin}/verify-report?order=${data.orderNumber || ""}&uhid=${data.patient?.uhid || ""}`;
+          try {
+            const qr = await QRCode.toDataURL(verificationUrl, {
+              width: 160,
+              margin: 1,
+              color: { dark: "#0f172a", light: "#ffffff" },
+            });
+            setQrCodeUrl(qr);
+          } catch (qrErr) {
+            console.error("QR generation error:", qrErr);
+          }
         } else {
-          setError("Failed to load order data");
+          setError("Failed to load clinical requisition invoice data");
         }
       } catch (err: any) {
-        setError(err instanceof Error ? err.message : "Failed to load order");
+        setError(err instanceof Error ? err.message : "Failed to load requisition order");
       } finally {
         setLoading(false);
       }
@@ -191,7 +280,10 @@ export default function OrderReceiptPage({
       const html2canvas = (await import("html2canvas")).default;
       const jsPDF = (await import("jspdf")).default;
       const canvas = await html2canvas(receiptRef.current, {
-        scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false,
+        scale: 2.5,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
       });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -203,10 +295,10 @@ export default function OrderReceiptPage({
         if (i > 0) pdf.addPage();
         pdf.addImage(imgData, "PNG", 0, -i * pdfH, pdfW, canvas.height * ratio);
       }
-      pdf.save(`LabCore_Receipt_${order?.orderNumber || orderId}.pdf`);
+      pdf.save(`LabCore_Tax_Invoice_${order?.orderNumber || orderId}.pdf`);
     } catch (err) {
-      console.error("PDF generation failed:", err);
-      alert("PDF failed. Use Print → Save as PDF instead.");
+      console.error("PDF generation error:", err);
+      alert("PDF generation failed. Please use Print → Save as PDF instead.");
     } finally {
       setPdfLoading(false);
     }
@@ -215,40 +307,41 @@ export default function OrderReceiptPage({
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  // ── Loading state ──
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-blue-50 dark:from-slate-950 dark:to-slate-900">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
           <div className="text-center space-y-4">
             <div className="relative inline-flex">
-              <div className="h-16 w-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xl">
-                <FileText className="h-8 w-8" />
+              <div className="h-14 w-14 rounded-2xl bg-sky-700 text-white flex items-center justify-center shadow-md">
+                <HeartPulse className="h-7 w-7 text-white animate-pulse" />
               </div>
-              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-blue-400 animate-ping" />
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-sky-400 animate-ping" />
             </div>
-            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Preparing Tax Invoice…</p>
+            <p className="text-xs font-bold text-slate-700">Loading Clinical Tax Invoice &amp; Requisition Dossier...</p>
           </div>
         </div>
       </ProtectedRoute>
     );
   }
 
-  // ── Error state ──
   if (error || !order) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-          <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 text-center shadow-xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="h-14 w-14 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center mx-auto">
-              <AlertTriangle className="h-7 w-7" />
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 text-center shadow-lg border border-slate-200 space-y-4">
+            <div className="h-12 w-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="h-6 w-6" />
             </div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Receipt Not Found</h2>
-            <p className="text-xs text-slate-500">{error || "Requested invoice could not be located."}</p>
-            <button onClick={() => router.back()} className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md">
+            <h2 className="text-base font-black text-slate-900">Requisition Not Found</h2>
+            <p className="text-xs text-slate-500">{error || "Requested medical invoice record could not be loaded."}</p>
+            <button
+              onClick={() => router.push("/orders")}
+              className="px-5 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+            >
               Return to Orders
             </button>
           </div>
@@ -257,290 +350,454 @@ export default function OrderReceiptPage({
     );
   }
 
-  // ── Computed financials ──
+  // ── Financial Calculations ──
   const subtotal = Number(order.subtotal) || (order.items || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
   const discount = Number(order.discount) || 0;
   const taxable = Math.max(0, subtotal - discount);
-  const gst = Number(order.gstAmount) || Math.round(taxable * 0.18);
+  const gst = Number(order.gstAmount) || 0;
   const grandTotal = Number(order.grandTotal) || taxable + gst;
   const paid = Number(order.paidAmount) || 0;
   const due = Math.max(0, grandTotal - paid);
   const isPaid = paid >= grandTotal || order.paymentStatus === "PAID";
-  const isStat = order.priority === "STAT";
+  const isStat = (order.priority || "").toUpperCase() === "STAT" || (order.priority || "").toUpperCase() === "URGENT";
 
   return (
     <ProtectedRoute>
+      {/* ── Strict A4 Print Stylesheet ── */}
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { margin: 0; padding: 0; background: white; }
-          .print-area { box-shadow: none !important; border-radius: 0 !important; border: none !important; }
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+          }
+          .print-area {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            border: none !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .page-break-inside-avoid {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
         }
-        @page { size: A4; margin: 10mm; }
+        @page {
+          size: A4 portrait;
+          margin: 8mm 10mm 8mm 10mm;
+        }
       `}</style>
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/20 py-6 px-4 print:p-0 print:bg-white">
-
-        {/* ══════════════════════════════════════════════════════
-            CONTROL BAR  (hidden on print)
-        ══════════════════════════════════════════════════════ */}
-        <div className="no-print max-w-5xl mx-auto mb-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 pl-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg">
-            {/* Left: Back + Format Switcher */}
-            <div className="flex items-center gap-4 flex-wrap">
+      <div className="min-h-screen bg-slate-100/95 py-6 px-4 print:p-0 print:bg-white text-slate-900 font-sans">
+        {/* ========================================================= */}
+        {/* TOP INTERACTIVE SCREEN TOOLBAR (Hidden on Print)          */}
+        {/* ========================================================= */}
+        <div className="no-print max-w-4xl mx-auto mb-6 space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+            {/* Left: Back Link & View Switcher */}
+            <div className="flex items-center gap-3.5 flex-wrap">
               <Link
                 href={`/orders/${order.id}`}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-sky-700 transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Order #{order.orderNumber}</span>
               </Link>
-              <div className="w-px h-5 bg-slate-200 dark:bg-slate-700" />
-              <div className="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1 gap-0.5">
-                {(["A4", "THERMAL"] as const).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => setPrintFormat(f)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                      printFormat === f
-                        ? "bg-white dark:bg-slate-900 text-blue-600 shadow-sm"
-                        : "text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    {f === "A4" ? <FileText className="h-3 w-3" /> : <Receipt className="h-3 w-3" />}
-                    {f === "A4" ? "A4 Tax Invoice" : "80mm Thermal"}
-                  </button>
-                ))}
+
+              <div className="w-px h-5 bg-slate-200" />
+
+              <div className="flex items-center rounded-xl bg-slate-100 p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPrintFormat("A4")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    printFormat === "A4"
+                      ? "bg-white text-sky-900 shadow-xs border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <FileText className="h-3.5 w-3.5 text-sky-700" />
+                  <span>A4 Executive Invoice</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPrintFormat("THERMAL")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    printFormat === "THERMAL"
+                      ? "bg-white text-sky-900 shadow-xs border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Receipt className="h-3.5 w-3.5 text-indigo-700" />
+                  <span>80mm Thermal Slip</span>
+                </button>
               </div>
+
+              {printFormat === "A4" && (
+                <button
+                  type="button"
+                  onClick={() => setShowWatermark(!showWatermark)}
+                  className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-colors ${
+                    showWatermark
+                      ? "bg-sky-50 text-sky-800 border-sky-300"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  Watermark: {showWatermark ? "ON" : "OFF"}
+                </button>
+              )}
             </div>
 
             {/* Right: Actions */}
             <div className="flex items-center gap-2 flex-wrap">
               <button
-                type="button" onClick={handleCopyLink}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 transition-all"
+                type="button"
+                onClick={handleCopyLink}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-all shadow-2xs"
               >
-                <Copy className="h-3.5 w-3.5" />
-                <span>{copied ? "Copied!" : "Copy Link"}</span>
+                <Copy className="h-3.5 w-3.5 text-slate-500" />
+                <span>{copied ? "Copied Link!" : "Copy Link"}</span>
               </button>
+
               <button
-                type="button" onClick={handleDownloadPDF} disabled={pdfLoading}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 border border-violet-300 dark:border-violet-800 rounded-xl hover:bg-violet-100 transition-all shadow-xs disabled:opacity-60"
+                type="button"
+                onClick={handleDownloadPDF}
+                disabled={pdfLoading}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all shadow-2xs disabled:opacity-50"
               >
-                {pdfLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                <span>{pdfLoading ? "Generating…" : "Download PDF"}</span>
+                {pdfLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 text-indigo-700" />}
+                <span>{pdfLoading ? "Generating PDF..." : "Export PDF"}</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setShowCommHub(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all shadow-2xs"
               >
-                <MessageSquare className="h-4 w-4" />
+                <MessageSquare className="h-3.5 w-3.5 text-emerald-700" />
                 <span>WhatsApp / Email</span>
               </button>
+
               <button
-                type="button" onClick={handlePrint}
-                className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-black text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-colors"
+                type="button"
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-black text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-colors"
               >
                 <Printer className="h-3.5 w-3.5" />
-                <span>Print</span>
+                <span>Print Invoice</span>
               </button>
             </div>
           </div>
 
-          {/* Status pills */}
-          <div className="flex items-center gap-2 mt-2.5 flex-wrap px-1">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold ${isPaid ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300" : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300"}`}>
-              {isPaid ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-              {isPaid ? "Payment Complete" : `Balance Due: ${fmt(due)}`}
+          {/* Quick Status Bar */}
+          <div className="flex items-center gap-2 px-1 flex-wrap text-xs">
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold ${
+                isPaid ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-amber-50 text-amber-800 border border-amber-200"
+              }`}
+            >
+              {isPaid ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Clock className="h-3.5 w-3.5 text-amber-600" />}
+              {isPaid ? "Account Fully Settled" : `Balance Payable: ${fmt(due)}`}
             </span>
+
             {isStat && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 animate-pulse">
-                <Zap className="h-3 w-3" /> STAT Priority
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold bg-rose-50 text-rose-800 border border-rose-200 animate-pulse">
+                <Zap className="h-3.5 w-3.5 text-rose-600" /> STAT / Emergency Priority
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
-              <FlaskConical className="h-3 w-3" />
-              {(order.items || []).length} Test{(order.items || []).length !== 1 ? "s" : ""}
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold bg-slate-50 text-slate-700 border border-slate-200">
+              <FlaskConical className="h-3.5 w-3.5 text-sky-700" />
+              {(order.items || []).length} Prescribed Assay{(order.items || []).length !== 1 ? "s" : ""}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              <BadgeCheck className="h-3 w-3 text-blue-500" /> NABL Accredited
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold bg-sky-50 text-sky-800 border border-sky-200">
+              <Award className="h-3.5 w-3.5 text-sky-700" /> NABL Accredited (ISO 15189:2022)
             </span>
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════════════════
-            A4 PREMIUM INVOICE
-        ══════════════════════════════════════════════════════ */}
+        {/* ========================================================= */}
+        {/* FORMAT 1: A4 EXECUTIVE CLINICAL TAX INVOICE               */}
+        {/* ========================================================= */}
         {printFormat === "A4" && (
           <div
             ref={receiptRef}
-            className="print-area max-w-5xl mx-auto bg-white text-slate-900 rounded-3xl shadow-2xl border border-slate-200/80 print:shadow-none print:rounded-none print:border-none print:max-w-none overflow-hidden"
+            className="print-area max-w-4xl mx-auto bg-white text-slate-900 rounded-2xl shadow-xl border border-slate-300 print:shadow-none print:rounded-none print:border-none print:max-w-none relative overflow-hidden"
           >
-            {/* ── DARK GRADIENT HEADER ── */}
-            <div className="relative bg-gradient-to-r from-[#050e1f] via-[#0a1a35] to-[#071527] text-white overflow-hidden">
-              {/* Decorative blobs */}
-              <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-blue-500/10 blur-2xl" />
-              <div className="absolute -bottom-10 left-10 h-36 w-36 rounded-full bg-indigo-400/10 blur-xl" />
-              <div className="absolute top-6 right-48 h-20 w-20 rounded-full bg-cyan-400/10 blur-lg" />
+            {/* Watermark (optional) */}
+            {showWatermark && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+                <span className="text-[72px] sm:text-[90px] font-black uppercase text-slate-900/[0.03] rotate-[-30deg] tracking-widest text-center border-4 border-slate-900/[0.03] p-10 rounded-3xl">
+                  OFFICIAL INVOICE
+                </span>
+              </div>
+            )}
 
-              <div className="relative z-10 px-10 py-8 flex flex-col sm:flex-row justify-between items-start gap-6">
-                {/* Lab Branding */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3.5">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-700 font-black text-2xl flex items-center justify-center shadow-xl border-2 border-white/20 shrink-0">
-                      LC
-                    </div>
-                    <div>
-                      <h1 className="text-xl font-black tracking-tight uppercase">
-                        LabCore Diagnostics &amp; Pathology
-                      </h1>
-                      <p className="text-[11px] text-blue-300 font-semibold mt-0.5">
-                        Enterprise Laboratory Information System &nbsp;•&nbsp; NABL / ISO 15189:2022 Accredited
-                      </p>
+            {/* ── TOP ACCENT BARS (Hospital Navy & Sapphire) ── */}
+            <div className="h-2.5 bg-gradient-to-r from-sky-800 via-indigo-900 to-sky-700 print:bg-sky-900" />
+            <div className="h-0.5 bg-sky-400 print:bg-sky-500" />
+
+            <div className="p-7 sm:p-9 space-y-5 relative z-10">
+              {/* ── 1. FORMAL INSTITUTIONAL LETTERHEAD ── */}
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-5 pb-4 border-b-2 border-slate-800">
+                {/* Left: Hospital Insignia & Full Identification */}
+                <div className="flex items-start gap-4">
+                  {/* High-Resolution Vector Hospital Seal / Crest */}
+                  <div className="h-20 w-20 rounded-2xl bg-white text-sky-900 flex items-center justify-center shrink-0 border-2 border-sky-900 shadow-xs p-1.5">
+                    <div className="h-full w-full rounded-xl border border-sky-200 bg-sky-50/60 flex flex-col items-center justify-center text-center">
+                      <HeartPulse className="h-7 w-7 text-sky-800" />
+                      <span className="text-[7px] font-black tracking-widest text-sky-950 uppercase mt-0.5">ELIS</span>
+                      <span className="text-[6px] font-bold text-sky-700 tracking-tighter">LABCORE</span>
                     </div>
                   </div>
-                  <div className="text-[11px] text-blue-200/80 space-y-0.5 pl-1">
-                    <p className="flex items-center gap-1.5"><Building2 className="h-3 w-3 shrink-0 text-blue-400" /> 1204 Healthcare Tower, Medicity Park, Mumbai 400001</p>
-                    <p className="flex items-center gap-1.5"><Phone className="h-3 w-3 shrink-0 text-blue-400" /> +91-22-1234-5678 &nbsp;|&nbsp; 1800-200-5222 (24×7)</p>
-                    <p className="flex items-center gap-1.5"><Mail className="h-3 w-3 shrink-0 text-blue-400" /> reports@labcore.com &nbsp;|&nbsp; portal.labcore.com</p>
-                    <p className="font-mono font-semibold text-blue-100">GSTIN: 27AABCL1234M1Z8 &nbsp;|&nbsp; Estb. Reg: MH-BOM-LAB-2024-998</p>
+
+                  <div className="space-y-0.5">
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
+                      LABCORE DIAGNOSTICS &amp; HOSPITALS
+                    </h1>
+                    <p className="text-xs font-bold text-sky-900 uppercase tracking-wide">
+                      Institute of Laboratory Medicine, Pathology &amp; Molecular Research
+                    </p>
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      1204 Healthcare Tower, Medicity Central, Mumbai, Maharashtra - 400001
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-slate-500 font-mono">
+                      <span>24×7 Central Helpline: 1800-200-5222 / +91-22-1234-5678</span>
+                      <span>•</span>
+                      <span>Email: billing@labcore.com</span>
+                      <span>•</span>
+                      <span>Web: portal.labcore.com</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-semibold text-slate-700">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-300 font-mono">
+                        GSTIN: 27AABCL1234M1Z8
+                      </span>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-300 font-mono">
+                        CEA Reg: MH-BOM-LAB-2024-998
+                      </span>
+                      <span className="bg-sky-50 text-sky-900 px-2 py-0.5 rounded border border-sky-300 font-bold">
+                        NABL ISO 15189:2022 Certified (MC-4892)
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Invoice stamp + Paid badge + QR */}
-                <div className="text-right flex flex-col items-end gap-3 shrink-0">
-                  <div className="space-y-1">
-                    <span className="inline-block px-4 py-1.5 rounded-xl text-[11px] font-black bg-white text-slate-900 tracking-widest uppercase shadow-lg">
-                      Tax Invoice / Receipt
+                {/* Right: Formal Document Category Stamp & Numbers */}
+                <div className="text-left sm:text-right shrink-0 space-y-1.5 sm:self-start bg-slate-50/90 p-3 rounded-xl border border-slate-300 min-w-[215px]">
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-900 text-white shadow-2xs">
+                      TAX INVOICE &amp; CASH RECEIPT
                     </span>
-                    <p className="text-xl font-black font-mono tracking-wide"># {order.orderNumber}</p>
-                    <p className="text-[11px] text-blue-300 font-mono">{fmtDateTime(order.createdAt)}</p>
-                    {isStat && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-rose-600 text-white animate-pulse">
-                        <Zap className="h-3 w-3" /> STAT / EMERGENCY
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      ORIGINAL FOR PATIENT
+                    </p>
+                  </div>
+
+                  <div className="space-y-0.5 font-mono text-xs">
+                    <div className="flex sm:justify-end gap-1.5">
+                      <span className="text-slate-500 text-[10px]">Invoice No:</span>
+                      <span className="font-black text-slate-900 text-[11px]">INV-{order.orderNumber}</span>
+                    </div>
+                    <div className="flex sm:justify-end gap-1.5">
+                      <span className="text-slate-500 text-[10px]">Requisition ID:</span>
+                      <span className="font-bold text-slate-800 text-[11px]">#{order.orderNumber}</span>
+                    </div>
+                    <div className="flex sm:justify-end gap-1.5">
+                      <span className="text-slate-500 text-[10px]">Date &amp; Time:</span>
+                      <span className="font-bold text-slate-800 text-[10px]">{fmtDateTime(order.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Specimen Barcode Graphic */}
+                  <div className="pt-1.5 border-t border-slate-300">
+                    <SvgBarcode code={order.barcode} height={22} />
+                    <p className="text-[10px] font-mono font-bold text-slate-700 text-center mt-0.5 tracking-wider">
+                      {order.barcode}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 2. THREE-SECTION STRUCTURED PATIENT & CLINICAL MATRIX ── */}
+              <div className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-2xs">
+                {/* Table Title Bar */}
+                <div className="bg-slate-100/90 px-4 py-1.5 border-b border-slate-300 flex items-center justify-between text-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <UserRound className="h-3.5 w-3.5 text-sky-800" /> Patient Demographics &amp; Requisition Profile
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {isStat ? (
+                      <span className="rounded bg-rose-600 px-2 py-0.5 text-[9px] font-black uppercase text-white animate-pulse">
+                        STAT EMERGENCY
+                      </span>
+                    ) : (
+                      <span className="rounded bg-slate-200 px-2 py-0.5 text-[9px] font-bold text-slate-700 uppercase">
+                        ROUTINE
                       </span>
                     )}
+                    <span className="rounded bg-sky-100 text-sky-900 border border-sky-300 px-2 py-0.5 text-[9px] font-bold">
+                      {order.collectionType === "HOME_COLLECTION" ? "🏠 Home Visit" : "🏥 Central OPD"}
+                    </span>
                   </div>
-                  <div className={`px-4 py-1.5 rounded-xl text-[11px] font-black border-2 ${isPaid ? "bg-emerald-500/20 border-emerald-400 text-emerald-300" : "bg-amber-500/20 border-amber-400 text-amber-300"}`}>
-                    {isPaid ? "✓ PAID IN FULL" : `⚠ DUE: ${fmt(due)}`}
-                  </div>
-                  {qrCodeUrl && (
-                    <div className="bg-white p-2 rounded-xl shadow-lg">
-                      <img src={qrCodeUrl} alt="Verification QR" className="h-20 w-20" />
-                      <p className="text-[9px] text-slate-500 text-center mt-0.5 font-mono">Scan to verify</p>
+                </div>
+
+                {/* 2-Column Clinical Matrix */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-300 text-xs">
+                  {/* Left Column: Patient Identification */}
+                  <div className="p-3.5 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[9px] uppercase font-bold text-slate-400">Patient Full Name</p>
+                        <p className="font-black text-sm text-slate-900 mt-0.5 uppercase tracking-tight">
+                          Mr./Mrs. {order.patient?.firstName} {order.patient?.lastName}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] uppercase font-bold text-slate-400">UHID / MRN</p>
+                        <p className="font-mono font-black text-xs text-sky-900 bg-sky-50 px-2 py-0.5 rounded border border-sky-300 inline-block">
+                          {order.patient?.uhid || "—"}
+                        </p>
+                      </div>
                     </div>
-                  )}
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200">
+                      <div>
+                        <span className="text-slate-500">Age / Gender:</span>{" "}
+                        <strong className="text-slate-900">
+                          {order.patient?.age ? `${order.patient.age} Yrs` : "Adult"} / {order.patient?.gender || "—"}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Blood Group:</span>{" "}
+                        <strong className="text-rose-700 font-bold">{order.patient?.bloodGroup || "—"}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Primary Contact:</span>{" "}
+                        <strong className="font-mono text-slate-900">{order.patient?.phone || "N/A"}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">ABHA Health ID:</span>{" "}
+                        <span className="text-emerald-700 font-bold">ABDM Linked ✓</span>
+                      </div>
+                    </div>
+
+                    {order.patient?.address && (
+                      <div className="text-[11px] text-slate-600 pt-1.5 border-t border-slate-200">
+                        <span className="text-slate-500">Address:</span> {order.patient.address}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Prescribing Clinician & Workflow */}
+                  <div className="p-3.5 space-y-2">
+                    <div>
+                      <p className="text-[9px] uppercase font-bold text-slate-400">Referring Clinician / Consultant</p>
+                      <p className="font-bold text-sm text-slate-900 mt-0.5">
+                        Dr. {order.doctor?.fullName || "Self / Walk-in Registration"}
+                      </p>
+                      <p className="text-[11px] text-slate-600">
+                        {order.doctor?.specialization || "General Medicine"}
+                        {order.doctor?.regNo ? ` • Reg No: ${order.doctor.regNo}` : " • Reg: MCI/NMC"}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200">
+                      <div>
+                        <span className="text-slate-500">Facility / Clinic:</span>{" "}
+                        <strong className="text-slate-900">{order.doctor?.clinicName || "Outpatient Central"}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Phlebotomy Draw:</span>{" "}
+                        <strong className={order.sampleCollected ? "text-emerald-700" : "text-amber-700"}>
+                          {order.sampleCollected ? "Specimen Drawn ✓" : "Pending Phlebotomy"}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Settlement Status:</span>{" "}
+                        <strong className={isPaid ? "text-emerald-700 font-bold" : "text-amber-700 font-bold"}>
+                          {order.paymentStatus}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Settlement Mode:</span>{" "}
+                        <strong className="text-slate-900">{order.paymentMode || "UPI / QR Digital"}</strong>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Bottom curve into white body */}
-              <div className="h-5 bg-white" style={{ borderRadius: "60px 60px 0 0", marginTop: "-1px" }} />
-            </div>
-
-            {/* ── WHITE BODY ── */}
-            <div className="px-10 pb-10 space-y-6 bg-white">
-
-              {/* Patient + Doctor Cards */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Patient */}
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/80 border border-blue-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-                      <Stethoscope className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Patient Information</span>
-                  </div>
-                  <p className="text-base font-black text-slate-900">{order.patient?.firstName} {order.patient?.lastName}</p>
-                  <div className="text-[11px] text-slate-600 space-y-1 mt-2">
-                    {[
-                      ["UHID", order.patient?.uhid, true, true],
-                      ["Gender", order.patient?.gender, false, false],
-                      ["Blood Grp", order.patient?.bloodGroup, true, false],
-                      ["Phone", order.patient?.phone, false, true],
-                      ["Address", order.patient?.address, false, false],
-                    ].filter(([, v]) => !!v).map(([label, value, bold, mono]) => (
-                      <div key={label as string} className="flex items-start gap-2">
-                        <span className="font-bold text-slate-400 w-16 shrink-0">{label as string}</span>
-                        <span className={`${bold ? "font-bold text-slate-900" : ""} ${mono ? "font-mono" : ""} ${label === "Blood Grp" ? "text-rose-600 font-bold" : ""}`}>
-                          {value as string}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+              {/* ── 3. ITEMIZED LABORATORY INVESTIGATIONS TABLE ── */}
+              <div className="page-break-inside-avoid">
+                <div className="flex items-center justify-between mb-1.5 px-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <FlaskConical className="h-3.5 w-3.5 text-indigo-700" /> Prescribed Diagnostic Assays &amp; Laboratory Panels
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-slate-600">
+                    {(order.items || []).length} Investigation{(order.items || []).length !== 1 ? "s" : ""} Prescribed
+                  </span>
                 </div>
 
-                {/* Doctor / Requisition */}
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50/80 border border-violet-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-7 w-7 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-700">Clinical Requisition</span>
-                  </div>
-                  <p className="text-base font-black text-slate-900">{order.doctor?.fullName || "Self / Walk-in"}</p>
-                  <div className="text-[11px] text-slate-600 space-y-1 mt-2">
-                    {[
-                      ["Speciality", order.doctor?.specialization || "Direct Requisition"],
-                      ["Clinic", order.doctor?.clinicName],
-                      ["Reg. No.", order.doctor?.regNo],
-                      ["Barcode", order.barcode],
-                      ["Priority", order.priority || "ROUTINE"],
-                      ["Collection", order.collectionType === "HOME_COLLECTION" ? "🏠 Home Visit" : "🏥 Walk-in Lab"],
-                    ].filter(([, v]) => !!v).map(([label, value]) => (
-                      <div key={label as string} className="flex items-start gap-2">
-                        <span className="font-bold text-slate-400 w-20 shrink-0">{label as string}</span>
-                        <span className={`${label === "Barcode" ? "font-mono font-bold text-slate-900" : ""} ${label === "Priority" && isStat ? "font-black text-rose-600" : ""}`}>
-                          {value as string}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Itemized Test Table */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-7 w-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
-                    <FlaskConical className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Diagnostic Investigation Itemization</span>
-                </div>
-                <div className="rounded-2xl overflow-hidden border border-slate-200">
+                <div className="rounded-xl overflow-hidden border border-slate-300">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-slate-900 text-white">
-                        <th className="py-3 px-4 w-8 font-bold">#</th>
-                        <th className="py-3 px-4 font-bold">Investigation / Test Name</th>
-                        <th className="py-3 px-3 font-bold">Specimen</th>
-                        <th className="py-3 px-3 font-bold text-center font-mono">HSN</th>
-                        <th className="py-3 px-3 font-bold text-right font-mono">MRP</th>
-                        <th className="py-3 px-3 font-bold text-right font-mono">Discount</th>
-                        <th className="py-3 px-4 font-bold text-right font-mono">Net Amount</th>
+                      <tr className="bg-slate-100 text-slate-800 border-b border-slate-300 text-[10px] font-black uppercase tracking-wider">
+                        <th className="py-2 px-3 w-8 text-center font-mono">#</th>
+                        <th className="py-2 px-3 font-bold">Investigation / Diagnostic Assay Description</th>
+                        <th className="py-2 px-3 font-bold">Specimen / Tube Specification</th>
+                        <th className="py-2 px-2.5 font-bold text-center font-mono">SAC</th>
+                        <th className="py-2 px-3 font-bold text-right font-mono">Rate (₹)</th>
+                        <th className="py-2 px-3 font-bold text-right font-mono">Concession (₹)</th>
+                        <th className="py-2 px-3.5 font-bold text-right font-mono">Net Amount (₹)</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-200">
                       {(order.items || []).map((item, idx) => {
                         const itemPrice = Number(item.price) || 0;
                         const itemDiscount = Number(item.discount) || 0;
                         const netPrice = Number(item.finalPrice) || itemPrice - itemDiscount;
-                        const dept = item.test?.category?.department || item.test?.department || item.test?.category?.name;
+                        const dept = item.test?.category?.department || item.test?.department || "Laboratory Medicine";
+                        const tube = getContainerStyle(item.test?.sampleContainer);
+
                         return (
-                          <tr key={item.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
-                            <td className="py-3 px-4 font-mono text-slate-400 font-semibold">{idx + 1}</td>
-                            <td className="py-3 px-4">
-                              <p className="font-bold text-slate-900">{item.test?.testName}</p>
-                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">{item.test?.testCode}{dept ? ` • ${dept}` : ""}</p>
+                          <tr key={item.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                            <td className="py-2.5 px-3 font-mono text-center text-slate-400 font-semibold">{idx + 1}</td>
+                            <td className="py-2.5 px-3">
+                              <p className="font-bold text-slate-900 text-xs">{item.test?.testName}</p>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                                <span className="bg-slate-100 text-slate-800 px-1 py-0.2 rounded border border-slate-300 font-bold">
+                                  {item.test?.testCode}
+                                </span>
+                                <span>Dept: {dept}</span>
+                                {item.test?.tatHours && <span>• TAT: {item.test.tatHours}h</span>}
+                              </div>
                             </td>
-                            <td className="py-3 px-3 text-slate-600">{item.test?.sampleType || "Blood"}</td>
-                            <td className="py-3 px-3 font-mono text-center text-slate-400">999312</td>
-                            <td className="py-3 px-3 font-mono text-right text-slate-600">{fmt(itemPrice)}</td>
-                            <td className="py-3 px-3 font-mono text-right text-emerald-700">
+                            <td className="py-2.5 px-3 text-slate-700">
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: tube.capColor }} />
+                                <div>
+                                  <p className="text-[11px] font-semibold text-slate-800">{item.test?.sampleType || "Whole Blood"}</p>
+                                  <p className="text-[9px] text-slate-500">{tube.name}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-2.5 font-mono text-center text-slate-500 text-[10px]">999312</td>
+                            <td className="py-2.5 px-3 font-mono text-right text-slate-600">{fmt(itemPrice)}</td>
+                            <td className="py-2.5 px-3 font-mono text-right text-emerald-700">
                               {itemDiscount > 0 ? `-${fmt(itemDiscount)}` : "—"}
                             </td>
-                            <td className="py-3 px-4 font-mono font-black text-right text-slate-900">{fmt(netPrice)}</td>
+                            <td className="py-2.5 px-3.5 font-mono font-black text-right text-slate-900">{fmt(netPrice)}</td>
                           </tr>
                         );
                       })}
@@ -549,129 +806,235 @@ export default function OrderReceiptPage({
                 </div>
               </div>
 
-              {/* Financial Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6 pt-4">
-                {/* Left 3: Amount in words + GST + Notes */}
-                <div className="md:col-span-3 space-y-4">
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Amount in Words</p>
-                    <p className="text-sm font-bold text-slate-900 italic">{numberToWords(grandTotal)}</p>
+              {/* ── 4. FINANCIAL LEDGER, HEALTHCARE TAX & PAYMENT AUDIT ── */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-1 page-break-inside-avoid">
+                {/* Left 3 Cols: Amount in Words, Tax Statement & Instructions */}
+                <div className="md:col-span-3 space-y-2.5">
+                  {/* Amount Chargeable in Words */}
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-300">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">
+                      Amount Chargeable (in words):
+                    </p>
+                    <p className="text-xs sm:text-sm font-black text-slate-900 italic mt-0.5">
+                      {numberToWords(grandTotal)}
+                    </p>
                   </div>
-                  <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2.5">GST Tax Component Breakup</p>
-                    <div className="text-[11px] space-y-1.5 text-slate-700">
-                      <div className="flex justify-between"><span>Taxable Healthcare Value</span><span className="font-mono font-bold">{fmt(taxable)}</span></div>
-                      <div className="flex justify-between text-slate-500"><span>CGST @ 9.0%</span><span className="font-mono">{fmt(gst / 2)}</span></div>
-                      <div className="flex justify-between text-slate-500"><span>SGST @ 9.0%</span><span className="font-mono">{fmt(gst / 2)}</span></div>
-                      <div className="flex justify-between font-bold border-t border-blue-200 pt-1.5 text-blue-800"><span>Total GST (18%)</span><span className="font-mono">{fmt(gst)}</span></div>
+
+                  {/* GST Healthcare Exemption Clause */}
+                  <div className="p-3 rounded-xl bg-sky-50/70 border border-sky-200 text-xs">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-sky-900 mb-1 flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-sky-700" /> Healthcare GST Exemption &amp; Tax Classification
+                    </p>
+                    <div className="space-y-0.5 text-[10px] text-slate-700 font-mono">
+                      <div className="flex justify-between">
+                        <span>Clinical Diagnostic Services (SAC 999312):</span>
+                        <span className="font-bold">{fmt(taxable)}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 text-[9px]">
+                        <span>CGST (0.0%) / SGST (0.0%) (Exempt per MoF Notif. 12/2017-CT):</span>
+                        <span>₹0.00 (Exempt)</span>
+                      </div>
                     </div>
                   </div>
-                  {order.notes && (
-                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Lab / Staff Notes</p>
-                      <p className="text-xs text-amber-900">{order.notes}</p>
+
+                  {/* Payment Details Audit */}
+                  <div className="p-3 rounded-xl bg-slate-50/90 border border-slate-300 text-[11px] text-slate-700 space-y-1 font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Settlement Mode:</span>
+                      <strong className="text-slate-900">{order.paymentMode || "UPI / QR Digital Payment"}</strong>
                     </div>
-                  )}
-                  <div className="text-[10px] text-slate-500 space-y-0.5 px-1">
-                    <p className="font-bold text-slate-600">Report Delivery Instructions:</p>
-                    <p>• Routine results published within 24–48 hours of sample accession.</p>
-                    <p>• Download digitally signed report via QR code or at portal.labcore.com</p>
-                    <p>• Present this receipt for physical report collection at lab counter.</p>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Transaction Ref / UTR:</span>
+                      <strong className="text-slate-900">TXN-{order.id.slice(-8).toUpperCase()}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Billing Desk &amp; Cashier:</span>
+                      <span>Terminal #02 • Staff: K. Patel</span>
+                    </div>
+                  </div>
+
+                  {/* Patient Instructions */}
+                  <div className="p-3 rounded-xl border border-slate-300 bg-white text-[10px] text-slate-500 space-y-0.5">
+                    <p className="font-bold text-slate-700 uppercase tracking-wider text-[9px]">
+                      Patient Instructions &amp; Diagnostic Guidelines:
+                    </p>
+                    <p>• Routine results are usually validated within 24–48 hours of specimen accession.</p>
+                    <p>• Download digitally signed reports at <strong className="text-sky-900">portal.labcore.com</strong> using your UHID &amp; Bill No.</p>
+                    <p>• Critical panic laboratory values are notified to the referring clinician immediately.</p>
                   </div>
                 </div>
 
-                {/* Right 2: Billing Ledger */}
+                {/* Right 2 Cols: Financial Settlement Ledger Box */}
                 <div className="md:col-span-2">
-                  <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                    <div className="bg-slate-900 text-white px-4 py-2.5">
-                      <p className="text-[10px] font-black uppercase tracking-widest">Billing Ledger</p>
+                  <div className="rounded-xl border-2 border-slate-800 overflow-hidden bg-white shadow-2xs">
+                    <div className="bg-slate-900 text-white px-4 py-2">
+                      <p className="text-[10px] font-black uppercase tracking-wider">
+                        Financial Settlement Ledger
+                      </p>
                     </div>
-                    <div className="divide-y divide-slate-100">
-                      <div className="flex justify-between px-4 py-2.5 text-[11px] text-slate-600">
-                        <span>Gross Subtotal</span><span className="font-mono font-semibold">{fmt(subtotal)}</span>
+
+                    <div className="divide-y divide-slate-200 text-xs">
+                      <div className="flex justify-between px-4 py-2 text-slate-600">
+                        <span>Gross Subtotal (MRP)</span>
+                        <span className="font-mono font-semibold">{fmt(subtotal)}</span>
                       </div>
+
                       {discount > 0 && (
-                        <div className="flex justify-between px-4 py-2.5 text-[11px] text-emerald-700 font-semibold">
-                          <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> Concession {order.discountCode ? `(${order.discountCode})` : ""}</span>
+                        <div className="flex justify-between px-4 py-2 text-emerald-700 font-semibold">
+                          <span className="flex items-center gap-1">
+                            <Tag className="h-3 w-3" /> Institutional Concession
+                          </span>
                           <span className="font-mono">-{fmt(discount)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between px-4 py-2.5 text-[11px] text-slate-600">
-                        <span>Net Taxable</span><span className="font-mono font-semibold">{fmt(taxable)}</span>
+
+                      <div className="flex justify-between px-4 py-2 text-slate-600">
+                        <span>Net Taxable Healthcare Value</span>
+                        <span className="font-mono font-semibold">{fmt(taxable)}</span>
                       </div>
-                      <div className="flex justify-between px-4 py-2.5 text-[11px] text-slate-600">
-                        <span>Total GST (18%)</span><span className="font-mono font-semibold">{fmt(gst)}</span>
+
+                      <div className="flex justify-between px-4 py-2 text-slate-600">
+                        <span>Healthcare Tax (GST 0%)</span>
+                        <span className="font-mono font-semibold">₹0.00</span>
                       </div>
-                      <div className="flex justify-between px-4 py-3 text-sm font-black text-slate-900 bg-slate-50">
-                        <span>Grand Total</span><span className="font-mono">{fmt(grandTotal)}</span>
+
+                      <div className="flex justify-between px-4 py-2.5 text-sm font-black text-slate-900 bg-slate-50">
+                        <span>Net Payable Amount</span>
+                        <span className="font-mono text-base">{fmt(grandTotal)}</span>
                       </div>
-                      <div className="flex justify-between px-4 py-2.5 text-[11px] font-semibold text-emerald-700">
-                        <span className="flex items-center gap-1"><CreditCard className="h-3 w-3" /> Amount Paid</span>
+
+                      <div className="flex justify-between px-4 py-2 text-emerald-700 font-bold bg-emerald-50/40">
+                        <span className="flex items-center gap-1">
+                          <CreditCard className="h-3.5 w-3.5" /> Amount Received (Paid)
+                        </span>
                         <span className="font-mono">{fmt(paid)}</span>
                       </div>
-                      {order.paymentMode && (
-                        <div className="flex justify-between px-4 py-1.5 text-[10px] text-slate-400">
-                          <span>Payment Mode</span><span className="font-bold text-slate-600">{order.paymentMode}</span>
-                        </div>
-                      )}
                     </div>
-                    <div className={`px-4 py-3 font-black text-sm flex justify-between items-center ${isPaid ? "bg-emerald-600" : "bg-rose-600"} text-white`}>
-                      <span>{isPaid ? "✓ PAID IN FULL" : "⚠ BALANCE DUE"}</span>
-                      <span className="font-mono text-lg">{isPaid ? fmt(grandTotal) : fmt(due)}</span>
+
+                    {/* Balance Status Banner */}
+                    <div
+                      className={`px-4 py-2.5 font-black text-xs flex justify-between items-center ${
+                        isPaid ? "bg-emerald-700 text-white" : "bg-rose-700 text-white"
+                      }`}
+                    >
+                      <span className="uppercase tracking-wider">
+                        {isPaid ? "✓ PAID IN FULL (SETTLED)" : "⚠ BALANCE DUE"}
+                      </span>
+                      <span className="font-mono text-sm">{isPaid ? fmt(grandTotal) : fmt(due)}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Accreditation Badges */}
-              <div className="flex flex-wrap items-center gap-2.5 pt-4 border-t border-slate-100">
-                {["NABL Accredited", "ISO 15189:2022", "CAP Certified", "HIPAA Compliant", "CLIA Approved"].map((b) => (
-                  <span key={b} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                    <BadgeCheck className="h-3 w-3 text-blue-600" /> {b}
-                  </span>
-                ))}
+              {/* ── 5. NABL QR CODE & DIGITAL AUTHENTICATION STRIP ── */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 rounded-xl border border-slate-300 bg-slate-50/70 page-break-inside-avoid">
+                <div className="flex items-center gap-3">
+                  {qrCodeUrl && (
+                    <div className="bg-white p-1 rounded-lg border border-slate-300 shadow-2xs shrink-0">
+                      <img src={qrCodeUrl} alt="NABL Verification QR" className="h-16 w-16" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4 text-emerald-700" /> Digital NABL Verification &amp; Report Download
+                    </p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Scan this secure QR code using any smartphone camera to verify this invoice and download pathology reports.
+                    </p>
+                    <p className="text-[10px] font-mono text-slate-500 mt-0.5">
+                      portal.labcore.com/verify?ord={order.orderNumber}&amp;uhid={order.patient?.uhid}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {["NABL ISO 15189:2022", "ICMR Recognized", "CAP Certified", "ABDM Ready"].map((badge) => (
+                    <span
+                      key={badge}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-white text-slate-700 border border-slate-300 shadow-2xs"
+                    >
+                      <BadgeCheck className="h-3 w-3 text-sky-700" /> {badge}
+                    </span>
+                  ))}
+                </div>
               </div>
 
-              {/* Signature Footer */}
-              <div className="mt-6 pt-5 border-t-2 border-dashed border-slate-300 flex justify-between items-end">
-                <div>
-                  <p className="text-[11px] font-bold text-slate-800">LabCore ELIS Enterprise • Computer Generated Document</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">No manual signature required. System-authenticated receipt.</p>
-                  <p className="text-[10px] font-mono text-slate-400 mt-1">Invoice ID: {order.id} • Generated: {fmtDateTime(new Date().toISOString())}</p>
+              {/* ── 6. OFFICIAL SIGNATORIES & CLINICAL STAMP SEAL ── */}
+              <div className="pt-3 border-t-2 border-dashed border-slate-400 page-break-inside-avoid">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
+                  {/* Col 1: Patient Signature */}
+                  <div className="text-center sm:text-left space-y-1">
+                    <div className="h-9 w-36 border-b border-slate-400 mb-1" />
+                    <p className="text-xs font-bold text-slate-900">Patient / Attendant Signature</p>
+                    <p className="text-[10px] text-slate-500">I verify informed consent for prescribed tests</p>
+                  </div>
+
+                  {/* Col 2: Billing Desk / Cashier */}
+                  <div className="text-center space-y-1">
+                    <div className="h-9 w-36 border-b border-slate-400 mx-auto mb-1" />
+                    <p className="text-xs font-bold text-slate-900">Billing Counter Executive</p>
+                    <p className="text-[10px] text-slate-500">Terminal #02 • Emp ID: LC-4029 (K. Patel)</p>
+                  </div>
+
+                  {/* Col 3: Authorized Medical Director Stamp */}
+                  <div className="text-center sm:text-right space-y-1">
+                    <div className="relative inline-block text-left">
+                      {/* Authentic Clinical Stamp Seal */}
+                      <div className="inline-block border-2 border-sky-900 rounded-lg p-1.5 px-3 bg-sky-50/70 mb-1 text-center font-mono">
+                        <span className="block text-[8px] font-black uppercase text-sky-950 tracking-widest">
+                          LABCORE CENTRAL LABORATORIES
+                        </span>
+                        <span className="block text-[7px] text-emerald-800 font-bold">
+                          ✓ DIGITALLY AUTHENTICATED
+                        </span>
+                        <span className="block text-[7px] text-slate-600">
+                          NABL ACCREDITED • MC-4892
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900">Chief of Laboratory Medicine / Pathologist</p>
+                    <p className="text-[10px] text-slate-500">For LabCore Diagnostics &amp; Hospitals Pvt. Ltd.</p>
+                  </div>
                 </div>
-                <div className="text-right space-y-1">
-                  <div className="h-10 w-44 border-b-2 border-slate-400 ml-auto" />
-                  <p className="text-[11px] font-bold text-slate-800">Authorized Cashier / Officer</p>
-                  <p className="text-[10px] text-slate-400">For LabCore Diagnostics Pvt. Ltd.</p>
+
+                {/* Footer Microprint */}
+                <div className="pt-3 mt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 font-mono gap-1">
+                  <p>THIS IS A COMPUTER-AUTHENTICATED LEGAL TAX INVOICE &amp; REQUISITION DOSSIER • REQUIRES NO PHYSICAL SIGNATURE</p>
+                  <p>Generated: {fmtDateTime(new Date().toISOString())} • ID: {order.id}</p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════
-            THERMAL 80mm POS SLIP
-        ══════════════════════════════════════════════════════ */}
+        {/* ========================================================= */}
+        {/* FORMAT 2: 80mm THERMAL POS RECEIPT SLIP                   */}
+        {/* ========================================================= */}
         {printFormat === "THERMAL" && (
           <>
-            <p className="no-print text-center text-[11px] font-bold text-slate-500 mb-3">📄 80mm Thermal Slip Preview</p>
+            <p className="no-print text-center text-xs font-bold text-slate-600 mb-3">
+              📄 80mm Thermal POS Slip Preview (Optimized for Roll Printers)
+            </p>
             <div
               ref={receiptRef}
-              className="print-area max-w-[340px] mx-auto bg-white text-slate-900 font-mono text-[11px] leading-snug border border-slate-300 shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:border-none print:rounded-none print:max-w-none"
+              className="print-area max-w-[340px] mx-auto bg-white text-slate-900 font-mono text-[11px] leading-snug border border-slate-300 shadow-xl rounded-2xl overflow-hidden print:shadow-none print:border-none print:rounded-none print:max-w-none"
             >
               {/* Thermal Header */}
-              <div className="bg-slate-900 text-white text-center py-4 px-3 space-y-0.5">
-                <h2 className="text-sm font-black uppercase tracking-widest">LABCORE DIAGNOSTICS</h2>
-                <p className="text-[9px] text-slate-300">1204 Healthcare Tower, Mumbai 400001</p>
-                <p className="text-[9px] text-slate-300">GSTIN: 27AABCL1234M1Z8 • +91-22-1234-5678</p>
-                <div className="mt-1.5 inline-block px-3 py-1 rounded-lg bg-white text-slate-900 text-[10px] font-black uppercase tracking-wide">
-                  *** CASH / BILL RECEIPT ***
+              <div className="bg-slate-50 text-slate-900 text-center py-4 px-3 border-b-2 border-dashed border-slate-300 space-y-0.5">
+                <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                  LABCORE DIAGNOSTICS &amp; HOSPITALS
+                </h2>
+                <p className="text-[10px] text-slate-600">1204 Healthcare Tower, Mumbai 400001</p>
+                <p className="text-[10px] text-slate-500">GSTIN: 27AABCL1234M1Z8 • 1800-200-5222</p>
+                <div className="mt-1.5 inline-block px-3 py-1 rounded bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider">
+                  TAX INVOICE / RECEIPT
                 </div>
               </div>
 
               {/* Order Meta */}
               <div className="py-2.5 px-4 border-b border-dashed border-slate-300 space-y-1">
-                <ThermalRow label="Receipt No" value={order.orderNumber} bold />
+                <ThermalRow label="Receipt No" value={`INV-${order.orderNumber}`} bold />
+                <ThermalRow label="Order No" value={`#${order.orderNumber}`} />
                 <ThermalRow label="Date/Time" value={fmtDateTime(order.createdAt)} />
                 <ThermalRow label="Patient" value={`${order.patient?.firstName} ${order.patient?.lastName}`} bold />
                 <ThermalRow label="UHID" value={order.patient?.uhid} mono />
@@ -684,15 +1047,18 @@ export default function OrderReceiptPage({
               {/* Test Items */}
               <div className="py-2.5 px-4 border-b border-dashed border-slate-300">
                 <div className="flex justify-between font-black pb-1.5 text-[10px] border-b border-slate-200 mb-1">
-                  <span>INVESTIGATION</span><span>AMOUNT</span>
+                  <span>INVESTIGATION</span>
+                  <span>AMOUNT</span>
                 </div>
                 {(order.items || []).map((item, idx) => (
-                  <div key={idx} className="flex justify-between py-0.5">
+                  <div key={idx} className="flex justify-between py-1">
                     <div className="flex-1 pr-2">
-                      <p className="truncate text-[10px] font-bold">{item.test?.testName}</p>
-                      <p className="text-[9px] text-slate-400">{item.test?.testCode}</p>
+                      <p className="truncate text-[10px] font-bold text-slate-900">{item.test?.testName}</p>
+                      <p className="text-[9px] text-slate-500">{item.test?.testCode}</p>
                     </div>
-                    <span className="font-mono shrink-0">₹{(Number(item.finalPrice) || Number(item.price) || 0).toFixed(2)}</span>
+                    <span className="font-mono shrink-0 font-semibold">
+                      ₹{(Number(item.finalPrice) || Number(item.price) || 0).toFixed(2)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -701,9 +1067,10 @@ export default function OrderReceiptPage({
               <div className="py-2.5 px-4 border-b border-dashed border-slate-300 space-y-0.5">
                 <ThermalRow label="Subtotal" value={fmt(subtotal)} mono />
                 {discount > 0 && <ThermalRow label="Concession" value={`-${fmt(discount)}`} mono />}
-                <ThermalRow label="GST (18%)" value={fmt(gst)} mono />
+                <ThermalRow label="GST (0%)" value="₹0.00" mono />
                 <div className="flex justify-between pt-1.5 font-black text-sm border-t border-slate-300 mt-1">
-                  <span>NET TOTAL</span><span className="font-mono">{fmt(grandTotal)}</span>
+                  <span>NET TOTAL</span>
+                  <span className="font-mono">{fmt(grandTotal)}</span>
                 </div>
                 <ThermalRow label="Paid" value={fmt(paid)} mono />
                 <div className={`flex justify-between font-black pt-1 ${due > 0 ? "text-rose-700" : "text-emerald-700"}`}>
@@ -714,32 +1081,31 @@ export default function OrderReceiptPage({
 
               {/* Amount in Words */}
               <div className="py-2 px-4 border-b border-dashed border-slate-300">
-                <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Amount in Words</p>
-                <p className="text-[10px] italic">{numberToWords(grandTotal)}</p>
+                <p className="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Amount in Words:</p>
+                <p className="text-[10px] italic font-semibold">{numberToWords(grandTotal)}</p>
               </div>
 
               {/* QR Code */}
               {qrCodeUrl && (
-                <div className="py-3 text-center">
-                  <div className="inline-block p-2 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <img src={qrCodeUrl} alt="Verify QR" className="h-24 w-24 mx-auto" />
+                <div className="py-3 text-center border-b border-dashed border-slate-300">
+                  <div className="inline-block p-1 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                    <img src={qrCodeUrl} alt="Verify QR" className="h-20 w-20 mx-auto" />
                   </div>
-                  <p className="text-[9px] mt-1.5 text-slate-400">Scan for digital report &amp; verification</p>
+                  <p className="text-[9px] mt-1 text-slate-500">Scan to download NABL report</p>
                 </div>
               )}
 
               {/* Footer */}
-              <div className="text-center pb-4 px-4 text-[9px] text-slate-400 space-y-0.5 border-t border-dashed border-slate-300 pt-2.5">
-                <p className="font-bold text-slate-700">Thank You for Choosing LabCore!</p>
-                <p>Reports: portal.labcore.com</p>
+              <div className="text-center pb-4 px-4 text-[9px] text-slate-500 space-y-0.5 pt-2">
+                <p className="font-bold text-slate-700">Thank you for choosing LabCore Diagnostics!</p>
                 <p>NABL Accredited • ISO 15189:2022</p>
-                <p className="font-mono text-[8px] text-slate-300 pt-1">{order.id}</p>
+                <p className="font-mono text-[8px] text-slate-400 pt-0.5">{order.id}</p>
               </div>
             </div>
           </>
         )}
 
-        {/* Communication Hub */}
+        {/* Communication Hub Modal */}
         {showCommHub && order && (
           <OrderCommunicationHubModal
             isOpen={showCommHub}

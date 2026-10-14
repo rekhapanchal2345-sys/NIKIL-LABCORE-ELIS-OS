@@ -1060,3 +1060,79 @@ export const getResultsMetrics =
       throw new Error('Failed to fetch results metrics. Please try again later.');
     }
   };
+// =======================================================
+// PATIENT DELTA-CHECKS & HISTORICAL DOSSIER (Level 3)
+// =======================================================
+export const calculateDeltaCheck = async (
+  patientId: string,
+  testCode: string,
+  currentValue: number
+): Promise<{ deltaPercentage: number; isFlagged: boolean; previousValue: number | null }> => {
+  // Configurable lookback window (72 hours)
+  const lookbackDate = new Date();
+  lookbackDate.setHours(lookbackDate.getHours() - 72);
+
+  const previousResult = await prisma.result.findFirst({
+    where: {
+      patientId,
+      test: { testCode },
+      approvedAt: { gte: lookbackDate },
+      status: { in: ['APPROVED', 'PUBLISHED'] }
+    },
+    orderBy: { approvedAt: 'desc' },
+    include: { values: true }
+  });
+
+  if (!previousResult || previousResult.values.length === 0) {
+    return { deltaPercentage: 0, isFlagged: false, previousValue: null };
+  }
+
+  // Assuming first value is primary parameter for simplicity in this script
+  const prevValStr = previousResult.values[0].value;
+  const prevVal = parseFloat(prevValStr);
+
+  if (isNaN(prevVal) || prevVal === 0) {
+    return { deltaPercentage: 0, isFlagged: false, previousValue: prevVal };
+  }
+
+  const deltaPercentage = ((currentValue - prevVal) / prevVal) * 100;
+  
+  // Flag physiologically impossible jumps (e.g., > 50% shift in 72h)
+  const isFlagged = Math.abs(deltaPercentage) > 50;
+
+  return { deltaPercentage, isFlagged, previousValue: prevVal };
+};
+
+// =======================================================
+// PANIC / CRITICAL VALUE ALERT MATRIX (Level 3)
+// =======================================================
+export const checkCriticalPanicValue = (
+  parameterName: string,
+  value: number
+): { isCritical: boolean; flag: string } => {
+  const param = parameterName.toUpperCase();
+
+  if (param.includes('POTASSIUM')) {
+    if (value < 2.5) return { isCritical: true, flag: 'LL' };
+    if (value > 6.2) return { isCritical: true, flag: 'HH' };
+  }
+
+  if (param.includes('GLUCOSE')) {
+    if (value < 45) return { isCritical: true, flag: 'LL' };
+    if (value > 450) return { isCritical: true, flag: 'HH' };
+  }
+
+  if (param.includes('HEMOGLOBIN')) {
+    if (value < 7.0) return { isCritical: true, flag: 'LL' };
+  }
+
+  if (param.includes('PLATELET')) {
+    if (value < 20000) return { isCritical: true, flag: 'LL' };
+  }
+
+  if (param.includes('TROPONIN')) {
+    if (value > 0.4) return { isCritical: true, flag: 'HH' };
+  }
+
+  return { isCritical: false, flag: 'N' };
+};

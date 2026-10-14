@@ -7,7 +7,7 @@ import {
   logoutSession,
   refreshSession,
   registerUser,
-  revokeSessionAsAdmin,
+  revokeSessionById,
   unlockUser,
   verifyMfaLogin,
   verifyOwnerIdentity,
@@ -173,7 +173,10 @@ export const revokeSession = async (
   next: NextFunction
 ) => {
   try {
-    const result = await revokeSessionAsAdmin(String(req.params.id));
+    if (!req.user) {
+      throw new HttpError("Authentication required", 401);
+    }
+    const result = await revokeSessionById(String(req.params.id), req.user);
     return successResponse(res, result, "Session revoked");
   } catch (error) {
     next(error);

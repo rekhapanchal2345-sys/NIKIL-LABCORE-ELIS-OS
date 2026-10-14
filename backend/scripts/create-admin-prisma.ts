@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import prisma from '../api/config/database';
 import bcrypt from 'bcryptjs';
+import { hashPassword } from '../api/src/utils/password';
 import { UserRole, AccountStatus } from '@prisma/client';
 
 async function createAdminUser() {
@@ -36,7 +37,7 @@ async function createAdminUser() {
       );
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await hashPassword(password);
 
     // Create admin user
     const user = await prisma.user.create({

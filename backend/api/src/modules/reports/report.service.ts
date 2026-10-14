@@ -53,6 +53,9 @@ export const getOrderReport = async (
                 id: true,
                 fullName: true,
                 employeeCode: true,
+                signature: true,
+                specialization: true,
+                designation: true,
               },
             },
 
@@ -61,6 +64,9 @@ export const getOrderReport = async (
                 id: true,
                 fullName: true,
                 employeeCode: true,
+                signature: true,
+                specialization: true,
+                designation: true,
               },
             },
           },
@@ -175,6 +181,17 @@ export const getPatientReports =
               values: {
                 include: {
                   parameter: true,
+                },
+              },
+
+              approvedBy: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  employeeCode: true,
+                  signature: true,
+                  specialization: true,
+                  designation: true,
                 },
               },
             },
@@ -304,6 +321,9 @@ export const getPublishedReports =
                 id: true,
                 fullName: true,
                 employeeCode: true,
+                signature: true,
+                specialization: true,
+                designation: true,
               },
             },
           },
@@ -1212,8 +1232,10 @@ export const sendReportToDoctor = async (
           type: normalizedChannel === "WHATSAPP" ? "WHATSAPP" : "EMAIL",
           status: "SENT",
           recipientContact: contact,
-          subject: `Lab Report ${report.reportReferenceId || report.reportNumber}`,
-          message: `Dear Dr. ${targetDoctor.fullName}, please find the laboratory report ${report.reportReferenceId || report.reportNumber} for patient ${order.patient?.firstName || ""} ${order.patient?.lastName || ""}.`,
+          subject: `Confidential Diagnostic Laboratory Report: ${report.reportReferenceId || report.reportNumber} — Patient: ${order.patient?.firstName || ""} ${order.patient?.lastName || ""}`.trim(),
+          message: normalizedChannel === "WHATSAPP"
+            ? `*LABCORE CENTRAL DIAGNOSTIC LABORATORY*\n_Physician Clinical Report Dispatch_\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nDear Dr. ${targetDoctor.fullName},\n\nWe have finalized the diagnostic laboratory evaluation for your referred patient:\n• *Patient Name:* ${order.patient?.firstName || ""} ${order.patient?.lastName || ""}\n• *UHID / Order Ref:* ${report.reportReferenceId || report.reportNumber}\n• *Validation:* Digitally signed by Consultant Pathologist under ISO 15189 / NABL standards.\n\n🔗 *Review Report:* https://labcore.in/reports/${report.id}\n\nFor reflex testing or pathologist correlation, call +91 98765 43210 (Ext. 5).\n\n_Department of Laboratory Medicine | LabCore Diagnostics_`
+            : `Dear Dr. ${targetDoctor.fullName},\n\nGreetings from LabCore Diagnostics & Hospital.\n\nPlease find attached the verified clinical pathology report (Requisition Ref: ${report.reportReferenceId || report.reportNumber}) for your patient, ${order.patient?.firstName || ""} ${order.patient?.lastName || ""}.\n\nAll investigations have been performed on calibrated automated platforms adhering to stringent NABL / ISO 15189 quality specifications and have been authorized by our Senior Consultant Pathologist.\n\nYou may also access cumulative investigation trends and high-resolution laboratory values via our Doctor Portal at: https://labcore.in/doctor-portal/order/${report.id}\n\nShould you require clinical correlation, specimen reflex testing, or direct discussion with the pathologist, please contact our medical desk at doctors@labcore.in or call +91 98765 43210 (Ext. 5).\n\nRespectfully yours,\n\nDepartment of Laboratory Medicine\nLabCore Diagnostics & Research Institute`,
           provider: "LAB_SYSTEM",
           metadata: {
             reportId: report.id,
