@@ -4,6 +4,24 @@ import { authorize } from "../../../middleware/rbac.middleware";
 import { validate } from "../../../middleware/validate.middleware";
 import { UserRole } from "@prisma/client";
 
+// ── Enterprise EMPI Controllers (7 Core Capabilities) ────────────────────────
+import {
+  empiMatch,
+  reindexEmpiFields,
+  resolveHousehold,
+  householdMembers,
+  getClinical,
+  upsertClinical,
+  merge,
+  unmerge,
+  setConfidentiality,
+  breakGlass,
+  confidentialView,
+  abdmScanShare,
+  empiReviewQueue,
+  resolveEmpiQueueItem,
+} from "./patient.empi.controller";
+
 import {
   create,
   list,
@@ -77,12 +95,19 @@ router.post(
   verifyEmail
 );
 
+// ════════════════════════════════════════════════════════════════════════════
+// Capability 6: ABDM Scan & Share (public webhook — called by ABDM Gateway)
+// No auth required: ABDM pushes verified data; trust is via payload validation.
+// In production, secure with ABDM-signed HMAC header verification.
+// ════════════════════════════════════════════════════════════════════════════
+router.post("/abdm-scan-share", abdmScanShare);
+
 // All patient routes require authentication
 router.use(authenticate);
 
-// ====================
-// Draft Management
-// ====================
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI ROUTES — All 7 Core Capabilities
+// ════════════════════════════════════════════════════════════════════════════
 
 const PATIENT_STAFF_ROLES = [
   UserRole.ADMIN,
@@ -93,6 +118,54 @@ const PATIENT_STAFF_ROLES = [
   UserRole.DOCTOR,
   UserRole.PATHOLOGIST,
 ];
+
+// ── Capability 1: Probabilistic EMPI Match ───────────────────────────────────
+
+// Run EMPI dedup before creating a patient
+router.post(
+  "/empi-match",
+  authorize(...PATIENT_STAFF_ROLES),
+  empiMatch
+);
+
+// ── Capability 1: EMPI Review Queue (Data Steward) ──────────────────────────
+
+// List potential duplicates awaiting review
+router.get(
+  "/empi/review-queue",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN),
+  empiReviewQueue
+);
+
+// Resolve a review item (MERGE or DISMISS)
+router.post(
+  "/empi/review-queue/:reviewId/resolve",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  resolveEmpiQueueItem
+);
+
+// ── Capability 4: Patient Merge / Unmerge ────────────────────────────────────
+
+// Merge source patient into target
+router.post(
+  "/merge",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  merge
+);
+
+// Unmerge (SUPER_ADMIN only) — reads snapshot, restores exact record IDs
+router.post(
+  "/merge/:mergeLogId/unmerge",
+  authorize(UserRole.SUPER_ADMIN),
+  unmerge
+);
+
+
+
+
+// ====================
+// Draft Management
+// ====================
 
 // Save/update draft (auto-save)
 router.post(
@@ -380,6 +453,66 @@ router.delete(
   authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validate(patientConsentParamsSchema),
   revokePatientConsent
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI — Per-Patient Routes
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Capability 1: Reindex EMPI fields (after name/phone edit) ────────────────
+router.post(
+  "/:id/empi/reindex",
+  authorize(...PATIENT_STAFF_ROLES),
+  reindexEmpiFields
+);
+
+// ── Capability 2: Household Group ────────────────────────────────────────────
+router.get(
+  "/:id/household",
+  authorize(...PATIENT_STAFF_ROLES),
+  householdMembers
+);
+
+router.post(
+  "/:id/household/resolve",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.FRONT_DESK),
+  resolveHousehold
+);
+
+// ── Capability 3: Clinical Modifiers (ISO 15189:2022) ────────────────────────
+router.get(
+  "/:id/clinical-profile",
+  authorize(...PATIENT_STAFF_ROLES),
+  getClinical
+);
+
+router.put(
+  "/:id/clinical-profile",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
+  upsertClinical
+);
+
+// ── Capability 5: Break-Glass / Confidentiality ──────────────────────────────
+
+// Set confidentiality level (Admin / Pathologist)
+router.patch(
+  "/:id/confidentiality",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.PATHOLOGIST),
+  setConfidentiality
+);
+
+// Request break-glass emergency access
+router.post(
+  "/:id/break-glass",
+  authorize(...PATIENT_STAFF_ROLES),
+  breakGlass
+);
+
+// Get patient with confidentiality mask applied (or unmasked if break-glass active)
+router.get(
+  "/:id/confidential-view",
+  authorize(...PATIENT_STAFF_ROLES),
+  confidentialView
 );
 
 export default router;

@@ -425,8 +425,8 @@ model DoctorDocument {
 }
 
 model Patient {
-  id                           String                     @id @default(cuid())
-  uhid                         String                     @unique
+  id                           String               @id @default(cuid())
+  uhid                         String               @unique
   firstName                    String
   lastName                     String
   gender                       Gender
@@ -434,90 +434,123 @@ model Patient {
   age                          Int?
   ageMonth                     Int?
   ageDay                       Int?
-  phone                        String?                    @db.VarChar(15)
+  phone                        String?              @db.VarChar(15)
   email                        String?
   bloodGroup                   String?
   address                      String?
   city                         String?
   state                        String?
-  pincode                      String?                    @db.VarChar(10)
-  emergencyContact             String?                    @db.VarChar(15)
+  pincode                      String?              @db.VarChar(10)
+  emergencyContact             String?              @db.VarChar(15)
   referredById                 String?
   createdById                  String?
-  createdAt                    DateTime                   @default(now())
-  updatedAt                    DateTime                   @updatedAt
+  createdAt                    DateTime             @default(now())
+  updatedAt                    DateTime             @updatedAt
   emergencyContactName         String?
   emergencyContactRelationship String?
   fastingStatus                String?
   insuranceNumber              String?
   insuranceProvider            String?
   nationalId                   String?
-  isActive                     Boolean                    @default(true)
+  isActive                     Boolean              @default(true)
   middleName                   String?
-  alternatePhone               String?                    @db.VarChar(15)
+  alternatePhone               String?              @db.VarChar(15)
   landmark                     String?
-  country                      String?                    @default("India")
+  country                      String?              @default("India")
   emergencyContactAddress      String?
   height                       Float?
   weight                       Float?
   bmi                          Float?
-  aadhaarNumber                String?                    @db.VarChar(12)
-  panNumber                    String?                    @db.VarChar(10)
-  patientType                  String?                    @default("GENERAL")
+  aadhaarNumber                String?              @db.VarChar(12)
+  panNumber                    String?              @db.VarChar(10)
+  patientType                  String?              @default("GENERAL")
   maritalStatus                String?
   occupation                   String?
-  nationality                  String?                    @default("Indian")
+  nationality                  String?              @default("Indian")
   allergies                    Json?
   chronicDiseases              Json?
   currentMedications           Json?
   insuranceGroupNumber         String?
   insuranceExpiryDate          DateTime?
   photoUrl                     String?
-  preferredLanguage            String?                    @default("ENGLISH")
+  preferredLanguage            String?              @default("ENGLISH")
   preferredCommunicationMethod String?
   communicationPreference      Json?
-  consentForTreatment          Boolean                    @default(false)
-  consentForDataSharing        Boolean                    @default(false)
-  consentForMarketing          Boolean                    @default(false)
+  consentForTreatment          Boolean              @default(false)
+  consentForDataSharing        Boolean              @default(false)
+  consentForMarketing          Boolean              @default(false)
   familyHeadId                 String?
   relationshipToHead           String?
   notes                        String?
-  isDraft                      Boolean                    @default(false)
-  registrationSource           String?                    @default("WALK_IN")
+  isDraft                      Boolean              @default(false)
+  registrationSource           String?              @default("WALK_IN")
   referralSource               String?
-  verificationStatus           String?                    @default("UNVERIFIED")
-  phoneVerified                Boolean                    @default(false)
-  emailVerified                Boolean                    @default(false)
-  kycVerified                  Boolean                    @default(false)
+  verificationStatus           String?              @default("UNVERIFIED")
+  phoneVerified                Boolean              @default(false)
+  emailVerified                Boolean              @default(false)
+  kycVerified                  Boolean              @default(false)
   qrCode                       String?
-  abhaNumber                   String?                    @db.VarChar(20)
-  abhaAddress                  String?                    @db.VarChar(100)
-  healthIdNumber               String?                    @db.VarChar(20)
-  aadhaarReferenceToken        String?                    // Encrypted
-  abhaStatus                   String                     @default("UNLINKED")
+  abhaNumber                   String?              @db.VarChar(20)
+  abhaAddress                  String?              @db.VarChar(100)
+  healthIdNumber               String?              @db.VarChar(20)
+  aadhaarReferenceToken        String?              // Encrypted Aadhaar reference
+  abhaStatus                   String               @default("UNLINKED")
   abhaLinkedAt                 DateTime?
   formStep                     Int?
   formProgress                 Int?
   lastEditedSection            String?
   kycVerifiedAt                DateTime?
   kycVerifiedById              String?
+
+  // ── EMPI Capability 1: Probabilistic Deduplication Engine ──────────────────
+  /// SHA-256 blind-index of normalised phone for exact-match dedup (+35 pts)
+  phoneHash                    String?              @db.VarChar(64)
+  /// Double Metaphone primary code for Indian phonetic matching
+  phoneticPrimary              String?              @db.VarChar(20)
+  /// Double Metaphone alternate code
+  phoneticAlternate            String?              @db.VarChar(20)
+
+  // ── Capability 2: Household / Family Shared-Phone Architecture ─────────────
+  /// FK to HouseholdGroup (multiple patients can share one phone number)
+  householdGroupId             String?
+  /// Relation of this patient to the primary holder of the household phone
+  familyRelation               FamilyRelation?      @default(SELF)
+  /// Allow head-of-family to draw from their advance wallet for this member
+  allowFamilyWalletDrawdown    Boolean              @default(false)
+
+  // ── Capability 5: Break-Glass VIP / Confidential Patient Shield ────────────
+  confidentialityLevel         ConfidentialityLevel @default(STANDARD)
+  /// Alias displayed on worklists when level = VIP_MASKED | RESTRICTED_SENSITIVE
+  confidentialAlias            String?              @db.VarChar(50)
+
+  // ── Capability 5: Zero-Downtime Encryption Key Rotation ────────────────────
+  encryptionKeyVersion         Int                  @default(1)
+
+  // ── Capability 6: ABDM Scan & Share fast-track token ──────────────────────
+  /// Short-lived token returned by ABDM gateway after Scan & Share
+  abhaToken                    String?
+
   abdm_care_contexts           abdm_care_contexts[]
   abdm_consents                abdm_consents[]
+  breakGlassLogs               BreakGlassAccessLog[]
+  clinicalProfile              PatientClinicalProfile?
   communications               CommunicationLog[]
+  empiReviewQueues             EmpiReviewQueue[]
+  householdGroup               HouseholdGroup?      @relation(fields: [householdGroupId], references: [id])
   orders                       Order[]
   advances                     PatientAdvance[]
-  consents                     PatientConsent[]           @relation("PatientConsents")
-  historyEntries               PatientHistoryEntry[]      @relation("PatientHistory")
-  medicalHistories             PatientMedicalHistory[]    @relation("PatientMedicalHistories")
-  verifications                PatientVerification[]      @relation("PatientVerifications")
+  consents                     PatientConsent[]     @relation("PatientConsents")
+  historyEntries               PatientHistoryEntry[] @relation("PatientHistory")
+  medicalHistories             PatientMedicalHistory[] @relation("PatientMedicalHistories")
+  verifications                PatientVerification[] @relation("PatientVerifications")
   wallet                       PatientWallet?
-  createdBy                    User?                      @relation("PatientCreator", fields: [createdById], references: [id])
-  familyHead                   Patient?                   @relation("FamilyHead", fields: [familyHeadId], references: [id])
-  familyMembers                Patient[]                  @relation("FamilyHead")
-  kycVerifiedBy                User?                      @relation("PatientKycVerifier", fields: [kycVerifiedById], references: [id])
-  referredBy                   Doctor?                    @relation(fields: [referredById], references: [id])
+  createdBy                    User?                @relation("PatientCreator", fields: [createdById], references: [id])
+  familyHead                   Patient?             @relation("FamilyHead", fields: [familyHeadId], references: [id])
+  familyMembers                Patient[]            @relation("FamilyHead")
+  kycVerifiedBy                User?                @relation("PatientKycVerifier", fields: [kycVerifiedById], references: [id])
+  referredBy                   Doctor?              @relation(fields: [referredById], references: [id])
   reports                      Report[]
-  results                      Result[]                   @relation("ResultPatient")
+  results                      Result[]             @relation("ResultPatient")
   trackingHistory              SampleTrackingHistory[]
   samples                      Sample[]
   whatsappConversations        WhatsAppConversation[] @relation("ConversationPatient")
@@ -525,10 +558,14 @@ model Patient {
   whatsappScheduledMessages    WhatsAppScheduledMessage[]
 
   @@index([phone])
+  @@index([phoneHash])                    // EMPI: exact phone blind-index
+  @@index([phoneticPrimary])              // EMPI: phonetic name lookup
   @@index([firstName, lastName])
   @@index([referredById])
   @@index([createdById])
   @@index([familyHeadId])
+  @@index([householdGroupId])
+  @@index([confidentialityLevel])
   @@index([isDraft])
   @@index([isActive])
   @@index([createdAt])
@@ -536,6 +573,167 @@ model Patient {
   @@index([abhaAddress])
   @@index([kycVerifiedById])
   @@map("patients")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI — Capability 2: Household / Family Shared-Phone Group
+// ════════════════════════════════════════════════════════════════════════════
+
+model HouseholdGroup {
+  id                     String    @id @default(cuid())
+  /// SHA-256 of the normalised (+91XXXXXXXXXX) phone number
+  primaryPhoneHash       String    @unique
+  /// UHID of the registered "head" of this household
+  primaryHolderPatientId String?
+  /// When true, head's advance wallet covers all family members' bills
+  allowFamilyWalletSharing Boolean @default(false)
+  patients               Patient[]
+  createdAt              DateTime  @default(now())
+
+  @@index([primaryPhoneHash])
+  @@map("household_groups")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI — Capability 1: Probabilistic Dedup Review Queue
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Created when EMPI score is 60–84 (POTENTIAL_DUPLICATE). A data steward
+/// reviews and either merges or dismisses the flag.
+model EmpiReviewQueue {
+  id               String       @id @default(cuid())
+  /// The newly-created patient that triggered the match
+  incomingPatientId String
+  /// The existing candidate patient that scored a potential duplicate
+  candidatePatientId String
+  empiScore        Int
+  empiDecision     EmpiDecision @default(POTENTIAL_DUPLICATE_QUEUE)
+  scoreBreakdown   Json         // {phone: 35, phonetic: 28, dob: 20, gender: 10, pincode: 5}
+  reviewedById     String?
+  reviewedAt       DateTime?
+  resolutionNotes  String?
+  isResolved       Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+
+  incomingPatient  Patient      @relation(fields: [incomingPatientId], references: [id], onDelete: Cascade)
+
+  @@index([incomingPatientId])
+  @@index([candidatePatientId])
+  @@index([isResolved])
+  @@index([empiDecision])
+  @@map("empi_review_queue")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI — Capability 3: Longitudinal Clinical Modifiers
+// ════════════════════════════════════════════════════════════════════════════
+
+/// ISO 15189:2022-grade clinical modifiers that alter reference range
+/// interpretation for specific tests (TSH, PT/INR, Neonatal Bilirubin …)
+model PatientClinicalProfile {
+  id                    String          @id @default(cuid())
+  patientId             String          @unique
+  patient               Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Neonatal / NICU fields (Bhutani Nomogram bilirubin by hours-of-life)
+  /// Precise birth timestamp – required for NICU hour-based bilirubin nomograms
+  birthTimestamp        DateTime?
+  /// Gestational age at delivery; <37 w = premature; affects neonatal ref ranges
+  gestationalAgeWeeks   Int?
+  birthWeightGrams      Int?
+
+  // Obstetric / Pregnancy
+  pregnancyStatus       PregnancyStatus @default(NOT_APPLICABLE)
+  /// Last Menstrual Period date – used to derive trimester automatically
+  lmpDate               DateTime?
+
+  // Blood Group (once cross-match verified, locked with badge)
+  bloodGroup            String?
+  /// Staff ID who cross-matched & verified the blood group
+  bloodGroupVerifiedBy  String?
+  bloodGroupVerifiedAt  DateTime?
+
+  // Chronic therapy flags (change delta/panic limits in Module 07/08)
+  /// Warfarin/Heparin: INR therapeutic target 2.5–3.5 (not 0.9–1.1)
+  isOnAnticoagulants    Boolean         @default(false)
+  /// Affects Creatinine/Urea delta-check thresholds
+  isOnDialysis          Boolean         @default(false)
+  /// Post-transplant immunosuppression; may alter CBC and chemistry ranges
+  isTransplantRecipient Boolean         @default(false)
+
+  // Allergy & ICD-10 coded chronic conditions
+  knownAllergies        String[]        // free-text or SNOMED-CT codes
+  chronicConditions     String[]        // ICD-10 / SNOMED-CT codes
+
+  updatedAt             DateTime        @updatedAt
+
+  @@map("patient_clinical_profiles")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI — Capability 4: Event-Sourced Unmerge / Split
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Records every MPI merge so a SUPER_ADMIN can fully reverse it without
+/// touching records that were created AFTER the merge occurred.
+model PatientMergeLog {
+  id               String               @id @default(cuid())
+  sourcePatientId  String
+  targetPatientId  String
+  mergedByUserId   String
+  mergeReason      String?
+  mergedAt         DateTime             @default(now())
+  /// Full JSON snapshot of the source patient row before merge
+  snapshot         PatientMergeSnapshot?
+
+  @@index([sourcePatientId])
+  @@index([targetPatientId])
+  @@index([mergedByUserId])
+  @@map("patient_merge_logs")
+}
+
+model PatientMergeSnapshot {
+  id                   String    @id @default(cuid())
+  mergeLogId           String    @unique
+  mergeLog             PatientMergeLog @relation(fields: [mergeLogId], references: [id], onDelete: Cascade)
+  /// Complete JSON row of sourcePatient as it was before merge
+  sourcePatientBackup  Json
+  migratedOrderIds     String[]
+  migratedSampleIds    String[]
+  migratedInvoiceIds   String[]
+  migratedReceiptIds   String[]
+  transferredWalletAmt Decimal   @default(0) @db.Decimal(12, 2)
+  /// Set to true once POST /patients/merge/:mergeLogId/unmerge has run
+  isReverted           Boolean   @default(false)
+  revertedAt           DateTime?
+  revertedByUserId     String?
+  createdAt            DateTime  @default(now())
+
+  @@map("patient_merge_snapshots")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI — Capability 5: Break-Glass VIP / Confidential Access Log
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Written every time a clinician clicks "Break-Glass Emergency Access" to
+/// reveal the true identity of a VIP_MASKED or RESTRICTED_SENSITIVE patient.
+/// Also sends a real-time WebSocket alert to the Chief Pathologist.
+model BreakGlassAccessLog {
+  id             String   @id @default(cuid())
+  patientId      String
+  accessedById   String
+  clinicalReason String
+  ipAddress      String   @db.VarChar(45)
+  /// Temporary 30-minute unmasked window for that specific clinician
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, accessedById])
+  @@index([expiresAt])
+  @@map("break_glass_access_logs")
 }
 
 model TestCategory {
@@ -2634,4 +2832,44 @@ enum ReceivableStatus {
   PAID
   OVERDUE
   WRITE_OFF
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE EMPI — New Enums
+// ════════════════════════════════════════════════════════════════════════════
+
+enum ConfidentialityLevel {
+  STANDARD
+  /// Real name hidden; alias (CONFIDENTIAL-UHID-…) shown on worklists
+  VIP_MASKED
+  /// HIV / Genetic / Paternity: access restricted to authorised roles only
+  RESTRICTED_SENSITIVE
+}
+
+enum PregnancyStatus {
+  NOT_APPLICABLE
+  NOT_PREGNANT
+  TRIMESTER_1
+  TRIMESTER_2
+  TRIMESTER_3
+  POSTPARTUM
+}
+
+enum FamilyRelation {
+  SELF
+  SPOUSE
+  CHILD
+  PARENT
+  SIBLING
+  OTHER
+}
+
+/// EMPI decision tier returned by the probabilistic scoring engine
+enum EmpiDecision {
+  /// Score 85-100: block registration and show UI modal
+  AUTO_BLOCK_DUPLICATE
+  /// Score 60-84: allow registration but flag for data-steward review
+  POTENTIAL_DUPLICATE_QUEUE
+  /// Score < 60: create a new UHID normally
+  DISTINCT_PATIENT
 }
