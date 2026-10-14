@@ -35,6 +35,7 @@ import notificationTemplateRoutes from "./modules/notifications/notification-tem
 import backupRoutes from "./modules/backup/backup.routes";
 import barcodeRoutes from "./modules/barcode/barcode.routes";
 import abdmRoutes, { abdmWebhookRouter } from "./modules/abdm/abdm.routes";
+import receiptRoutes from "./modules/receipts/receipt.routes";
 import aiRoutes from "./modules/ai/ai.routes";
 
 // =======================================================
@@ -414,6 +415,12 @@ app.use("/api/audit", auditRoutes);
 // =======================================================
 
 app.use("/api/dashboard", dashboardRoutes);
+
+// =======================================================
+// RECEIPTS
+// =======================================================
+
+app.use("/api/receipts", receiptRoutes);
 
 // =======================================================
 // COMMUNICATIONS

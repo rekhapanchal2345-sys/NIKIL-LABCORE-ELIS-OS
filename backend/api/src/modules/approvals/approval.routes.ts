@@ -35,7 +35,7 @@ router.use(authenticate);
 
 router.get(
   "/metrics",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -48,7 +48,7 @@ router.get(
 
 router.get(
   "/",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -60,7 +60,7 @@ router.get(
 
 router.get(
   "/pending",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -76,7 +76,7 @@ router.get(
 
 router.post(
   "/batch-approve",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -92,7 +92,7 @@ router.post(
 
 router.get(
   "/:id",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -108,7 +108,7 @@ router.get(
 
 router.get(
   "/:id/history",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -124,7 +124,7 @@ router.get(
 
 router.post(
   "/:id/critical-ack",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -141,7 +141,7 @@ router.post(
 
 router.post(
   "/:id/approve",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -157,7 +157,7 @@ router.post(
 
 router.post(
   "/:id/reject",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -174,7 +174,7 @@ router.post(
 
 router.post(
   "/:id/publish",
-  authorize(
+  authorize(UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),

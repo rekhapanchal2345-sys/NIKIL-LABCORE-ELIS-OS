@@ -86,11 +86,8 @@ export async function interpretOrderWithGemini(orderId: string): Promise<GeminiC
       const prompt = `You are a Board-Certified Consultant Pathologist AI assistant in an ISO 15189 NABL accredited diagnostic healthcare laboratory in India.
 Analyze the following clinical diagnostic test results for this patient:
 Patient Demographics:
-- Name: ${patient.firstName} ${patient.lastName}
 - Age: ${age} years
 - Gender: ${gender}
-- Order No: ${order.orderNumber}
-- Referring Clinician: ${order.doctor?.fullName || "General OPD"}
 
 Analyzed Laboratory Parameters:
 ${paramSummaries.join("\n")}

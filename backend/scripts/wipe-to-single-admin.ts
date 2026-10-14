@@ -4,6 +4,10 @@ import { hashPassword, comparePassword } from '../api/src/utils/password';
 import { emailBlindIndex, normaliseEmail } from '../api/src/utils/gmail';
 import { UserRole, AccountStatus } from '@prisma/client';
 
+if (process.env.NODE_ENV === 'production' || !process.env.ALLOW_DESTRUCTIVE_RESET) {
+  throw new Error("Execution blocked: Destructive data wipe disallowed in this environment.");
+}
+
 async function wipeDatabaseToSingleAdmin() {
   console.log('====================================================');
   console.log('🚨 STARTING COMPLETE 100% FRESH DATABASE RESET');

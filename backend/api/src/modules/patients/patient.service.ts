@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { createAuditLog } from "../audit/audit.service";
+import { encryptField, decryptField, canDecryptField } from "../../utils/field-crypto";
 import {
   assertPatientCreateComplete,
   buildPatientData,
@@ -35,39 +36,32 @@ export const generateUHID = async (tx: Tx | typeof prisma = prisma): Promise<str
   const currentYear = new Date().getUTCFullYear();
   const prefix = `UHID-${currentYear}-`;
 
-  // Fetch recent UHIDs ordered by true creation timestamp to find the real numerical ceiling
-  const recent = await tx.patient.findMany({
-    where: { uhid: { startsWith: prefix } },
-    select: { uhid: true },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  // Use raw sql for atomic sequence increment specifically for patient UHID to match the format.
+  await tx.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS accounting_sequences (
+      id VARCHAR(255) PRIMARY KEY,
+      series_type VARCHAR(50) NOT NULL,
+      financial_year VARCHAR(20) NOT NULL,
+      branch_id VARCHAR(100) NOT NULL DEFAULT 'DEFAULT',
+      current_value INT NOT NULL DEFAULT 0,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT unique_series_fy_branch UNIQUE (series_type, financial_year, branch_id)
+    );
+  `);
 
-  let highest = 0;
-  for (const row of recent) {
-    const match = UHID_SEQUENCE.exec(row.uhid);
-    if (match) {
-      const num = Number(match[1]);
-      if (Number.isFinite(num) && num > highest) {
-        highest = num;
-      }
-    }
-  }
+  const seriesKey = `UHID-${currentYear}`;
+  const rows: any = await tx.$queryRawUnsafe(`
+    INSERT INTO accounting_sequences (id, series_type, financial_year, branch_id, current_value, updated_at)
+    VALUES ($1, $2, $3, $4, 1, CURRENT_TIMESTAMP)
+    ON CONFLICT (series_type, financial_year, branch_id)
+    DO UPDATE SET
+      current_value = accounting_sequences.current_value + 1,
+      updated_at = CURRENT_TIMESTAMP
+    RETURNING current_value;
+  `, seriesKey, "UHID", currentYear.toString(), "DEFAULT");
 
-  // Random jitter increment breaks lockstep synchronization between simultaneous receptionists
-  const jitter = Math.floor(Math.random() * 3);
-  let candidate = highest + 1 + jitter;
-
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const uhid = `${prefix}${String(candidate).padStart(5, "0")}`;
-    const clash = await tx.patient.findUnique({ where: { uhid }, select: { id: true } });
-    if (!clash) return uhid;
-    candidate += 1 + Math.floor(Math.random() * 2);
-  }
-
-  // High-entropy timestamp fallback guarantee: registration is never blocked
-  const entropy = Date.now().toString().slice(-6);
-  return `${prefix}${entropy}`;
+  const nextVal = Array.isArray(rows) && rows[0]?.current_value ? Number(rows[0].current_value) : 1;
+  return `${prefix}${String(nextVal).padStart(5, "0")}`;
 };
 
 export const checkDuplicatePatient = async (
@@ -86,8 +80,6 @@ export const checkDuplicatePatient = async (
 
   const normalisedPhone = asString(sanitizePhone(phone));
   const normalisedEmail = asString(email)?.toLowerCase() ?? null;
-  const normalisedAadhaar = asString(aadhaarNumber)?.replace(/\D/g, "") ?? null;
-  const normalisedPan = asString(panNumber)?.toUpperCase() ?? null;
 
   const candidates: Array<{
     field: string;
@@ -96,8 +88,6 @@ export const checkDuplicatePatient = async (
   }> = [
     { field: "phone", column: "phone", value: normalisedPhone },
     { field: "email", column: "email", value: normalisedEmail },
-    { field: "Aadhaar", column: "aadhaarNumber", value: normalisedAadhaar },
-    { field: "PAN", column: "panNumber", value: normalisedPan },
   ];
 
   for (const { field, column, value } of candidates) {
@@ -161,6 +151,13 @@ export const formatPatientResponse = (patient: any, maskPii = false) => {
   let phone = patient.phone;
   let aadhaarNumber = patient.aadhaarNumber;
   let panNumber = patient.panNumber;
+
+  if (aadhaarNumber && canDecryptField(aadhaarNumber)) {
+    aadhaarNumber = decryptField(aadhaarNumber);
+  }
+  if (panNumber && canDecryptField(panNumber)) {
+    panNumber = decryptField(panNumber);
+  }
 
   if (maskPii) {
     if (phone && phone.length >= 4) phone = phone.slice(0, 3) + "******" + phone.slice(-4);
