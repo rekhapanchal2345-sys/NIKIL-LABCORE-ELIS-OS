@@ -167,7 +167,7 @@ export const validateBarcode = async (barcode: string): Promise<{
   }
 
   // Check if it's a patient UHID
-  if (barcode.startsWith('LC-')) {
+  if (barcode.startsWith('UHID-') || barcode.startsWith('LC-')) {
     const patient = await prisma.patient.findUnique({
       where: { uhid: barcode },
     });

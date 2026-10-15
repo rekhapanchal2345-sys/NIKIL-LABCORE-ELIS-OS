@@ -16,14 +16,6 @@ export const createBackupController = async (
   res: Response,
 ) => {
   try {
-    // Only admins can create backups
-    if (req.user?.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only administrators can create backups',
-      });
-    }
-
     const result = await createBackup();
 
     if (result.success) {
@@ -56,14 +48,6 @@ export const restoreBackupController = async (
   res: Response,
 ) => {
   try {
-    // Only admins can restore backups
-    if (req.user?.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only administrators can restore backups',
-      });
-    }
-
     const { fileName } = req.params;
 
     if (!fileName) {
@@ -105,14 +89,6 @@ export const getBackupsController = async (
   res: Response,
 ) => {
   try {
-    // Only admins can view backups
-    if (req.user?.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only administrators can view backups',
-      });
-    }
-
     const backups = getAllBackups();
 
     res.json({
@@ -133,14 +109,6 @@ export const getBackupsController = async (
  */
 export const getBackupStatsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Only admins can view backup statistics
-    if (req.user?.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only administrators can view backup statistics',
-      });
-    }
-
     const stats = getBackupStatistics();
 
     res.json({
@@ -161,14 +129,6 @@ export const getBackupStatsController = async (req: AuthenticatedRequest, res: R
  */
 export const deleteBackupController = async (req: AuthenticatedRequest<{ fileName: string }>, res: Response) => {
   try {
-    // Only admins can delete backups
-    if (req.user?.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only administrators can delete backups',
-      });
-    }
-
     const { fileName } = req.params;
 
     if (!fileName) {

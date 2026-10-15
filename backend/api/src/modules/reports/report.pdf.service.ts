@@ -1,6 +1,7 @@
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import crypto from "crypto";
+import qrcode from "qrcode";
 
 // =======================================================
 // STANDALONE VECTOR QR CODE & BARCODE GENERATOR
@@ -10,57 +11,22 @@ import crypto from "crypto";
  * Lightweight SVG QR Code matrix renderer
  * Generates an SVG string encoding the verification URL without external binary dependencies
  */
-function generateQrSvg(text: string, size = 110): string {
-  // Deterministic pseudo-grid generator based on SHA-256 for high-fidelity scanning representation
-  const hash = crypto.createHash("sha256").update(text).digest();
-  const matrixSize = 25; // 25x25 QR Version 2 matrix
-  const moduleSize = size / matrixSize;
-
-  let rects = "";
-
-  // Standard QR position detection patterns (top-left, top-right, bottom-left)
-  const drawFinder = (startX: number, startY: number) => {
-    // 7x7 outer square
-    rects += `<rect x="${startX * moduleSize}" y="${startY * moduleSize}" width="${7 * moduleSize}" height="${7 * moduleSize}" fill="#0f172a" />`;
-    // 5x5 inner white
-    rects += `<rect x="${(startX + 1) * moduleSize}" y="${(startY + 1) * moduleSize}" width="${5 * moduleSize}" height="${5 * moduleSize}" fill="#ffffff" />`;
-    // 3x3 center black
-    rects += `<rect x="${(startX + 2) * moduleSize}" y="${(startY + 2) * moduleSize}" width="${3 * moduleSize}" height="${3 * moduleSize}" fill="#0f172a" />`;
-  };
-
-  drawFinder(0, 0);
-  drawFinder(matrixSize - 7, 0);
-  drawFinder(0, matrixSize - 7);
-
-  // Timing lines
-  for (let i = 8; i < matrixSize - 8; i += 2) {
-    rects += `<rect x="${i * moduleSize}" y="${6 * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#0f172a" />`;
-    rects += `<rect x="${6 * moduleSize}" y="${i * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#0f172a" />`;
-  }
-
-  // Data modules filled from hash bytes
-  for (let y = 0; y < matrixSize; y++) {
-    for (let x = 0; x < matrixSize; x++) {
-      // Skip finder pattern zones
-      const inTopLeft = x < 8 && y < 8;
-      const inTopRight = x >= matrixSize - 8 && y < 8;
-      const inBottomLeft = x < 8 && y >= matrixSize - 8;
-      const onTiming = x === 6 || y === 6;
-
-      if (!inTopLeft && !inTopRight && !inBottomLeft && !onTiming) {
-        const byteIndex = (y * matrixSize + x) % hash.length;
-        const bit = (hash[byteIndex] >> (x % 8)) & 1;
-        if (bit === 1) {
-          rects += `<rect x="${x * moduleSize}" y="${y * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#0f172a" />`;
-        }
+async function generateQrSvg(text: string, size = 110): Promise<string> {
+  try {
+    const svg = await qrcode.toString(text, {
+      type: "svg",
+      width: size,
+      margin: 1,
+      color: {
+        dark: "#0f172a",
+        light: "#ffffff"
       }
-    }
+    });
+    return svg;
+  } catch (err) {
+    console.error("Failed to generate real QR code:", err);
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><text x="10" y="20">QR Error</text></svg>`;
   }
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges">
-    <rect width="${size}" height="${size}" fill="#ffffff" />
-    ${rects}
-  </svg>`;
 }
 
 /**
@@ -190,7 +156,7 @@ export async function generateOrderReportHtml(orderId: string, publicUrl = "http
   const doctor = order.doctor;
   const clinicalAge = calculateDetailedAge(patient.dateOfBirth, (patient as any).age);
   const verificationUrl = `${publicUrl}/verify-report/${order.reportId || order.id}`;
-  const qrSvg = generateQrSvg(verificationUrl, 90);
+  const qrSvg = await generateQrSvg(verificationUrl, 90);
   const barcodeSvg = generateBarcodeSvg(order.orderNumber, 160, 32);
 
   // Pathologist details

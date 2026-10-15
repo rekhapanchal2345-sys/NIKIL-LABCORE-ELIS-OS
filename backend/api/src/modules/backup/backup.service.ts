@@ -31,8 +31,9 @@ export const createBackup = async () => {
  * Restore from a backup
  */
 export const restoreBackup = async (fileName: string) => {
-  const backupPath = path.join(BACKUP_DIR, fileName);
-  const isEncrypted = fileName.endsWith('.enc');
+  const safeFileName = path.basename(fileName);
+  const backupPath = path.join(BACKUP_DIR, safeFileName);
+  const isEncrypted = safeFileName.endsWith('.enc');
 
   if (!ENCRYPTION_ENABLED && isEncrypted) {
     throw new Error('Cannot restore encrypted backup without encryption secret');
@@ -60,7 +61,8 @@ export const getBackupStatistics = () => {
  */
 export const deleteBackup = (fileName: string): boolean => {
   const fs = require('fs');
-  const backupPath = path.join(BACKUP_DIR, fileName);
+  const safeFileName = path.basename(fileName);
+  const backupPath = path.join(BACKUP_DIR, safeFileName);
 
   if (fs.existsSync(backupPath)) {
     fs.unlinkSync(backupPath);

@@ -1,5 +1,9 @@
 import prisma from "../api/config/database";
 
+if (process.env.NODE_ENV === 'production' || !process.env.ALLOW_DESTRUCTIVE_RESET) {
+  throw new Error("Execution blocked: Destructive data wipe disallowed in this environment.");
+}
+
 async function resetAllData() {
   try {
     console.log("Starting data reset process...");

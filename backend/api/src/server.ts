@@ -1,6 +1,7 @@
 import app from "./app";
 import env from "../config/env";
 import prisma from "../config/database";
+import { WebSocketService } from "./lib/websocket";
 
 const PORT = Number(env.PORT) || 5000;
 const server = app.listen(PORT, "0.0.0.0", () => {
@@ -11,6 +12,8 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`🔗 URL  : http://127.0.0.1:${PORT}`);
   console.log("======================================");
 });
+
+WebSocketService.initialize(server);
 
 server.on("error", (err: any) => {
   if (err.code === "EADDRINUSE") {

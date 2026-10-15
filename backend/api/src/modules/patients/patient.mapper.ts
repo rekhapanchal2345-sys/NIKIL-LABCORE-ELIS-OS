@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { HttpError } from "../../utils/http-error";
+import { encryptField } from "../../utils/field-crypto";
 
 /**
  * Single source of truth for turning a patient request payload into Prisma
@@ -390,11 +391,11 @@ export const buildPatientData = (
   }
   if (input.aadhaarNumber !== undefined) {
     const digits = text(input.aadhaarNumber);
-    data.aadhaarNumber = digits ? clamp("aadhaarNumber", digits.replace(/\D/g, "")) : null;
+    data.aadhaarNumber = digits ? encryptField(clamp("aadhaarNumber", digits.replace(/\D/g, ""))) : null;
   }
   if (input.panNumber !== undefined) {
     const value = text(input.panNumber);
-    data.panNumber = value ? clamp("panNumber", value.toUpperCase()) : null;
+    data.panNumber = value ? encryptField(clamp("panNumber", value.toUpperCase())) : null;
   }
 
   // ABHA (Ayushman Bharat Digital Health Account) & KYC Tokens
