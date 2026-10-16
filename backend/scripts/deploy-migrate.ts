@@ -1,4 +1,7 @@
 import dotenv from "dotenv";
+import path from "path";
+const backendDir = path.resolve(__dirname, "..");
+dotenv.config({ path: path.join(backendDir, ".env") });
 dotenv.config();
 
 import { execSync } from "child_process";
@@ -13,7 +16,7 @@ async function runProductionMigration() {
   // 1. Run Prisma migrate deploy
   console.log("📦 Applying pending database migrations...");
   try {
-    execSync("npx prisma migrate deploy", { stdio: "inherit" });
+    execSync("npx prisma migrate deploy", { cwd: backendDir, stdio: "inherit" });
     console.log("✅ Migrations applied successfully.");
   } catch (error) {
     console.error("❌ Migration failed:", error);
@@ -76,7 +79,9 @@ async function runProductionMigration() {
   console.log("==================================================");
 }
 
-runProductionMigration().catch((err) => {
-  console.error("Fatal deployment error:", err);
-  process.exit(1);
-});
+runProductionMigration()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error("Fatal deployment error:", err);
+    process.exit(1);
+  });

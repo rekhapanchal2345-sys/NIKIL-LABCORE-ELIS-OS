@@ -93,15 +93,7 @@ router.patch("/:id/read", markRead);
 // Get specific communication details
 router.get("/:id", validate({ params: communicationIdSchema }), getOne);
 
-// The following 8 endpoints are needed by the frontend lib/api.ts
-
-router.get("/logs", getLogs);
-router.get("/stats", getStats);
-router.get("/sms/templates", getSmsTemplates);
-router.get("/email/templates", getEmailTemplates);
-router.post("/sms/bulk", sendBulkSms);
-router.post("/:id/retry", retryCommunication);
-router.post("/:id/read", markCommunicationRead);
-router.get("/consent/:patientId", getPatientConsent);
+// Compatibility alias for POST /:id/read
+router.post("/:id/read", markRead);
 
 export default router;

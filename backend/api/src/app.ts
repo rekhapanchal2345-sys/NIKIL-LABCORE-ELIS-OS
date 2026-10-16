@@ -39,8 +39,6 @@ import receiptRoutes from "./modules/receipts/receipt.routes";
 import aiRoutes from "./modules/ai/ai.routes";
 import scimRoutes from "./modules/auth/scim.routes";
 import { oauthTokenHandler } from "./modules/auth/m2m-gateway.controller";
-// ISS-015: Receipt routes existed in controller/service but were never mounted
-import receiptRoutes from "./modules/receipts/receipt.routes";
 import digitalTwinRoutes from "./modules/digital-twin/digital-twin.routes";
 
 // =======================================================
@@ -424,11 +422,6 @@ app.use("/api/audit", auditRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
 
-// =======================================================
-// RECEIPTS
-// =======================================================
-
-app.use("/api/receipts", receiptRoutes);
 
 // =======================================================
 // COMMUNICATIONS

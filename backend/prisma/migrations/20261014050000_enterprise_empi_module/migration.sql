@@ -81,6 +81,10 @@ CREATE TABLE IF NOT EXISTS "empi_review_queue" (
     CONSTRAINT "empi_review_queue_pkey" PRIMARY KEY ("id")
 );
 
+ALTER TABLE "empi_review_queue" ADD COLUMN IF NOT EXISTS "resolvedAt" TIMESTAMP(3);
+ALTER TABLE "empi_review_queue" ADD COLUMN IF NOT EXISTS "resolvedById" TEXT;
+ALTER TABLE "empi_review_queue" ADD COLUMN IF NOT EXISTS "resolution" "ReviewResolution";
+
 CREATE INDEX IF NOT EXISTS "empi_review_queue_resolvedAt_idx" ON "empi_review_queue"("resolvedAt");
 CREATE INDEX IF NOT EXISTS "empi_review_queue_incomingPatientId_idx" ON "empi_review_queue"("incomingPatientId");
 CREATE INDEX IF NOT EXISTS "empi_review_queue_candidatePatientId_idx" ON "empi_review_queue"("candidatePatientId");

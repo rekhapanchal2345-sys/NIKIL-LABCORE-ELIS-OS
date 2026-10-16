@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const prisma = require('../dist/api/config/database').default || require('../dist/api/config/database');
 const { generateUHID } = require('../dist/api/src/modules/patients/patient.service');
 const { money } = require('../dist/api/src/modules/doctors/doctor.commission');
 const { Prisma } = require('@prisma/client');

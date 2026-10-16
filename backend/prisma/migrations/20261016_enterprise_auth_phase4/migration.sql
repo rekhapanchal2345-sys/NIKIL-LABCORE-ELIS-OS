@@ -1,85 +1,96 @@
 -- Phase 4: Enterprise Identity Federation, SSO, SCIM 2.0 & Break-Glass Emergency Access
 -- Migration: 20261016_enterprise_auth_phase4
 
--- ─────────────────────────────────────────────────────────────────────────────
--- Table: sso_providers
--- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS sso_providers (
-  id                  TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  name                TEXT         NOT NULL,
-  slug                TEXT         NOT NULL UNIQUE,
-  protocol            TEXT         NOT NULL CHECK (protocol IN ('OIDC', 'SAML')),
-  issuer              TEXT         NOT NULL,
-  client_id           TEXT         NOT NULL,
-  client_secret       TEXT,
-  metadata_url        TEXT,
-  sso_url             TEXT         NOT NULL,
-  token_url           TEXT,
-  user_info_url       TEXT,
-  certificate         TEXT,
-  enabled             BOOLEAN      NOT NULL DEFAULT TRUE,
-  domain_restriction  TEXT,
-  default_role        TEXT         NOT NULL DEFAULT 'FRONT_DESK',
-  role_attribute      TEXT,
-  jit_enabled         BOOLEAN      NOT NULL DEFAULT TRUE,
-  created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now()
-);
+DO $$
+BEGIN
+  -- ─────────────────────────────────────────────────────────────────────────────
+  -- Table: sso_providers
+  -- ─────────────────────────────────────────────────────────────────────────────
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'sso_providers') THEN
+    CREATE TABLE sso_providers (
+      id                  TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      name                TEXT         NOT NULL,
+      slug                TEXT         NOT NULL UNIQUE,
+      protocol            TEXT         NOT NULL CHECK (protocol IN ('OIDC', 'SAML')),
+      issuer              TEXT         NOT NULL,
+      "clientId"          TEXT         NOT NULL,
+      "clientSecret"      TEXT,
+      "metadataUrl"       TEXT,
+      "ssoUrl"            TEXT         NOT NULL,
+      "tokenUrl"          TEXT,
+      "userInfoUrl"       TEXT,
+      certificate         TEXT,
+      enabled             BOOLEAN      NOT NULL DEFAULT TRUE,
+      "domainRestriction" TEXT,
+      "defaultRole"       TEXT         NOT NULL DEFAULT 'FRONT_DESK',
+      "roleAttribute"     TEXT,
+      "jitEnabled"        BOOLEAN      NOT NULL DEFAULT TRUE,
+      "createdAt"         TIMESTAMPTZ  NOT NULL DEFAULT now(),
+      "updatedAt"         TIMESTAMPTZ  NOT NULL DEFAULT now()
+    );
+  END IF;
 
--- ─────────────────────────────────────────────────────────────────────────────
--- Table: sso_accounts
--- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS sso_accounts (
-  id                  TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  provider_id         TEXT         NOT NULL REFERENCES sso_providers(id) ON DELETE CASCADE,
-  user_id             TEXT         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  external_subject_id TEXT         NOT NULL,
-  email               TEXT         NOT NULL,
-  profile_data        TEXT,
-  last_login_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
-  created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  -- ─────────────────────────────────────────────────────────────────────────────
+  -- Table: sso_accounts
+  -- ─────────────────────────────────────────────────────────────────────────────
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'sso_accounts') THEN
+    CREATE TABLE sso_accounts (
+      id                  TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      "providerId"        TEXT         NOT NULL REFERENCES sso_providers(id) ON DELETE CASCADE,
+      "userId"            TEXT         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "externalSubjectId" TEXT         NOT NULL,
+      email               TEXT         NOT NULL,
+      "profileData"       TEXT,
+      "lastLoginAt"       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+      "createdAt"         TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
-  CONSTRAINT uq_sso_provider_sub UNIQUE (provider_id, external_subject_id)
-);
+      CONSTRAINT uq_sso_provider_sub UNIQUE ("providerId", "externalSubjectId")
+    );
 
-CREATE INDEX IF NOT EXISTS idx_sso_accounts_user_id ON sso_accounts(user_id);
-CREATE INDEX IF NOT EXISTS idx_sso_accounts_email ON sso_accounts(email);
+    CREATE INDEX idx_sso_accounts_user_id ON sso_accounts("userId");
+    CREATE INDEX idx_sso_accounts_email ON sso_accounts(email);
+  END IF;
 
--- ─────────────────────────────────────────────────────────────────────────────
--- Table: break_glass_events
--- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS break_glass_events (
-  id                    TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  user_id               TEXT         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  target_resource_type  TEXT         NOT NULL CHECK (target_resource_type IN ('patient', 'result', 'order')),
-  target_resource_id    TEXT         NOT NULL,
-  reason                TEXT         NOT NULL,
-  token_hash            TEXT         NOT NULL UNIQUE,
-  status                TEXT         NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'EXPIRED', 'REVOKED')),
-  expires_at            TIMESTAMPTZ  NOT NULL,
-  reviewed_at           TIMESTAMPTZ,
-  reviewed_by           TEXT,
-  review_notes          TEXT,
-  approved              BOOLEAN,
-  ip_address            TEXT,
-  user_agent            TEXT,
-  created_at            TIMESTAMPTZ  NOT NULL DEFAULT now()
-);
+  -- ─────────────────────────────────────────────────────────────────────────────
+  -- Table: break_glass_events
+  -- ─────────────────────────────────────────────────────────────────────────────
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'break_glass_events') THEN
+    CREATE TABLE break_glass_events (
+      id                    TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      "userId"              TEXT         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "targetResourceType"  TEXT         NOT NULL CHECK ("targetResourceType" IN ('patient', 'result', 'order')),
+      "targetResourceId"    TEXT         NOT NULL,
+      reason                TEXT         NOT NULL,
+      "tokenHash"           TEXT         NOT NULL UNIQUE,
+      status                TEXT         NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'EXPIRED', 'REVOKED')),
+      "expiresAt"           TIMESTAMPTZ  NOT NULL,
+      "reviewedAt"          TIMESTAMPTZ,
+      "reviewedBy"          TEXT,
+      "reviewNotes"         TEXT,
+      approved              BOOLEAN,
+      "ipAddress"           TEXT,
+      "userAgent"           TEXT,
+      "createdAt"           TIMESTAMPTZ  NOT NULL DEFAULT now()
+    );
 
-CREATE INDEX IF NOT EXISTS idx_bge_user_id ON break_glass_events(user_id);
-CREATE INDEX IF NOT EXISTS idx_bge_resource ON break_glass_events(target_resource_type, target_resource_id);
-CREATE INDEX IF NOT EXISTS idx_bge_status_expiry ON break_glass_events(status, expires_at);
+    CREATE INDEX idx_bge_user_id ON break_glass_events("userId");
+    CREATE INDEX idx_bge_resource ON break_glass_events("targetResourceType", "targetResourceId");
+    CREATE INDEX idx_bge_status_expiry ON break_glass_events(status, "expiresAt");
+  END IF;
 
--- ─────────────────────────────────────────────────────────────────────────────
--- Table: scim_tokens
--- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS scim_tokens (
-  id          TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  name        TEXT         NOT NULL,
-  token_hash  TEXT         NOT NULL UNIQUE,
-  active      BOOLEAN      NOT NULL DEFAULT TRUE,
-  last_used_at TIMESTAMPTZ,
-  expires_at  TIMESTAMPTZ,
-  created_by  TEXT         NOT NULL,
-  created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
-);
+  -- ─────────────────────────────────────────────────────────────────────────────
+  -- Table: scim_tokens
+  -- ─────────────────────────────────────────────────────────────────────────────
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'scim_tokens') THEN
+    CREATE TABLE scim_tokens (
+      id          TEXT         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      name        TEXT         NOT NULL,
+      "tokenHash" TEXT         NOT NULL UNIQUE,
+      active      BOOLEAN      NOT NULL DEFAULT TRUE,
+      "lastUsedAt" TIMESTAMPTZ,
+      "expiresAt"  TIMESTAMPTZ,
+      "createdBy"  TEXT         NOT NULL,
+      "createdAt"  TIMESTAMPTZ  NOT NULL DEFAULT now()
+    );
+  END IF;
+END $$;
