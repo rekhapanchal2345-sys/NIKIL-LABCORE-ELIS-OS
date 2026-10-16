@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import DoctorTable, { Doctor } from "@/components/doctors/DoctorTable";
@@ -93,12 +93,7 @@ export default function DoctorsPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch doctors on parameter change
-  useEffect(() => {
-    fetchDoctors();
-  }, [page, limit, activeTab, filterSpecialization, filterStatus, debouncedSearch]);
-
-  const fetchDoctors = async () => {
+  const fetchDoctors = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -145,7 +140,12 @@ export default function DoctorsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, debouncedSearch, filterSpecialization, filterStatus, activeTab]);
+
+  // Fetch doctors on parameter change
+  useEffect(() => {
+    fetchDoctors();
+  }, [fetchDoctors]);
 
   // Filtering & Sorting Logic
   const getFilteredDoctors = () => {

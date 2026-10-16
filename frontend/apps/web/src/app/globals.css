@@ -2918,5 +2918,52 @@ select:focus {
   }
 }
 
+/* =======================================================
+   CLINICAL A4 & RECEIPT PRINT RULES
+   Optimized for Hospital, Laboratory & Clinic Printing
+   ======================================================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+  
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print,
+  nav,
+  aside,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  .a4-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  .break-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+
 
 

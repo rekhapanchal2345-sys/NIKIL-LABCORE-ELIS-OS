@@ -68,9 +68,12 @@ export function encryptField(plain: string): string {
 }
 
 export function decryptField(payload: string): string {
+  // Strip version tag if present (e.g. "enc:v1:...")
+  const target = payload.startsWith("enc:v1:") ? payload.slice(7) : payload;
+
   // Current key first.
   try {
-    return decryptWithKey(payload, getKey());
+    return decryptWithKey(target, getKey());
   } catch (error) {
     if (error instanceof Error && error.message.includes("not configured")) {
       throw error;
@@ -83,7 +86,7 @@ export function decryptField(payload: string): string {
     }
 
     try {
-      return decryptWithKey(payload, legacyKey);
+      return decryptWithKey(target, legacyKey);
     } catch {
       throw new Error(
         `Decryption failed. The value was written under a different FIELD_ENCRYPTION_KEY (current: ${CURRENT_KEY_VERSION}).`
@@ -100,4 +103,42 @@ export function canDecryptField(payload: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Encrypts and prepends version tag enc:v1: */
+export function encryptTaggedField(plain: string): string {
+  return `enc:${CURRENT_KEY_VERSION}:${encryptField(plain)}`;
+}
+
+/**
+ * Safely decrypts a field if encrypted with enc:v1: or base64 ciphertext.
+ * If the value is null, undefined, or plaintext (cannot be decrypted), returns it as-is.
+ */
+export function safeDecrypt(value: string | null | undefined): string | null | undefined {
+  if (value === null || value === undefined || value === "") return value;
+  if (typeof value !== "string") return value;
+
+  if (value.startsWith("enc:v1:") || value.startsWith("enc:")) {
+    try {
+      return decryptField(value);
+    } catch {
+      return value;
+    }
+  }
+
+  // If it's pure digits (like legacy 12-digit Aadhaar or 10-char PAN), it's plaintext
+  if (/^\d{12}$/.test(value) || /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
+    return value;
+  }
+
+  // Attempt decryption for raw base64 payload if it appears to be ciphertext
+  if (value.length >= 40 && /^[A-Za-z0-9+/=]+$/.test(value)) {
+    try {
+      return decryptField(value);
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
 }

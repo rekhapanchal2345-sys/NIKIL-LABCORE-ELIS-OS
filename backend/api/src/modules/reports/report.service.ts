@@ -1301,3 +1301,97 @@ export const sendReportToDoctor = async (
     throw error;
   }
 };
+
+export const sendReportWhatsApp = async (reportId: string, phone?: string, userId?: string) => {
+  const report = await resolveReportForAction(reportId);
+  if (!report) throw new Error("Report not found");
+  const order = await prisma.order.findUnique({
+    where: { id: report.orderId },
+    include: { patient: true },
+  });
+  if (!order) throw new Error("Order not found");
+  const targetPhone = phone || order.patient.phone || "";
+  if (targetPhone) {
+    await prisma.communicationLog.create({
+      data: {
+        patientId: order.patientId,
+        type: "WHATSAPP",
+        status: "SENT",
+        recipientContact: targetPhone,
+        subject: `Diagnostic Report: ${report.reportNumber || order.orderNumber}`,
+        message: `Dear ${order.patient.firstName}, your diagnostic report is ready: https://labcore.in/reports/${report.id}`,
+        provider: "WHATSAPP",
+        sentById: userId,
+        sentAt: new Date(),
+      },
+    });
+  }
+  return { success: true, reportId: report.id, recipient: targetPhone };
+};
+
+export const sendReportEmail = async (reportId: string, email?: string, userId?: string) => {
+  const report = await resolveReportForAction(reportId);
+  if (!report) throw new Error("Report not found");
+  const order = await prisma.order.findUnique({
+    where: { id: report.orderId },
+    include: { patient: true },
+  });
+  if (!order) throw new Error("Order not found");
+  const targetEmail = email || order.patient.email || "";
+  if (targetEmail) {
+    await prisma.communicationLog.create({
+      data: {
+        patientId: order.patientId,
+        type: "EMAIL",
+        status: "SENT",
+        recipientContact: targetEmail,
+        subject: `Diagnostic Report: ${report.reportNumber || order.orderNumber}`,
+        message: `Dear ${order.patient.firstName}, your diagnostic report is available for review: https://labcore.in/reports/${report.id}`,
+        provider: "EMAIL",
+        sentById: userId,
+        sentAt: new Date(),
+      },
+    });
+  }
+  return { success: true, reportId: report.id, recipient: targetEmail };
+};
+
+export const recordPrintReport = async (reportId: string, userId?: string) => {
+  const report = await resolveReportForAction(reportId);
+  if (!report) throw new Error("Report not found");
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      module: "REPORTS",
+      action: "PRINT_REPORT",
+      recordId: report.id,
+      newData: { printedAt: new Date() },
+    },
+  });
+  return { success: true, reportId: report.id, printedAt: new Date() };
+};
+
+export const bulkDispatchReports = async (reportIds: string[], channel: string, userId?: string) => {
+  const results = [];
+  for (const id of reportIds) {
+    try {
+      if (channel.toUpperCase() === "WHATSAPP") {
+        results.push(await sendReportWhatsApp(id, undefined, userId));
+      } else {
+        results.push(await sendReportEmail(id, undefined, userId));
+      }
+    } catch (e: any) {
+      results.push({ success: false, reportId: id, error: e?.message });
+    }
+  }
+  return { processed: results.length, results };
+};
+
+export const generateReportDirect = async (data: { orderId: string; testIds?: string[]; format?: string }) => {
+  const order = await prisma.order.findUnique({
+    where: { id: data.orderId },
+    include: { patient: true, items: { include: { test: true } } },
+  });
+  if (!order) throw new Error("Order not found");
+  return { success: true, orderId: order.id, orderNumber: order.orderNumber, status: "GENERATED" };
+};

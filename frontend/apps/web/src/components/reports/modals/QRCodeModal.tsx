@@ -22,13 +22,7 @@ export default function QRCodeModal({
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
 
-  React.useEffect(() => {
-    if (isOpen && reportId) {
-      generateQR();
-    }
-  }, [isOpen, reportId]);
-
-  const generateQR = async () => {
+  const generateQR = React.useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -39,7 +33,13 @@ export default function QRCodeModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [reportId]);
+
+  React.useEffect(() => {
+    if (isOpen && reportId) {
+      generateQR();
+    }
+  }, [isOpen, reportId, generateQR]);
 
   const handleDownload = async () => {
     setDownloading(true);

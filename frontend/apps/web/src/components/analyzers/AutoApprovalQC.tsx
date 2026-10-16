@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   ShieldCheck, 
   Plus, 
@@ -79,7 +79,7 @@ export default function AutoApprovalQC({ analyzerId, onClose }: AutoApprovalQCPr
     notes: "",
   });
 
-  const fetchQCRules = async () => {
+  const fetchQCRules = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -95,11 +95,11 @@ export default function AutoApprovalQC({ analyzerId, onClose }: AutoApprovalQCPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [analyzerId, filter]);
 
   useEffect(() => {
     fetchQCRules();
-  }, [analyzerId, filter]);
+  }, [fetchQCRules]);
 
   const handleCreateRule = async () => {
     try {

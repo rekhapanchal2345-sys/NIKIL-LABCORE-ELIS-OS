@@ -28,7 +28,7 @@ export function analyzePassword(password: string): PasswordStrength {
   if (/\d/.test(password)) score++;
   else suggestions.push("Include at least one number");
 
-  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score++;
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) score++;
   else suggestions.push("Add special characters (!@#$%^&*)");
 
   if (COMMON_PATTERNS.some((p) => p.test(password))) {

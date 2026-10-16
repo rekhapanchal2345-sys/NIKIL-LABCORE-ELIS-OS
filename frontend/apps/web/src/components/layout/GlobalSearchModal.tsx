@@ -270,16 +270,18 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
     }
   };
 
-  const saveRecentSearch = (term: string) => {
+  const saveRecentSearch = useCallback((term: string) => {
     if (!term.trim()) return;
     try {
-      const updated = [term.trim(), ...recentSearches.filter((s) => s.toLowerCase() !== term.trim().toLowerCase())].slice(0, 6);
-      setRecentSearches(updated);
-      localStorage.setItem("labcore_recent_searches", JSON.stringify(updated));
+      setRecentSearches((prev) => {
+        const updated = [term.trim(), ...prev.filter((s) => s.toLowerCase() !== term.trim().toLowerCase())].slice(0, 6);
+        try { localStorage.setItem("labcore_recent_searches", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
     } catch {
       // ignore
     }
-  };
+  }, []);
 
   const clearRecentSearches = () => {
     setRecentSearches([]);
@@ -430,7 +432,7 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
       onClose();
       router.push(item.href);
     },
-    [onClose, router]
+    [onClose, router, saveRecentSearch]
   );
 
   // Keyboard navigation inside modal

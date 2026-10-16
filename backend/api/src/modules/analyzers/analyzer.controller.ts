@@ -68,6 +68,14 @@ import {
   getPortMappings,
   createQCRule,
   getQCRules,
+  updateQCRule,
+  deleteQCRule,
+  getReflexRules,
+  createReflexRule,
+  getFleetWorkloadBalance,
+  autoBalanceFleetWorkload,
+  getMaintenanceLogbook,
+  signOffMaintenance,
   createWorklistEntry,
   getWorklistEntries,
   updateWorklistEntry,
@@ -1191,6 +1199,115 @@ export const listQCRules = async (
       qcRules,
       "QC rules fetched successfully"
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateQCRuleRecord = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = (req.params.id || (req as any).validated?.params?.id) as string;
+    const body = (req as any).validated?.body || req.body;
+    const qcRule = await updateQCRule(id, body);
+    return successResponse(res, qcRule, "QC rule updated successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteQCRuleRecord = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = (req.params.id || (req as any).validated?.params?.id) as string;
+    const result = await deleteQCRule(id);
+    return successResponse(res, result, "QC rule deleted successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listReflexRules = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const rules = await getReflexRules(req.query);
+    return successResponse(res, rules, "Reflex rules fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createReflexRuleRecord = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const body = (req as any).validated?.body || req.body;
+    const rule = await createReflexRule(body, req.user?.id);
+    return createdResponse(res, rule, "Reflex rule created successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getWorkloadBalance = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const balance = await getFleetWorkloadBalance();
+    return successResponse(res, balance, "Fleet workload balance fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const autoBalanceFleetRecord = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await autoBalanceFleetWorkload(req.body);
+    return successResponse(res, result, "Fleet auto-balanced successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMaintenanceLogbookRecord = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const logbook = await getMaintenanceLogbook(req.query);
+    return successResponse(res, logbook, "Maintenance logbook fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const signOffMaintenanceRecord = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const body = req.body || {};
+    const result = await signOffMaintenance(body, req.user?.id);
+    return successResponse(res, result, "Maintenance record signed off successfully");
   } catch (error) {
     next(error);
   }

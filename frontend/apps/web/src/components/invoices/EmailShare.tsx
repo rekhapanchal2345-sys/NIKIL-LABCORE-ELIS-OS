@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Mail, CheckCircle, AlertCircle, Send, Loader2, Paperclip } from "lucide-react";
 
 interface EmailShareProps {
@@ -54,12 +54,12 @@ export default function EmailShare({
   const [pdfGenerated, setPdfGenerated] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
-  const laboratoryInfo = labInfo || {
+  const laboratoryInfo = useMemo(() => labInfo || {
     name: "LABCORE ELIS",
     address: "123 Healthcare Avenue, Medical District",
     phone: "+91-9876543210",
     email: "billing@labcore.com"
-  };
+  }, [labInfo]);
 
   const formatCurrency = (amount?: number) => {
     return `₹${Number(amount || 0).toLocaleString("en-IN", {

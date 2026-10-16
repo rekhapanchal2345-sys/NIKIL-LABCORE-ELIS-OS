@@ -7,6 +7,7 @@ import {
   generateAccessToken,
   generateChallengeToken,
   generateOwnerToken,
+  getTokenExpiryMs,
   hashOpaqueToken,
   randomRefreshToken,
   sessionTtlMs,
@@ -27,6 +28,8 @@ import {
   assertStrongPassword,
   assertNotCommonPassword,
   assertNoPersonalInfo,
+  assertNotPwned,
+  assertSufficientEntropy,
   isPasswordExpired,
   passwordPolicy,
 } from "../../utils/password-policy";
@@ -36,9 +39,32 @@ import {
   totpOtpauthUrl,
   verifyTotp,
 } from "../../utils/totp";
+import { verifyTotpWithReplayGuard } from "../../lib/totp-guard";
+import {
+  consumeBackupCode,
+  generateEnterpriseBackupCodes,
+  normalizeBackupCode,
+} from "./mfa-backup.service";
+import {
+  registerTrustedDevice,
+  verifyDeviceTrust,
+} from "./device-trust.service";
 import { getClientIp, getDeviceFingerprint } from "../../utils/request-meta";
 import { emailBlindIndex, normaliseEmail } from "../../utils/gmail";
 import { recordLoginAlert } from "./login-alert.service";
+import {
+  blacklistToken,
+  revokeAllUserTokens,
+  clearUserRevoke,
+} from "../../lib/token-blacklist";
+import {
+  assessRisk,
+  buildDeviceSignals,
+  detectImpossibleTravel,
+  isHighPrivilegeRole,
+  isUnusualHour,
+  type RiskAction,
+} from "../../lib/risk-engine";
 
 const LOCKOUT_ATTEMPTS = Number(process.env.LOGIN_LOCKOUT_ATTEMPTS || 5);
 const LOCKOUT_MINUTES = Number(process.env.LOGIN_LOCKOUT_MINUTES || 15);
@@ -51,9 +77,9 @@ let dummyHashPromise: Promise<string> | null = null;
 const getDummyHash = (): Promise<string> =>
   (dummyHashPromise ??= hashPassword(crypto.randomBytes(32).toString("hex")));
 
-type AuditPayload = Omit<Parameters<typeof createAuditLog>[0], "module">;
+export type AuditPayload = Omit<Parameters<typeof createAuditLog>[0], "module">;
 
-const logAudit = (payload: AuditPayload) =>
+export const logAudit = (payload: AuditPayload) =>
   createAuditLog({ ...payload, module: "AUTH" }).catch((error) =>
     console.error("Audit log failed for auth module:", error)
   );
@@ -125,6 +151,9 @@ export const registerUser = async (data: {
   assertStrongPassword(data.password);
   assertNotCommonPassword(data.password);
   assertNoPersonalInfo(data.password, data.email, data.fullName);
+  assertSufficientEntropy(data.password);
+  // HIBP check — async, fails open on network error
+  await assertNotPwned(data.password);
 
   // Gmail variants of one mailbox collapse to a single stored address, so a
   // person cannot hold two staff accounts for the same inbox.
@@ -242,7 +271,7 @@ async function registerFailedLogin(
   );
 }
 
-async function issueSession(
+export async function issueSession(
   user: AuthUser & {
     mfaEnabled: boolean;
     passwordChangedAt?: Date | null;
@@ -252,12 +281,18 @@ async function issueSession(
     role: UserRole;
   },
   req: Request,
-  amr: string[]
+  amr: string[],
+  options?: {
+    riskScore?: number;
+    /** Skip risk-based alert for this session (used when MFA already triggered alert) */
+    skipRiskAlert?: boolean;
+  }
 ) {
   const refreshToken = randomRefreshToken();
   const refreshTokenHash = hashOpaqueToken(refreshToken);
   const idleMinutes = idleTimeoutMinutesForRole(user.role);
   const expiresAt = new Date(Date.now() + sessionTtlMs());
+  const familyId = crypto.randomBytes(16).toString("hex"); // Refresh token rotation family
 
   const active = await prisma.userSession.findMany({
     where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },
@@ -277,10 +312,12 @@ async function issueSession(
     data: {
       userId: user.id,
       refreshTokenHash,
+      familyId,
       deviceFingerprint: getDeviceFingerprint(req),
       userAgent: String(req.headers["user-agent"] || "").slice(0, 500),
       ipAddress: getClientIp(req),
       expiresAt,
+      riskScore: options?.riskScore ?? 0,
     },
   });
 
@@ -288,13 +325,17 @@ async function issueSession(
     sid: session.id,
     amr,
     expiresIn: accessTokenTtl(),
+    riskScore: options?.riskScore,
   });
+
+  // Clear any blanket revoke that was set (e.g., on password change)
+  await clearUserRevoke(user.id);
 
   await logAudit({
     userId: user.id,
     action: "LOGIN_SUCCESS",
     recordId: session.id,
-    newData: { amr, role: user.role },
+    newData: { amr, role: user.role, riskScore: options?.riskScore ?? 0 },
   });
 
   // The account owner is emailed when this device and network have not been
@@ -317,6 +358,7 @@ async function issueSession(
     sessionId: session.id,
     expiresAt,
     idleTimeoutMinutes: idleMinutes,
+    riskScore: options?.riskScore ?? 0,
   };
 }
 
@@ -399,6 +441,50 @@ export const loginUser = async (
     });
   }
 
+  // ─── Risk Assessment ──────────────────────────────────────────────────────
+  const deviceSignals = buildDeviceSignals(req, user);
+  const lastSession = await prisma.userSession.findFirst({
+    where: { userId: user.id, revokedAt: null },
+    orderBy: { lastSeenAt: "desc" },
+  });
+
+  // Enterprise Device Trust Check (Phase 2)
+  const trustTokenHeader = req.headers["x-device-trust-token"] as string | undefined;
+  const trustToken = trustTokenHeader || (req.body && typeof req.body.trustToken === "string" ? req.body.trustToken : undefined);
+  const deviceTrust = await verifyDeviceTrust(user.id, trustToken, req);
+
+  const riskAssessment = assessRisk({
+    ...deviceSignals,
+    unusualHour:      isUnusualHour(),
+    failedAttempts:   user.failedLoginCount,
+    isHighPrivRole:   isHighPrivilegeRole(user.role as UserRole),
+    mfaVerified:      false, // not yet — updated after MFA if needed
+    trustedDevice:    deviceTrust.isTrusted,
+    recentLockout:    !!(user.lockedUntil && Date.now() - user.lockedUntil.getTime() < 24 * 60 * 60 * 1000),
+    impossibleTravel: detectImpossibleTravel(
+      getClientIp(req),
+      lastSession?.ipAddress,
+      lastSession?.lastSeenAt
+    ),
+  });
+
+  // BLOCK: very high risk — refuse the login entirely
+  if (riskAssessment.action === "BLOCK") {
+    await logAudit({
+      userId: user.id,
+      action: "LOGIN_BLOCKED_HIGH_RISK",
+      recordId: user.id,
+      newData: { riskScore: riskAssessment.score, reasons: riskAssessment.reasons },
+      ipAddress: getClientIp(req),
+    });
+    throw new HttpError(
+      "Sign-in was blocked due to suspicious activity. Contact your administrator.",
+      403,
+      "LOGIN_RISK_BLOCKED"
+    );
+  }
+
+  // STEP_UP or ALERT with no MFA enabled — still require MFA setup
   const needsMfa = mfaRequiredForRole(user.role) || user.mfaEnabled;
 
   if (needsMfa && user.mfaEnabled) {
@@ -406,6 +492,7 @@ export const loginUser = async (
       requiresMfa: true,
       mfaToken: generateChallengeToken(user.id, "mfa"),
       user: { id: user.id, email: user.email, fullName: user.fullName },
+      riskLevel: riskAssessment.level,
     };
   }
 
@@ -421,16 +508,32 @@ export const loginUser = async (
       mfaToken: generateChallengeToken(user.id, "mfa_setup"),
       otpauthUrl: totpOtpauthUrl(secret, user.email),
       user: { id: user.id, email: user.email, fullName: user.fullName },
+      riskLevel: riskAssessment.level,
     };
   }
 
-  return issueSession(user, req, ["pwd"]);
+  // STEP_UP without MFA: if risk demands step-up but user has no MFA, alert admin
+  if (riskAssessment.action === "STEP_UP" || riskAssessment.action === "ALERT") {
+    await logAudit({
+      userId: user.id,
+      action: "LOGIN_RISK_ELEVATED",
+      recordId: user.id,
+      newData: { riskScore: riskAssessment.score, reasons: riskAssessment.reasons, action: riskAssessment.action },
+      ipAddress: getClientIp(req),
+    });
+  }
+
+  return issueSession(user, req, ["pwd"], { riskScore: riskAssessment.score });
 };
 
 export const verifyMfaLogin = async (
   mfaToken: string,
   code: string,
-  req: Request
+  req: Request,
+  options?: {
+    trustDevice?: boolean;
+    deviceName?: string;
+  }
 ) => {
   let payload: JwtPayload;
   try {
@@ -452,17 +555,24 @@ export const verifyMfaLogin = async (
     throw new HttpError("User not found or inactive", 401);
   }
 
+  const now = new Date();
+
   if (payload.typ === "mfa_setup") {
     if (!user.totpPendingEnc) {
       throw new HttpError("MFA setup is not in progress", 400);
     }
 
     const secret = decryptField(user.totpPendingEnc);
-    if (!verifyTotp(secret, code)) {
-      return registerFailedLogin(user.id, req, "Invalid authenticator code");
+    const totpVerification = verifyTotpWithReplayGuard(user.id, secret, code);
+    if (!totpVerification.valid) {
+      return registerFailedLogin(
+        user.id,
+        req,
+        totpVerification.errorReason || "Invalid authenticator code"
+      );
     }
 
-    const codes = backupCodes();
+    const codes = generateEnterpriseBackupCodes();
     await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
@@ -470,6 +580,7 @@ export const verifyMfaLogin = async (
           mfaEnabled: true,
           totpSecretEnc: encryptField(secret),
           totpPendingEnc: null,
+          lastMfaAt: now,
         },
       }),
       prisma.mfaBackupCode.deleteMany({ where: { userId: user.id } }),
@@ -477,7 +588,7 @@ export const verifyMfaLogin = async (
         prisma.mfaBackupCode.create({
           data: {
             userId: user.id,
-            codeHash: hashOpaqueToken(plain.toLowerCase()),
+            codeHash: hashOpaqueToken(normalizeBackupCode(plain)),
           },
         })
       ),
@@ -487,7 +598,14 @@ export const verifyMfaLogin = async (
       "pwd",
       "totp",
     ]);
-    return { ...session, backupCodes: codes };
+
+    let trustInfo: { trustToken?: string; deviceName?: string } = {};
+    if (options?.trustDevice) {
+      const trusted = await registerTrustedDevice(user.id, req, options.deviceName);
+      trustInfo = { trustToken: trusted.trustToken, deviceName: trusted.deviceName };
+    }
+
+    return { ...session, backupCodes: codes, ...trustInfo };
   }
 
   if (!user.totpSecretEnc) {
@@ -498,24 +616,54 @@ export const verifyMfaLogin = async (
   }
 
   const secret = decryptField(user.totpSecretEnc);
-  const totpOk = verifyTotp(secret, code);
+  const totpVerification = verifyTotpWithReplayGuard(user.id, secret, code);
+  let passedWith: "totp" | "backup" | null = null;
+  let warnLowBackupCodes = false;
+  let remainingBackupCodes: number | undefined;
 
-  if (!totpOk) {
-    const consumed = await prisma.mfaBackupCode.updateMany({
-      where: {
-        userId: user.id,
-        usedAt: null,
-        codeHash: hashOpaqueToken(code.trim().toLowerCase()),
-      },
-      data: { usedAt: new Date() },
-    });
-
-    if (consumed.count !== 1) {
-      return registerFailedLogin(user.id, req, "Invalid authenticator or backup code");
+  if (totpVerification.valid) {
+    passedWith = "totp";
+  } else {
+    // Try backup code
+    const backupResult = await consumeBackupCode(user.id, code, req);
+    if (backupResult.ok) {
+      passedWith = "backup";
+      warnLowBackupCodes = backupResult.warnLowCodes;
+      remainingBackupCodes = backupResult.remaining;
+    } else {
+      return registerFailedLogin(
+        user.id,
+        req,
+        totpVerification.errorReason || "Invalid authenticator or backup code"
+      );
     }
   }
 
-  return issueSession(user, req, ["pwd", totpOk ? "totp" : "backup"]);
+  // Update lastMfaAt timestamp
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastMfaAt: now },
+  });
+
+  const session = await issueSession(user, req, ["pwd", passedWith]);
+
+  let trustInfo: { trustToken?: string; deviceName?: string; trustedUntil?: Date } = {};
+  if (options?.trustDevice) {
+    const trusted = await registerTrustedDevice(user.id, req, options.deviceName);
+    trustInfo = {
+      trustToken: trusted.trustToken,
+      deviceName: trusted.deviceName,
+      trustedUntil: trusted.trustedUntil,
+    };
+  }
+
+  return {
+    ...session,
+    passedWith,
+    warnLowBackupCodes,
+    remainingBackupCodes,
+    ...trustInfo,
+  };
 };
 
 export const refreshSession = async (refreshToken: string, req: Request) => {
@@ -524,6 +672,46 @@ export const refreshSession = async (refreshToken: string, req: Request) => {
     where: { refreshTokenHash: hash },
     include: { user: true },
   });
+
+  // ─── Anti-Replay: Detect Refresh Token Reuse ──────────────────────────────
+  // If the token is already revoked, this might be a reuse attack.
+  // Revoke the entire session family if reuse detected.
+  if (session && session.revokedAt && session.familyId) {
+    // Revoke ALL sessions in the same family (stolen token scenario)
+    await prisma.userSession.updateMany({
+      where: {
+        familyId: session.familyId,
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date(), revokeReason: "refresh_token_reuse" },
+    });
+
+    await logAudit({
+      userId: session.userId,
+      action: "REFRESH_TOKEN_REUSE_DETECTED",
+      recordId: session.id,
+      newData: { familyId: session.familyId },
+      ipAddress: getClientIp(req),
+    });
+
+    // Blanket-revoke all tokens for this user (force re-login everywhere)
+    await revokeAllUserTokens(session.userId);
+
+    // Alert the account owner
+    await recordLoginAlert({
+      userId: session.userId,
+      type: "REPEATED_FAILED_SIGNIN",
+      req,
+      force: true,
+      detail: "refresh_token_reuse_detected",
+    }).catch(console.error);
+
+    throw new HttpError(
+      "A security anomaly was detected. All your sessions have been ended for your protection. Please sign in again.",
+      401,
+      "TOKEN_REUSE_DETECTED"
+    );
+  }
 
   if (!session || session.revokedAt || session.expiresAt < new Date()) {
     throw new HttpError(
@@ -558,6 +746,7 @@ export const refreshSession = async (refreshToken: string, req: Request) => {
   const nextRefresh = randomRefreshToken();
   const lastSeenAt = new Date();
 
+  // Rotate: revoke old token, issue new one in same family
   await prisma.userSession.update({
     where: { id: session.id },
     data: {
@@ -583,11 +772,28 @@ export const refreshSession = async (refreshToken: string, req: Request) => {
   };
 };
 
-export const logoutSession = async (sessionId: string, userId: string) => {
+export const logoutSession = async (
+  sessionId: string,
+  userId: string,
+  accessToken?: string   // if provided, blacklist immediately
+) => {
   await prisma.userSession.updateMany({
     where: { id: sessionId, userId, revokedAt: null },
     data: { revokedAt: new Date(), revokeReason: "logout" },
   });
+
+  // Immediately invalidate the access token so it cannot be replayed
+  // for the remaining 15 minutes of its TTL.
+  if (accessToken) {
+    try {
+      const payload = verifyAccessToken(accessToken);
+      if (payload.jti) {
+        await blacklistToken(payload.jti, getTokenExpiryMs(accessToken));
+      }
+    } catch {
+      // Token already expired or invalid — no need to blacklist
+    }
+  }
 
   await logAudit({
     userId,
@@ -689,6 +895,7 @@ export const changePassword = async (
   currentSessionId?: string
 ) => {
   assertStrongPassword(nextPassword);
+  assertSufficientEntropy(nextPassword);
   // Resolve user first so we can check contextual password rules.
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
@@ -696,6 +903,9 @@ export const changePassword = async (
   }
   assertNotCommonPassword(nextPassword);
   assertNoPersonalInfo(nextPassword, user.email, user.fullName);
+  // HIBP check on password change — async, fail-open
+  await assertNotPwned(nextPassword);
+
   const ok = await comparePassword(currentPassword, user.passwordHash);
   if (!ok) {
     throw new HttpError("Current password is incorrect", 401);
@@ -735,6 +945,9 @@ export const changePassword = async (
       data: { revokedAt: new Date(), revokeReason: "password_changed" },
     }),
   ]);
+
+  // Blanket-revoke all JWTs for this user (in-memory blacklist)
+  await revokeAllUserTokens(userId);
 
   await logAudit({
     userId,

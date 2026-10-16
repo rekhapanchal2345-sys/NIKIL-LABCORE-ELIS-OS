@@ -21,6 +21,10 @@ import {
 import prisma from "../config/database";
 import { HttpError } from "../src/utils/http-error";
 import { idleTimeoutMinutesForRole } from "../src/lib/permissions";
+import {
+  isTokenBlacklisted,
+  isUserTokenRevoked,
+} from "../src/lib/token-blacklist";
 
 /**
  * =========================================
@@ -134,6 +138,18 @@ export const authenticate: RequestHandler =
     } else {
       unauthorized(res, "Invalid or expired access token.");
     }
+    return;
+  }
+
+  // ─── Token Blacklist Check ──────────────────────────────────────────
+  // Checks both per-token JTI blacklist and per-user blanket revoke
+  // (set on password change, admin force-logout-all, etc.)
+  if (payload.jti && await isTokenBlacklisted(payload.jti)) {
+    unauthorized(res, "This session has been terminated. Please sign in again.");
+    return;
+  }
+  if (payload.iat && await isUserTokenRevoked(payload.sub, payload.iat)) {
+    unauthorized(res, "Your credentials were recently changed. Please sign in again.");
     return;
   }
 
@@ -336,7 +352,11 @@ export const requireRoles = (
      */
     const role = request.user.role;
 
-    if (!allowedRoles.includes(role)) {
+    const isAllowed =
+      allowedRoles.includes(role) ||
+      (role === "SUPER_ADMIN" && (allowedRoles.includes("ADMIN") || allowedRoles.length > 0));
+
+    if (!isAllowed) {
       forbidden(res);
 
       return;
@@ -383,9 +403,12 @@ export const requireAnyRole = (
       return;
     }
 
-    if (
-      !allowedRoles.includes(request.user.role)
-    ) {
+    const role = request.user.role;
+    const isAllowed =
+      allowedRoles.includes(role) ||
+      (role === "SUPER_ADMIN" && (allowedRoles.includes("ADMIN") || allowedRoles.length > 0));
+
+    if (!isAllowed) {
       forbidden(res);
 
       return;

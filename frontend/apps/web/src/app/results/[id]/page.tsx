@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import { resultApi } from "@/lib/api";
@@ -121,11 +121,7 @@ export default function ResultDetailPage({ params }: { params: Promise<{ id: str
 
   const { id } = use(params);
 
-  useEffect(() => {
-    fetchResult();
-  }, [id]);
-
-  const fetchResult = async () => {
+  const fetchResult = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -143,7 +139,11 @@ export default function ResultDetailPage({ params }: { params: Promise<{ id: str
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchResult();
+  }, [fetchResult]);
 
   const handleVerify = async () => {
     if (!confirm("Are you sure you want to verify this result?")) return;

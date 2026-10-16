@@ -40,31 +40,31 @@ router.use(authenticate);
 
 router.get(
   "/analytics",
-  authorize(UserRole.ADMIN, UserRole.FRONT_DESK, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.FRONT_DESK, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
   analytics
 );
 
 router.get(
   "/analytics/tat",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
   tatAnalytics
 );
 
 router.get(
   "/analytics/hourly",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST, UserRole.FRONT_DESK),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST, UserRole.FRONT_DESK),
   hourlyThroughput
 );
 
 router.get(
   "/analytics/pipeline",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST, UserRole.FRONT_DESK),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST, UserRole.FRONT_DESK),
   pipeline
 );
 
 router.get(
   "/analytics/revenue-by-doctor",
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.PATHOLOGIST),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PATHOLOGIST),
   revenueByDoctor
 );
 
@@ -74,13 +74,13 @@ router.get(
 
 router.post(
   "/bulk/escalate-priority",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
   bulkEscalate
 );
 
 router.post(
   "/bulk/update-status",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
   bulkStatus
 );
 
@@ -91,6 +91,7 @@ router.post(
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -107,6 +108,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -126,6 +128,7 @@ router.get(
 router.get(
   "/count",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -142,6 +145,7 @@ router.get(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -161,6 +165,7 @@ router.get(
 router.patch(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -180,6 +185,7 @@ router.patch(
 router.post(
   "/:id/collect-sample",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH
@@ -198,6 +204,7 @@ router.post(
 router.post(
   "/:id/cancel",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),

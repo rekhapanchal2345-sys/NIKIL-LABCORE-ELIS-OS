@@ -165,8 +165,9 @@ export const closeCashCounter = async (
         throw new Error("No active session found");
       }
 
-      const expectedCash = Number(counter.currentBalance);
-      const variance = actualCash - expectedCash;
+      const roundPaise = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
+      const expectedCash = roundPaise(Number(counter.currentBalance));
+      const variance = roundPaise(actualCash - expectedCash);
 
       // Update counter
       const updatedCounter = await tx.cashCounter.update({

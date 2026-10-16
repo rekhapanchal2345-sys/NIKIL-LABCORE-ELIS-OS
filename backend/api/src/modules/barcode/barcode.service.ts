@@ -166,8 +166,10 @@ export const validateBarcode = async (barcode: string): Promise<{
     }
   }
 
-  // Check if it's a patient UHID
-  if (barcode.startsWith('LC-')) {
+  // ISS-010: Check if it's a patient UHID barcode.
+  // Previously only 'LC-' prefix was accepted, rejecting all UHID-YYYY-XXXXX patient barcodes.
+  // Now accepts UHID- (standard format), LC- (legacy format for backward compatibility), and SMP- (sample barcodes).
+  if (barcode.startsWith('UHID-') || barcode.startsWith('LC-')) {
     const patient = await prisma.patient.findUnique({
       where: { uhid: barcode },
     });
@@ -279,7 +281,10 @@ export const regenerateBarcode = async (entityType: 'ORDER' | 'SAMPLE', entityId
 
     await prisma.sample.update({
       where: { id: entityId },
-      data: { barcode },
+      data: {
+        barcode,
+        sampleNumber: barcode,
+      },
     });
   } else {
     throw new Error("Invalid entity type");

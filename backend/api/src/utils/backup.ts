@@ -1,11 +1,11 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import prisma from '../lib/prisma';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 interface BackupConfig {
   backupDir: string;
@@ -51,13 +51,24 @@ export const createDatabaseBackup = async (config: BackupConfig): Promise<Backup
     const dbName = url.pathname.slice(1);
     const dbPassword = url.password;
 
-    // Set PGPASSWORD environment variable for pg_dump
-    process.env.PGPASSWORD = dbPassword;
+    // Create backup using pg_dump via execFile (avoiding shell injection & global env mutation)
+    const dumpArgs = [
+      '-h', dbHost,
+      '-p', dbPort,
+      '-U', dbUser,
+      '-d', dbName,
+      '--no-owner',
+      '--no-acl',
+      '--format=plain',
+      '-f', backupPath,
+    ];
 
-    // Create backup using pg_dump
-    const dumpCommand = `pg_dump -h ${dbHost} -p ${dbPort} -U ${dbUser} -d ${dbName} --no-owner --no-acl --format=plain > "${backupPath}"`;
-
-    await execAsync(dumpCommand);
+    await execFileAsync('pg_dump', dumpArgs, {
+      env: {
+        ...process.env,
+        PGPASSWORD: dbPassword,
+      },
+    });
 
     // Get file size
     const stats = fs.statSync(backupPath);
@@ -94,9 +105,6 @@ export const createDatabaseBackup = async (config: BackupConfig): Promise<Backup
       error: error instanceof Error ? error.message : 'Unknown backup error',
       timestamp: new Date(),
     };
-  } finally {
-    // Clean up PGPASSWORD
-    delete process.env.PGPASSWORD;
   }
 };
 
@@ -163,25 +171,36 @@ export const restoreDatabaseBackup = async (
       throw new Error('DATABASE_URL not configured');
     }
 
-    const url = new URL(databaseUrl);
+    const url = new URL(databaseUrl.replace(/^postgresql:\/\//, 'http://'));
     const dbHost = url.hostname;
     const dbPort = url.port || '5432';
     const dbUser = url.username;
     const dbName = url.pathname.slice(1);
     const dbPassword = url.password;
 
-    process.env.PGPASSWORD = dbPassword;
-
-    // Create temporary SQL file
-    const tempSqlPath = path.join(process.env.TEMP || '/tmp', 'restore-temp.sql');
+    const tempSqlPath = path.join(path.dirname(backupPath), `restore_temp_${Date.now()}.sql`);
     fs.writeFileSync(tempSqlPath, sqlData);
 
-    // Restore using psql
-    const restoreCommand = `psql -h ${dbHost} -p ${dbPort} -U ${dbUser} -d ${dbName} < "${tempSqlPath}"`;
-    await execAsync(restoreCommand);
+    // Restore using psql via execFile
+    const restoreArgs = [
+      '-h', dbHost,
+      '-p', dbPort,
+      '-U', dbUser,
+      '-d', dbName,
+      '-f', tempSqlPath,
+    ];
+
+    await execFileAsync('psql', restoreArgs, {
+      env: {
+        ...process.env,
+        PGPASSWORD: dbPassword,
+      },
+    });
 
     // Clean up temp file
-    fs.unlinkSync(tempSqlPath);
+    if (fs.existsSync(tempSqlPath)) {
+      fs.unlinkSync(tempSqlPath);
+    }
 
     return {
       success: true,
@@ -194,8 +213,6 @@ export const restoreDatabaseBackup = async (
       error: error instanceof Error ? error.message : 'Unknown restore error',
       timestamp: new Date(),
     };
-  } finally {
-    delete process.env.PGPASSWORD;
   }
 };
 

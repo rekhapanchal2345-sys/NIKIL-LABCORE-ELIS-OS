@@ -1,0 +1,41 @@
+module.exports = {
+  apps: [
+    {
+      name: "labcore-elis-backend",
+      cwd: "./backend",
+      script: "dist/api/src/server.js",
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "2G",
+      autorestart: true,
+      watch: false,
+      out_file: "./logs/backend-out.log",
+      error_file: "./logs/backend-error.log",
+      merge_logs: true,
+      time: true,
+      env_production: {
+        NODE_ENV: "production",
+        PORT: 5000,
+      },
+    },
+    {
+      name: "labcore-elis-web",
+      cwd: "./frontend/apps/web",
+      script: "node_modules/next/dist/bin/next",
+      args: "start -p 3001",
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "2G",
+      autorestart: true,
+      watch: false,
+      out_file: "./logs/web-out.log",
+      error_file: "./logs/web-error.log",
+      merge_logs: true,
+      time: true,
+      env_production: {
+        NODE_ENV: "production",
+        PORT: 3001,
+      },
+    },
+  ],
+};

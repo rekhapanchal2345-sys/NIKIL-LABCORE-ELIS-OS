@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 interface HistoricalResult {
   id: string;
@@ -31,7 +31,7 @@ export default function DeltaCheckingPanel({
   const [loading, setLoading] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
 
-  const fetchHistoricalResults = async () => {
+  const fetchHistoricalResults = useCallback(async () => {
     setLoading(true);
     try {
       // In a real implementation, this would call an API endpoint
@@ -71,13 +71,13 @@ export default function DeltaCheckingPanel({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentTestName]);
 
   useEffect(() => {
     if (showPanel) {
       fetchHistoricalResults();
     }
-  }, [showPanel, patientId, parameterId]);
+  }, [showPanel, fetchHistoricalResults]);
 
   const calculateDelta = (previous: string, current: string) => {
     const prevNum = parseFloat(previous);

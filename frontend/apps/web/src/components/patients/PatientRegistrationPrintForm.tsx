@@ -1163,8 +1163,30 @@ export default function PatientRegistrationPrintForm({
   }, [patientData]);
 
   useEffect(() => {
-    generateQRCode();
-    setLoading(false);
+    let isMounted = true;
+    const generateQR = async () => {
+      try {
+        const qrData = patientId ? `PAT-${patientId.slice(0, 8)}` : `PAT-${Date.now()}`;
+        const dataUrl = await QRCode.toDataURL(qrData, {
+          width: 70,
+          margin: 0,
+          color: {
+            dark: "#0B1F44",
+            light: "#FFFFFF",
+          },
+        });
+        if (isMounted) setQrCodeDataUrl(dataUrl);
+      } catch (error) {
+        console.error("Error generating QR code:", error);
+        if (isMounted) setQrCodeError(true);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    generateQR();
+    return () => {
+      isMounted = false;
+    };
   }, [patientId]);
 
   useEffect(() => {
@@ -1173,6 +1195,7 @@ export default function PatientRegistrationPrintForm({
     } else if (autoOpenModal === "email") {
       openEmailComposer("registration");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenModal]);
 
   // Fetch communication history for patient

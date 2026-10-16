@@ -105,31 +105,30 @@ export default function InvoiceQuickDrawer({
       />
 
       {/* Slide-over Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-slate-950 shadow-2xl transition-transform duration-300 ease-out sm:border-l sm:border-slate-800">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl transition-transform duration-300 ease-out sm:border-l sm:border-slate-200">
         {/* Drawer Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-6 py-4 text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 text-slate-900">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-950/60 text-cyan-400 shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-600 shadow-sm">
               <FileText className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold tracking-tight text-white font-mono">
+                <h2 className="text-base font-bold tracking-tight text-slate-900 font-mono">
                   {invoice.invoiceNumber || "Invoice Details"}
                 </h2>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${
-                    isPaid
-                      ? "border-emerald-500/30 bg-emerald-950/60 text-emerald-300"
-                      : pendingAmount > 0 && paidAmount > 0
-                      ? "border-amber-500/30 bg-amber-950/60 text-amber-300"
-                      : "border-rose-500/30 bg-rose-950/60 text-rose-300"
-                  }`}
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${isPaid
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : pendingAmount > 0 && paidAmount > 0
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : "border-rose-200 bg-rose-50 text-rose-700"
+                    }`}
                 >
                   {invoice.paymentStatus || (isPaid ? "PAID" : "PENDING")}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Order #{invoice.orderNumber || "—"} • Created:{" "}
                 {invoice.createdAt ? new Date(invoice.createdAt).toLocaleString("en-IN") : "—"}
               </p>
@@ -138,7 +137,7 @@ export default function InvoiceQuickDrawer({
 
           <button
             onClick={onClose}
-            className="rounded-xl border border-slate-800 bg-slate-900/80 p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -147,11 +146,11 @@ export default function InvoiceQuickDrawer({
         {/* Drawer Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Quick Action Pills Bar */}
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-900/90 p-2.5 border border-slate-800 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 p-2.5 border border-slate-200 shadow-sm">
             {!isPaid && onCollectPayment && (
               <button
                 onClick={() => onCollectPayment(invoice)}
-                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition-all"
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all"
               >
                 <CreditCard className="h-3.5 w-3.5" />
                 Collect ₹{pendingAmount.toFixed(0)}
@@ -162,16 +161,16 @@ export default function InvoiceQuickDrawer({
               <>
                 <button
                   onClick={() => onPrint(invoice, "thermal")}
-                  className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-950/60 px-3 py-1.5 text-xs font-semibold text-amber-300 shadow-sm hover:bg-amber-900/60 transition-all"
+                  className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-100 transition-all"
                 >
-                  <Printer className="h-3.5 w-3.5 text-amber-400" />
+                  <Printer className="h-3.5 w-3.5 text-amber-600" />
                   Thermal Slip
                 </button>
                 <button
                   onClick={() => onPrint(invoice, "a4")}
-                  className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-cyan-950/60 px-3 py-1.5 text-xs font-semibold text-cyan-300 shadow-sm hover:bg-cyan-900/60 transition-all"
+                  className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-100 transition-all"
                 >
-                  <FileText className="h-3.5 w-3.5 text-cyan-400" />
+                  <FileText className="h-3.5 w-3.5 text-blue-600" />
                   A4 Tax Invoice
                 </button>
               </>
@@ -180,9 +179,9 @@ export default function InvoiceQuickDrawer({
             {onSendBill && (
               <button
                 onClick={() => onSendBill(invoice, "whatsapp")}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-emerald-400 shadow-sm hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-600 shadow-sm hover:bg-emerald-50 transition-colors"
               >
-                <Send className="h-3.5 w-3.5 text-emerald-400" />
+                <Send className="h-3.5 w-3.5 text-emerald-600" />
                 WhatsApp
               </button>
             )}
@@ -190,7 +189,7 @@ export default function InvoiceQuickDrawer({
             {paidAmount > 0 && onRefund && (
               <button
                 onClick={() => onRefund(invoice)}
-                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-950/60 px-3 py-1.5 text-xs font-semibold text-rose-300 shadow-sm hover:bg-rose-900/60 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm hover:bg-rose-100 transition-colors"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Refund
@@ -199,31 +198,31 @@ export default function InvoiceQuickDrawer({
           </div>
 
           {/* Financial Summary Card */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
-            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-800">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
               <div>
-                <span className="text-[11px] font-bold tracking-wider uppercase text-slate-400">
+                <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
                   Total Billable
                 </span>
-                <p className="text-xl font-black text-white font-mono">{formatINR(netPayable)}</p>
-                <span className="text-[11px] text-slate-400">
+                <p className="text-xl font-black text-slate-900 font-mono">{formatINR(netPayable)}</p>
+                <span className="text-[11px] text-slate-500">
                   Base: {formatINR(totalAmount)} • Tax: {formatINR(gstAmount)}
                 </span>
               </div>
 
               <div className="text-right">
-                <span className="text-[11px] font-bold tracking-wider uppercase text-slate-400">
+                <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
                   {isPaid ? "Status" : "Outstanding Due"}
                 </span>
                 {isPaid ? (
-                  <div className="flex items-center justify-end gap-1.5 text-emerald-400 font-bold mt-1">
+                  <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-bold mt-1">
                     <CheckCircle2 className="h-5 w-5" />
                     <span>Settled In Full</span>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-xl font-black text-rose-400 font-mono">{formatINR(pendingAmount)}</p>
-                    <span className="text-[11px] text-emerald-400 font-medium">
+                    <p className="text-xl font-black text-rose-600 font-mono">{formatINR(pendingAmount)}</p>
+                    <span className="text-[11px] text-emerald-700 font-medium">
                       Paid: {formatINR(paidAmount)}
                     </span>
                   </div>
@@ -233,23 +232,23 @@ export default function InvoiceQuickDrawer({
 
             {/* Tax & Discount Breakdown */}
             <div className="grid grid-cols-4 gap-2 pt-3 text-center text-xs">
-              <div className="rounded-xl bg-slate-950 p-2 border border-slate-800">
-                <div className="text-[10px] text-slate-400">Subtotal</div>
-                <div className="font-semibold text-white font-mono">{formatINR(totalAmount)}</div>
+              <div className="rounded-xl bg-slate-50 p-2 border border-slate-200">
+                <div className="text-[10px] text-slate-500">Subtotal</div>
+                <div className="font-semibold text-slate-900 font-mono">{formatINR(totalAmount)}</div>
               </div>
-              <div className="rounded-xl bg-slate-950 p-2 border border-slate-800">
-                <div className="text-[10px] text-slate-400">Discount</div>
-                <div className="font-semibold text-rose-400 font-mono">
+              <div className="rounded-xl bg-slate-50 p-2 border border-slate-200">
+                <div className="text-[10px] text-slate-500">Discount</div>
+                <div className="font-semibold text-rose-600 font-mono">
                   {discount > 0 ? `-${formatINR(discount)}` : "₹0"}
                 </div>
               </div>
-              <div className="rounded-xl bg-slate-950 p-2 border border-slate-800">
-                <div className="text-[10px] text-slate-400">GST (18%)</div>
-                <div className="font-semibold text-cyan-400 font-mono">{formatINR(gstAmount)}</div>
+              <div className="rounded-xl bg-slate-50 p-2 border border-slate-200">
+                <div className="text-[10px] text-slate-500">GST (18%)</div>
+                <div className="font-semibold text-blue-700 font-mono">{formatINR(gstAmount)}</div>
               </div>
-              <div className="rounded-xl bg-slate-950 p-2 border border-slate-800">
-                <div className="text-[10px] text-slate-400">Mode</div>
-                <div className="font-semibold text-slate-300">{invoice.paymentMode || "—"}</div>
+              <div className="rounded-xl bg-slate-50 p-2 border border-slate-200">
+                <div className="text-[10px] text-slate-500">Mode</div>
+                <div className="font-semibold text-slate-700">{invoice.paymentMode || "—"}</div>
               </div>
             </div>
           </div>
@@ -257,29 +256,29 @@ export default function InvoiceQuickDrawer({
           {/* Patient & Doctor Information */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Patient Card */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-xl">
-              <div className="flex items-center gap-2 mb-2.5 text-cyan-400">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2.5 text-blue-600">
                 <User className="h-4 w-4" />
-                <h3 className="text-xs font-bold uppercase tracking-wider">Patient Details</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Patient Details</h3>
               </div>
-              <p className="text-sm font-bold text-white">
+              <p className="text-sm font-bold text-slate-900">
                 {invoice.patientName || "Walk-in Patient"}
               </p>
               {invoice.patientUhid && (
-                <p className="text-xs font-mono text-cyan-400 font-medium mt-0.5">
+                <p className="text-xs font-mono text-blue-700 font-medium mt-0.5">
                   UHID: {invoice.patientUhid}
                 </p>
               )}
               {invoice.patientPhone && (
-                <div className="flex items-center justify-between text-xs text-slate-400 mt-2">
+                <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
                   <div className="flex items-center gap-1.5 font-mono">
-                    <Phone className="h-3 w-3 text-slate-500" />
+                    <Phone className="h-3 w-3 text-slate-400" />
                     <span>{maskPhoneNumber(invoice.patientPhone, unmaskPhone)}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setUnmaskPhone(!unmaskPhone)}
-                    className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 font-medium"
+                    className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-medium"
                     title={unmaskPhone ? "Mask Phone" : "Unmask Phone (DPDP Act)"}
                   >
                     {unmaskPhone ? (
@@ -297,26 +296,26 @@ export default function InvoiceQuickDrawer({
                 </div>
               )}
               {invoice.patientEmail && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
-                  <Mail className="h-3 w-3 text-slate-500" />
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
+                  <Mail className="h-3 w-3 text-slate-400" />
                   <span className="truncate">{invoice.patientEmail}</span>
                 </div>
               )}
             </div>
 
             {/* Doctor Card */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-xl">
-              <div className="flex items-center gap-2 mb-2.5 text-indigo-400">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2.5 text-indigo-600">
                 <Building className="h-4 w-4" />
-                <h3 className="text-xs font-bold uppercase tracking-wider">Referring Doctor</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Referring Doctor</h3>
               </div>
-              <p className="text-sm font-bold text-white">
+              <p className="text-sm font-bold text-slate-900">
                 {doctorDisplay || "Direct Walk-in / Self"}
               </p>
               {invoice.doctorEmail && (
-                <p className="text-xs text-slate-400 mt-1">{invoice.doctorEmail}</p>
+                <p className="text-xs text-slate-500 mt-1">{invoice.doctorEmail}</p>
               )}
-              <div className="mt-3 flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-1 text-[11px] font-medium text-emerald-300">
+              <div className="mt-3 flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 <span>NABL &amp; ISO Verified Diagnostic</span>
               </div>
@@ -324,49 +323,49 @@ export default function InvoiceQuickDrawer({
           </div>
 
           {/* Diagnostic Test Items List */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden shadow-xl">
-            <div className="border-b border-slate-800 bg-slate-950 px-4 py-3 flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                 Diagnostic Services ({(invoice as any).items?.length || invoice.samples?.length || 1})
               </h3>
-              <span className="text-[11px] font-mono text-slate-400">SAC Code: 999312</span>
+              <span className="text-[11px] font-mono text-slate-500">SAC Code: 999312</span>
             </div>
 
-            <div className="divide-y divide-slate-800/80">
+            <div className="divide-y divide-slate-100">
               {((invoice as any).items || []).length > 0 ? (
                 ((invoice as any).items || []).map((item: any, idx: number) => (
                   <div key={item.id || idx} className="flex items-center justify-between px-4 py-3 text-xs">
                     <div>
-                      <p className="font-semibold text-slate-200">{item.testName || "Laboratory Investigation"}</p>
+                      <p className="font-semibold text-slate-800">{item.testName || "Laboratory Investigation"}</p>
                       {item.testCode && (
-                        <p className="text-[10px] font-mono text-slate-400">Code: {item.testCode}</p>
+                        <p className="text-[10px] font-mono text-slate-500">Code: {item.testCode}</p>
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-white font-mono">{formatINR(item.total || item.unitPrice || 0)}</p>
+                      <p className="font-bold text-slate-900 font-mono">{formatINR(item.total || item.unitPrice || 0)}</p>
                       <p className="text-[10px] text-slate-400">Qty: {item.quantity || 1}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="px-4 py-3 text-xs text-slate-400 flex items-center justify-between">
+                <div className="px-4 py-3 text-xs text-slate-500 flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-slate-200">Diagnostic Investigation Services</p>
+                    <p className="font-semibold text-slate-800">Diagnostic Investigation Services</p>
                     <p className="text-[10px] text-slate-400">Order #{invoice.orderNumber || "—"}</p>
                   </div>
-                  <div className="font-bold text-white font-mono">{formatINR(totalAmount)}</div>
+                  <div className="font-bold text-slate-900 font-mono">{formatINR(totalAmount)}</div>
                 </div>
               )}
             </div>
           </div>
 
           {/* Payment Receipts Timeline */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-xl">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                 Payment Transactions
               </h3>
-              <span className="text-xs font-semibold text-emerald-400 font-mono">
+              <span className="text-xs font-semibold text-emerald-700 font-mono">
                 Realized: {formatINR(paidAmount)}
               </span>
             </div>
@@ -376,28 +375,28 @@ export default function InvoiceQuickDrawer({
                 {((invoice as any).payments || []).map((p: any, idx: number) => (
                   <div
                     key={p.id || idx}
-                    className="flex items-center justify-between rounded-xl bg-slate-950 p-2.5 text-xs border border-slate-800"
+                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 text-xs border border-slate-200"
                   >
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <div className="h-2 w-2 rounded-full bg-emerald-500" />
                       <div>
-                        <div className="font-semibold text-slate-200">
+                        <div className="font-semibold text-slate-800">
                           {p.method || "CASH"} Payment • <span className="font-mono">{formatINR(p.amount)}</span>
                         </div>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-[10px] text-slate-500">
                           {p.paidAt ? new Date(p.paidAt).toLocaleString("en-IN") : "—"}{" "}
                           {p.transactionId && `• Ref: ${p.transactionId}`}
                         </div>
                       </div>
                     </div>
-                    <span className="rounded-full border border-emerald-500/30 bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                       SUCCESS
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-950/40 p-3 text-center text-xs text-amber-300">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-xs text-amber-800">
                 No payment transactions recorded yet. Balance of {formatINR(pendingAmount)} is pending.
               </div>
             )}
@@ -405,16 +404,16 @@ export default function InvoiceQuickDrawer({
 
           {/* Instant QR Code Counter Pay Card */}
           {!isPaid && (
-            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/30 p-4 shadow-xl flex items-center justify-between">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 shadow-sm flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                  <QrCode className="h-4 w-4 text-cyan-400" />
+                <h4 className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                  <QrCode className="h-4 w-4 text-blue-600" />
                   Instant BharatQR / UPI Pay
                 </h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-slate-600 mt-0.5">
                   Patient can scan directly with Google Pay, PhonePe, or Paytm
                 </p>
-                <div className="mt-2 text-xs font-mono font-bold text-cyan-200">
+                <div className="mt-2 text-xs font-mono font-bold text-blue-800">
                   Amount: {formatINR(pendingAmount)}
                 </div>
               </div>
@@ -423,9 +422,9 @@ export default function InvoiceQuickDrawer({
                 <img
                   src={qrImageUrl}
                   alt="UPI QR Code"
-                  className="h-20 w-20 rounded-xl border border-slate-800 bg-white p-1 shadow-sm"
+                  className="h-20 w-20 rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
                 />
-                <span className="text-[9px] font-semibold text-cyan-400 mt-1 uppercase">
+                <span className="text-[9px] font-semibold text-blue-700 mt-1 uppercase">
                   Scan to Pay
                 </span>
               </div>
@@ -434,13 +433,13 @@ export default function InvoiceQuickDrawer({
         </div>
 
         {/* Drawer Footer */}
-        <div className="border-t border-slate-800 bg-slate-950 px-6 py-3.5 flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">
-            Invoice ID: <span className="font-mono text-cyan-400">{invoice.id}</span>
+        <div className="border-t border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between">
+          <span className="text-[11px] text-slate-500">
+            Invoice ID: <span className="font-mono text-blue-700 font-semibold">{invoice.id}</span>
           </span>
           <button
             onClick={onClose}
-            className="rounded-xl border border-slate-800 bg-slate-900/90 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-sm"
           >
             Close Drawer
           </button>

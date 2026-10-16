@@ -968,6 +968,42 @@ export const approveResult =
   };
 
 // =======================================================
+// REJECT RESULT
+// =======================================================
+
+export const rejectResult = async (
+  id: string,
+  rejectionReason?: string,
+  rejectedById?: string
+) => {
+  const result = await prisma.result.findUnique({
+    where: { id },
+  });
+
+  if (!result) {
+    throw new Error("Result not found");
+  }
+
+  const updatedResult = await prisma.result.update({
+    where: { id },
+    data: {
+      status: "REJECTED" as any,
+      remarks: rejectionReason ? `Rejected: ${rejectionReason}` : result.remarks,
+    },
+    include: {
+      values: true,
+      order: {
+        include: {
+          patient: true,
+        },
+      },
+    },
+  });
+
+  return updatedResult;
+};
+
+// =======================================================
 // PUBLISH RESULT
 // =======================================================
 

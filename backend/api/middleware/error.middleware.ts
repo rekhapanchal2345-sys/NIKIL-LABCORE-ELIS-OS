@@ -350,18 +350,62 @@ export const errorMiddleware: ErrorRequestHandler =
       const applicationError =
         err as ApplicationError;
 
-      const statusCode =
+      let inferredStatusCode =
         applicationError.statusCode ??
-        applicationError.status ??
-        500;
+        applicationError.status;
+
+      if (!inferredStatusCode) {
+        const msg = (applicationError.message || '').toLowerCase();
+        if (
+          msg.includes('not found') ||
+          msg.includes('does not exist') ||
+          msg.includes('no record') ||
+          msg.includes('cannot find')
+        ) {
+          inferredStatusCode = 404;
+        } else if (
+          msg.includes('already exists') ||
+          msg.includes('duplicate') ||
+          msg.includes('conflict') ||
+          msg.includes('in-flight')
+        ) {
+          inferredStatusCode = 409;
+        } else if (
+          msg.includes('forbidden') ||
+          msg.includes('permission') ||
+          msg.includes('access denied') ||
+          msg.includes('unauthorized role')
+        ) {
+          inferredStatusCode = 403;
+        } else if (
+          msg.includes('unauthorized') ||
+          msg.includes('unauthenticated') ||
+          msg.includes('login required')
+        ) {
+          inferredStatusCode = 401;
+        } else if (
+          msg.includes('invalid') ||
+          msg.includes('required') ||
+          msg.includes('missing') ||
+          msg.includes('bad request') ||
+          msg.includes('cannot exceed') ||
+          msg.includes('exceeds') ||
+          msg.includes('overpayment') ||
+          msg.includes('must be')
+        ) {
+          inferredStatusCode = 400;
+        } else {
+          inferredStatusCode = 500;
+        }
+      }
 
       /**
        * Prevent invalid HTTP status codes.
        */
       const safeStatusCode =
-        statusCode >= 400 &&
-        statusCode <= 599
-          ? statusCode
+        inferredStatusCode >= 400 &&
+        inferredStatusCode <= 599
+          ? inferredStatusCode
           : 500;
 
       const isServerError = safeStatusCode >= 500;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import { sampleApi } from "@/lib/api";
@@ -17,7 +17,7 @@ export default function SampleDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const sampleId = params.id as string;
 
-  const fetchSample = async () => {
+  const fetchSample = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -44,13 +44,13 @@ export default function SampleDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sampleId]);
 
   useEffect(() => {
     if (sampleId) {
       fetchSample();
     }
-  }, [sampleId]);
+  }, [sampleId, fetchSample]);
 
   return (
     <ProtectedRoute>

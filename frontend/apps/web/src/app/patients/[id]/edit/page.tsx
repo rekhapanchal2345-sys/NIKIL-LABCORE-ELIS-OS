@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboardlayout";
@@ -74,11 +74,7 @@ export default function EditPatientPage({ params }: { params: Promise<{ id: stri
     notes: "",
   });
 
-  useEffect(() => {
-    fetchPatient();
-  }, [id]);
-
-  const fetchPatient = async () => {
+  const fetchPatient = useCallback(async () => {
     try {
       setLoading(true);
       const response = await patientApi.getById(id);
@@ -142,7 +138,11 @@ export default function EditPatientPage({ params }: { params: Promise<{ id: stri
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchPatient();
+  }, [fetchPatient]);
 
   const handleDobChange = (dobStr: string) => {
     setFormData((prev) => {

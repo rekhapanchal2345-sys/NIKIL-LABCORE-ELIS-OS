@@ -7,88 +7,95 @@ import crypto from "crypto";
 // =======================================================
 
 /**
- * Lightweight SVG QR Code matrix renderer
- * Generates an SVG string encoding the verification URL without external binary dependencies
+ * ISS-009: Generate a real, scannable ISO/IEC 18004 QR code SVG.
+ * Previously generated a fake SHA-256 bit-grid that no QR scanner could decode,
+ * breaking NABL ISO 15189:2022 tamper-verification for patients and referring doctors.
+ *
+ * Uses the `qrcode` npm library (^1.5.4) added to backend/package.json.
+ * The function is async because QRCode.toString() returns a Promise.
  */
-function generateQrSvg(text: string, size = 110): string {
-  // Deterministic pseudo-grid generator based on SHA-256 for high-fidelity scanning representation
-  const hash = crypto.createHash("sha256").update(text).digest();
-  const matrixSize = 25; // 25x25 QR Version 2 matrix
-  const moduleSize = size / matrixSize;
-
-  let rects = "";
-
-  // Standard QR position detection patterns (top-left, top-right, bottom-left)
-  const drawFinder = (startX: number, startY: number) => {
-    // 7x7 outer square
-    rects += `<rect x="${startX * moduleSize}" y="${startY * moduleSize}" width="${7 * moduleSize}" height="${7 * moduleSize}" fill="#0f172a" />`;
-    // 5x5 inner white
-    rects += `<rect x="${(startX + 1) * moduleSize}" y="${(startY + 1) * moduleSize}" width="${5 * moduleSize}" height="${5 * moduleSize}" fill="#ffffff" />`;
-    // 3x3 center black
-    rects += `<rect x="${(startX + 2) * moduleSize}" y="${(startY + 2) * moduleSize}" width="${3 * moduleSize}" height="${3 * moduleSize}" fill="#0f172a" />`;
-  };
-
-  drawFinder(0, 0);
-  drawFinder(matrixSize - 7, 0);
-  drawFinder(0, matrixSize - 7);
-
-  // Timing lines
-  for (let i = 8; i < matrixSize - 8; i += 2) {
-    rects += `<rect x="${i * moduleSize}" y="${6 * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#0f172a" />`;
-    rects += `<rect x="${6 * moduleSize}" y="${i * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#0f172a" />`;
+async function generateQrSvg(text: string, size = 110): Promise<string> {
+  try {
+    // Dynamic import so the module is optional — falls back to placeholder if not installed
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const QRCode = require('qrcode');
+    const svg: string = await QRCode.toString(text, {
+      type: 'svg',
+      width: size,
+      margin: 1,
+      color: { dark: '#0f172a', light: '#ffffff' },
+    });
+    return svg;
+  } catch (err) {
+    // Fallback: return a clearly-labelled placeholder SVG if the qrcode package is unavailable.
+    // This prevents a runtime crash but still marks the QR as unverified.
+    console.error('[report.pdf.service] qrcode library unavailable — using placeholder SVG. Run: npm install qrcode', err);
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+      <rect width="${size}" height="${size}" fill="#fff" stroke="#dc2626" stroke-width="2"/>
+      <text x="50%" y="50%" font-size="8" fill="#dc2626" text-anchor="middle" dominant-baseline="middle">QR Error</text>
+    </svg>`;
   }
-
-  // Data modules filled from hash bytes
-  for (let y = 0; y < matrixSize; y++) {
-    for (let x = 0; x < matrixSize; x++) {
-      // Skip finder pattern zones
-      const inTopLeft = x < 8 && y < 8;
-      const inTopRight = x >= matrixSize - 8 && y < 8;
-      const inBottomLeft = x < 8 && y >= matrixSize - 8;
-      const onTiming = x === 6 || y === 6;
-
-      if (!inTopLeft && !inTopRight && !inBottomLeft && !onTiming) {
-        const byteIndex = (y * matrixSize + x) % hash.length;
-        const bit = (hash[byteIndex] >> (x % 8)) & 1;
-        if (bit === 1) {
-          rects += `<rect x="${x * moduleSize}" y="${y * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#0f172a" />`;
-        }
-      }
-    }
-  }
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges">
-    <rect width="${size}" height="${size}" fill="#ffffff" />
-    ${rects}
-  </svg>`;
 }
 
+const CODE128_PATTERNS: readonly string[] = [
+  "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+  "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+  "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+  "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+  "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+  "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+  "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+  "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+  "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+  "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+  "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+];
+
 /**
- * Clean SVG Code 128 pseudo-barcode generator
+ * Genuine ISO/IEC 15417 Code 128 (Subset B) Vector Barcode SVG Generator
+ * Fully scannable by 1D optical laser scanners and smartphone cameras.
  */
 function generateBarcodeSvg(code: string, width = 200, height = 40): string {
-  const hash = crypto.createHash("md5").update(code).digest();
-  let bars = "";
-  let currentX = 10;
-  const barWidth = 2;
+  const safeCode = code || "SAMPLE";
+  const startCode = 104; // Start Code B
+  const codes: number[] = [startCode];
+  let checksum = startCode;
 
-  // Start guard
-  bars += `<rect x="${currentX}" y="0" width="${barWidth * 2}" height="${height}" fill="#0f172a" />`;
-  currentX += barWidth * 3;
-
-  for (let i = 0; i < 28; i++) {
-    const bit = (hash[i % hash.length] >> (i % 8)) & 1;
-    const w = bit ? barWidth * 2 : barWidth;
-    bars += `<rect x="${currentX}" y="0" width="${w}" height="${height}" fill="#0f172a" />`;
-    currentX += w + barWidth;
+  for (let i = 0; i < safeCode.length; i++) {
+    const ascii = safeCode.charCodeAt(i);
+    const val = ascii >= 32 && ascii <= 126 ? ascii - 32 : 0;
+    codes.push(val);
+    checksum += val * (i + 1);
   }
 
-  // Stop guard
-  bars += `<rect x="${currentX}" y="0" width="${barWidth * 3}" height="${height}" fill="#0f172a" />`;
+  const checkValue = checksum % 103;
+  codes.push(checkValue);
+  const stopCode = 106; // Stop Code
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${currentX + 15} ${height}" width="${width}" height="${height}">
-    <rect width="${currentX + 15}" height="${height}" fill="#ffffff" />
-    ${bars}
+  // Build module string
+  let moduleSequence = "";
+  for (const c of codes) {
+    moduleSequence += CODE128_PATTERNS[c] || CODE128_PATTERNS[0];
+  }
+  moduleSequence += CODE128_PATTERNS[stopCode];
+
+  const unitWidth = 1.5;
+  let currentX = 10;
+  let rects = "";
+
+  for (let i = 0; i < moduleSequence.length; i++) {
+    const w = parseInt(moduleSequence[i], 10) * unitWidth;
+    const isBar = i % 2 === 0;
+    if (isBar) {
+      rects += `<rect x="${currentX.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${height}" fill="#0f172a" />`;
+    }
+    currentX += w;
+  }
+
+  const totalWidth = Math.ceil(currentX + 10);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} ${height}" width="${width}" height="${height}">
+    <rect width="${totalWidth}" height="${height}" fill="#ffffff" />
+    ${rects}
   </svg>`;
 }
 
@@ -190,7 +197,7 @@ export async function generateOrderReportHtml(orderId: string, publicUrl = "http
   const doctor = order.doctor;
   const clinicalAge = calculateDetailedAge(patient.dateOfBirth, (patient as any).age);
   const verificationUrl = `${publicUrl}/verify-report/${order.reportId || order.id}`;
-  const qrSvg = generateQrSvg(verificationUrl, 90);
+  const qrSvg = await generateQrSvg(verificationUrl, 90);
   const barcodeSvg = generateBarcodeSvg(order.orderNumber, 160, 32);
 
   // Pathologist details

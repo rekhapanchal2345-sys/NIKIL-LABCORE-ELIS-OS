@@ -17,7 +17,7 @@ export const createBackupController = async (
 ) => {
   try {
     // Only admins can create backups
-    if (req.user?.role !== 'ADMIN') {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
         message: 'Only administrators can create backups',
@@ -57,7 +57,7 @@ export const restoreBackupController = async (
 ) => {
   try {
     // Only admins can restore backups
-    if (req.user?.role !== 'ADMIN') {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
         message: 'Only administrators can restore backups',
@@ -106,7 +106,7 @@ export const getBackupsController = async (
 ) => {
   try {
     // Only admins can view backups
-    if (req.user?.role !== 'ADMIN') {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
         message: 'Only administrators can view backups',
@@ -134,7 +134,7 @@ export const getBackupsController = async (
 export const getBackupStatsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Only admins can view backup statistics
-    if (req.user?.role !== 'ADMIN') {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
         message: 'Only administrators can view backup statistics',
@@ -162,7 +162,7 @@ export const getBackupStatsController = async (req: AuthenticatedRequest, res: R
 export const deleteBackupController = async (req: AuthenticatedRequest<{ fileName: string }>, res: Response) => {
   try {
     // Only admins can delete backups
-    if (req.user?.role !== 'ADMIN') {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
         message: 'Only administrators can delete backups',

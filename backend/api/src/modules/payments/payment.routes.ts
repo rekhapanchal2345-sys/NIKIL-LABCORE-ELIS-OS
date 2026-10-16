@@ -33,6 +33,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -49,6 +50,7 @@ router.post(
 router.post(
   "/split",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -65,6 +67,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -81,6 +84,7 @@ router.get(
 router.get(
   "/count",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -94,6 +98,7 @@ router.get(
 router.get(
   "/metrics",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -107,6 +112,7 @@ router.get(
 router.get(
   "/shift-close",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -120,6 +126,7 @@ router.get(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK
   ),
@@ -136,6 +143,7 @@ router.get(
 router.post(
   "/:id/refund",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN
   ),
   validate({

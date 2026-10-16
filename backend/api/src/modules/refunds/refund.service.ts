@@ -40,12 +40,13 @@ export const createRefundRequest = async (
       throw new Error("Only paid payments can be refunded");
     }
 
-    const amount = Number(data.amount);
+    const roundPaise = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
+    const amount = roundPaise(Number(data.amount));
     if (amount <= 0) {
       throw new Error("Refund amount must be greater than zero");
     }
 
-    if (amount > Number(payment.amount)) {
+    if (amount > roundPaise(Number(payment.amount))) {
       throw new Error("Refund amount cannot exceed payment amount");
     }
 
@@ -54,12 +55,14 @@ export const createRefundRequest = async (
       where: { paymentId: data.paymentId },
     });
 
-    const totalRefunded = existingRefunds.reduce(
-      (sum, refund) => sum + Number(refund.amount),
-      0
+    const totalRefunded = roundPaise(
+      existingRefunds.reduce(
+        (sum, refund) => sum + Number(refund.amount),
+        0
+      )
     );
 
-    const remainingRefundable = Number(payment.amount) - totalRefunded;
+    const remainingRefundable = roundPaise(Number(payment.amount) - totalRefunded);
 
     if (amount > remainingRefundable) {
       throw new Error(

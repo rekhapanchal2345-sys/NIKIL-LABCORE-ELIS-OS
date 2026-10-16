@@ -14,22 +14,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  Building2,
   Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   FileText,
   Heart,
+  Info,
   Loader2,
   Lock,
   MapPin,
   Phone,
   Save,
   Shield,
+  Stethoscope,
   Trash2,
   User,
+  UserPlus,
   X,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 import { patientApi, ApiError } from '@/lib/api';
@@ -79,6 +84,14 @@ export type PatientFormValues = {
   insuranceGroupNumber: string;
   insuranceExpiryDate: string;
 
+  // 5B Govt Schemes — NEW
+  ayushmanBharatId: string;
+  esicNumber: string;
+  cghs: boolean;
+  echs: boolean;
+  railwayEmployee: boolean;
+  cghsCity: string;
+
   // 6 Consent & ABHA
   abhaNumber: string;
   abhaAddress: string;
@@ -91,7 +104,15 @@ export type PatientFormValues = {
   dpdpDigitalCommConsent: boolean;
   dpdpAbhaExchangeConsent: boolean;
 
-  // 7 Review & Notes
+  // 7 Referral & Facility — NEW
+  referralSource: 'WALK_IN' | 'DOCTOR_REF' | 'CORPORATE' | 'ONLINE' | 'CAMP' | 'EMERGENCY';
+  referringDoctorName: string;
+  referringDoctorPhone: string;
+  referringHospital: string;
+  collectionCenter: string;
+  campaignName: string;
+
+  // 8 Review & Notes
   notes: string;
   isActive: boolean;
   bookOrderImmediately?: boolean;
@@ -144,6 +165,14 @@ const EMPTY_PATIENT: PatientFormValues = {
   insuranceGroupNumber: '',
   insuranceExpiryDate: '',
 
+  // Govt Schemes — defaults
+  ayushmanBharatId: '',
+  esicNumber: '',
+  cghs: false,
+  echs: false,
+  railwayEmployee: false,
+  cghsCity: '',
+
   abhaNumber: '',
   abhaAddress: '',
   preferredLanguage: 'English',
@@ -155,19 +184,29 @@ const EMPTY_PATIENT: PatientFormValues = {
   dpdpDigitalCommConsent: true,
   dpdpAbhaExchangeConsent: false,
 
+  // Referral — defaults
+  referralSource: 'WALK_IN',
+  referringDoctorName: '',
+  referringDoctorPhone: '',
+  referringHospital: '',
+  collectionCenter: '',
+  campaignName: '',
+
   notes: '',
   isActive: true,
   bookOrderImmediately: false,
 };
 
 export const WIZARD_STEPS = [
-  { key: 'personal', label: 'Personal' },
-  { key: 'contact', label: 'Contact' },
-  { key: 'emergency', label: 'Emergency' },
-  { key: 'clinical', label: 'Clinical' },
-  { key: 'insurance', label: 'Insurance' },
-  { key: 'consent', label: 'Consent & ABHA' },
-  { key: 'review', label: 'Review & Submit' },
+  { key: 'personal',  label: 'Personal',        icon: 'User' },
+  { key: 'contact',   label: 'Contact',          icon: 'Phone' },
+  { key: 'emergency', label: 'Emergency',        icon: 'Heart' },
+  { key: 'clinical',  label: 'Clinical',         icon: 'Stethoscope' },
+  { key: 'insurance', label: 'Insurance',        icon: 'Shield' },
+  { key: 'schemes',   label: 'Govt Schemes',     icon: 'Building2' },
+  { key: 'consent',   label: 'ABHA & Consent',   icon: 'Lock' },
+  { key: 'referral',  label: 'Referral',         icon: 'UserPlus' },
+  { key: 'review',    label: 'Review & Submit',  icon: 'FileText' },
 ] as const;
 
 const DRAFT_KEY = 'labcore.patient.draft.v3';
@@ -262,9 +301,15 @@ export const validateStep = (
     }
   }
 
-  if (step === 5) {
+  if (step === 6) {
     if (!v.consentForTreatment) {
       e.consentForTreatment = 'Consent is required for diagnostic testing & processing';
+    }
+  }
+
+  if (step === 7) {
+    if (v.referralSource === 'DOCTOR_REF' && !v.referringDoctorName.trim()) {
+      e.referringDoctorName = 'Referring doctor name is required for doctor referrals';
     }
   }
 
@@ -324,6 +369,35 @@ export default function RegisterPatientWizard({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Pincode API auto-lookup state
+  const [lookingUpPincode, setLookingUpPincode] = useState(false);
+  const [pincodeSuccess, setPincodeSuccess] = useState<string | null>(null);
+
+  const handlePincodeLookup = async (code: string) => {
+    const clean = cleanPostalCode(code);
+    if (clean.length !== 6) return;
+    setLookingUpPincode(true);
+    setPincodeSuccess(null);
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${clean}`);
+      const data = await res.json();
+      if (Array.isArray(data) && data[0]?.Status === 'Success' && data[0]?.PostOffice?.length > 0) {
+        const po = data[0].PostOffice[0];
+        setValues((prev) => ({
+          ...prev,
+          city: po.District || po.Block || prev.city,
+          state: po.State || prev.state,
+          country: 'India',
+        }));
+        setPincodeSuccess(`${po.District || po.Block}, ${po.State}`);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLookingUpPincode(false);
+    }
+  };
+
   // Initialize or restore
   useEffect(() => {
     if (!isOpen) return;
@@ -367,6 +441,18 @@ export default function RegisterPatientWizard({
         insuranceNumber: patientToEdit.insuranceNumber || '',
         insuranceGroupNumber: patientToEdit.insuranceGroupNumber || '',
         hasInsurance: Boolean(patientToEdit.insuranceProvider || patientToEdit.insuranceNumber),
+        ayushmanBharatId: patientToEdit.ayushmanBharatId || '',
+        esicNumber: patientToEdit.esicNumber || '',
+        cghs: Boolean(patientToEdit.cghs),
+        echs: Boolean(patientToEdit.echs),
+        railwayEmployee: Boolean(patientToEdit.railwayEmployee),
+        cghsCity: patientToEdit.cghsCity || '',
+        referralSource: patientToEdit.referralSource || 'WALK_IN',
+        referringDoctorName: patientToEdit.referringDoctorName || '',
+        referringDoctorPhone: patientToEdit.referringDoctorPhone || '',
+        referringHospital: patientToEdit.referringHospital || '',
+        collectionCenter: patientToEdit.collectionCenter || '',
+        campaignName: patientToEdit.campaignName || '',
         abhaNumber: patientToEdit.abhaNumber || '',
         abhaAddress: patientToEdit.abhaAddress || '',
         notes: patientToEdit.notes || '',
@@ -693,9 +779,49 @@ export default function RegisterPatientWizard({
         abhaRecordExchange: values.dpdpAbhaExchangeConsent,
       };
 
-      if (values.abhaNumber.trim()) payload.abhaNumber = values.abhaNumber.trim();
-      if (values.abhaAddress.trim()) payload.abhaAddress = values.abhaAddress.trim();
-      if (values.notes.trim()) payload.notes = values.notes.trim();
+      // Govt Schemes
+      if (values.ayushmanBharatId.trim()) payload.ayushmanBharatId = values.ayushmanBharatId.trim();
+      if (values.esicNumber.trim()) payload.esicNumber = values.esicNumber.trim();
+      if (values.cghs) payload.cghs = true;
+      if (values.echs) payload.echs = true;
+      if (values.railwayEmployee) payload.railwayEmployee = true;
+      if (values.cghsCity.trim()) payload.cghsCity = values.cghsCity.trim();
+
+      // Referral Channel & Ingestion Center
+      payload.referralSource = values.referralSource;
+      if (values.referringDoctorName.trim()) payload.referringDoctorName = values.referringDoctorName.trim();
+      if (values.referringDoctorPhone.trim()) payload.referringDoctorPhone = cleanPhone(values.referringDoctorPhone);
+      if (values.referringHospital.trim()) payload.referringHospital = values.referringHospital.trim();
+      if (values.collectionCenter.trim()) payload.collectionCenter = values.collectionCenter.trim();
+      if (values.campaignName.trim()) payload.campaignName = values.campaignName.trim();
+
+      // Format metadata tags into notes for multi-system compatibility
+      let finalNotes = values.notes.trim();
+      const metaTags: string[] = [];
+      if (values.referralSource && values.referralSource !== 'WALK_IN') {
+        const refParts = [
+          `Source: ${values.referralSource}`,
+          values.referringDoctorName ? `Dr. ${values.referringDoctorName}` : '',
+          values.referringHospital ? `Hospital: ${values.referringHospital}` : '',
+          values.collectionCenter ? `Center: ${values.collectionCenter}` : '',
+          values.campaignName ? `Camp: ${values.campaignName}` : '',
+        ].filter(Boolean);
+        metaTags.push(`[Referral: ${refParts.join(' | ')}]`);
+      }
+      const activeSchemes = [
+        values.ayushmanBharatId ? `Ayushman Bharat PM-JAY: ${values.ayushmanBharatId}` : '',
+        values.esicNumber ? `ESIC: ${values.esicNumber}` : '',
+        values.cghs ? `CGHS${values.cghsCity ? ` (${values.cghsCity})` : ''}` : '',
+        values.echs ? 'ECHS' : '',
+        values.railwayEmployee ? 'Railway' : '',
+      ].filter(Boolean);
+      if (activeSchemes.length > 0) {
+        metaTags.push(`[Govt Schemes: ${activeSchemes.join(', ')}]`);
+      }
+      if (metaTags.length > 0) {
+        finalNotes = finalNotes ? `${finalNotes}\n\n${metaTags.join('\n')}` : metaTags.join('\n');
+      }
+      if (finalNotes) payload.notes = finalNotes;
 
       let result;
       if (isEditing && patientToEdit?.id) {
@@ -1046,14 +1172,48 @@ export default function RegisterPatientWizard({
                 />
               </Field>
 
-              <Field label="PIN Code" error={errors.postalCode} className="dr-col-4">
-                <input
-                  className={inputClass(errors.postalCode)}
-                  value={values.postalCode}
-                  onChange={(e) => set('postalCode', e.target.value)}
-                  placeholder="380001"
-                  maxLength={6}
-                />
+              <Field
+                label="PIN Code (Auto-Fill City & State)"
+                error={errors.postalCode}
+                className="dr-col-4"
+                hint={
+                  pincodeSuccess ? (
+                    <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-600" /> {pincodeSuccess}
+                    </span>
+                  ) : undefined
+                }
+              >
+                <div className="relative">
+                  <input
+                    className={inputClass(errors.postalCode)}
+                    value={values.postalCode}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      set('postalCode', val);
+                      const clean = cleanPostalCode(val);
+                      if (clean.length === 6) {
+                        handlePincodeLookup(clean);
+                      }
+                    }}
+                    placeholder="e.g. 380001"
+                    maxLength={6}
+                  />
+                  {lookingUpPincode ? (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sky-600">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </span>
+                  ) : cleanPostalCode(values.postalCode).length === 6 && (
+                    <button
+                      type="button"
+                      onClick={() => handlePincodeLookup(values.postalCode)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-sky-600 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-1.5 py-0.5 rounded border border-sky-200 transition"
+                      title="Fetch City & State from Postal Department"
+                    >
+                      Lookup
+                    </button>
+                  )}
+                </div>
               </Field>
             </div>
           ) : null}
@@ -1234,8 +1394,136 @@ export default function RegisterPatientWizard({
             </div>
           ) : null}
 
-          {/* STEP 5: Consent & ABHA */}
+          {/* STEP 5: Govt Schemes */}
           {step === 5 ? (
+            <div className="space-y-5">
+              <div className="p-4 rounded-xl border border-sky-100 bg-sky-50/50 flex items-start gap-3">
+                <Building2 className="w-5 h-5 text-sky-600 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">
+                    Government Health Schemes & Subsidized Diagnostics
+                  </h4>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Link patient to Central / State welfare schemes for cashless testing, empanelment reimbursement, and statutory reporting under ABDM guidelines.
+                  </p>
+                </div>
+              </div>
+
+              <div className="dr-grid">
+                {/* Ayushman Bharat PM-JAY */}
+                <Field
+                  label="Ayushman Bharat PM-JAY Golden Card ID"
+                  className="dr-col-6"
+                  hint="PM-JAY Family ID or Individual Health Card (AB-PMJAY)"
+                >
+                  <div className="relative">
+                    <input
+                      className="dr-input"
+                      value={values.ayushmanBharatId}
+                      onChange={(e) => set('ayushmanBharatId', e.target.value)}
+                      placeholder="e.g. PMJAY-GUJ-10294812"
+                      autoFocus
+                    />
+                    {values.ayushmanBharatId && (
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                        PM-JAY
+                      </span>
+                    )}
+                  </div>
+                </Field>
+
+                {/* ESIC */}
+                <Field
+                  label="ESIC Insurance Number (IP Number)"
+                  className="dr-col-6"
+                  hint="17-digit Employees' State Insurance Corporation Number"
+                >
+                  <div className="relative">
+                    <input
+                      className="dr-input"
+                      value={values.esicNumber}
+                      onChange={(e) => set('esicNumber', e.target.value)}
+                      placeholder="e.g. 37001234560001001"
+                      maxLength={17}
+                    />
+                    {values.esicNumber && (
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                        ESIC
+                      </span>
+                    )}
+                  </div>
+                </Field>
+
+                {/* Additional Empanelments */}
+                <div className="dr-col-12 p-4 rounded-xl border border-slate-200 bg-[#f8fafc] space-y-3">
+                  <h5 className="text-xs font-bold text-slate-800">Additional Institutional Schemes</h5>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* CGHS */}
+                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={values.cghs}
+                          onChange={(e) => set('cghs', e.target.checked)}
+                          className="mt-0.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-slate-900">CGHS Beneficiary</span>
+                          <p className="text-[10px] text-slate-500">Central Government Health Scheme</p>
+                        </div>
+                      </label>
+                      {values.cghs && (
+                        <div className="mt-2.5 pl-6">
+                          <input
+                            className="dr-input text-xs py-1"
+                            value={values.cghsCity}
+                            onChange={(e) => set('cghsCity', e.target.value)}
+                            placeholder="CGHS City / Dispensary Code"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ECHS */}
+                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={values.echs}
+                          onChange={(e) => set('echs', e.target.checked)}
+                          className="mt-0.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-slate-900">ECHS Armed Forces</span>
+                          <p className="text-[10px] text-slate-500">Ex-Servicemen Contributory Health</p>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Railway */}
+                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={values.railwayEmployee}
+                          onChange={(e) => set('railwayEmployee', e.target.checked)}
+                          className="mt-0.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-slate-900">Indian Railways</span>
+                          <p className="text-[10px] text-slate-500">Railway Employee / Dependent</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* STEP 6: Consent & ABHA */}
+          {step === 6 ? (
             <div className="space-y-4">
               <div className="dr-grid">
                 <Field
@@ -1359,15 +1647,126 @@ export default function RegisterPatientWizard({
             </div>
           ) : null}
 
-          {/* STEP 6: Review & Submit */}
-          {step === 6 ? (
+          {/* STEP 7: Referral & Ingestion Center */}
+          {step === 7 ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* Summary Card 1 */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-[#f8fafc] flex items-start gap-3">
+                <UserPlus className="w-5 h-5 text-sky-600 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">
+                    Referral Channel & Ingestion Center
+                  </h4>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Record referral attribution for doctor commission tracking, hospital B2B invoices, or outreach campaign analytics.
+                  </p>
+                </div>
+              </div>
+
+              <div className="dr-grid">
+                <Field label="Referral Channel Source" required className="dr-col-6">
+                  <select
+                    className="dr-select font-medium"
+                    value={values.referralSource}
+                    onChange={(e) => set('referralSource', e.target.value as any)}
+                  >
+                    <option value="WALK_IN">🚶 Walk-in / Self</option>
+                    <option value="DOCTOR_REF">🩺 Doctor Referral (External / Visiting)</option>
+                    <option value="CORPORATE">🏢 Corporate Tie-up / Pre-Employment</option>
+                    <option value="ONLINE">🌐 Online / Mobile App / Tele-Consult</option>
+                    <option value="CAMP">⛺ Health Camp / Rural Outreach</option>
+                    <option value="EMERGENCY">🚨 Casualty / Emergency Transfer</option>
+                  </select>
+                </Field>
+
+                <Field label="Collection Center / Phlebotomy Unit" className="dr-col-6">
+                  <select
+                    className="dr-select font-medium"
+                    value={values.collectionCenter}
+                    onChange={(e) => set('collectionCenter', e.target.value)}
+                  >
+                    <option value="">Main Central Laboratory</option>
+                    <option value="CC-NORTH">North Branch Collection Center</option>
+                    <option value="CC-SOUTH">South Sub-center Phlebotomy Unit</option>
+                    <option value="HOME-COLLECTION">Home Sample Collection Team</option>
+                    <option value="CAMP-MOBILE">Mobile Diagnostic Van</option>
+                  </select>
+                </Field>
+
+                {values.referralSource === 'DOCTOR_REF' && (
+                  <>
+                    <Field
+                      label="Referring Doctor Name"
+                      required
+                      error={errors.referringDoctorName}
+                      className="dr-col-6"
+                      hint="Enter full name of physician (e.g. Dr. Rajesh Sharma)"
+                    >
+                      <input
+                        className={inputClass(errors.referringDoctorName)}
+                        value={values.referringDoctorName}
+                        onChange={(e) => set('referringDoctorName', e.target.value)}
+                        placeholder="Dr. Rajesh Sharma, MD"
+                        autoFocus
+                      />
+                    </Field>
+
+                    <Field label="Doctor Contact Phone" className="dr-col-3">
+                      <input
+                        className="dr-input"
+                        value={values.referringDoctorPhone}
+                        onChange={(e) => set('referringDoctorPhone', e.target.value)}
+                        placeholder="9876543210"
+                        maxLength={10}
+                      />
+                    </Field>
+
+                    <Field label="Referring Clinic / Hospital" className="dr-col-3">
+                      <input
+                        className="dr-input"
+                        value={values.referringHospital}
+                        onChange={(e) => set('referringHospital', e.target.value)}
+                        placeholder="City Care Hospital"
+                      />
+                    </Field>
+                  </>
+                )}
+
+                {values.referralSource === 'CAMP' && (
+                  <Field label="Health Camp / Outreach Campaign Name" className="dr-col-12">
+                    <input
+                      className="dr-input"
+                      value={values.campaignName}
+                      onChange={(e) => set('campaignName', e.target.value)}
+                      placeholder="e.g. PALANPUR_MEGA_DIABETES_CAMP_2026"
+                      autoFocus
+                    />
+                  </Field>
+                )}
+
+                {values.referralSource === 'CORPORATE' && (
+                  <Field label="Corporate Partner Organization Name" className="dr-col-12">
+                    <input
+                      className="dr-input"
+                      value={values.campaignName}
+                      onChange={(e) => set('campaignName', e.target.value)}
+                      placeholder="e.g. Reliance Industries Annual Executive Health Check"
+                      autoFocus
+                    />
+                  </Field>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {/* STEP 8: Review & Submit */}
+          {step === 8 ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Summary Card 1: Demographics */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs">
                   <div className="flex items-center justify-between font-bold text-slate-900">
                     <span className="flex items-center gap-1.5">
-                      <User size={13} className="text-sky-600" /> Patient Demographics
+                      <User size={13} className="text-sky-600" /> Demographics
                     </span>
                     <button
                       type="button"
@@ -1382,19 +1781,19 @@ export default function RegisterPatientWizard({
                       <strong>Name:</strong> {values.title} {values.firstName} {values.middleName} {values.lastName}
                     </div>
                     <div>
-                      <strong>Gender / Age:</strong> {values.gender} · {values.age || '—'} yrs (DOB: {values.dateOfBirth || '—'})
+                      <strong>Gender / Age:</strong> {values.gender} · {values.age || '—'} yrs ({values.dateOfBirth || '—'})
                     </div>
                     <div>
-                      <strong>Blood Group:</strong> {values.bloodGroup || 'Not Tested'} · <strong>Category:</strong> {values.patientType}
+                      <strong>Blood Group:</strong> {values.bloodGroup || 'Not Tested'} · <strong>Type:</strong> {values.patientType}
                     </div>
                   </div>
                 </div>
 
-                {/* Summary Card 2 */}
+                {/* Summary Card 2: Contact */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs">
                   <div className="flex items-center justify-between font-bold text-slate-900">
                     <span className="flex items-center gap-1.5">
-                      <Phone size={13} className="text-sky-600" /> Contact & Delivery
+                      <Phone size={13} className="text-sky-600" /> Contact & Location
                     </span>
                     <button
                       type="button"
@@ -1412,12 +1811,12 @@ export default function RegisterPatientWizard({
                       <strong>WhatsApp:</strong> +91 {cleanPhone(values.whatsappNumber || values.phone)}
                     </div>
                     <div>
-                      <strong>City / PIN:</strong> {values.city || '—'}, {values.state || '—'} - {values.postalCode || '—'}
+                      <strong>City / PIN:</strong> {values.city || '—'}, {values.state || '—'} ({values.postalCode || '—'})
                     </div>
                   </div>
                 </div>
 
-                {/* Summary Card 3 */}
+                {/* Summary Card 3: Clinical */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs">
                   <div className="flex items-center justify-between font-bold text-slate-900">
                     <span className="flex items-center gap-1.5">
@@ -1436,16 +1835,16 @@ export default function RegisterPatientWizard({
                       <strong>Allergies:</strong> {values.allergies || 'None recorded'}
                     </div>
                     <div>
-                      <strong>Chronic Conditions:</strong> {values.medicalConditions || 'None recorded'}
+                      <strong>Chronic:</strong> {values.medicalConditions || 'None recorded'}
                     </div>
                   </div>
                 </div>
 
-                {/* Summary Card 4 */}
+                {/* Summary Card 4: Insurance & TPA */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs">
                   <div className="flex items-center justify-between font-bold text-slate-900">
                     <span className="flex items-center gap-1.5">
-                      <Shield size={13} className="text-emerald-600" /> Billing & ABHA
+                      <Shield size={13} className="text-emerald-600" /> Insurance & TPA
                     </span>
                     <button
                       type="button"
@@ -1457,10 +1856,63 @@ export default function RegisterPatientWizard({
                   </div>
                   <div className="space-y-1 text-slate-600">
                     <div>
-                      <strong>Billing:</strong> {values.hasInsurance ? `Insurance (${values.insuranceProvider})` : 'Direct / Self Pay'}
+                      <strong>Status:</strong> {values.hasInsurance ? `Insured (${values.insuranceProvider})` : 'Direct / Self Pay'}
+                    </div>
+                    {values.hasInsurance && (
+                      <div>
+                        <strong>Policy #:</strong> {values.insuranceNumber || '—'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Summary Card 5: Govt Schemes */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs">
+                  <div className="flex items-center justify-between font-bold text-slate-900">
+                    <span className="flex items-center gap-1.5">
+                      <Building2 size={13} className="text-indigo-600" /> Govt Schemes
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStep(5)}
+                      className="text-[10px] text-sky-600 hover:underline font-semibold"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <div className="space-y-1 text-slate-600">
+                    <div>
+                      <strong>PM-JAY ID:</strong> {values.ayushmanBharatId || 'Not linked'}
                     </div>
                     <div>
-                      <strong>ABHA ID:</strong> {values.abhaNumber || 'Not linked'}
+                      <strong>ESIC / CGHS:</strong> {values.esicNumber ? `ESIC: ${values.esicNumber}` : values.cghs ? `CGHS (${values.cghsCity || 'Active'})` : values.echs ? 'ECHS' : values.railwayEmployee ? 'Railways' : 'None'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Card 6: Referral & Channel */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs">
+                  <div className="flex items-center justify-between font-bold text-slate-900">
+                    <span className="flex items-center gap-1.5">
+                      <UserPlus size={13} className="text-amber-600" /> Referral & Center
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStep(7)}
+                      className="text-[10px] text-sky-600 hover:underline font-semibold"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <div className="space-y-1 text-slate-600">
+                    <div>
+                      <strong>Channel:</strong> {values.referralSource}
+                    </div>
+                    <div>
+                      <strong>Doctor / Camp:</strong> {values.referringDoctorName ? `Dr. ${values.referringDoctorName}` : values.campaignName || '—'}
+                    </div>
+                    <div>
+                      <strong>Center:</strong> {values.collectionCenter || 'Main Central Lab'}
                     </div>
                   </div>
                 </div>

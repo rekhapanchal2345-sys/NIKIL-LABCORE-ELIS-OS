@@ -22,6 +22,8 @@ import {
   addParameterController,
   updateParameterController,
   deleteParameterController,
+  listParametersController,
+  createParameterDirectController,
 
   addReferenceRangeController,
   updateReferenceRangeController,
@@ -111,6 +113,7 @@ router.post(
 router.get(
   "/categories",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -123,6 +126,7 @@ router.get(
 router.get(
   "/categories/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -170,6 +174,7 @@ router.post(
 router.get(
   "/packages",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -185,6 +190,7 @@ router.get(
 router.get(
   "/packages/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -236,8 +242,27 @@ router.delete(
 );
 
 // =======================================================
-// PARAMETERS (BY PARAMETER ID)
+// PARAMETERS (COLLECTION & BY PARAMETER ID)
 // =======================================================
+
+router.get(
+  "/parameters",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST,
+    UserRole.DOCTOR
+  ),
+  listParametersController
+);
+
+router.post(
+  "/parameters",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+  createParameterDirectController
+);
 
 router.patch(
   "/parameters/:id",
@@ -392,6 +417,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -407,6 +433,7 @@ router.get(
 router.get(
   "/count",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -433,6 +460,7 @@ router.post(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,

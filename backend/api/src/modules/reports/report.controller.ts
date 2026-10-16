@@ -23,6 +23,11 @@ import {
     getPatientTimeline,
     amendReport,
     sendReportToDoctor,
+    sendReportWhatsApp,
+    sendReportEmail,
+    recordPrintReport,
+    bulkDispatchReports,
+    generateReportDirect,
   } from "./report.service";
   import {
     generateOrderPdf,
@@ -581,7 +586,16 @@ export const orderReportPdf = async (
   next: NextFunction
 ) => {
   try {
-    const orderId = (req.params.orderId || (req as any).validated?.params?.orderId) as string;
+    const rawId = (req.params.orderId || req.params.id || (req as any).validated?.params?.orderId) as string;
+    let orderId = rawId;
+    const report = await prisma.report.findUnique({
+      where: { id: rawId },
+      select: { orderId: true },
+    });
+    if (report?.orderId) {
+      orderId = report.orderId;
+    }
+
     const protocol = req.protocol || "http";
     const host = req.get("host") || "localhost:3001";
     const publicUrl = `${protocol}://${host}`;
@@ -612,7 +626,16 @@ export const downloadOrderReportPdf = async (
   next: NextFunction
 ) => {
   try {
-    const orderId = (req.params.orderId || (req as any).validated?.params?.orderId) as string;
+    const rawId = (req.params.orderId || req.params.id || (req as any).validated?.params?.orderId) as string;
+    let orderId = rawId;
+    const report = await prisma.report.findUnique({
+      where: { id: rawId },
+      select: { orderId: true },
+    });
+    if (report?.orderId) {
+      orderId = report.orderId;
+    }
+
     const protocol = req.protocol || "http";
     const host = req.get("host") || "localhost:3001";
     const publicUrl = `${protocol}://${host}`;
@@ -629,6 +652,107 @@ export const downloadOrderReportPdf = async (
     }
 
     return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =======================================================
+// REPORT DISPATCH & ACTION HANDLERS
+// =======================================================
+
+export const generateReportHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const body = req.body || {};
+    const result = await generateReportDirect(body);
+    return res.status(200).json({
+      success: true,
+      message: "Report generated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const sendReportWhatsAppHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = pathParam(req, "id") || (req.params as any).reportId;
+    const phone = req.body?.phone || req.body?.recipientPhone;
+    const userId = (req as any).user?.id;
+    const result = await sendReportWhatsApp(id, phone, userId);
+    return res.status(200).json({
+      success: true,
+      message: "Report sent via WhatsApp successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const sendReportEmailHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = pathParam(req, "id") || (req.params as any).reportId;
+    const email = req.body?.email || req.body?.recipientEmail;
+    const userId = (req as any).user?.id;
+    const result = await sendReportEmail(id, email, userId);
+    return res.status(200).json({
+      success: true,
+      message: "Report sent via Email successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const printReportHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = pathParam(req, "id") || (req.params as any).reportId;
+    const userId = (req as any).user?.id;
+    const result = await recordPrintReport(id, userId);
+    return res.status(200).json({
+      success: true,
+      message: "Report print recorded successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const bulkDispatchHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const reportIds = req.body?.reportIds || [];
+    const channel = req.body?.channel || "EMAIL";
+    const userId = (req as any).user?.id;
+    const result = await bulkDispatchReports(reportIds, channel, userId);
+    return res.status(200).json({
+      success: true,
+      message: "Reports dispatched successfully",
+      data: result,
+    });
   } catch (error) {
     next(error);
   }

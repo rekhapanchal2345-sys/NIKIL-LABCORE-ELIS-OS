@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { patientApi } from "@/lib/api";
 import PatientRegistrationPrintForm from "@/components/patients/PatientRegistrationPrintForm";
@@ -52,13 +52,7 @@ export default function PatientPrintPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      fetchPatient();
-    }
-  }, [id]);
-
-  const fetchPatient = async () => {
+  const fetchPatient = useCallback(async () => {
     const patientId = id;
     if (!patientId) {
       setError('Patient ID is missing');
@@ -90,7 +84,13 @@ export default function PatientPrintPage({ params }: { params: Promise<{ id: str
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchPatient();
+    }
+  }, [id, fetchPatient]);
 
   if (loading) {
     return (

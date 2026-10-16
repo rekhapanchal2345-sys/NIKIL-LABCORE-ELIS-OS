@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import type { Invoice } from "./InvoiceTable";
@@ -161,7 +161,7 @@ export default function LuxuryGSTInvoice({
   const [generatingQR, setGeneratingQR] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
-  const laboratoryInfo = labInfo || {
+  const laboratoryInfo = useMemo(() => labInfo || {
     name: "LABCORE ELIS",
     address: "123 Healthcare Avenue, Medical District, City - 560001",
     phone: "+91-9876543210",
@@ -176,7 +176,7 @@ export default function LuxuryGSTInvoice({
       branch: "Main Branch, City"
     },
     upiId: "labcore@upi"
-  };
+  }, [labInfo]);
 
   const total = Number(invoice.totalAmount || 0);
   const paid = Number(invoice.paidAmount || 0);
@@ -188,15 +188,7 @@ export default function LuxuryGSTInvoice({
   const totalGST = Number(taxAmount);
   const grandTotal = total;
 
-  useEffect(() => {
-    setGeneratingQR(true);
-    generateQRCode().finally(() => {
-      setGeneratingQR(false);
-      setLoading(false);
-    });
-  }, [invoice]);
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     if (qrCodeRef.current && invoice.invoiceNumber) {
       try {
         const qrData = JSON.stringify({
@@ -227,7 +219,15 @@ export default function LuxuryGSTInvoice({
         qrCodeRef.current.innerHTML = '<div class="text-xs text-gray-400">QR Unavailable</div>';
       }
     }
-  };
+  }, [invoice.invoiceNumber, invoice.createdAt, laboratoryInfo.gstin, grandTotal]);
+
+  useEffect(() => {
+    setGeneratingQR(true);
+    generateQRCode().finally(() => {
+      setGeneratingQR(false);
+      setLoading(false);
+    });
+  }, [generateQRCode]);
 
   const handlePrint = () => {
     if (invoiceRef.current) {

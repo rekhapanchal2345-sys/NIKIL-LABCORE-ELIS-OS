@@ -44,19 +44,21 @@ export const createReceivable = async (
 // UPDATE RECEIVABLE PAYMENT
 // =======================================================
 
+const roundMoney = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
+
 export const updateReceivablePayment = async (
   data: {
     receivableId: string;
     paymentAmount: number;
   }
 ) => {
-  try {
-    const paymentAmount = Number(data.paymentAmount);
+  return prisma.$transaction(async (tx) => {
+    const paymentAmount = roundMoney(Number(data.paymentAmount));
     if (paymentAmount <= 0) {
       throw new Error("Payment amount must be greater than zero");
     }
 
-    const receivable = await prisma.receivable.findUnique({
+    const receivable = await tx.receivable.findUnique({
       where: { id: data.receivableId },
     });
 
@@ -64,8 +66,15 @@ export const updateReceivablePayment = async (
       throw new Error("Receivable not found");
     }
 
-    const updatedPaidAmount = Number(receivable.paidAmount) + paymentAmount;
-    const outstandingAmount = Number(receivable.totalAmount) - updatedPaidAmount;
+    const currentOutstanding = roundMoney(Number(receivable.outstandingAmount));
+    if (paymentAmount > currentOutstanding) {
+      throw new Error(
+        `Payment amount (${paymentAmount}) cannot exceed outstanding amount (${currentOutstanding})`
+      );
+    }
+
+    const updatedPaidAmount = roundMoney(Number(receivable.paidAmount) + paymentAmount);
+    const outstandingAmount = roundMoney(Number(receivable.totalAmount) - updatedPaidAmount);
 
     let status: "PENDING" | "PARTIALLY_PAID" | "PAID" | "OVERDUE";
     if (outstandingAmount <= 0) {
@@ -83,7 +92,7 @@ export const updateReceivablePayment = async (
       }
     }
 
-    const updatedReceivable = await prisma.receivable.update({
+    const updatedReceivable = await tx.receivable.update({
       where: { id: data.receivableId },
       data: {
         paidAmount: updatedPaidAmount,
@@ -93,10 +102,7 @@ export const updateReceivablePayment = async (
     });
 
     return updatedReceivable;
-  } catch (error) {
-    console.error('Error in updateReceivablePayment:', error);
-    throw error;
-  }
+  });
 };
 
 // =======================================================

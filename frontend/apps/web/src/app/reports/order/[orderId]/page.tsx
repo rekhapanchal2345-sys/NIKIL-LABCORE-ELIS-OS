@@ -254,6 +254,7 @@ export default function OrderReportPage({ params }: { params: Promise<{ orderId:
     } else if (action === "print" && report) {
       handlePrint();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action, report]);
 
   const handleDownloadPDF = async () => {

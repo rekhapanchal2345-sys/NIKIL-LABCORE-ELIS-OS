@@ -36,6 +36,11 @@ import backupRoutes from "./modules/backup/backup.routes";
 import barcodeRoutes from "./modules/barcode/barcode.routes";
 import abdmRoutes, { abdmWebhookRouter } from "./modules/abdm/abdm.routes";
 import aiRoutes from "./modules/ai/ai.routes";
+import scimRoutes from "./modules/auth/scim.routes";
+import { oauthTokenHandler } from "./modules/auth/m2m-gateway.controller";
+// ISS-015: Receipt routes existed in controller/service but were never mounted
+import receiptRoutes from "./modules/receipts/receipt.routes";
+import digitalTwinRoutes from "./modules/digital-twin/digital-twin.routes";
 
 // =======================================================
 // MIDDLEWARE
@@ -207,7 +212,7 @@ if (process.env.NODE_ENV !== "test") {
     morgan(
       process.env.NODE_ENV === "production"
         ? // No colours, and no query string.
-          ":method :safe-url :status :response-time ms - :res[content-length]"
+        ":method :safe-url :status :response-time ms - :res[content-length]"
         : "dev"
     )
   );
@@ -285,6 +290,7 @@ app.get("/api", (_req: Request, res: Response) => {
       backups: "/api/backups",
       barcodes: "/api/barcodes",
       ai: "/api/ai",
+      receipts: "/api/receipts",
     },
   });
 });
@@ -297,6 +303,8 @@ app.get("/api", (_req: Request, res: Response) => {
 app.use("/api/auth", authEventLogger);
 
 app.use("/api/auth", authRoutes);
+app.use("/scim/v2", scimRoutes);
+app.post("/oauth/v2/token", oauthTokenHandler);
 
 // =======================================================
 // USERS
@@ -427,6 +435,7 @@ app.use("/api/whatsapp", whatsappAdvancedRoutes);
 // =======================================================
 
 app.use("/api/settings/laboratory", laboratorySettingsRoutes);
+app.use("/api/laboratory-settings", laboratorySettingsRoutes);
 
 // =======================================================
 // NOTIFICATION TEMPLATES
@@ -448,6 +457,13 @@ app.use("/api/barcodes", barcodeRoutes);
 app.use("/api/barcode", barcodeRoutes);
 
 // =======================================================
+// RECEIPTS
+// =======================================================
+// ISS-015: Receipt module was fully implemented but had no route file or mount point
+app.use("/api/receipts", receiptRoutes);
+app.use("/api/receipt", receiptRoutes);
+
+// =======================================================
 // ABDM (Ayushman Bharat Digital Mission)
 // =======================================================
 
@@ -464,6 +480,13 @@ app.use("/api/v0.5", abdmWebhookRouter);         // for Next.js /api/* proxy (si
 app.use("/api/ai", aiRoutes);
 app.use("/api/v1/ai-studio", aiRoutes);
 app.use("/api/abdm/v0.5", abdmWebhookRouter);
+
+// =======================================================
+// DIGITAL TWIN & SIMULATION ENGINE
+// =======================================================
+
+app.use("/api/v1/digital-twin", digitalTwinRoutes);
+app.use("/api/digital-twin", digitalTwinRoutes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

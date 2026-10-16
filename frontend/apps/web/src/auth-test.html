@@ -119,7 +119,7 @@
                     return;
                 }
 
-                const response = await fetch('http://172.24.1.158:5000/api/auth/me', {
+                const response = await fetch('/api/auth/me', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'

@@ -49,6 +49,7 @@ router.get(
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN
   ),
   validate({
@@ -65,6 +66,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN
   ),
   validate({
@@ -81,6 +83,7 @@ router.get(
 router.get(
   "/record/:recordId",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN
   ),
   recordHistory
@@ -93,6 +96,7 @@ router.get(
 router.get(
   "/user/:userId",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN
   ),
   userActivity
@@ -105,6 +109,7 @@ router.get(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN
   ),
   validate({

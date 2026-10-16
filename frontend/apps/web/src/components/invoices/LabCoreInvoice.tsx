@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { Printer, Download, X, Loader2, Sparkles } from "lucide-react";
@@ -151,13 +151,13 @@ export default function LabCoreInvoice({
   const [generatingQR, setGeneratingQR] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
-  const laboratoryInfo = labInfo || {
+  const laboratoryInfo = useMemo(() => labInfo || {
     name: "LabCore Diagnostics Pvt. Ltd.",
     address: "123 Health Avenue, Medical District, Ahmedabad, Gujarat - 380016, India",
     phone: "+91 98765 43210",
     email: "info@labcore.in",
     website: "www.labcore.in"
-  };
+  }, [labInfo]);
 
   const total = Number(invoice.totalAmount || 0);
   const paid = Number(invoice.paidAmount || 0);
@@ -169,15 +169,7 @@ export default function LabCoreInvoice({
   const totalTax = cgst + sgst + igst;
   const grandTotal = total;
 
-  useEffect(() => {
-    setGeneratingQR(true);
-    generateQRCode().finally(() => {
-      setGeneratingQR(false);
-      setLoading(false);
-    });
-  }, [invoice]);
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     if (qrCodeRef.current && invoice.invoiceNumber) {
       try {
         const verifyCode = invoice.invoiceNumber.replace(/[^0-9]/g, '').slice(-7);
@@ -204,7 +196,15 @@ export default function LabCoreInvoice({
         qrCodeRef.current.innerHTML = '<div class="text-xs text-gray-400">QR Unavailable</div>';
       }
     }
-  };
+  }, [invoice.invoiceNumber]);
+
+  useEffect(() => {
+    setGeneratingQR(true);
+    generateQRCode().finally(() => {
+      setGeneratingQR(false);
+      setLoading(false);
+    });
+  }, [generateQRCode]);
 
   const handlePrint = () => {
     if (invoiceRef.current) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import QRCode from "qrcode";
 import type { Invoice } from "./InvoiceTable";
 
@@ -157,7 +157,7 @@ export default function PremiumGSTInvoice({
   const [loading, setLoading] = useState(true);
   const [generatingQR, setGeneratingQR] = useState(false);
 
-  const laboratoryInfo = labInfo || {
+  const laboratoryInfo = useMemo(() => labInfo || {
     name: "LABCORE ELIS",
     address: "123 Healthcare Avenue, Medical District, City - 560001",
     phone: "+91-9876543210",
@@ -172,7 +172,7 @@ export default function PremiumGSTInvoice({
       branch: "Main Branch, City"
     },
     upiId: "labcore@upi"
-  };
+  }, [labInfo]);
 
   const total = Number(invoice.totalAmount || 0);
   const paid = Number(invoice.paidAmount || 0);
@@ -185,15 +185,7 @@ export default function PremiumGSTInvoice({
   const totalGST = items.reduce((sum, item) => sum + (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0), 0);
   const grandTotal = subtotal + totalGST - Number(discountAmount);
 
-  useEffect(() => {
-    setGeneratingQR(true);
-    generateQRCode().finally(() => {
-      setGeneratingQR(false);
-      setLoading(false);
-    });
-  }, [invoice]);
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     if (qrCodeRef.current && invoice.invoiceNumber) {
       try {
         const qrData = JSON.stringify({
@@ -224,7 +216,15 @@ export default function PremiumGSTInvoice({
         qrCodeRef.current.innerHTML = '<div class="text-xs text-gray-400">QR Unavailable</div>';
       }
     }
-  };
+  }, [invoice.invoiceNumber, invoice.createdAt, laboratoryInfo.gstin, grandTotal]);
+
+  useEffect(() => {
+    setGeneratingQR(true);
+    generateQRCode().finally(() => {
+      setGeneratingQR(false);
+      setLoading(false);
+    });
+  }, [generateQRCode]);
 
   const handlePrint = () => {
     if (invoiceRef.current) {

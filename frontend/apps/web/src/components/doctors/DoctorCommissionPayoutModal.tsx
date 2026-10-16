@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
   CreditCard,
@@ -56,15 +56,7 @@ export default function DoctorCommissionPayoutModal({
   const [submitting, setSubmitting] = useState(false);
   const [voucherData, setVoucherData] = useState<any | null>(null);
 
-  // Fetch real paid orders commission data from API when modal opens
-  useEffect(() => {
-    if (isOpen && doctor?.id) {
-      setVoucherData(null);
-      fetchCommissionDetails(String(doctor.id));
-    }
-  }, [isOpen, doctor?.id]);
-
-  const fetchCommissionDetails = async (docId: string) => {
+  const fetchCommissionDetails = useCallback(async (docId: string) => {
     try {
       setLoadingCommission(true);
       const res = await doctorApi.getCommission(docId);
@@ -101,7 +93,15 @@ export default function DoctorCommissionPayoutModal({
     } finally {
       setLoadingCommission(false);
     }
-  };
+  }, [commissionRate, doctor?._count?.orders]);
+
+  // Fetch real paid orders commission data from API when modal opens
+  useEffect(() => {
+    if (isOpen && doctor?.id) {
+      setVoucherData(null);
+      fetchCommissionDetails(String(doctor.id));
+    }
+  }, [isOpen, doctor?.id, fetchCommissionDetails]);
 
   if (!isOpen || !doctor) return null;
 

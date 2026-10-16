@@ -5,21 +5,21 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleLabel, getUserRole } from "@/lib/auth";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Stethoscope, 
-  FlaskConical, 
-  ClipboardList, 
-  TestTube, 
-  FileText, 
-  DollarSign, 
-  CheckCircle, 
-  FileCheck, 
-  FileText as ReportIcon, 
-  Cpu, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Users,
+  Stethoscope,
+  FlaskConical,
+  ClipboardList,
+  TestTube,
+  FileText,
+  DollarSign,
+  CheckCircle,
+  FileCheck,
+  FileText as ReportIcon,
+  Cpu,
+  Settings,
+  LogOut,
   ChevronDown,
   ShieldCheck,
   CheckCircle2,
@@ -34,9 +34,22 @@ import {
   MessageSquare,
   Brain,
   X,
-  Server
+  Server,
+  UserCircle2,
+  CalendarDays,
+  BarChart3,
+  UsersRound,
+  TrendingUp,
+  Star,
+  FlaskRound,
+  ScrollText,
+  Upload,
+  GitMerge,
+  Siren,
+  Waypoints,
+  HeartPulse,
 } from "lucide-react";
-import { approvalApi, invoiceApi } from "@/lib/api";
+import { approvalApi, invoiceApi, patientApi } from "@/lib/api";
 import LabCoreLogo from "@/components/common/LabCoreLogo";
 import LogoutModal from "@/components/auth/LogoutModal";
 import {
@@ -54,7 +67,10 @@ interface SubMenuItem {
   label: string;
   href: string;
   badge?: string;
-  badgeVariant?: "red" | "blue" | "amber" | "emerald";
+  badgeVariant?: "red" | "blue" | "amber" | "emerald" | "purple" | "violet";
+  isDivider?: boolean;       // Visual group separator
+  dividerLabel?: string;     // Label for divider
+  liveKey?: "criticalPatients" | "opdQueue"; // Live count key
   /** When present, the child is only rendered for these roles. */
   allowedRoles?: string[];
   children?: {
@@ -65,6 +81,7 @@ interface SubMenuItem {
 
 interface MenuItem {
   label: string;
+  name?: string;
   href?: string;
   icon: React.ComponentType<{ className?: string }>;
   accent: {
@@ -106,19 +123,95 @@ const menuSections: MenuSection[] = [
         },
       },
       {
-        label: "Patients",
+        label: "Patient Hub",
         href: "/patients",
-        icon: Users,
+        icon: UserCircle2,
         accent: {
           bg: "bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-300",
           text: "text-indigo-400",
           activeBorder: "border-indigo-400",
-          activeIconBg: "bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]",
+          activeIconBg: "bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-[0_0_14px_rgba(99,102,241,0.5)]",
           activeText: "text-white font-semibold",
         },
         children: [
-          { label: "All Patients", href: "/patients" },
-          { label: "Add Patient", href: "/patients/new" },
+          // ── CORE ──────────────────────────────────────────
+          {
+            label: "Patient Directory",
+            href: "/patients",
+            badge: "MPI",
+            badgeVariant: "blue",
+          },
+          {
+            label: "Register Patient",
+            href: "/patients/new",
+            badge: "Quick",
+            badgeVariant: "emerald",
+          },
+          {
+            label: "Active Patients",
+            href: "/patients?chip=ACTIVE",
+            badge: "Active",
+            badgeVariant: "emerald",
+          },
+          // ── OPD & QUEUE ───────────────────────────────────
+          {
+            label: "─── OPD & Queue",
+            href: "/patients?chip=TODAY",
+            isDivider: true,
+            dividerLabel: "OPD & QUEUE",
+          },
+          {
+            label: "OPD Queue (Live)",
+            href: "/patients/opd-queue",
+            badge: "Live",
+            badgeVariant: "emerald",
+            liveKey: "opdQueue",
+          },
+          {
+            label: "Today's Registrations",
+            href: "/patients?chip=TODAY",
+            badge: "Today",
+            badgeVariant: "blue",
+          },
+          {
+            label: "Critical Watch List",
+            href: "/patients?chip=CRITICAL",
+            badge: "Urgent",
+            badgeVariant: "red",
+            liveKey: "criticalPatients",
+          },
+          {
+            label: "Pending Orders Roster",
+            href: "/patients?chip=PENDING",
+            badge: "Pending",
+            badgeVariant: "amber",
+          },
+          // ── SPECIAL CATEGORIES ───────────────────────────
+          {
+            label: "─── Categories",
+            href: "/patients?chip=SENIOR",
+            isDivider: true,
+            dividerLabel: "SPECIAL CATEGORIES",
+          },
+          {
+            label: "Geriatric Registry (60+)",
+            href: "/patients?chip=SENIOR",
+            badge: "Senior",
+            badgeVariant: "amber",
+          },
+          // ── COMPLIANCE ───────────────────────────────────
+          {
+            label: "─── Compliance",
+            href: "/abdm",
+            isDivider: true,
+            dividerLabel: "COMPLIANCE & ABHA",
+          },
+          {
+            label: "ABDM / ABHA Console",
+            href: "/abdm",
+            badge: "ABHA",
+            badgeVariant: "purple",
+          },
         ],
       },
       {
@@ -234,7 +327,21 @@ const menuSections: MenuSection[] = [
           { label: "Virtual Protocol Simulator", href: "/analyzers?tab=simulator" },
           { label: "🧪 Hematology Suite", href: "/analyzers?tab=hematology" },
           { label: "Diagnostics & Error Logs", href: "/analyzers?tab=diagnostics" },
+          { label: "🚀 Lab Digital Twin (DES)", href: "/digital-twin", badge: "Sim", badgeVariant: "emerald" },
         ],
+      },
+      {
+        name: "Lab Digital Twin",
+        label: "Lab Digital Twin",
+        href: "/digital-twin",
+        icon: Cpu,
+        accent: {
+          bg: "bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-300",
+          text: "text-cyan-400",
+          activeBorder: "border-cyan-400",
+          activeIconBg: "bg-gradient-to-br from-cyan-500 to-teal-600 text-white shadow-[0_0_12px_rgba(6,182,212,0.4)]",
+          activeText: "text-white font-semibold",
+        },
       },
       {
         label: "Integration Engine",
@@ -345,8 +452,8 @@ const menuSections: MenuSection[] = [
   },
   {
     id: "finance",
-    title: "Finance & Admin",
-    badge: "B2B",
+    title: "REVENUE & BILLING (RCM)",
+    badge: "HOSPITAL",
     items: [
       {
         label: "Invoices",
@@ -354,19 +461,20 @@ const menuSections: MenuSection[] = [
         icon: FileText,
         badgeKey: "invoices",
         accent: {
-          bg: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300",
-          text: "text-emerald-400",
-          activeBorder: "border-emerald-400",
-          activeIconBg: "bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]",
+          bg: "bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:text-blue-300",
+          text: "text-blue-400",
+          activeBorder: "border-blue-400",
+          activeIconBg: "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]",
           activeText: "text-white font-semibold",
         },
         children: [
-          { label: "All Invoices", href: "/invoices" },
-          { label: "Quick POS Billing", href: "/invoices/new" },
-          { label: "Day Book & Shift Close", href: "/invoices?tab=daybook" },
-          { label: "Due & Aging Tracker", href: "/invoices?tab=aging" },
-          { label: "B2B & Referral Billing", href: "/invoices?tab=b2b" },
-          { label: "GST & Tax Audit", href: "/invoices?tab=gst" },
+          { label: "All Invoices (Register)", href: "/invoices" },
+          { label: "Quick POS Billing Counter", href: "/invoices/new" },
+          { label: "TPA & Cashless Claims", href: "/invoices?tab=tpa" },
+          { label: "Sales Day Book Shift Close", href: "/invoices?tab=daybook" },
+          { label: "Overdue Debt & AR Aging", href: "/invoices?tab=aging" },
+          { label: "Corporate & Doctor Referrals", href: "/invoices?tab=b2b" },
+          { label: "GST & Tax Audit (GSTR-1)", href: "/invoices?tab=gst" },
         ],
       },
       {
@@ -374,23 +482,22 @@ const menuSections: MenuSection[] = [
         href: "/payments",
         icon: DollarSign,
         accent: {
-          bg: "bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 group-hover:text-amber-300",
-          text: "text-amber-400",
-          activeBorder: "border-amber-400",
-          activeIconBg: "bg-gradient-to-br from-amber-500 to-yellow-600 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)]",
+          bg: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300",
+          text: "text-emerald-400",
+          activeBorder: "border-emerald-400",
+          activeIconBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]",
           activeText: "text-white font-semibold",
         },
         children: [
-          { label: "Overview", href: "/payments" },
-          { label: "Transactions", href: "/payments?tab=transactions" },
-          { label: "Receivables", href: "/payments?tab=receivables" },
-          { label: "Advances & Wallet", href: "/payments?tab=advances" },
-          { label: "Refunds", href: "/payments?tab=refunds" },
-          { label: "Cash Counter", href: "/payments?tab=cash-counter" },
-          { label: "Settlements", href: "/payments?tab=settlements" },
-          { label: "Reconciliation", href: "/payments?tab=reconciliation" },
-          { label: "Reports", href: "/payments?tab=reports" },
-          { label: "Audit Log", href: "/payments?tab=audit-log" },
+          { label: "Cashier Command Desk", href: "/payments" },
+          { label: "Transactions & Tender Ledger", href: "/payments?tab=transactions" },
+          { label: "Shift Till & Cash Drawer", href: "/payments?tab=cash-counter" },
+          { label: "Advances & Patient Wallet", href: "/payments?tab=advances" },
+          { label: "Dual-Custody Refunds", href: "/payments?tab=refunds" },
+          { label: "POS & Gateway Settlements", href: "/payments?tab=settlements" },
+          { label: "Bank Reconciliation", href: "/payments?tab=reconciliation" },
+          { label: "Cashier EOD Reports", href: "/payments?tab=reports" },
+          { label: "Tender Audit Trail", href: "/payments?tab=audit-log" },
         ],
       },
       {
@@ -484,7 +591,7 @@ export default function Sidebar({
 
     if (user?.fullName) {
       const names = user.fullName.split(' ');
-      setUserInitials(names.length > 1 
+      setUserInitials(names.length > 1
         ? names[0][0] + names[names.length - 1][0]
         : names[0][0]);
       setUserName(user.fullName);
@@ -514,6 +621,37 @@ export default function Sidebar({
   }, [user]);
 
   const [approvalMetrics, setApprovalMetrics] = useState({ pending: 0, critical: 0 });
+
+  // ── Live Patient Hub Metrics ─────────────────────────────────────────────
+  const [patientHubMetrics, setPatientHubMetrics] = useState({
+    criticalCount: 0,
+    todayCount: 0,
+    vipCount: 0,
+  });
+
+  useEffect(() => {
+    let isSubscribed = true;
+    const fetchPatientMetrics = async () => {
+      try {
+        const res = await patientApi.getAll("page=1&limit=1&activeChip=CRITICAL");
+        if (isSubscribed && res?.success && res?.data?.kpis) {
+          setPatientHubMetrics({
+            criticalCount: res.data.kpis.criticalCount ?? 0,
+            todayCount: res.data.kpis.todayCount ?? 0,
+            vipCount: res.data.kpis.vipCount ?? 0,
+          });
+        }
+      } catch {
+        // quiet fallback — sidebar should never crash
+      }
+    };
+    fetchPatientMetrics();
+    const timer = setInterval(fetchPatientMetrics, 90000);
+    return () => {
+      isSubscribed = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -575,6 +713,7 @@ export default function Sidebar({
   };
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    "Patient Hub": pathname.startsWith("/patients"),
     Patients: pathname.startsWith("/patients"),
     Doctors: pathname.startsWith("/doctors"),
     Tests: pathname.startsWith("/tests"),
@@ -664,11 +803,11 @@ export default function Sidebar({
           .map((item) =>
             item.children
               ? {
-                  ...item,
-                  children: item.children.filter((child) =>
-                    isAllowedForRole(child.allowedRoles)
-                  ),
-                }
+                ...item,
+                children: item.children.filter((child) =>
+                  isAllowedForRole(child.allowedRoles)
+                ),
+              }
               : item
           )
           // An accordion with no visible children is just a dead entry.
@@ -753,11 +892,10 @@ export default function Sidebar({
               }
             }}
             aria-disabled={!isAllowedForRole(SETTINGS_VIEW_ROLES)}
-            className={`block relative group overflow-hidden rounded-xl border border-slate-800/80 bg-gradient-to-b from-slate-900/90 to-[#0c1424] p-3 transition-all duration-300 no-underline ${
-              isAllowedForRole(SETTINGS_VIEW_ROLES)
-                ? "hover:border-sky-500/50 hover:shadow-[0_0_20px_rgba(56,189,248,0.15)] cursor-pointer"
-                : "cursor-default"
-            }`}
+            className={`block relative group overflow-hidden rounded-xl border border-slate-800/80 bg-gradient-to-b from-slate-900/90 to-[#0c1424] p-3 transition-all duration-300 no-underline ${isAllowedForRole(SETTINGS_VIEW_ROLES)
+              ? "hover:border-sky-500/50 hover:shadow-[0_0_20px_rgba(56,189,248,0.15)] cursor-pointer"
+              : "cursor-default"
+              }`}
           >
             {/* Top glass highlight sheen */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent" />
@@ -873,11 +1011,10 @@ export default function Sidebar({
                       <button
                         type="button"
                         onClick={() => toggleMenu(item.label)}
-                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 border cursor-pointer ${
-                          isSelected
-                            ? "bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-transparent border-sky-500/30 text-white shadow-sm"
-                            : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-slate-800"
-                        }`}
+                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 border cursor-pointer ${isSelected
+                          ? "bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-transparent border-sky-500/30 text-white shadow-sm"
+                          : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-slate-800"
+                          }`}
                       >
                         {/* Active Left Indicator Bar */}
                         {isSelected && (
@@ -886,25 +1023,46 @@ export default function Sidebar({
 
                         {/* Icon Box */}
                         <span
-                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                            isSelected
-                              ? item.accent.activeIconBg
-                              : item.accent.bg
-                          }`}
+                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${isSelected
+                            ? item.accent.activeIconBg
+                            : item.accent.bg
+                            }`}
                         >
                           <IconComponent className="w-4 h-4" />
                         </span>
 
                         {/* Label */}
                         <span
-                          className={`flex-1 text-xs truncate ${
-                            isSelected ? "font-semibold text-white" : "font-medium text-slate-300 group-hover:text-white"
-                          }`}
+                          className={`flex-1 text-xs truncate ${isSelected ? "font-semibold text-white" : "font-medium text-slate-300 group-hover:text-white"
+                            }`}
                         >
                           {item.label}
                         </span>
 
                         {/* Real-time Metric Badges */}
+                        {/* Patient Hub — live critical + today badges */}
+                        {item.label === "Patient Hub" && (
+                          <div className="flex items-center gap-1 mr-1">
+                            {patientHubMetrics.criticalCount > 0 && (
+                              <span
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/25 text-rose-300 border border-rose-500/40 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.35)]"
+                                title={`${patientHubMetrics.criticalCount} Critical patient(s) need attention`}
+                              >
+                                <span className="mr-0.5">!</span>{patientHubMetrics.criticalCount}
+                              </span>
+                            )}
+                            {patientHubMetrics.todayCount > 0 && (
+                              <span
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                title={`${patientHubMetrics.todayCount} patients registered today`}
+                              >
+                                {patientHubMetrics.todayCount}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Approvals badges */}
                         {item.label === "Approvals" && (approvalMetrics.pending > 0 || approvalMetrics.critical > 0) && (
                           <div className="flex items-center gap-1 mr-1">
                             {approvalMetrics.critical > 0 && (
@@ -939,9 +1097,8 @@ export default function Sidebar({
 
                         {/* Chevron Indicator */}
                         <ChevronDown
-                          className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 group-hover:text-slate-300 ${
-                            isMenuOpen ? "rotate-180 text-sky-400" : ""
-                          }`}
+                          className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 group-hover:text-slate-300 ${isMenuOpen ? "rotate-180 text-sky-400" : ""
+                            }`}
                         />
                       </button>
                     ) : (
@@ -949,11 +1106,10 @@ export default function Sidebar({
                       <Link
                         href={item.href || "#"}
                         onClick={onClose}
-                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg no-underline transition-all duration-200 border ${
-                          active
-                            ? "bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-transparent border-sky-500/30 text-white shadow-sm"
-                            : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-slate-800"
-                        }`}
+                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg no-underline transition-all duration-200 border ${active
+                          ? "bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-transparent border-sky-500/30 text-white shadow-sm"
+                          : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-slate-800"
+                          }`}
                       >
                         {/* Active Left Indicator Bar */}
                         {active && (
@@ -962,20 +1118,18 @@ export default function Sidebar({
 
                         {/* Icon Box */}
                         <span
-                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                            active
-                              ? item.accent.activeIconBg
-                              : item.accent.bg
-                          }`}
+                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${active
+                            ? item.accent.activeIconBg
+                            : item.accent.bg
+                            }`}
                         >
                           <IconComponent className="w-4 h-4" />
                         </span>
 
                         {/* Label */}
                         <span
-                          className={`flex-1 text-xs truncate ${
-                            active ? "font-semibold text-white" : "font-medium text-slate-300 group-hover:text-white"
-                          }`}
+                          className={`flex-1 text-xs truncate ${active ? "font-semibold text-white" : "font-medium text-slate-300 group-hover:text-white"
+                            }`}
                         >
                           {item.label}
                         </span>
@@ -992,76 +1146,115 @@ export default function Sidebar({
                     {/* ============================================= */}
                     {hasChildren && isMenuOpen && (
                       <div className="ml-5 pl-2.5 border-l border-slate-800/80 my-1 space-y-0.5">
-                        {item.children?.map((child) => {
+                        {item.children?.map((child, childIdx) => {
+                          // ── Divider / Section separator ────────────────────
+                          if (child.isDivider) {
+                            return (
+                              <div
+                                key={`divider-${childIdx}`}
+                                className="flex items-center gap-1.5 pt-2 pb-0.5 px-1"
+                              >
+                                <span className="text-[8.5px] font-extrabold tracking-[0.16em] uppercase text-slate-500">
+                                  {child.dividerLabel}
+                                </span>
+                                <div className="flex-1 h-px bg-slate-800/80" />
+                              </div>
+                            );
+                          }
+
                           const childIsActive = isActive(child.href);
                           const hasGrandChildren = child.children && child.children.length > 0;
                           const isChildMenuOpen = openMenus[child.label];
 
+                          // Resolve live count
+                          const liveCount =
+                            child.liveKey === "criticalPatients"
+                              ? patientHubMetrics.criticalCount
+                              : child.liveKey === "opdQueue"
+                                ? patientHubMetrics.todayCount
+                                : 0;
+
                           return (
-                            <div key={child.href}>
+                            <div key={`${child.href}-${childIdx}`}>
                               {hasGrandChildren ? (
                                 <button
                                   type="button"
                                   onClick={() => toggleMenu(child.label)}
-                                  className={`w-full min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md cursor-pointer text-left text-xs transition-all duration-150 ${
-                                    childIsActive
-                                      ? "text-sky-300 bg-sky-500/15 font-semibold"
-                                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-                                  }`}
+                                  className={`w-full min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md cursor-pointer text-left text-xs transition-all duration-150 ${childIsActive
+                                    ? "text-indigo-300 bg-indigo-500/15 font-semibold"
+                                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                                    }`}
                                 >
                                   <span className="truncate">{child.label}</span>
                                   <ChevronDown
-                                    className={`w-3 h-3 text-slate-500 transition-transform duration-200 ${
-                                      isChildMenuOpen ? "rotate-180" : ""
-                                    }`}
+                                    className={`w-3 h-3 text-slate-500 transition-transform duration-200 ${isChildMenuOpen ? "rotate-180" : ""
+                                      }`}
                                   />
                                 </button>
                               ) : (
                                 <Link
                                   href={child.href}
                                   onClick={onClose}
-                                  className={`group/sub min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md no-underline text-xs transition-all duration-150 ${
-                                    childIsActive
-                                      ? "text-sky-300 bg-gradient-to-r from-sky-500/15 to-transparent font-semibold border-l-2 border-sky-400 pl-2"
-                                      : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50"
-                                  }`}
+                                  className={`group/sub min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md no-underline text-xs transition-all duration-150 ${childIsActive
+                                    ? "text-indigo-300 bg-gradient-to-r from-indigo-500/15 to-transparent font-semibold border-l-2 border-indigo-400 pl-2"
+                                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50"
+                                    }`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <span
-                                      className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                        childIsActive
-                                          ? "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)] scale-110"
-                                          : "bg-slate-600 group-hover/sub:bg-slate-400"
-                                      }`}
+                                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all ${childIsActive
+                                        ? "bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.8)] scale-110"
+                                        : "bg-slate-600 group-hover/sub:bg-slate-400"
+                                        }`}
                                     />
                                     <span className="truncate">{child.label}</span>
                                   </div>
 
-                                  {/* Dynamic badge from menu data */}
-                                  {child.badge && (
-                                    <span className={`ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${
-                                      child.badgeVariant === "red"
-                                        ? "bg-rose-500/25 text-rose-300 border-rose-500/40 animate-pulse"
-                                        : child.badgeVariant === "emerald"
-                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 animate-pulse"
-                                        : child.badgeVariant === "amber"
-                                        ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                                        : "bg-sky-500/20 text-sky-300 border-sky-500/30"
-                                    }`}>
-                                      {child.badge}
-                                    </span>
-                                  )}
-                                  {/* Badges on Sub-items */}
-                                  {child.label.includes("Critical") && approvalMetrics.critical > 0 && (
-                                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/25 text-rose-300 animate-pulse border border-rose-500/40">
-                                      {approvalMetrics.critical}
-                                    </span>
-                                  )}
-                                  {child.label.includes("Queue") && approvalMetrics.pending > 0 && (
-                                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                                      {approvalMetrics.pending}
-                                    </span>
-                                  )}
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {/* Live count badge (patient hub metrics) */}
+                                    {child.liveKey && liveCount > 0 && (
+                                      <span
+                                        className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${child.liveKey === "criticalPatients"
+                                          ? "bg-rose-500/25 text-rose-300 border-rose-500/40 animate-pulse"
+                                          : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                          }`}
+                                      >
+                                        {liveCount}
+                                      </span>
+                                    )}
+
+                                    {/* Static badge from menu data */}
+                                    {child.badge && !child.liveKey && (
+                                      <span
+                                        className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${child.badgeVariant === "red"
+                                          ? "bg-rose-500/25 text-rose-300 border-rose-500/40 animate-pulse"
+                                          : child.badgeVariant === "emerald"
+                                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                            : child.badgeVariant === "amber"
+                                              ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                              : child.badgeVariant === "purple"
+                                                ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                                                : child.badgeVariant === "violet"
+                                                  ? "bg-violet-500/20 text-violet-300 border-violet-500/30"
+                                                  : "bg-sky-500/20 text-sky-300 border-sky-500/30"
+                                          }`}
+                                      >
+                                        {child.badge}
+                                      </span>
+                                    )}
+
+                                    {/* Approval module badges */}
+                                    {child.label.includes("Critical") && approvalMetrics.critical > 0 && !child.liveKey && (
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/25 text-rose-300 animate-pulse border border-rose-500/40">
+                                        {approvalMetrics.critical}
+                                      </span>
+                                    )}
+                                    {child.label.includes("Queue") && approvalMetrics.pending > 0 && !child.liveKey && (
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                        {approvalMetrics.pending}
+                                      </span>
+                                    )}
+                                  </div>
                                 </Link>
                               )}
 
@@ -1076,11 +1269,10 @@ export default function Sidebar({
                                         key={grandChild.href}
                                         href={grandChild.href}
                                         onClick={onClose}
-                                        className={`min-h-[28px] flex items-center px-2 py-1 rounded text-xs no-underline transition-all duration-150 ${
-                                          grandChildIsActive
-                                            ? "text-sky-300 bg-sky-500/15 font-semibold"
-                                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-                                        }`}
+                                        className={`min-h-[28px] flex items-center px-2 py-1 rounded text-xs no-underline transition-all duration-150 ${grandChildIsActive
+                                          ? "text-sky-300 bg-sky-500/15 font-semibold"
+                                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                                          }`}
                                       >
                                         <span className="truncate">{grandChild.label}</span>
                                       </Link>
@@ -1183,7 +1375,7 @@ export default function Sidebar({
           }
         }
       `}</style>
-      
+
       <LogoutModal
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}

@@ -31,6 +31,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -48,6 +49,7 @@ router.post(
 router.get(
   "/patient/:patientId",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -65,6 +67,7 @@ router.get(
 router.get(
   "/wallet/:patientId",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -82,6 +85,7 @@ router.get(
 router.post(
   "/apply",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -99,6 +103,7 @@ router.post(
 router.post(
   "/refund",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),

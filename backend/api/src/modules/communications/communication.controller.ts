@@ -13,6 +13,15 @@ import {
   sendPatientWhatsApp,
   getCommunicationHistory,
   getCommunicationById,
+  getCommunicationLogs,
+  getCommunicationStats,
+  getSmsTemplates,
+  getEmailTemplates,
+  sendBulkSMS,
+  retryCommunication,
+  markCommunicationRead,
+  getPatientConsent,
+  updatePatientConsent,
 } from "./communication.service";
   
 import fs from "fs";
@@ -408,5 +417,123 @@ export const updateWhatsAppSettings = async (
     return successResponse(res, { updated: true }, "WhatsApp settings updated successfully");
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err?.message || "Failed to update WhatsApp settings" });
+  }
+};
+
+/**
+ * ISS-016: Get all communication logs
+ */
+export const getLogs = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { page, limit, type, status, patientId } = req.query as any;
+    const result = await getCommunicationLogs({ page, limit, type, status, patientId });
+    return successResponse(res, result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to fetch logs" });
+  }
+};
+
+/**
+ * ISS-016: Get communication stats
+ */
+export const getStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const stats = await getCommunicationStats();
+    return successResponse(res, stats);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to fetch stats" });
+  }
+};
+
+/**
+ * ISS-016: Get SMS templates
+ */
+export const getSmsTemplatesHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const templates = await getSmsTemplates();
+    return successResponse(res, templates);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to fetch SMS templates" });
+  }
+};
+
+/**
+ * ISS-016: Get Email templates
+ */
+export const getEmailTemplatesHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const templates = await getEmailTemplates();
+    return successResponse(res, templates);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to fetch Email templates" });
+  }
+};
+
+/**
+ * ISS-016: Bulk SMS dispatch
+ */
+export const sendBulk = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { recipients } = req.body || {};
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      return res.status(400).json({ success: false, message: "Recipients array is required" });
+    }
+    const result = await sendBulkSMS(recipients, req.user?.id);
+    return successResponse(res, result, "Bulk dispatch initiated");
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to send bulk SMS" });
+  }
+};
+
+/**
+ * ISS-016: Retry failed communication
+ */
+export const retryOne = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await retryCommunication(id);
+    return successResponse(res, result, "Communication retried successfully");
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to retry communication" });
+  }
+};
+
+/**
+ * ISS-016: Mark communication as read
+ */
+export const markRead = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await markCommunicationRead(id);
+    return successResponse(res, result, "Communication marked as read");
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to update communication status" });
+  }
+};
+
+/**
+ * ISS-016: Get DPDP communication consent for patient
+ */
+export const getConsent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const patientId = Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId;
+    const consent = await getPatientConsent(patientId);
+    return successResponse(res, consent);
+  } catch (err: any) {
+    return res.status(404).json({ success: false, message: err?.message || "Patient consent record not found" });
+  }
+};
+
+/**
+ * ISS-016: Update DPDP communication consent for patient
+ */
+export const updateConsent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const patientId = Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId;
+    const { sms, email, whatsapp, call } = req.body || {};
+    const result = await updatePatientConsent(patientId, { sms, email, whatsapp, call });
+    return successResponse(res, result, "Patient communication consent updated");
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to update consent" });
   }
 };

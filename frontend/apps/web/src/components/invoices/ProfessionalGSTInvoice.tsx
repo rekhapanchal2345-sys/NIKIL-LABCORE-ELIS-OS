@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import type { Invoice } from "./InvoiceTable";
@@ -184,7 +184,7 @@ export default function ProfessionalGSTInvoice({
   const [generatingQR, setGeneratingQR] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
-  const laboratoryInfo = labInfo || {
+  const laboratoryInfo = useMemo(() => labInfo || {
     name: "LabCore Diagnostics Pvt. Ltd.",
     address: "123 Healthcare Avenue, Medical District, City - 560001",
     phone: "+91-9876543210",
@@ -200,7 +200,7 @@ export default function ProfessionalGSTInvoice({
       branch: "Main Branch, City"
     },
     upiId: "labcore@upi"
-  };
+  }, [labInfo]);
 
   const collectionDetails = collectionInfo || {
     collectedBy: "Lab Technician",
@@ -223,15 +223,7 @@ export default function ProfessionalGSTInvoice({
   const totalIGST = items.reduce((sum, item) => sum + (item.igstAmount || 0), 0);
   const grandTotal = subtotal + totalGST - Number(discountAmount);
 
-  useEffect(() => {
-    setGeneratingQR(true);
-    generateQRCode().finally(() => {
-      setGeneratingQR(false);
-      setLoading(false);
-    });
-  }, [invoice]);
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     if (qrCodeRef.current && invoice.invoiceNumber) {
       try {
         const qrData = JSON.stringify({
@@ -262,7 +254,15 @@ export default function ProfessionalGSTInvoice({
         qrCodeRef.current.innerHTML = '<div class="text-xs text-gray-400">QR Unavailable</div>';
       }
     }
-  };
+  }, [invoice.invoiceNumber, invoice.createdAt, laboratoryInfo.gstin, grandTotal]);
+
+  useEffect(() => {
+    setGeneratingQR(true);
+    generateQRCode().finally(() => {
+      setGeneratingQR(false);
+      setLoading(false);
+    });
+  }, [generateQRCode]);
 
   const handlePrint = () => {
     if (invoiceRef.current) {

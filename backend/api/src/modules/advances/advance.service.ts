@@ -2,6 +2,8 @@ import prisma from "../../../config/database";
 import type { PaymentStatus } from "@prisma/client";
 import { getNextSequenceNumber } from "../../services/sequence.service";
 
+const roundPaise = (num: number): number => Math.round((num + Number.EPSILON) * 100) / 100;
+
 // =======================================================
 // CREATE PATIENT ADVANCE
 // =======================================================
@@ -77,14 +79,16 @@ export const createAdvance = async (
         });
       }
 
+const roundPaise = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
+
       // Create wallet transaction
       await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
           amount,
           transactionType: "CREDIT",
-          balanceBefore: Number(wallet.balance) - amount,
-          balanceAfter: Number(wallet.balance),
+          balanceBefore: roundPaise(Number(wallet.balance) - amount),
+          balanceAfter: roundPaise(Number(wallet.balance)),
           referenceId: advance.id,
           referenceType: "ADVANCE",
           description: data.reason || "Advance payment",
@@ -245,8 +249,8 @@ export const applyAdvanceToInvoice = async (
           walletId: wallet!.id,
           amount: -amount,
           transactionType: "DEBIT",
-          balanceBefore: Number(wallet!.balance) + amount,
-          balanceAfter: Number(wallet!.balance),
+          balanceBefore: roundPaise(Number(wallet!.balance) + amount),
+          balanceAfter: roundPaise(Number(wallet!.balance)),
           referenceId: payment.id,
           referenceType: "PAYMENT",
           description: `Payment for order ${order.orderNumber}`,
@@ -258,7 +262,7 @@ export const applyAdvanceToInvoice = async (
         data: {
           patientId: data.patientId,
           amount: -amount,
-          balance: Number(wallet!.balance),
+          balance: roundPaise(Number(wallet!.balance)),
           transactionType: "DEBIT",
           referenceId: payment.id,
           referenceType: "PAYMENT",

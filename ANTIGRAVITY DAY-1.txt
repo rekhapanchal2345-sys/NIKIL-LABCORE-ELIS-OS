@@ -1,0 +1,465 @@
+Enterprise ELIS OS — Independent Audit Report
+Project Name: NIKIL-LABCORE-ELIS-OS
+Audit Mode: Read-Only Verification (Zero Unauthorized Mutations, Zero Destructive Commands)
+Reference Standards: NABL (ISO 15189:2022) | ABDM / ABHA v0.5 | DPDP Act 2023 | Indian GST Rule 46
+Auditor Role: Principal Enterprise Software Architect, Application Security Reviewer, Database Architect, Healthcare Interoperability Specialist, and QA Architect
+
+1. Actual Repository Structure Summary
+The repository contains a multi-stack codebase with modern and legacy components:
+
+NIKIL-LABCORE-ELIS-OS/
+├── backend/                             # Primary Modern Backend (Express 5.2.1 + TypeScript 5.9.3 + Prisma 7.9.1)
+│   ├── api/
+│   │   ├── config/                      # env.ts, database.ts
+│   │   ├── middleware/                  # auth.middleware.ts, rbac.middleware.ts, error.middleware.ts, security.middleware.ts
+│   │   └── src/
+│   │       ├── app.ts                   # Primary Express application mounting 26 domain routers
+│   │       ├── server.ts                # HTTP Server entry point (app.listen on port 5000)
+│   │       ├── controllers/             # Legacy/shadowed auth, order, result controllers
+│   │       ├── routes/                  # Legacy/shadowed auth, order, result routes
+│   │       ├── lib/                     # websocket.ts, permissions.ts, prisma.ts
+│   │       ├── modules/                 # 28 Domain Modules (auth, patients, orders, samples, results, approvals, etc.)
+│   │       ├── services/                # sequence.service.ts (GST sequence generator)
+│   │       └── utils/                   # money.ts, field-crypto.ts, password.ts, backup.ts, gmail.ts, cache.ts
+│   ├── prisma/
+│   │   ├── schema.prisma                # 2,876 lines, 81 models, 22 enums
+│   │   └── migrations/                  # 17 versioned Prisma migration directories
+│   ├── scripts/                         # 49 seed, admin-creation, SQL, and wipe scripts
+│   └── reset-password.js                # Root backend password reset script (un-peppered)
+├── frontend/
+│   ├── package.json                     # Wrapper package (declares React 19 / Next 16)
+│   ├── src/                             # Legacy component directory (PatientRegistration)
+│   └── apps/web/                        # Active Clinical Web Workstation (Next.js 15.5.25 + React 18.3.1 + TailwindCSS)
+│       ├── next.config.js               # Proxy rewrites /api/* -> http://127.0.0.1:5000
+│       ├── scripts/build.mjs            # Custom multi-attempt build wrapper for Windows file-lock handling
+│       └── src/app/                     # 24 App Router page routes (/patients, /orders, /samples, /results, /approvals, etc.)
+├── login-portal/                        # Standalone Fast-Boot Auth Gateway (Vite 8.3.0 + React 19.2.8 + Zustand 5.0.15)
+│   ├── vite.config.ts                   # Port 5173
+│   └── src/pages/                       # LoginPage, MfaSetupPage, MfaVerifyPage, ForgotPasswordPage, DashboardPage
+├── src/                                 # Legacy Backend Tree (Express 4.19.2 + Mongoose 8.3.4 + CommonJS)
+│   ├── controllers/                     # doctorController.js
+│   ├── models/                          # Doctor.js, Patient.js, etc.
+│   ├── routes/                          # aiStudioRoutes.js, doctorRoutes.js
+│   └── services/ai/                     # mathEngine.js, classicalMlEngine.js, deepLearningEngine.js
+├── public/                              # Legacy Static Web Portal (index.html, aiStudio.js, app.js, styles.css)
+├── gemini_spark_mcp_server.py           # FastAPI MCP Bridge to Antigravity IDE
+├── gemini_web2api.py                    # FastAPI OpenAI-compatible proxy for Google Gemini models
+├── index.js                             # Root delegator script forwarding to backend/api/src/server.ts
+└── test/                                # Legacy test suite (aiStudio.test.js)
+2. Actual Technology and Dependency Summary
+Verified from package manifests and lockfiles:
+
+Component	Manifest Path	Declared Framework	Language / Runtime	Key Dependencies & Observed Versions
+Root Workspace	package.json	Express 4.19.2 (Legacy)	Node.js CommonJS	@modelcontextprotocol/sdk (1.30.0), mongoose (8.3.4), cors (2.8.5), jsbarcode (3.12.3)
+Primary Backend	backend/package.json	Express 5.2.1	TypeScript 5.9.3	@prisma/client & @prisma/adapter-pg (7.9.1), pg (8.23.0), bcryptjs (3.0.3), jsonwebtoken (9.0.3), zod (4.4.3), helmet (8.3.0), puppeteer (23.11.1), socket.io (4.7.5), nodemailer (6.9.15)
+Clinical Frontend	frontend/apps/web/package.json	Next.js 15.5.25 (App Router)	React 18.3.1 / TypeScript 5.9.3	tailwindcss (3.4.19), lucide-react (1.34.0), recharts (2.15.4), jspdf (2.5.2), html2canvas (1.4.1), pdf-lib (1.17.1), qrcode (1.5.4) (Note: devDependencies incorrectly declare @types/react 19.1.0 while react is 18.3.1)
+Frontend Wrapper	frontend/package.json	Next.js 16.3.3	React 19.1.0	axios (1.20.0), react-hook-form (7.88.0), recharts (3.10.1) (Version discrepancy with apps/web)
+Auth Portal	login-portal/package.json	Vite 8.3.0	React 19.2.8 / TypeScript ~6.0.2	zustand (5.0.15), react-router-dom (7.18.4), qrcode.react (4.2.0), oxlint (1.81.0)
+Python Bridges	requirements.txt	FastAPI / Uvicorn	Python 3.10+	httpx, python-dotenv
+3. Frontend/Backend Architecture Map
+3.1 Entry Point Resolution
+Root Entry Point (index.js): Was refactored to check for backend/dist/api/src/server.js or register ts-node to run backend/api/src/server.ts. It no longer launches the Mongoose server.
+Backend Entry Point (backend/api/src/server.ts): Imports backend/api/src/app.ts and listens on PORT (default 5000). Defect: Does not initialize Socket.io.
+Frontend Entry Point (frontend/apps/web): Starts Next.js on port 3001. Proxies all /api/* requests via Next.js rewrites to http://127.0.0.1:5000/api/*.
+Auth Portal Entry Point (login-portal): Runs on port 5173. Targets http://localhost:5000/api directly via its internal src/lib/api.ts.
+3.2 Duplicate Implementations & Shadowed Code
+Legacy Root Stack: src/ (Mongoose models, controllers, and services/ai/) and public/ (index.html, aiStudio.js) are completely bypassed by index.js.
+Duplicate Controllers in Backend: backend/api/src/controllers/ contains auth.controller.ts, order.controller.ts, and result.controller.ts. However, backend/api/src/app.ts imports controllers from backend/api/src/modules/{auth,orders,results}/. The files in backend/api/src/controllers/ are dead, shadowed duplicates.
+Dual Middleware Folders: backend/api/middleware/ contains the actively imported security and error middleware, while backend/api/src/ has duplicate utility wrappers.
+Dual Login Interfaces: Both login-portal/ (port 5173) and frontend/apps/web/src/app/login/ (port 3001) implement full login and MFA screens.
+Invoice Template Duplication: frontend/apps/web/src/components/invoices/ contains 31 files. invoices/page.tsx uses PixelPerfectInvoice.tsx, while invoices/[id]/page.tsx uses ProfessionalInvoice.tsx and LuxuryGSTInvoice.tsx. LabCoreInvoice.tsx, PremiumGSTInvoice.tsx, and RefinedGSTInvoice.tsx are unreferenced duplicates.
+4. Database and Migration Findings
+4.1 Prisma Schema & Model Counts
+Total Models in schema.prisma: 81 models and 22 enums across 2,876 lines.
+Prisma Validation Status: npx prisma validate executes with EXIT CODE 0 (Valid).
+4.2 Migration Alignment & Schema Drift
+17 Versioned Migrations: Spanning from 20260825092845_init to 20261014050000_enterprise_empi_module.
+Out-of-Band Schema Drift:
+Table accounting_sequences was created via dynamic raw SQL in backend/api/src/services/sequence.service.ts (CREATE TABLE IF NOT EXISTS accounting_sequences).
+Migration 20261010040000_add_missing_model_columns/migration.sql contains comment -- NOTE: accounting_sequences (3 live rows) is intentionally NOT touched.
+Migration 20261013120000_add_accounting_sequences_prefix/migration.sql later added column prefix VARCHAR(50).
+While model accounting_sequences was recently declared in schema.prisma (lines 2525–2536), running prisma migrate dev on a blank database will fail or conflict because the base table creation is missing from the initial migration chain.
+4.3 Data Types and Referential Integrity
+Monetary Precision: Invoices, orders, and commission tables properly use @db.Decimal(10, 2) or @db.Decimal(12, 2) (no floating-point rounding errors).
+Cascade Behavior Risk: In schema.prisma line 999, Sample defines order Order @relation(fields: [orderId], references: [id], onDelete: Cascade). If an order is deleted, all specimens and specimen tracking records are cascaded, which breaks clinical specimen retention policies.
+5. Critical Workflow Findings
+Workflow ID	Business / Clinical Workflow	Backend Route & Service	Verification Status	Observed Code Finding
+WF-01	Authentication, TOTP MFA & Password Policy	POST /api/auth/* (auth.service.ts)	PARTIAL DEFECT	HMAC-SHA256 pepper + bcrypt is implemented in password.ts. 5-attempt lockout is implemented. However, backend/reset-password.js resets passwords using un-peppered bcrypt (bcrypt.hash(password, 10)), causing instant administrator lockout upon login.
+WF-02	Patient Registration, DPDP Consent & EMPI	POST /api/patients, POST /api/patients/empi/*	CONFIRMED DEFECT	generateUHID (lines 38–71 of patient.service.ts) inspects only the last 100 created patients and adds random jitter (highest + 1 + Math.floor(Math.random() * 3)). It does not use an atomic DB sequence, creating non-sequential gaps and race conditions under concurrent check-ins.
+WF-03	Order Creation, Package Expansion & Cancel	POST /api/orders, POST /api/orders/:id/cancel	OPERATIONAL	Atomically expands test packages into individual order items. cancelOrder runs in a transaction to void invoices and reverse commissions.
+WF-04	POS GST Billing & Cash Counter	POST /api/invoices, POST /api/payments, POST /api/cash-counter/*	POTENTIAL RISK	Idempotency (x-idempotency-key) relies on cache.ts (an in-memory Map). It loses state on server reboot, does not sync across PM2 cluster instances, and sets the key after the payment finishes, leaving a race window for double submissions.
+WF-05	Phlebotomy Accession & Barcodes	POST /api/samples, GET /api/barcodes/label/:id	CONFIRMED DEFECT	validateBarcode in barcode.service.ts (line 170) checks if (barcode.startsWith('LC-')). Real patient barcodes are generated with prefix UHID-, so validateBarcode returns type: 'INVALID' for all standard patient barcodes.
+WF-06	Analyzer ASTM/HL7 Ingestion	POST /api/analyzers/parse-astm	INCOMPLETE	Ingestion is HTTP REST only (POST /api/analyzers/parse-astm). No TCP socket, MLLP server, or RS-232 serial listeners exist to connect to physical laboratory analyzers.
+WF-07	Result Entry, Panic Alerts & Critical ACK	POST /api/results, POST /api/approvals/:id/critical-ack	CONFIRMED DEFECT	Real-time push via Socket.io is completely dead because WebSocketService.initialize() is never invoked in server.ts. Panic alerts cannot be broadcast over WebSockets.
+WF-08	Pathologist Review & Digital Sign-Off	GET /api/approvals/queue, POST /api/approvals/:id/approve	CONFIRMED DEFECT	approval.routes.ts restricts access to authorize(UserRole.ADMIN, UserRole.PATHOLOGIST). Because rbac.middleware.ts enforces exact role matching without admin override, SUPER_ADMIN accounts receive 403 Forbidden on all approval queues.
+WF-09	NABL PDF Report Generation & QR Verification	GET /api/reports/:id/pdf, GET /verify-report/:id	CONFIRMED DEFECT	report.pdf.service.ts (lines 13–64) generates fake "pseudo-grid" SVGs from SHA-256 hashes instead of real matrix-encoded QR codes. The QR codes printed on PDF reports cannot be scanned by mobile devices.
+WF-10	Doctor Commission & Payouts	/api/doctors/* (doctor.commission.ts)	OPERATIONAL	Commission calculations correctly compute percentage or flat fees and record entries in doctor_commission_entries.
+6. Security and Privacy Findings
+Unprotected Database Backup and Restoration Endpoints:
+In backend/api/src/modules/backup/backup.routes.ts, routes (POST /api/backups, POST /api/backups/restore/:fileName, DELETE /api/backups/:fileName) apply authenticate but fail to apply authorize middleware.
+In backup.controller.ts, the code checks if (req.user?.role !== 'ADMIN'). This not only omits SUPER_ADMIN, but restoreBackup and deleteBackup take req.params.fileName without validation against path.join(), creating an arbitrary file deletion and path traversal vulnerability.
+Plaintext Storage of Government Identifiers (DPDP Act 2023 Non-Compliance):
+In backend/api/src/modules/patients/patient.mapper.ts (line 393), aadhaarNumber and panNumber are stored in plaintext in PostgreSQL columns.
+The field encryption utility (field-crypto.ts AES-256-GCM) is only used for totpSecretEnc and is never applied to Aadhaar, PAN, or health ID tokens.
+Transmission of Unmasked Patient PII to External AI APIs:
+In backend/api/src/modules/ai/gemini.service.ts (lines 86–96), the patient's full unmasked name (${patient.firstName} ${patient.lastName}), order number, age, gender, and referring clinician are embedded in the prompt sent directly to Google Gemini's public endpoint.
+Silent Database Error Masking with Hardcoded Mock Data:
+In backend/api/src/modules/samples/sample.service.ts (lines 202–206), if prisma.sample.findMany throws an error, the catch block catches it and returns fake hardcoded mock samples ("John Doe", "SMP-90210").
+Wildcard CORS with Credentials in Python Bridges:
+gemini_spark_mcp_server.py and gemini_web2api.py declare allow_origins=["*"] with allow_credentials=True.
+7. Analyzer and Integration Findings
+ASTM / HL7 Socket Listeners:
+No TCP socket (net.createServer), MLLP listener, or RS-232 serial connection exists. Analyzer communication is limited to HTTP payloads posted to /api/analyzers/parse-astm.
+ABDM Webhook Signature Bypass:
+abdmConfig.mockMode defaults to true (abdm.config.ts line 22). In abdm.middleware.ts (line 40), if (abdmConfig.mockMode) return next(); bypasses RSA SPKI signature verification on all ABDM webhook routes (/v0.5/*).
+Dead Frontend Communications Routes:
+Frontend src/lib/api.ts defines 8 endpoints under /api/communications/ (logs, stats, sms/templates, email/templates, sms/bulk, :id/retry, :id/read, consent/:patientId) that do not exist in communication.routes.ts and return 404 Not Found.
+8. Test Results with Actual Commands
+Safe, non-destructive static verification checks were executed on the repository:
+
+#	Check Type	Target Workspace	Exact Command Executed	Result	Actual Output Summary
+T-01	Prisma Schema Validation	backend/	npx prisma validate	PASS	The schema at prisma\schema.prisma is valid 🚀 (Exit Code 0).
+T-02	TypeScript Compilation	backend/	npm run typecheck (tsc --noEmit)	PASS	tsc --noEmit completed cleanly with zero type errors (Exit Code 0).
+T-03	Frontend TypeScript Check	frontend/apps/web/	npx tsc --noEmit	PASS	Clean compilation with zero type errors (Exit Code 0).
+T-04	Login Portal Linting	login-portal/	npm run lint (oxlint)	PASS	11 warnings (regex escapes, hook dependencies), 0 errors across 13 files (Exit Code 0).
+T-05	Login Portal TypeScript Check	login-portal/	npx tsc -b	PASS	Clean build with zero type errors (Exit Code 0).
+T-06	Frontend Next Linting	frontend/apps/web/	npm run lint (next lint)	BLOCKED	Blocked on interactive terminal prompt (How would you like to configure ESLint?).
+T-07	Automated Test Suite	backend/	npm test	BLOCKED	Missing script error: npm ERR! Missing script: "test" in backend/package.json.
+9. Confirmed Bugs
+[BUG-001] Password Reset Script Desynchronization Locks Out Admins: backend/reset-password.js computes bcrypt.hash(password, 10) without the HMAC-SHA256 pepper required by auth.service.ts, permanently locking out users whose passwords are reset with this script.
+[BUG-002] Barcode Validation Rejects Standard Patient Barcodes: barcode.service.ts line 170 checks for prefix LC-, while all patient barcodes are generated with prefix UHID-.
+[BUG-003] SUPER_ADMIN Locked Out of Pathologist Approvals and Refunds: approval.routes.ts and refund.routes.ts omit UserRole.SUPER_ADMIN from their authorize guards, returning 403 to super administrators.
+[BUG-004] Fake Pseudo-QR Codes Rendered on NABL Reports: report.pdf.service.ts renders custom SVG rectangles from SHA-256 hashes instead of real 2D matrix QR codes.
+[BUG-005] Sample Service Silently Returns Mock Data on DB Errors: sample.service.ts line 205 catches query failures and returns hardcoded demo samples.
+10. Incomplete Features
+[INC-001] Socket.io WebSocket Server Never Initialized: server.ts does not invoke WebSocketService.initialize(server). Real-time worklists, panic alerts, and notifications do not function.
+[INC-002] Unmounted Receipts Route: backend/api/src/modules/receipts/ contains service, controller, and validator files for ESC/POS printing, but no receipt.routes.ts exists and nothing is mounted in app.ts.
+[INC-003] Missing Communication Sub-Routes: 8 sub-routes called by frontend src/lib/api.ts under /api/communications/ are missing from the backend router.
+[INC-004] ASTM/HL7 Hardware Interfaces: No TCP or serial listeners exist; only an isolated HTTP parsing function is implemented.
+[INC-005] Non-Atomic UHID Generator: generateUHID calculates IDs by taking the last 100 patient records and adding random jitter instead of using an atomic database sequence.
+11. Potential Risks Requiring Further Verification
+In-Memory Payment Idempotency Race Condition: x-idempotency-key is cached in a local Map after the transaction finishes. High-concurrency double-clicks can execute parallel database payments.
+Cascade Deletion of Specimens: Deleting an Order cascades and permanently deletes all Sample records and SampleTrackingHistory entries.
+Database Connection Limits: backend/api/config/database.ts initializes PrismaPg without explicit connection pool bounds or connection timeouts.
+12. Deployment Blockers
+Missing test Script in Backend: package.json in root invokes npm --prefix backend test, which fails because backend/package.json has no test script defined.
+Destructive Database Wipe Scripts in Repo: backend/scripts/wipe-to-single-admin.ts truncates 56 database tables without environment checks or confirmation prompts.
+Interactive ESLint Prompt in CI: npm run lint in frontend/apps/web halts on an interactive setup prompt in automated build environments.
+13. Prioritized Master Issue Register
+[LAB-AUD-001] Plaintext Storage of Government Aadhaar and PAN Identifiers
+1. Unique Issue ID: LAB-AUD-001
+2. Title: Sensitive Government Identifiers (Aadhaar & PAN) Stored in Plaintext Violating DPDP Act 2023
+3. Severity & Priority: P0 — Category: CONFIRMED_DEFECT
+4. Affected Component: Prisma Schema & Backend Module: patients
+5. Exact File Path & Symbol: backend/api/src/modules/patients/patient.mapper.ts -> toPatientCreateInput (Lines 391–394)
+6. Evidence:
+typescript
+if (input.aadhaarNumber !== undefined) {
+  const digits = text(input.aadhaarNumber);
+  data.aadhaarNumber = digits ? clamp("aadhaarNumber", digits.replace(/\D/g, "")) : null;
+}
+7. Reproduction Steps:
+Send POST /api/patients with payload containing a 12-digit Aadhaar number.
+Inspect the patients table directly in PostgreSQL (SELECT id, "aadhaarNumber" FROM patients).
+The raw 12-digit number is stored unencrypted in the database column.
+8. Expected vs. Actual Behavior:
+Expected: Aadhaar numbers must be encrypted at rest using AES-256-GCM via encryptField or stored as masked tokens per UIDAI regulations.
+Actual: The raw 12-digit number is stored in plaintext.
+9. Impact: Regulatory non-compliance with the Aadhaar Act 2016 and Indian Digital Personal Data Protection (DPDP) Act 2023, carrying severe legal liability.
+10. Root Cause: patient.mapper.ts and patient.service.ts do not invoke encryptField() before writing aadhaarNumber and panNumber to Prisma.
+11. Recommended Fix: Update patient.mapper.ts and patient.service.ts to encrypt aadhaarNumber and panNumber with encryptField() before saving, and mask digits in read responses (patient.service.ts already has masking for reads).
+12. Required Regression Test: Integration test verifying that database inspection shows ciphertext while API responses return masked values (********XXXX).
+13. Dependencies & Migration Risks: Requires a database migration script to encrypt existing plaintext Aadhaar numbers in the database.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-002] Path Traversal and Missing RBAC on Database Backup & Restore Endpoints
+1. Unique Issue ID: LAB-AUD-002
+2. Title: Database Backup, Restore, and Delete Endpoints Lack RBAC Guards and Exhibit Path Traversal
+3. Severity & Priority: P0 — Category: CONFIRMED_DEFECT
+4. Affected Component: Backend Module: backup
+5. Exact File Path & Symbol: backend/api/src/modules/backup/backup.routes.ts (Lines 21–49) and backend/api/src/modules/backup/backup.service.ts -> deleteBackup() (Lines 61–71)
+6. Evidence:
+typescript
+// backup.routes.ts
+router.post('/restore/:fileName', restoreBackupController);
+router.delete('/:fileName', deleteBackupController);
+// backup.service.ts
+export const deleteBackup = (fileName: string): boolean => {
+  const fs = require('fs');
+  const backupPath = path.join(BACKUP_DIR, fileName);
+  if (fs.existsSync(backupPath)) {
+    fs.unlinkSync(backupPath);
+    return true;
+  }
+  return false;
+};
+7. Reproduction Steps:
+Authenticate as any user role (e.g., FRONT_DESK or LAB_TECH).
+Send DELETE /api/backups/..%2F..%2Fpackage.json.
+The server resolves the path outside BACKUP_DIR and attempts file unlinking.
+8. Expected vs. Actual Behavior:
+Expected: Backup routes must enforce authorize(UserRole.SUPER_ADMIN) at the router level and sanitize fileName to prevent directory traversal.
+Actual: No RBAC middleware is present on routes; fileName is joined directly without sanitization.
+9. Impact: Arbitrary file deletion and unauthorized database restore/wipe by low-privilege authenticated accounts.
+10. Root Cause: Missing authorize(UserRole.SUPER_ADMIN) middleware in backup.routes.ts and missing filename sanitization (path.basename()).
+11. Recommended Fix: Add authorize(UserRole.SUPER_ADMIN) to backup.routes.ts and enforce path.basename(fileName) in backup.service.ts.
+12. Required Regression Test: Automated API test asserting 403 Forbidden for non-superadmin roles and 400 Bad Request for paths containing .. or /.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-003] Password Reset Script Bypasses HMAC Pepper Causing Admin Lockout
+1. Unique Issue ID: LAB-AUD-003
+2. Title: backend/reset-password.js Hashes Passwords Without HMAC Pepper Locking Out Administrators
+3. Severity & Priority: P0 — Category: CONFIRMED_DEFECT
+4. Affected Component: Backend Maintenance Scripts
+5. Exact File Path & Symbol: backend/reset-password.js -> resetPassword() (Line 37)
+6. Evidence:
+javascript
+// backend/reset-password.js line 37:
+const hashedPassword = await bcrypt.hash(newPassword, 10);
+Contrast with backend/api/src/utils/password.ts:
+
+typescript
+const applyPepper = (password: string): string => {
+  const pepper = env.PASSWORD_PEPPER;
+  return crypto.createHmac("sha256", pepper).update(password).digest("hex");
+};
+export const comparePassword = async (password: string, hashedPassword: string) => {
+  return bcrypt.compare(applyPepper(password), hashedPassword);
+};
+7. Reproduction Steps:
+Run node backend/reset-password.js with ADMIN_PASSWORD="TestPassword123!".
+Attempt login via POST /api/auth/login with TestPassword123!.
+auth.service.ts calls comparePassword(), which applies HMAC pepper to "TestPassword123!" and compares it to the un-peppered hash in the database.
+Login fails with 401 Unauthorized.
+8. Expected vs. Actual Behavior:
+Expected: All admin reset scripts must use the same peppered hashing function as the authentication service.
+Actual: reset-password.js writes raw bcrypt hashes that can never match peppered comparison.
+9. Impact: Complete administrator lockout following maintenance password resets.
+10. Root Cause: reset-password.js does not import hashPassword from utils/password.ts or apply the HMAC-SHA256 pepper.
+11. Recommended Fix: Update reset-password.js to apply crypto.createHmac('sha256', process.env.PASSWORD_PEPPER || '').update(newPassword).digest('hex') before hashing, or deprecate it in favor of scripts/reset-admin-password.ts.
+12. Required Regression Test: End-to-end test running password reset and authenticating with the new credential.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-004] Real-Time Socket.io Server Never Bootstrapped in HTTP Server
+1. Unique Issue ID: LAB-AUD-004
+2. Title: Socket.io Server Unmounted in server.ts Breaking Real-Time Alerts and Worklists
+3. Severity & Priority: P1 — Category: CONFIRMED_DEFECT
+4. Affected Component: Backend Core: server.ts & lib/websocket.ts
+5. Exact File Path & Symbol: backend/api/src/server.ts (Lines 5–13)
+6. Evidence:
+typescript
+// server.ts
+const server = app.listen(PORT, "0.0.0.0", () => { ... });
+// Notice: WebSocketService.initialize(server) is NEVER invoked!
+In backend/api/src/lib/websocket.ts:
+
+typescript
+static broadcastNewMessage(conversationId: string, message: any) {
+  if (!this.io) return; // Silently drops all broadcasts because this.io is undefined!
+}
+7. Reproduction Steps:
+Start backend server: npm run dev.
+Connect a client to ws://localhost:5000/socket.io/.
+Connection is refused / 404 because no Socket.io listener is bound to the HTTP server instance.
+8. Expected vs. Actual Behavior:
+Expected: server.ts must call WebSocketService.initialize(server) to attach Socket.io to the running HTTP listener.
+Actual: WebSocketService.initialize is uncalled anywhere in the project; this.io remains undefined.
+9. Impact: Real-time panic alert notifications, live worklist updates, and chat events fail silently.
+10. Root Cause: Missing initialization call in backend/api/src/server.ts.
+11. Recommended Fix: Import WebSocketService in server.ts and call WebSocketService.initialize(server) immediately after app.listen().
+12. Required Regression Test: Socket connection test asserting successful handshake and authentication.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-005] Fake Pseudo-QR Code Generated on NABL Diagnostic Reports
+1. Unique Issue ID: LAB-AUD-005
+2. Title: PDF Engine Renders Unscannable SHA-256 Pseudo-Grid Instead of Real 2D QR Code
+3. Severity & Priority: P1 — Category: CONFIRMED_DEFECT
+4. Affected Component: Backend Module: reports
+5. Exact File Path & Symbol: backend/api/src/modules/reports/report.pdf.service.ts -> generateQrSvg() (Lines 13–64)
+6. Evidence:
+typescript
+function generateQrSvg(text: string, size = 110): string {
+  // Deterministic pseudo-grid generator based on SHA-256 for high-fidelity scanning representation
+  const hash = crypto.createHash("sha256").update(text).digest();
+  ...
+  // Data modules filled from hash bytes
+  const byteIndex = (y * matrixSize + x) % hash.length;
+  const bit = (hash[byteIndex] >> (x % 8)) & 1;
+  if (bit === 1) {
+    rects += `<rect x="${x * moduleSize}" y="${y * moduleSize}" ... fill="#0f172a" />`;
+  }
+}
+7. Reproduction Steps:
+Generate report PDF: GET /api/reports/:id/pdf.
+Open the resulting PDF and scan the verification QR code in the header with any phone camera or QR reader.
+The scanner reports "No QR code found" or fails to decode the URL.
+8. Expected vs. Actual Behavior:
+Expected: The report must embed a valid standard ISO/IEC 18004 QR code encoding the verification link /verify-report/:id.
+Actual: The code draws pseudo-random SVG squares generated from an SHA-256 hash that cannot be scanned.
+9. Impact: Complete failure of NABL ISO 15189 report authenticity and online tamper-verification workflows.
+10. Root Cause: Custom pseudo-grid generator substituted in place of a genuine QR encoding library (e.g., qrcode.toString(text, { type: 'svg' })).
+11. Recommended Fix: Replace generateQrSvg with qrcode.toString(text, { type: 'svg' }) using the existing qrcode package.
+12. Required Regression Test: Unit test asserting that the generated SVG parses as a valid QR code decoding to the expected URL.
+13. Dependencies & Migration Risks: None (qrcode is already a project dependency).
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-006] Barcode Validation Logic Hardcoded to Mismatched Prefix
+1. Unique Issue ID: LAB-AUD-006
+2. Title: validateBarcode Rejects All Standard Patient Barcodes
+3. Severity & Priority: P1 — Category: CONFIRMED_DEFECT
+4. Affected Component: Backend Module: barcode
+5. Exact File Path & Symbol: backend/api/src/modules/barcode/barcode.service.ts -> validateBarcode() (Lines 169–185)
+6. Evidence:
+typescript
+// Check if it's a patient UHID
+if (barcode.startsWith('LC-')) {
+  const patient = await prisma.patient.findUnique({
+    where: { uhid: barcode },
+  });
+  if (patient) return { type: 'PATIENT', data: patient };
+}
+return { type: 'INVALID' };
+7. Reproduction Steps:
+Create a patient: UHID generated is UHID-2026-00001.
+Generate barcode via generatePatientBarcode() -> returns UHID-2026-00001.
+Call validateBarcode("UHID-2026-00001").
+Function checks barcode.startsWith('LC-'), skips the block, and returns { type: 'INVALID' }.
+8. Expected vs. Actual Behavior:
+Expected: Barcodes with prefix UHID- or LC- must resolve to the corresponding patient record.
+Actual: Only legacy LC- prefix is checked; all modern UHID- patient barcodes return INVALID.
+9. Impact: Phlebotomists and receptionists cannot scan patient wristbands or registration cards into the system.
+10. Root Cause: Hardcoded check for legacy LC- prefix in barcode.service.ts.
+11. Recommended Fix: Change condition to if (barcode.startsWith('UHID-') || barcode.startsWith('LC-')).
+12. Required Regression Test: Unit test calling validateBarcode with both UHID- and LC- formats.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-007] SUPER_ADMIN Role Omitted from Approval and Refund Route Authorization
+1. Unique Issue ID: LAB-AUD-007
+2. Title: SUPER_ADMIN Users Receive 403 Forbidden on Approval and Refund Endpoints
+3. Severity & Priority: P1 — Category: CONFIRMED_DEFECT
+4. Affected Component: Backend Modules: approvals & refunds
+5. Exact File Path & Symbol: backend/api/src/modules/approvals/approval.routes.ts (Lines 38, 52, 64, 80, 96, 128, 145, 161, 178)
+6. Evidence:
+typescript
+// approval.routes.ts line 38:
+authorize(UserRole.ADMIN, UserRole.PATHOLOGIST)
+In backend/api/middleware/rbac.middleware.ts:
+
+typescript
+if (!allowedRoles.includes(role)) {
+  return res.status(403).json({ success: false, message: "Access denied. Insufficient permissions." });
+}
+7. Reproduction Steps:
+Authenticate with a SUPER_ADMIN account.
+Call GET /api/approvals/queue or POST /api/approvals/:id/approve.
+Server returns 403 Access denied. Insufficient permissions.
+8. Expected vs. Actual Behavior:
+Expected: SUPER_ADMIN has global oversight and must be allowed to inspect queues and approve results if credentialed.
+Actual: Explicit omission of UserRole.SUPER_ADMIN in authorize(...) blocks the role.
+9. Impact: System administrators and clinical directors with SUPER_ADMIN accounts cannot oversee approval or refund queues.
+10. Root Cause: Explicit listing of roles in routes without including UserRole.SUPER_ADMIN after rbac.middleware.ts removed global admin pass-through.
+11. Recommended Fix: Add UserRole.SUPER_ADMIN to all authorize() route declarations across approval.routes.ts and refund.routes.ts.
+12. Required Regression Test: RBAC matrix test asserting SUPER_ADMIN access across all modules.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-008] Unmounted Receipts Module Leaves Thermal ESC/POS Printing Unreachable
+1. Unique Issue ID: LAB-AUD-008
+2. Title: Receipts Module Has No Route File and Is Unmounted in API Gateway
+3. Severity & Priority: P2 — Category: INCOMPLETE_IMPLEMENTATION
+4. Affected Component: Backend Module: receipts
+5. Exact File Path & Symbol: backend/api/src/modules/receipts/ & backend/api/src/app.ts (Lines 11–39)
+6. Evidence: In backend/api/src/modules/receipts/: receipt.controller.ts, receipt.service.ts, receipt.validation.ts exist, but receipt.routes.ts does not exist. In backend/api/src/app.ts: receiptRoutes is never imported and never mounted with app.use().
+7. Reproduction Steps:
+Send GET /api/receipts/:id or GET /api/receipt/thermal/:orderId.
+Express 404 handler returns { "success": false, "message": "API route not found" }.
+8. Expected vs. Actual Behavior:
+Expected: 80mm ESC/POS thermal text receipt generation service is accessible via REST endpoints.
+Actual: The module cannot be reached because routes were never created or mounted.
+9. Impact: Front desk thermal receipt printing is non-operational on the server side.
+10. Root Cause: Missing receipt.routes.ts file in backend/api/src/modules/receipts/.
+11. Recommended Fix: Create receipt.routes.ts exposing GET /:id and GET /order/:orderId/text, and mount it in app.ts under /api/receipts.
+12. Required Regression Test: Test fetching thermal receipt plain text payload for an existing order.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-009] Missing Sub-Routes in Communication Module Cause Frontend 404s
+1. Unique Issue ID: LAB-AUD-009
+2. Title: Frontend Calls 8 Unimplemented Sub-Routes Under /api/communications/*
+3. Severity & Priority: P2 — Category: INCOMPLETE_IMPLEMENTATION
+4. Affected Component: Backend Module: communications
+5. Exact File Path & Symbol: backend/api/src/modules/communications/communication.routes.ts vs frontend/apps/web/src/lib/api.ts (Lines 3259–3294)
+6. Evidence: In frontend/apps/web/src/lib/api.ts:
+typescript
+apiCall(`/api/communications/logs${formatQuery(params)}`),
+apiCall('/api/communications/stats'),
+apiCall('/api/communications/sms/templates'),
+apiCall('/api/communications/email/templates'),
+apiCall('/api/communications/sms/bulk', ...),
+apiCall(`/api/communications/${communicationId}/retry`, ...),
+apiCall(`/api/communications/${communicationId}/read`, ...),
+apiCall(`/api/communications/consent/${patientId}`)
+In communication.routes.ts: None of these 8 endpoints are declared. Only POST /email, POST /sms, POST /call, POST /whatsapp, GET /history/:patientId, and GET /:id are registered.
+
+7. Reproduction Steps:
+Navigate to the Communications dashboard in the clinical web frontend.
+The browser console reports 404 Not Found for /api/communications/stats and /api/communications/logs.
+8. Expected vs. Actual Behavior:
+Expected: Communication logs, stats, and template management endpoints return data to populate the UI.
+Actual: Endpoints return 404.
+9. Impact: Communications dashboard and logs view in the web application fail to load data.
+10. Root Cause: Incomplete backend router implementation compared to frontend API client expectations.
+11. Recommended Fix: Implement the 8 missing endpoints in communication.routes.ts and communication.controller.ts querying the CommunicationLog Prisma model.
+12. Required Regression Test: Integration test verifying 200 OK responses for communication logs and stats.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+[LAB-AUD-010] Unguarded Complete Database Wipe Scripts in Repository
+1. Unique Issue ID: LAB-AUD-010
+2. Title: Destructive Scripts Truncate 56 Tables Without Environment Safeguards
+3. Severity & Priority: P0 — Category: CONFIRMED_DEFECT
+4. Affected Component: Operational Scripts: backend/scripts/wipe-to-single-admin.ts & reset-all-data.ts
+5. Exact File Path & Symbol: backend/scripts/wipe-to-single-admin.ts (Lines 85–158)
+6. Evidence:
+typescript
+const tablesToTruncate = [ 'patient_history_entries', 'patients', 'orders', 'invoices', 'results', 'audit_logs', ... ];
+for (const table of tablesToTruncate) {
+  await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);
+}
+7. Reproduction Steps:
+Execute npx ts-node backend/scripts/wipe-to-single-admin.ts against any database.
+The script runs immediately without asking for confirmation, checking NODE_ENV === 'production', or verifying hostname, truncating all 56 tables.
+8. Expected vs. Actual Behavior:
+Expected: Destructive scripts must strictly abort when NODE_ENV === 'production' or DATABASE_URL contains non-localhost endpoints, and must require an interactive confirmation token.
+Actual: Unconditional execution of raw SQL TRUNCATE CASCADE.
+9. Impact: Accidental total data loss of all clinical and audit records in staging or production.
+10. Root Cause: Absence of pre-flight safety environment guards.
+11. Recommended Fix: Add a mandatory guard at the top of both scripts:
+typescript
+if (process.env.NODE_ENV === 'production' || !process.env.ALLOW_DESTRUCTIVE_RESET) {
+  throw new Error("Execution blocked: Destructive data wipe disallowed in this environment.");
+}
+12. Required Regression Test: Script unit test confirming abort when NODE_ENV === 'production'.
+13. Dependencies & Migration Risks: None.
+14. Verification Status: CONFIRMED_BY_STATIC_ANALYSIS
+14. Recommended Day 2 Fixing Order
+Following this read-only audit, fixes should be applied in this exact dependency order:
+
+Step 1: Security & Destructive Safeguards (Immediate P0)
+  ├── 1.1 Add production blockers to wipe-to-single-admin.ts and reset-all-data.ts [LAB-AUD-010]
+  ├── 1.2 Restrict backup.routes.ts to SUPER_ADMIN and sanitize path.basename [LAB-AUD-002]
+  └── 1.3 Fix reset-password.js to apply HMAC pepper before bcrypt [LAB-AUD-003]
+Step 2: RBAC & Routing Integrity (Core Operational P1)
+  ├── 2.1 Add UserRole.SUPER_ADMIN to approval.routes.ts and refund.routes.ts [LAB-AUD-007]
+  ├── 2.2 Fix barcode.service.ts to accept UHID- prefixes [LAB-AUD-006]
+  └── 2.3 Bootstrap WebSocketService.initialize(server) in server.ts [LAB-AUD-004]
+Step 3: Clinical & Privacy Compliance (P0/P1)
+  ├── 3.1 Apply encryptField() to aadhaarNumber & panNumber in patient module [LAB-AUD-001]
+  ├── 3.2 Strip patient firstName/lastName before calling external Gemini API in gemini.service.ts
+  ├── 3.3 Replace pseudo-grid SVG in report.pdf.service.ts with genuine qrcode library [LAB-AUD-005]
+  └── 3.4 Remove mock data fallback from sample.service.ts to prevent clinical data confusion
+Step 4: Missing Endpoints & Polish (P2)
+  ├── 4.1 Create receipt.routes.ts and mount under /api/receipts [LAB-AUD-008]
+  ├── 4.2 Implement 8 missing communication endpoints in communication.routes.ts [LAB-AUD-009]
+  └── 4.3 Replace random jitter in generateUHID with an atomic sequence table
+15. Items That Could Not Be Verified
+Live ASTM/HL7 Hardware Protocol Compliance: Could not verify serial transmission timing or hardware handshake with physical analyzers because no physical hardware or hardware-in-the-loop test fixtures are present in the repository.
+NHA Live ABDM Sandbox Network Connectivity: Could not verify live gateway responses from https://dev.abdm.gov.in as live external network calls to third-party government services are restricted during offline audit.
+Puppeteer Linux Chromium Binary Dependencies: Could not verify headless Chrome rendering under Linux OS containers as the current audit host environment is Windows.
+Meta WhatsApp Cloud Webhook Delivery: Could not verify Meta business message reception because live WhatsApp Webhook callbacks require an external internet-facing HTTPS domain.
+Report completed in READ-ONLY modE

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, type PointerEvent, type WheelEvent } from "react";
+import { use, useEffect, useState, useCallback, type PointerEvent, type WheelEvent } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -246,7 +246,7 @@ export default function AnalyzerDetailPage({ params }: { params: Promise<{ id: s
   const [pingStatus, setPingStatus] = useState<string | null>(null);
   const [flushStatus, setFlushStatus] = useState<string | null>(null);
 
-  const loadAnalyzer = async () => {
+  const loadAnalyzer = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -282,11 +282,11 @@ export default function AnalyzerDetailPage({ params }: { params: Promise<{ id: s
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     if (id) loadAnalyzer();
-  }, [id]);
+  }, [id, loadAnalyzer]);
 
   const handlePing = () => {
     setPingStatus("Pinging analyzer TCP socket...");

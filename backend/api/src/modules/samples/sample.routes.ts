@@ -45,6 +45,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH
@@ -62,6 +63,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -80,6 +82,7 @@ router.get(
 router.get(
   "/count",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -95,6 +98,7 @@ router.get(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -113,6 +117,7 @@ router.get(
 router.post(
   "/:id/collect",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH
@@ -131,6 +136,7 @@ router.post(
 router.post(
   "/:id/receive",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH
   ),
@@ -148,6 +154,7 @@ router.post(
 router.post(
   "/:id/process",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH
   ),
@@ -165,6 +172,7 @@ router.post(
 router.post(
   "/:id/complete",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH
   ),
@@ -182,6 +190,7 @@ router.post(
 router.post(
   "/:id/reject",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST
@@ -201,6 +210,7 @@ router.post(
 router.post(
   "/:id/tracking",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -216,6 +226,7 @@ router.post(
 router.get(
   "/:id/tracking",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -231,6 +242,7 @@ router.get(
 router.get(
   "/order/:id/tracking",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -243,6 +255,20 @@ router.get(
 router.get(
   "/patient/:id/tracking",
   authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST
+  ),
+  getPatientTracking
+);
+
+// Alias for frontend samplesApi.getPatientTracking: /api/samples/tracking/patient/:id
+router.get(
+  "/tracking/patient/:id",
+  authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -255,6 +281,7 @@ router.get(
 router.get(
   "/patient/:id/comprehensive",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,

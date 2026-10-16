@@ -35,6 +35,20 @@ function formatINR(amt: number): string {
   })}`;
 }
 
+// Laboratory Entity Metadata
+const DEFAULT_LAB_ENTITY = {
+  legalName: "LabCore Diagnostics Private Limited",
+  tradeName: "LabCore Clinical Reference Laboratory",
+  gstin: "24AAACL1234F1Z5",
+  pan: "AAACL1234F",
+  stateCode: "24",
+  stateName: "Gujarat",
+  taxJurisdiction: "Ward 4(1), Range-II, Ahmedabad",
+  nablCertNo: "MC-5678",
+  isoStandard: "ISO 15189:2022",
+  regAddress: "Plot 402, Bio-Science Zone, SG Highway, Ahmedabad - 380054, Gujarat",
+};
+
 export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
   // Period & Scope Filters
   const [selectedFY, setSelectedFY] = useState<string>("2026-27");
@@ -46,19 +60,7 @@ export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
   const [jsonModalOpen, setJsonModalOpen] = useState<boolean>(false);
   const [certModalOpen, setCertModalOpen] = useState<boolean>(false);
 
-  // Laboratory Entity Metadata
-  const labEntity = {
-    legalName: "LabCore Diagnostics Private Limited",
-    tradeName: "LabCore Clinical Reference Laboratory",
-    gstin: "24AAACL1234F1Z5",
-    pan: "AAACL1234F",
-    stateCode: "24",
-    stateName: "Gujarat",
-    taxJurisdiction: "Ward 4(1), Range-II, Ahmedabad",
-    nablCertNo: "MC-5678",
-    isoStandard: "ISO 15189:2022",
-    regAddress: "Plot 402, Bio-Science Zone, SG Highway, Ahmedabad - 380054, Gujarat",
-  };
+  const labEntity = DEFAULT_LAB_ENTITY;
 
   // Filter invoices by search and date period if selected
   const filteredInvoices = useMemo(() => {

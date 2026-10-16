@@ -331,6 +331,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     if (id) {
       fetchPatient();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Parse vitals stored in patient / notes

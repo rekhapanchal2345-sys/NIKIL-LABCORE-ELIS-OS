@@ -12,9 +12,20 @@ export class WebSocketService {
    * Initialize WebSocket server
    */
   static initialize(httpServer: HTTPServer) {
+    const rawCors = process.env.CORS_ORIGINS;
+    const allowedOrigins = rawCors
+      ? rawCors.split(',').map((o) => o.trim()).filter(Boolean)
+      : [
+          process.env.FRONTEND_URL || 'http://localhost:3001',
+          'http://localhost:3000',
+          'http://localhost:5173',
+          'http://127.0.0.1:3001',
+          'http://127.0.0.1:5173',
+        ];
+
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+        origin: allowedOrigins,
         methods: ['GET', 'POST'],
         credentials: true
       },
@@ -23,13 +34,49 @@ export class WebSocketService {
       pingTimeout: 60000
     });
 
+    const getJwtSecret = (): string => {
+      const secret = process.env.JWT_SECRET;
+      if (!secret && process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET is required in production');
+      }
+      return secret || 'dev-jwt-secret-do-not-use-in-prod-32chars';
+    };
+
+    // ISS-008: Handshake JWT authentication middleware
+    this.io.use((socket, next) => {
+      const token =
+        socket.handshake.auth?.token ||
+        (socket.handshake.headers?.authorization?.startsWith('Bearer ')
+          ? socket.handshake.headers.authorization.slice(7)
+          : null);
+
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, getJwtSecret()) as any;
+          const userId = decoded.userId || decoded.id;
+          if (userId) {
+            socket.data.userId = userId;
+            if (!WebSocketService.connectedClients.has(userId)) {
+              WebSocketService.connectedClients.set(userId, new Set());
+            }
+            WebSocketService.connectedClients.get(userId)!.add(socket.id);
+            socket.join(`user:${userId}`);
+            console.log('[WebSocket] Client authenticated via handshake:', userId);
+          }
+        } catch (err) {
+          console.warn('[WebSocket] Handshake auth token invalid, proceeding unauthenticated:', (err as any)?.message);
+        }
+      }
+      next();
+    });
+
     this.io.on('connection', (socket) => {
       console.log('[WebSocket] Client connected:', socket.id);
 
       // Authentication middleware
       socket.on('authenticate', async (token: string) => {
         try {
-          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+          const decoded = jwt.verify(token, getJwtSecret()) as any;
           const userId = decoded.userId || decoded.id;
           
           if (userId) {

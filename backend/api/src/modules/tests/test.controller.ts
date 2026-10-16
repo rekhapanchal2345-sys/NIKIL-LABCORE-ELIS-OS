@@ -19,6 +19,7 @@ import {
     addParameter,
     updateParameter,
     deleteParameter,
+    listParameters,
     addReferenceRange,
     updateReferenceRange,
     deleteReferenceRange,
@@ -402,6 +403,47 @@ export const deleteCategoryController =
         next(error);
       }
     };
+
+  export const listParametersController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const testId = typeof req.query.testId === "string" ? req.query.testId : undefined;
+      const search = typeof req.query.search === "string" ? req.query.search : undefined;
+      const parameters = await listParameters(testId, search);
+      return successResponse(
+        res,
+        parameters,
+        "Test parameters fetched successfully"
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  export const createParameterDirectController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const body = req.body || {};
+      const testId = body.testId;
+      if (!testId) {
+        return res.status(400).json({ success: false, message: "testId is required in request body" });
+      }
+      const parameter = await addParameter(testId, body);
+      return createdResponse(
+        res,
+        parameter,
+        "Test parameter created successfully"
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
   
   export const addReferenceRangeController =
     async (

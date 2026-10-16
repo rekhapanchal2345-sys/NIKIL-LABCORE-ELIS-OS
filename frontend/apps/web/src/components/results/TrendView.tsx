@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea } from "recharts";
 import { TrendingUp, Calendar, Download, RefreshCw } from "lucide-react";
 
@@ -16,7 +16,7 @@ interface TrendViewProps {
   patientId: string;
   testCode: string;
   testParameterName: string;
-  unit?: string;
+  unit: string;
   referenceRange?: {
     min: number;
     max: number;
@@ -36,18 +36,26 @@ export const TrendView: React.FC<TrendViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTrendData();
-  }, [patientId, testCode]);
-
-  const fetchTrendData = async () => {
+  const fetchTrendData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("accessToken") || localStorage.getItem("token")
+          : null;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       // Call the trend endpoint
       const response = await fetch(
-        `/api/results/trend/${patientId}/${testCode}?limit=20`
+        `/api/results/trend/${patientId}/${testCode}?limit=20`,
+        { headers }
       );
       
       if (!response.ok) {
@@ -81,7 +89,11 @@ export const TrendView: React.FC<TrendViewProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [patientId, testCode, testParameterName]);
+
+  useEffect(() => {
+    fetchTrendData();
+  }, [fetchTrendData]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-IN", {

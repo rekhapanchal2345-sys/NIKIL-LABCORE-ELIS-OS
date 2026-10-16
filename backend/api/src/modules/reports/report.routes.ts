@@ -26,6 +26,11 @@ import {
   orderReportPdf,
   downloadOrderReportPdf,
   publicVerifyReport,
+  generateReportHandler,
+  sendReportWhatsAppHandler,
+  sendReportEmailHandler,
+  printReportHandler,
+  bulkDispatchHandler,
 } from "./report.controller";
 
 import {
@@ -56,12 +61,40 @@ router.use(
 );
 
 // =======================================================
+// GENERATE & BULK DISPATCH
+// =======================================================
+
+router.post(
+  "/generate",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST
+  ),
+  generateReportHandler
+);
+
+router.post(
+  "/bulk-dispatch",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.PATHOLOGIST
+  ),
+  bulkDispatchHandler
+);
+
+// =======================================================
 // REPORT SUMMARY
 // =======================================================
 
 router.get(
   "/summary",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -77,6 +110,7 @@ router.get(
 router.get(
   "/published",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -92,6 +126,7 @@ router.get(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -107,6 +142,7 @@ router.get(
 router.get(
   "/count",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -123,6 +159,7 @@ router.get(
 router.get(
   "/order/:orderId",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -139,6 +176,7 @@ router.get(
 router.get(
   "/order/:orderId/pdf",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -152,6 +190,7 @@ router.get(
 router.get(
   "/order/:orderId/download",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -170,6 +209,7 @@ router.get(
 router.get(
   "/patient/:patientId",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -190,6 +230,7 @@ router.get(
 router.post(
   "/:id/addendum",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST,
     UserRole.DOCTOR
@@ -204,6 +245,7 @@ router.post(
 router.post(
   "/:id/signature",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST,
     UserRole.DOCTOR
@@ -218,6 +260,7 @@ router.post(
 router.post(
   "/:id/approve-inline",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST,
     UserRole.DOCTOR
@@ -232,6 +275,7 @@ router.post(
 router.post(
   "/:id/reject-inline",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST,
     UserRole.DOCTOR
@@ -246,6 +290,7 @@ router.post(
 router.post(
   "/:id/share-link",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.PATHOLOGIST,
@@ -267,6 +312,7 @@ router.get(
 router.delete(
   "/share/:linkId",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.PATHOLOGIST,
@@ -279,6 +325,7 @@ router.delete(
 router.post(
   "/:id/patient-history",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.PATHOLOGIST,
@@ -294,6 +341,7 @@ router.post(
 router.get(
   "/patient/:patientId/timeline",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.PATHOLOGIST,
@@ -309,6 +357,7 @@ router.get(
 router.post(
   "/:id/amend",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST,
     UserRole.DOCTOR
@@ -326,6 +375,7 @@ router.post(
 router.post(
   "/:id/send-doctor",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.PATHOLOGIST,
@@ -337,6 +387,71 @@ router.post(
   sendReportToDoctorHandler
 );
 
+// Stream Report PDF by report/order ID
+router.get(
+  "/:id/pdf",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST,
+    UserRole.DOCTOR
+  ),
+  orderReportPdf
+);
+
+// Download Report PDF by report/order ID
+router.get(
+  "/:id/download",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST,
+    UserRole.DOCTOR
+  ),
+  downloadOrderReportPdf
+);
+
+// Dispatch Report via WhatsApp
+router.post(
+  "/:id/send-whatsapp",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.PATHOLOGIST
+  ),
+  sendReportWhatsAppHandler
+);
+
+// Dispatch Report via Email
+router.post(
+  "/:id/send-email",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.PATHOLOGIST
+  ),
+  sendReportEmailHandler
+);
+
+// Record Report Print
+router.post(
+  "/:id/print",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST
+  ),
+  printReportHandler
+);
+
 // =======================================================
 // GET REPORT BY ID (MUST BE AT THE END)
 // =======================================================
@@ -344,6 +459,7 @@ router.post(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,

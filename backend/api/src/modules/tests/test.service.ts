@@ -421,6 +421,30 @@ export const updateParameter =
     });
   };
 
+export const listParameters = async (testId?: string, search?: string) => {
+  const where: any = {};
+  if (testId) where.testId = testId;
+  if (search) {
+    where.OR = [
+      { parameterName: { contains: search, mode: "insensitive" } },
+    ];
+  }
+  return prisma.testParameter.findMany({
+    where,
+    include: {
+      referenceRanges: true,
+      test: {
+        select: {
+          id: true,
+          testName: true,
+          testCode: true,
+        },
+      },
+    },
+    orderBy: { displayOrder: "asc" },
+  });
+};
+
 export const addReferenceRange =
   async (
     parameterId: string,

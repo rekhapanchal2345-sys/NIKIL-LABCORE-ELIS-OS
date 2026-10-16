@@ -56,6 +56,7 @@ export default function PackageDetailPage() {
   useEffect(() => {
     fetchPackage();
     fetchTests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchPackage = async () => {

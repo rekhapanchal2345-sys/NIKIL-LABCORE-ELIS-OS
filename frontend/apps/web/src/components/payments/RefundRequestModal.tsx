@@ -173,22 +173,22 @@ export default function RefundRequestModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in">
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-white border border-slate-200/90 p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/25 border border-rose-400/30">
+            <div className="h-11 w-11 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-xs">
               <RotateCcw className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-white tracking-tight">Issue Refund & Credit Note</h3>
-              <p className="text-xs font-medium text-slate-400 mt-0.5">Authorize reverse transaction & generate official refund credit note</p>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Issue Refund & Credit Note</h3>
+              <p className="text-xs font-medium text-slate-500 mt-0.5">Authorize reverse transaction & generate official refund credit note</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition"
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -197,8 +197,8 @@ export default function RefundRequestModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Target Transaction */}
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-300 mb-1.5">
-              Select Original Transaction <span className="text-rose-400">*</span>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              Select Original Transaction <span className="text-rose-500">*</span>
             </label>
             <select
               required
@@ -209,13 +209,13 @@ export default function RefundRequestModal({
                 const p = payments.find((item) => item.id === pId);
                 if (p) setAmount(String(p.amount));
               }}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs font-bold text-white focus:border-rose-500"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none"
             >
               <option value="">Select Transaction to Refund</option>
               {payments
                 .filter((p) => p.status === "PAID" || p.status === "PARTIALLY_PAID")
                 .map((p) => (
-                  <option key={p.id} value={p.id} className="bg-slate-900">
+                  <option key={p.id} value={p.id}>
                     {p.receiptNumber} • {p.patientName} • {formatCurrency(p.amount)} ({p.method})
                   </option>
                 ))}
@@ -224,18 +224,18 @@ export default function RefundRequestModal({
 
           {/* Transaction Info Banner */}
           {selectedPayment && (
-            <div className="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-3.5 text-xs space-y-1">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-3.5 text-xs space-y-1.5">
               <div className="flex justify-between">
-                <span className="text-slate-400">Patient:</span>
-                <strong className="text-white">{selectedPayment.patientName} ({selectedPayment.patientUhid || "—"})</strong>
+                <span className="text-slate-600">Patient:</span>
+                <strong className="text-slate-900">{selectedPayment.patientName} ({selectedPayment.patientUhid || "—"})</strong>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Original Amount:</span>
-                <strong className="font-mono text-emerald-400">{formatCurrency(selectedPayment.amount)}</strong>
+                <span className="text-slate-600">Original Amount:</span>
+                <strong className="font-mono text-emerald-700 font-bold">{formatCurrency(selectedPayment.amount)}</strong>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Payment Mode:</span>
-                <span className="font-bold text-slate-300">{selectedPayment.method}</span>
+                <span className="text-slate-600">Payment Mode:</span>
+                <span className="font-bold text-slate-800">{selectedPayment.method}</span>
               </div>
             </div>
           )}
@@ -243,8 +243,8 @@ export default function RefundRequestModal({
           {/* Refund Amount & Mode */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-300 mb-1.5">
-                Refund Amount (₹) <span className="text-rose-400">*</span>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Refund Amount (₹) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
@@ -253,49 +253,49 @@ export default function RefundRequestModal({
                 placeholder="e.g. 500"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm font-black text-rose-400 focus:border-rose-500"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-mono font-bold text-rose-600 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                 Refund Disbursement Mode
               </label>
               <select
                 value={refundMethod}
                 onChange={(e) => setRefundMethod(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs font-bold text-white focus:border-rose-500"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none"
               >
-                <option value="ORIGINAL_METHOD" className="bg-slate-900">Original Payment Method</option>
-                <option value="CASH" className="bg-slate-900">Cash Till</option>
-                <option value="UPI" className="bg-slate-900">UPI Reversal</option>
-                <option value="WALLET_CREDIT" className="bg-slate-900">Patient Wallet Balance</option>
+                <option value="ORIGINAL_METHOD">Original Payment Method</option>
+                <option value="CASH">Cash Till</option>
+                <option value="UPI">UPI Reversal</option>
+                <option value="WALLET_CREDIT">Patient Wallet Balance</option>
               </select>
             </div>
           </div>
 
           {/* Reason Category */}
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
               Standard Refund Reason
             </label>
             <select
               value={reasonCategory}
               onChange={(e) => setReasonCategory(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs font-bold text-white focus:border-rose-500"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none"
             >
-              <option value="Test Cancelled by Clinician" className="bg-slate-900">Test Cancelled by Clinician</option>
-              <option value="Duplicate Billing Entry" className="bg-slate-900">Duplicate Billing Entry</option>
-              <option value="Sample Hemolyzed / Unsuitable" className="bg-slate-900">Sample Hemolyzed / Unsuitable</option>
-              <option value="Patient Walkout / Cancelled" className="bg-slate-900">Patient Walkout / Cancelled</option>
-              <option value="Billing Discount Adjusted" className="bg-slate-900">Billing Discount Adjusted</option>
-              <option value="Other / Clinical Decision" className="bg-slate-900">Other / Clinical Decision</option>
+              <option value="Test Cancelled by Clinician">Test Cancelled by Clinician</option>
+              <option value="Duplicate Billing Entry">Duplicate Billing Entry</option>
+              <option value="Sample Hemolyzed / Unsuitable">Sample Hemolyzed / Unsuitable</option>
+              <option value="Patient Walkout / Cancelled">Patient Walkout / Cancelled</option>
+              <option value="Billing Discount Adjusted">Billing Discount Adjusted</option>
+              <option value="Other / Clinical Decision">Other / Clinical Decision</option>
             </select>
           </div>
 
           {/* Additional Notes */}
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
               Specific Reason Notes
             </label>
             <input
@@ -303,23 +303,23 @@ export default function RefundRequestModal({
               placeholder="e.g. Patient requested cancellation before phlebotomy draw"
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-rose-500"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-700"
+              className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-2.5 text-xs font-black text-white shadow-lg shadow-rose-500/25 hover:from-rose-500 hover:to-pink-500 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:from-rose-500 hover:to-pink-500 active:scale-95 disabled:opacity-50 transition"
             >
               {submitting ? "Processing..." : "Authorize Refund & Print Slip"}
             </button>

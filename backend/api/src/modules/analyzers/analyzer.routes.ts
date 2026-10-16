@@ -65,6 +65,14 @@ import {
   listPortMappings,
   createQCRuleRecord,
   listQCRules,
+  updateQCRuleRecord,
+  deleteQCRuleRecord,
+  listReflexRules,
+  createReflexRuleRecord,
+  getWorkloadBalance,
+  autoBalanceFleetRecord,
+  getMaintenanceLogbookRecord,
+  signOffMaintenanceRecord,
   createWorklistEntryRecord,
   listWorklistEntries,
   updateWorklistEntryRecord,
@@ -139,7 +147,7 @@ router.get(
 // Update Analyzer - Admin and Lab Tech
 router.patch(
   "/:id",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: updateAnalyzerSchema }),
   update
 );
@@ -147,7 +155,7 @@ router.patch(
 // Archive Analyzer - Admin only
 router.post(
   "/:id/archive",
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN),
   validate({ params: analyzerIdSchema }),
   archive
 );
@@ -155,7 +163,7 @@ router.post(
 // Delete Analyzer - Admin only (soft delete via archive)
 router.delete(
   "/:id",
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN),
   validate({ params: analyzerIdSchema }),
   remove
 );
@@ -167,7 +175,7 @@ router.delete(
 // Update Status - Admin and Lab Tech
 router.patch(
   "/:id/status",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: updateStatusSchema }),
   updateStatus
 );
@@ -186,7 +194,7 @@ router.post(
 // Create Calibration - Admin and Lab Tech
 router.post(
   "/calibrations",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: createCalibrationSchema }),
   createCalibrationRecord
 );
@@ -212,7 +220,7 @@ router.get(
 // Create Maintenance - Admin and Lab Tech
 router.post(
   "/maintenances",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: createMaintenanceSchema }),
   createMaintenanceRecord
 );
@@ -227,7 +235,7 @@ router.get(
 // Update Maintenance - Admin and Lab Tech
 router.patch(
   "/maintenances/:id",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: updateMaintenanceSchema }),
   updateMaintenanceRecord
 );
@@ -239,7 +247,7 @@ router.patch(
 // Create Test Mapping - Admin and Lab Tech
 router.post(
   "/test-mappings",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: createTestMappingSchema }),
   createMapping
 );
@@ -254,7 +262,7 @@ router.get(
 // Update Test Mapping - Admin and Lab Tech
 router.patch(
   "/test-mappings/:id",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: updateTestMappingSchema }),
   updateMapping
 );
@@ -262,7 +270,7 @@ router.patch(
 // Delete Test Mapping - Admin and Lab Tech
 router.delete(
   "/test-mappings/:id",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema }),
   deleteMapping
 );
@@ -274,7 +282,7 @@ router.delete(
 // Create Analyzer Job - Admin and Lab Tech
 router.post(
   "/jobs",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: createAnalyzerJobSchema }),
   createJob
 );
@@ -289,7 +297,7 @@ router.get(
 // Update Analyzer Job - Admin and Lab Tech
 router.patch(
   "/jobs/:id",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: updateAnalyzerJobSchema }),
   updateJob
 );
@@ -307,7 +315,7 @@ router.get(
 // Create Alert - Admin and Lab Tech
 router.post(
   "/alerts",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: createAlertSchema }),
   createAlert
 );
@@ -322,7 +330,7 @@ router.get(
 // Acknowledge Alert - Admin and Lab Tech
 router.post(
   "/alerts/:id/acknowledge",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema }),
   acknowledgeAlertRecord
 );
@@ -330,7 +338,7 @@ router.post(
 // Resolve Alert - Admin and Lab Tech
 router.post(
   "/alerts/:id/resolve",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: resolveAlertSchema }),
   resolveAlertRecord
 );
@@ -353,7 +361,7 @@ router.get(
 // Test Connection - Admin and Lab Tech
 router.post(
   "/:id/test-connection",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: testConnectionSchema }),
   testConnection
 );
@@ -375,7 +383,7 @@ router.get(
 // Start Connection Monitoring - Admin and Lab Tech
 router.post(
   "/:id/start-monitoring",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: connectionMonitoringSchema }),
   startConnectionMonitoring
 );
@@ -383,7 +391,7 @@ router.post(
 // Stop Connection Monitoring - Admin and Lab Tech
 router.post(
   "/:id/stop-monitoring",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema }),
   stopConnectionMonitoring
 );
@@ -391,7 +399,7 @@ router.post(
 // Send Test Message - Admin and Lab Tech
 router.post(
   "/:id/send-test-message",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema, body: testMessageSchema }),
   sendTestMessage
 );
@@ -403,7 +411,15 @@ router.post(
 // Parse ASTM Message - Admin and Lab Tech
 router.post(
   "/parse-astm",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
+  validate({ body: parseASTMSchema }),
+  parseASTMMessage
+);
+
+// Alias for direct ASTM posting
+router.post(
+  "/astm",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: parseASTMSchema }),
   parseASTMMessage
 );
@@ -411,7 +427,15 @@ router.post(
 // Parse HL7 Message - Admin and Lab Tech
 router.post(
   "/parse-hl7",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
+  validate({ body: parseHL7Schema }),
+  parseHL7Message
+);
+
+// Alias for direct HL7 posting
+router.post(
+  "/hl7",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: parseHL7Schema }),
   parseHL7Message
 );
@@ -419,7 +443,7 @@ router.post(
 // Generate ASTM Message - Admin and Lab Tech
 router.post(
   "/generate-astm",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: generateASTMSchema }),
   generateASTMMessage
 );
@@ -427,7 +451,7 @@ router.post(
 // Generate HL7 Message - Admin and Lab Tech
 router.post(
   "/generate-hl7",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: generateHL7Schema }),
   generateHL7Message
 );
@@ -439,7 +463,7 @@ router.post(
 // Create Analyzer Log - Admin and Lab Tech
 router.post(
   "/logs",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ body: createAnalyzerLogSchema }),
   createLog
 );
@@ -447,7 +471,7 @@ router.post(
 // List Analyzer Logs - Admin, Lab Tech, and Pathologist
 router.get(
   "/logs",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
   validate({ query: analyzerLogQuerySchema }),
   listLogs
 );
@@ -455,7 +479,7 @@ router.get(
 // Get Analyzer Log - Admin, Lab Tech, and Pathologist
 router.get(
   "/logs/:id",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST),
   validate({ params: analyzerIdSchema }),
   getLog
 );
@@ -463,7 +487,7 @@ router.get(
 // Mark Processed - Admin and Lab Tech
 router.post(
   "/logs/:id/process",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema }),
   processLog
 );
@@ -471,7 +495,7 @@ router.post(
 // Mark Failed - Admin and Lab Tech
 router.post(
   "/logs/:id/fail",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   validate({ params: analyzerIdSchema }),
   failLog
 );
@@ -479,7 +503,7 @@ router.post(
 // Delete Log - Admin only
 router.delete(
   "/logs/:id",
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN),
   validate({ params: analyzerIdSchema }),
   removeLog
 );
@@ -491,7 +515,7 @@ router.delete(
 // Create Port Mapping - Admin and Lab Tech
 router.post(
   "/port-mappings",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   createPortMappingRecord
 );
 
@@ -508,7 +532,7 @@ router.get(
 // Create QC Rule - Admin and Lab Tech
 router.post(
   "/qc-rules",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   createQCRuleRecord
 );
 
@@ -518,6 +542,71 @@ router.get(
   listQCRules
 );
 
+// Update QC Rule - Admin and Lab Tech
+router.patch(
+  "/qc-rules/:id",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
+  updateQCRuleRecord
+);
+
+// Delete QC Rule - Admin only
+router.delete(
+  "/qc-rules/:id",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+  deleteQCRuleRecord
+);
+
+// =======================================================
+// REFLEX & CASCADE TESTING
+// =======================================================
+
+router.get(
+  "/reflex-rules",
+  listReflexRules
+);
+
+router.post(
+  "/reflex-rules",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
+  createReflexRuleRecord
+);
+
+// =======================================================
+// SMART FLEET WORKLOAD BALANCER
+// =======================================================
+
+router.get(
+  "/workload-balance",
+  getWorkloadBalance
+);
+
+router.post(
+  "/workload-balance",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
+  autoBalanceFleetRecord
+);
+
+router.post(
+  "/workload-balance/auto-balance",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
+  autoBalanceFleetRecord
+);
+
+// =======================================================
+// MAINTENANCE LOGBOOK & NABL COMPLIANCE
+// =======================================================
+
+router.get(
+  "/maintenance-logbook",
+  getMaintenanceLogbookRecord
+);
+
+router.post(
+  "/maintenance-logbook/sign-off",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
+  signOffMaintenanceRecord
+);
+
 // =======================================================
 // WORKLIST ROUTES
 // =======================================================
@@ -525,7 +614,7 @@ router.get(
 // Create Worklist Entry - Admin and Lab Tech
 router.post(
   "/worklist",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   createWorklistEntryRecord
 );
 
@@ -538,7 +627,7 @@ router.get(
 // Update Worklist Entry - Admin and Lab Tech
 router.patch(
   "/worklist/:id",
-  authorize(UserRole.ADMIN, UserRole.LAB_TECH),
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH),
   updateWorklistEntryRecord
 );
 

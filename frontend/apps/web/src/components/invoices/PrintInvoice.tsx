@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 
 interface InvoiceData {
   invoiceNumber?: string;
@@ -38,13 +38,7 @@ interface PrintInvoiceProps {
 export default function PrintInvoice({ invoice, printType, onClose }: PrintInvoiceProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (printRef.current) {
-      handlePrint();
-    }
-  }, []);
-
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (printRef.current) {
       const printContent = printRef.current.innerHTML;
       const printWindow = window.open('', '', 'width=800,height=600');
@@ -69,7 +63,13 @@ export default function PrintInvoice({ invoice, printType, onClose }: PrintInvoi
         onClose();
       }
     }
-  };
+  }, [invoice.invoiceNumber, printType, onClose]);
+
+  useEffect(() => {
+    if (printRef.current) {
+      handlePrint();
+    }
+  }, [handlePrint]);
 
   const getThermalStyles = () => `
     @page {

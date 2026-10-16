@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
@@ -100,7 +100,7 @@ export default function OrderDetailPage({
   // Modals
   const [modalType, setModalType] = useState<"assignDoctor" | "collectSample" | "addPayment" | "cancelOrder" | null>(null);
 
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
     try {
       setLoading(true);
       const response = await orderApi.getById(orderId);
@@ -115,13 +115,13 @@ export default function OrderDetailPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
 
   useEffect(() => {
     if (orderId) {
       fetchOrder();
     }
-  }, [orderId]);
+  }, [orderId, fetchOrder]);
 
   const handleStatusChange = async (newStatus: OrderStatusType) => {
     if (!order) return;

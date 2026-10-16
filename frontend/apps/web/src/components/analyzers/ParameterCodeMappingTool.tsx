@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   ArrowRightLeft, 
   Plus, 
@@ -53,7 +53,7 @@ export default function ParameterCodeMappingTool({ analyzerId, onClose }: Parame
     sampleType: "",
   });
 
-  const fetchMappings = async () => {
+  const fetchMappings = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -69,11 +69,11 @@ export default function ParameterCodeMappingTool({ analyzerId, onClose }: Parame
     } finally {
       setLoading(false);
     }
-  };
+  }, [analyzerId, filter]);
 
   useEffect(() => {
     fetchMappings();
-  }, [analyzerId, filter]);
+  }, [fetchMappings]);
 
   const handleCreateMapping = async () => {
     try {

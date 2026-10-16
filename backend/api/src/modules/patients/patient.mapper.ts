@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { HttpError } from "../../utils/http-error";
+import { encryptTaggedField } from "../../utils/field-crypto";
 
 /**
  * Single source of truth for turning a patient request payload into Prisma
@@ -53,8 +54,6 @@ const LENGTH_LIMITS: Record<string, number> = {
   alternatePhone: 15,
   emergencyContact: 15,
   pincode: 10,
-  aadhaarNumber: 12,
-  panNumber: 10,
   abhaNumber: 20,
   abhaAddress: 100,
   healthIdNumber: 20,
@@ -389,12 +388,25 @@ export const buildPatientData = (
     data.email = value ? value.toLowerCase() : null;
   }
   if (input.aadhaarNumber !== undefined) {
-    const digits = text(input.aadhaarNumber);
-    data.aadhaarNumber = digits ? clamp("aadhaarNumber", digits.replace(/\D/g, "")) : null;
+    const raw = text(input.aadhaarNumber);
+    if (raw) {
+      const clean = raw.replace(/\D/g, "");
+      data.aadhaarNumber = clean.startsWith("enc:") ? clean : (clean ? encryptTaggedField(clean) : null);
+      if (!data.aadhaarReferenceToken && clean) {
+        data.aadhaarReferenceToken = data.aadhaarNumber;
+      }
+    } else {
+      data.aadhaarNumber = null;
+    }
   }
   if (input.panNumber !== undefined) {
-    const value = text(input.panNumber);
-    data.panNumber = value ? clamp("panNumber", value.toUpperCase()) : null;
+    const raw = text(input.panNumber);
+    if (raw) {
+      const clean = raw.trim().toUpperCase();
+      data.panNumber = clean.startsWith("enc:") || clean.startsWith("ENC:") ? clean : (clean ? encryptTaggedField(clean) : null);
+    } else {
+      data.panNumber = null;
+    }
   }
 
   // ABHA (Ayushman Bharat Digital Health Account) & KYC Tokens

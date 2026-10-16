@@ -14,6 +14,7 @@ async function ensureSequenceTable(txPrisma: any) {
         series_type VARCHAR(50) NOT NULL,
         financial_year VARCHAR(20) NOT NULL,
         branch_id VARCHAR(100) NOT NULL DEFAULT 'DEFAULT',
+        prefix VARCHAR(50),
         current_value INT NOT NULL DEFAULT 0,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT unique_series_fy_branch UNIQUE (series_type, financial_year, branch_id)

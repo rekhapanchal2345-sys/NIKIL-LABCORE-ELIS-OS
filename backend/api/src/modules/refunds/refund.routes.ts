@@ -34,6 +34,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -51,6 +52,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -68,6 +70,7 @@ router.get(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -85,6 +88,7 @@ router.get(
 router.post(
   "/approve",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -102,6 +106,7 @@ router.post(
 router.post(
   "/reject",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -119,6 +124,7 @@ router.post(
 router.post(
   "/process",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),

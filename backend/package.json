@@ -4,13 +4,15 @@
   "description": "",
   "main": "dist/api/src/server.js",
   "scripts": {
-    "build": "prisma generate && tsc",
-    "typecheck": "tsc --noEmit",
+    "build": "prisma generate && node --max-old-space-size=8192 ./node_modules/typescript/bin/tsc",
+    "typecheck": "node --max-old-space-size=8192 ./node_modules/typescript/bin/tsc --noEmit",
     "dev": "ts-node-dev --transpile-only ./api/src/server.ts",
     "start:dev": "ts-node --transpile-only ./api/src/server.ts",
     "start": "node dist/api/src/server.js",
     "prisma:generate": "ts-node --transpile-only ./scripts/generate-prisma.ts",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "deploy:migrate": "ts-node --transpile-only ./scripts/deploy-migrate.ts",
     "create-admin": "node scripts/create-admin.js",
     "create-admin-ts": "ts-node --transpile-only ./scripts/create-admin-prisma.ts",
     "create-admin-sql": "ts-node --transpile-only ./scripts/create-admin.ts",
@@ -19,13 +21,16 @@
     "generate-hash": "node ./scripts/generate-hash.js",
     "create-sample-tests": "node scripts/create-sample-tests.js",
     "create-sample-parameters": "node scripts/create-sample-parameters.js",
-    "process-scheduled-messages": "ts-node --transpile-only ./scripts/process-scheduled-messages.ts"
+    "process-scheduled-messages": "ts-node --transpile-only ./scripts/process-scheduled-messages.ts",
+    "test": "node --max-old-space-size=8192 ./node_modules/typescript/bin/tsc --noEmit",
+    "lint": "echo 'Linting not configured. Add eslint to devDependencies.' && exit 0"
   },
   "keywords": [],
   "type": "commonjs",
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -37,6 +42,7 @@
     "nodemailer": "^6.9.15",
     "pg": "^8.23.0",
     "puppeteer": "^23.11.1",
+    "qrcode": "^1.5.4",
     "socket.io": "^4.7.5",
     "zod": "^4.4.3"
   },
@@ -46,8 +52,8 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
-    "@types/nodemailer": "^6.4.17",
     "@types/node": "^26.2.0",
+    "@types/nodemailer": "^6.4.17",
     "prisma": "^7.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"

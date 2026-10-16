@@ -5,6 +5,19 @@ import Link from "next/link";
 import { X, UserPlus, AlertCircle, ExternalLink, Loader2, Check } from "lucide-react";
 import { patientApi } from "@/lib/api";
 
+const INITIAL_FORM_STATE = {
+  firstName: "",
+  middleName: "",
+  lastName: "",
+  gender: "MALE",
+  dateOfBirth: "",
+  age: "",
+  phone: "",
+  email: "",
+  address: "",
+  bloodGroup: "",
+};
+
 export function PatientQuickRegisterModal({
   isOpen,
   onClose,
@@ -14,27 +27,14 @@ export function PatientQuickRegisterModal({
   onClose: () => void;
   onPatientCreated: (patient: any) => void;
 }) {
-  const initialFormState = {
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    gender: "MALE",
-    dateOfBirth: "",
-    age: "",
-    phone: "",
-    email: "",
-    address: "",
-    bloodGroup: "",
-  };
-
-  const [formData, setFormData] = useState(initialFormState);
+  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Reset form whenever modal closes or opens
   useEffect(() => {
     if (!isOpen) {
-      setFormData(initialFormState);
+      setFormData(INITIAL_FORM_STATE);
       setError("");
       setLoading(false);
     }
@@ -43,7 +43,7 @@ export function PatientQuickRegisterModal({
   if (!isOpen) return null;
 
   const handleCloseModal = () => {
-    setFormData(initialFormState);
+    setFormData(INITIAL_FORM_STATE);
     setError("");
     onClose();
   };
@@ -164,7 +164,7 @@ export function PatientQuickRegisterModal({
 
       if (response && (response.success || response.data || response.id)) {
         const createdPatient = response.data?.patient || response.data || response;
-        setFormData(initialFormState);
+        setFormData(INITIAL_FORM_STATE);
         onPatientCreated(createdPatient);
         handleCloseModal();
       } else {

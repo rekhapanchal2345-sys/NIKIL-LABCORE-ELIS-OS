@@ -43,6 +43,7 @@ const scanBarcodeSchema = z.object({
 router.post(
   "/order/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH
@@ -54,6 +55,7 @@ router.post(
 router.post(
   "/sample/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH
@@ -65,6 +67,7 @@ router.post(
 router.post(
   "/patient/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -81,6 +84,7 @@ router.post(
 router.get(
   "/validate/:barcode",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -93,6 +97,7 @@ router.get(
 router.post(
   "/scan",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -112,6 +117,7 @@ router.post(
 router.get(
   "/print/:barcode",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH,
@@ -128,6 +134,7 @@ router.get(
 router.post(
   "/batch",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH
@@ -146,6 +153,7 @@ router.post(
 router.post(
   "/regenerate/:type/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.LAB_TECH

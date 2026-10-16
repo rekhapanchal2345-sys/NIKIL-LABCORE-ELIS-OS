@@ -110,6 +110,10 @@ router.delete("/auto-reply/:id", validate({ params: idSchema }), deleteAutoReply
 router.post("/triggers", validate({ body: notificationTriggerSchema }), createNotificationTriggerController);
 router.get("/triggers", getNotificationTriggersController);
 router.post("/triggers/trigger", validate({ body: triggerNotificationRequestSchema }), triggerNotificationController);
+router.post("/notification-triggers", validate({ body: notificationTriggerSchema }), createNotificationTriggerController);
+router.get("/notification-triggers", getNotificationTriggersController);
+router.put("/notification-triggers/:id", validate({ params: idSchema }), updateAutoReplyRuleController);
+router.delete("/notification-triggers/:id", validate({ params: idSchema }), deleteAutoReplyRuleController);
 
 // Conversation Management
 router.get("/conversations", getConversationsController);
@@ -119,15 +123,26 @@ router.put("/conversations/:id", validate({ params: idSchema, body: updateConver
 router.get("/incoming", getIncomingMessagesController);
 router.put("/incoming/:id/process", validate({ params: idSchema }), markMessageAsProcessedController);
 
+// Messages Direct Endpoints
+router.post("/messages/send", sendMessageWithAIController);
+router.post("/messages/send-report", sendMessageWithAIController);
+router.post("/messages/send-receipt", sendMessageWithAIController);
+router.get("/messages", getIncomingMessagesController);
+
 // Premium AI-Powered Features
 router.post("/send-with-ai", sendMessageWithAIController);
 router.get("/conversations/:id/ai", validate({ params: idSchema }), getConversationWithAIController);
+router.get("/conversations/:id/ai-insights", validate({ params: idSchema }), getConversationWithAIController);
 router.get("/conversations/:id/suggest", validate({ params: idSchema }), getSuggestedResponseController);
+router.get("/conversations/:id/suggested-response", validate({ params: idSchema }), getSuggestedResponseController);
 router.get("/patients/:patientId/optimal-time", validate({ params: idSchema }), getOptimalEngagementTimeController);
+router.get("/patients/:patientId/optimal-engagement-time", validate({ params: idSchema }), getOptimalEngagementTimeController);
 router.get("/patients/:patientId/personalized", validate({ params: idSchema }), getPersonalizedContentController);
+router.get("/patients/:patientId/personalized-content", validate({ params: idSchema }), getPersonalizedContentController);
 router.put("/conversations/:id/broadcast", validate({ params: idSchema }), updateConversationWithBroadcastController);
 router.post("/process-incoming-ai", processIncomingMessageWithAIController);
 router.get("/dashboard/overview", getDashboardOverviewController);
+router.get("/dashboard", getDashboardOverviewController);
 
 // Campaign Management
 router.post("/campaigns", createCampaignController);
@@ -143,6 +158,7 @@ router.post("/campaigns/:id/duplicate", validate({ params: idSchema }), duplicat
 
 // Analytics
 router.get("/analytics/overview", getOverviewMetricsController);
+router.get("/analytics", getOverviewMetricsController);
 router.get("/analytics/templates", getTemplatePerformanceController);
 router.get("/analytics/hourly", getHourlyMetricsController);
 router.get("/analytics/daily", getDailyMetricsController);

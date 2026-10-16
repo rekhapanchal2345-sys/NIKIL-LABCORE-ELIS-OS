@@ -17,7 +17,7 @@ import AbhaLinkModal from "@/components/abdm/AbhaLinkModal";
 import AbhaCardModal from "@/components/abdm/AbhaCardModal";
 import { getAccessToken } from "@/lib/auth-storage";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 function getAuthToken(): string {
   return getAccessToken() ?? "";
@@ -471,6 +471,7 @@ export default function AbdmPage() {
   // Load FHIR preview on mount
   useEffect(() => {
     handleFetchFhirPreview("sample-cbc-001");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─────────────────────────────────────────────────────────────
@@ -859,7 +860,7 @@ export default function AbdmPage() {
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({ status: res.status, message: "Acknowledged" }));

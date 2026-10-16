@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { UserRole } from "@prisma/client";
 
 import { authenticate } from "../../../middleware/auth.middleware";
@@ -36,6 +36,7 @@ router.use(authenticate);
 router.get(
   "/metrics",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -49,6 +50,7 @@ router.get(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -61,6 +63,7 @@ router.get(
 router.get(
   "/pending",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -77,6 +80,7 @@ router.get(
 router.post(
   "/batch-approve",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -93,6 +97,7 @@ router.post(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -109,6 +114,7 @@ router.get(
 router.get(
   "/:id/history",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -125,6 +131,7 @@ router.get(
 router.post(
   "/:id/critical-ack",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -142,6 +149,7 @@ router.post(
 router.post(
   "/:id/approve",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -158,6 +166,7 @@ router.post(
 router.post(
   "/:id/reject",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -175,6 +184,7 @@ router.post(
 router.post(
   "/:id/publish",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -185,3 +195,4 @@ router.post(
 );
 
 export default router;
+

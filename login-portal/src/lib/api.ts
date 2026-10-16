@@ -18,13 +18,26 @@ async function request<T = unknown>(
   options: RequestInit = {},
   auth = true
 ): Promise<T> {
+  const defaultHeaders = headers(auth);
+  const customHeaders = (options.headers as Record<string, string>) || {};
+  const mergedHeaders: Record<string, string> = {
+    ...defaultHeaders,
+    ...customHeaders,
+  };
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     credentials: "include",
-    headers: { ...headers(auth), ...(options.headers as Record<string, string> || {}) },
+    headers: mergedHeaders,
   });
 
-  const data = await res.json();
+  const text = await res.text();
+  let data: any;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { message: text || `HTTP error ${res.status}` };
+  }
 
   if (!res.ok) {
     throw Object.assign(new Error(data.message || "Request failed"), {

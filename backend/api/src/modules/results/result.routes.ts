@@ -12,6 +12,7 @@ import {
   update,
   verify,
   approve,
+  reject,
   publish,
   getMetrics,
   getTrend,
@@ -42,6 +43,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST
@@ -59,6 +61,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST,
@@ -77,6 +80,7 @@ router.get(
 router.get(
   "/count",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST,
@@ -92,6 +96,7 @@ router.get(
 router.get(
   "/metrics",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST,
@@ -107,6 +112,7 @@ router.get(
 router.get(
   "/trend/:patientId/:testCode",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST,
@@ -150,6 +156,7 @@ router.post(
 router.post(
   "/bulk-verify",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST
@@ -167,6 +174,7 @@ router.post(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST,
@@ -185,6 +193,7 @@ router.get(
 router.patch(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST
@@ -203,6 +212,7 @@ router.patch(
 router.post(
   "/:id/verify",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.LAB_TECH,
     UserRole.PATHOLOGIST
@@ -220,6 +230,7 @@ router.post(
 router.post(
   "/:id/approve",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),
@@ -230,12 +241,30 @@ router.post(
 );
 
 // =======================================================
+// REJECT RESULT
+// =======================================================
+
+router.post(
+  "/:id/reject",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.PATHOLOGIST
+  ),
+  validate({
+    params: resultIdSchema,
+  }),
+  reject
+);
+
+// =======================================================
 // PUBLISH RESULT
 // =======================================================
 
 router.post(
   "/:id/publish",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.PATHOLOGIST
   ),

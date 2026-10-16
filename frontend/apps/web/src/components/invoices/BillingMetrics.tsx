@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { invoiceApi } from "@/lib/api";
 import {
   TrendingUp,
@@ -143,11 +143,7 @@ export default function BillingMetrics({
     };
   }, [invoices]);
 
-  useEffect(() => {
-    fetchMetrics();
-  }, [startDate, endDate]);
-
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams();
@@ -167,7 +163,11 @@ export default function BillingMetrics({
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   // Determine display values based on viewMode
   const isRegister = viewMode === "register";
@@ -204,26 +204,26 @@ export default function BillingMetrics({
     ? liveRegisterMetrics.totalDiscount
     : metrics?.discountsAndRefunds.discounts ?? liveRegisterMetrics.totalDiscount;
 
-    return (
+  return (
     <div className="space-y-3">
       {/* Sub-bar with View Selector & Scope Summary */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-          <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-slate-200">Real-time Financial Telemetry</span>
-          <span className="text-slate-600">•</span>
-          <span className="rounded-full border border-cyan-500/30 bg-cyan-950/60 px-2.5 py-0.5 text-[11px] font-bold text-cyan-300 font-mono">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+          <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+          <span className="text-slate-900 font-bold">Real-time Financial Telemetry</span>
+          <span className="text-slate-300">•</span>
+          <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 font-mono shadow-sm">
             {liveRegisterMetrics.count} Register Invoices
           </span>
           {activeStatusFilter && (
             <>
-              <span className="text-slate-600">•</span>
-              <span className="rounded-full border border-indigo-500/30 bg-indigo-950/60 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
+              <span className="text-slate-300">•</span>
+              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">
                 Filtered: {activeStatusFilter}
               </span>
               <button
                 onClick={() => onFilterStatus && onFilterStatus("")}
-                className="text-[11px] text-slate-400 hover:text-cyan-300 underline"
+                className="text-[11px] text-blue-600 hover:text-blue-800 underline font-medium"
               >
                 Clear
               </button>
@@ -231,24 +231,22 @@ export default function BillingMetrics({
           )}
         </div>
 
-        <div className="flex rounded-xl border border-slate-800 bg-slate-950/90 p-1 text-[11px] font-bold">
+        <div className="flex rounded-xl border border-slate-200 bg-white p-1 text-[11px] font-bold shadow-sm">
           <button
             onClick={() => setViewMode("register")}
-            className={`rounded-lg px-3 py-1 transition-all ${
-              viewMode === "register"
-                ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/30 font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+            className={`rounded-lg px-3 py-1 transition-all ${viewMode === "register"
+              ? "bg-blue-600 text-white shadow-sm font-bold"
+              : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             Active Register View
           </button>
           <button
             onClick={() => setViewMode("today")}
-            className={`rounded-lg px-3 py-1 transition-all ${
-              viewMode === "today"
-                ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/30 font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+            className={`rounded-lg px-3 py-1 transition-all ${viewMode === "today"
+              ? "bg-blue-600 text-white shadow-sm font-bold"
+              : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             Today's Window (IST)
           </button>
@@ -259,41 +257,40 @@ export default function BillingMetrics({
         {/* CARD 1: GROSS COLLECTIONS & TURNOVER */}
         <div
           onClick={() => onFilterStatus && onFilterStatus("")}
-          className={`group relative overflow-hidden rounded-2xl border p-5 shadow-xl transition-all cursor-pointer border-l-4 border-l-emerald-500 ${
-            !activeStatusFilter
-              ? "border-slate-800 bg-slate-950 hover:bg-slate-900/80 ring-1 ring-emerald-500/30"
-              : "border-slate-800 bg-slate-950 hover:bg-slate-900/60"
-          }`}
+          className={`group relative overflow-hidden rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all cursor-pointer border-l-4 border-l-emerald-600 ${!activeStatusFilter
+            ? "border-slate-200 bg-white ring-2 ring-emerald-500/20"
+            : "border-slate-200 bg-white hover:bg-slate-50/70"
+            }`}
           title="Click to reset filter and view all invoices"
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
                 Realized Collections
               </span>
               <span
-                className="text-slate-500 hover:text-slate-300"
+                className="text-slate-400 hover:text-slate-600"
                 title="Gross settled cash/bank/UPI payments received from patients and clients"
               >
                 <HelpCircle className="h-3 w-3" />
               </span>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-950/60 text-emerald-400 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm">
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-black tracking-tight text-white font-mono">
+          <div className="text-2xl font-black tracking-tight text-slate-900 font-mono">
             {formatCurrency(displayTotalCollections)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
             <span>Billed: {formatCurrency(displayBilledTurnover)}</span>
-            <span className="font-bold text-emerald-300 font-mono">
+            <span className="font-bold text-emerald-700 font-mono">
               {liveRegisterMetrics.recoveryRate}% Realized
             </span>
           </div>
-          <div className="mt-2.5 h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div className="mt-2.5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500 shadow-sm shadow-emerald-500/50"
+              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
               style={{ width: `${liveRegisterMetrics.recoveryRate}%` }}
             />
           </div>
@@ -302,55 +299,53 @@ export default function BillingMetrics({
         {/* CARD 2: PAID INVOICES */}
         <div
           onClick={() => onFilterStatus && onFilterStatus(activeStatusFilter === "PAID" ? "" : "PAID")}
-          className={`group relative overflow-hidden rounded-2xl border p-5 shadow-xl transition-all cursor-pointer border-l-4 border-l-cyan-500 ${
-            activeStatusFilter === "PAID"
-              ? "border-slate-800 bg-slate-950 hover:bg-slate-900/80 ring-1 ring-cyan-500/40"
-              : "border-slate-800 bg-slate-950 hover:bg-slate-900/60"
-          }`}
+          className={`group relative overflow-hidden rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all cursor-pointer border-l-4 border-l-blue-600 ${activeStatusFilter === "PAID"
+            ? "border-slate-200 bg-white ring-2 ring-blue-500/20"
+            : "border-slate-200 bg-white hover:bg-slate-50/70"
+            }`}
           title="Click to filter by fully paid invoices"
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-700">
                 Paid Invoices (100%)
               </span>
               <span
-                className="text-slate-500 hover:text-slate-300"
+                className="text-slate-400 hover:text-slate-600"
                 title="Invoices where total paid amount matches grand total with zero pending balance"
               >
                 <HelpCircle className="h-3 w-3" />
               </span>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-950/60 text-cyan-400 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 shadow-sm">
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-black tracking-tight text-white font-mono">
+          <div className="text-2xl font-black tracking-tight text-slate-900 font-mono">
             {displayPaidInvoicesCount}{" "}
-            <span className="text-xs font-semibold text-slate-400 font-sans">
+            <span className="text-xs font-semibold text-slate-500 font-sans">
               invoices
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
             <span>Value: {formatCurrency(displayPaidAmount)}</span>
-            <span className="font-bold text-cyan-300 font-mono">
+            <span className="font-bold text-blue-700 font-mono">
               {liveRegisterMetrics.count > 0
                 ? Math.round(
-                    (displayPaidInvoicesCount / liveRegisterMetrics.count) * 100
-                  )
+                  (displayPaidInvoicesCount / liveRegisterMetrics.count) * 100
+                )
                 : 100}
               % of Total
             </span>
           </div>
-          <div className="mt-2.5 h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div className="mt-2.5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
             <div
-              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-500 shadow-sm shadow-cyan-500/50"
+              className="h-full bg-blue-600 rounded-full transition-all duration-500"
               style={{
-                width: `${
-                  liveRegisterMetrics.count > 0
-                    ? (displayPaidInvoicesCount / liveRegisterMetrics.count) * 100
-                    : 100
-                }%`,
+                width: `${liveRegisterMetrics.count > 0
+                  ? (displayPaidInvoicesCount / liveRegisterMetrics.count) * 100
+                  : 100
+                  }%`,
               }}
             />
           </div>
@@ -362,93 +357,90 @@ export default function BillingMetrics({
             onFilterStatus &&
             onFilterStatus(activeStatusFilter === "PENDING" ? "" : "PENDING")
           }
-          className={`group relative overflow-hidden rounded-2xl border p-5 shadow-xl transition-all cursor-pointer border-l-4 border-l-amber-500 ${
-            activeStatusFilter === "PENDING" || activeStatusFilter === "PARTIAL"
-              ? "border-slate-800 bg-slate-950 hover:bg-slate-900/80 ring-1 ring-amber-500/40"
-              : "border-slate-800 bg-slate-950 hover:bg-slate-900/60"
-          }`}
+          className={`group relative overflow-hidden rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all cursor-pointer border-l-4 border-l-amber-500 ${activeStatusFilter === "PENDING" || activeStatusFilter === "PARTIAL"
+            ? "border-slate-200 bg-white ring-2 ring-amber-500/20"
+            : "border-slate-200 bg-white hover:bg-slate-50/70"
+            }`}
           title="Click to filter by pending / overdue invoices"
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
                 Pending / Due Balance
               </span>
               <span
-                className="text-slate-500 hover:text-slate-300"
+                className="text-slate-400 hover:text-slate-600"
                 title="Uncollected debt balance awaiting settlement across partial and unpaid invoices"
               >
                 <HelpCircle className="h-3 w-3" />
               </span>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-950/60 text-amber-400 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 shadow-sm">
               <AlertCircle className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-black tracking-tight text-white font-mono">
+          <div className="text-2xl font-black tracking-tight text-amber-900 font-mono">
             {formatCurrency(displayPendingDue)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
             <span>
               {liveRegisterMetrics.partialCount} Partial • {liveRegisterMetrics.pendingCount} Unpaid
             </span>
             <span
-              className={`font-bold font-mono ${
-                displayPendingDue > 0 ? "text-amber-300" : "text-emerald-300"
-              }`}
+              className={`font-bold font-mono ${displayPendingDue > 0 ? "text-amber-700" : "text-emerald-700"
+                }`}
             >
               {displayPendingDue > 0 ? "Action Required" : "Zero Arrears"}
             </span>
           </div>
-          <div className="mt-2.5 h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div className="mt-2.5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
             <div
-              className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500 shadow-sm shadow-amber-500/50"
+              className="h-full bg-amber-500 rounded-full transition-all duration-500"
               style={{
-                width: `${
-                  liveRegisterMetrics.totalBilled > 0
-                    ? Math.min(
-                        100,
-                        (displayPendingDue / liveRegisterMetrics.totalBilled) * 100
-                      )
-                    : 0
-                }%`,
+                width: `${liveRegisterMetrics.totalBilled > 0
+                  ? Math.min(
+                    100,
+                    (displayPendingDue / liveRegisterMetrics.totalBilled) * 100
+                  )
+                  : 0
+                  }%`,
               }}
             />
           </div>
         </div>
 
         {/* CARD 4: TAX & DISCOUNTS AUDIT */}
-        <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-xl hover:bg-slate-900/60 transition-all border-l-4 border-l-violet-500">
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all border-l-4 border-l-purple-600">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-violet-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-purple-700">
                 Tax (GST) &amp; Discounts
               </span>
               <span
-                className="text-slate-500 hover:text-slate-300"
+                className="text-slate-400 hover:text-slate-600"
                 title="Bifurcated GST output liability and discounts granted under SAC 999312"
               >
                 <HelpCircle className="h-3 w-3" />
               </span>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-950/60 text-violet-400 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-purple-200 bg-purple-50 text-purple-700 shadow-sm">
               <Percent className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-black tracking-tight text-white font-mono">
+          <div className="text-2xl font-black tracking-tight text-slate-900 font-mono">
             {formatCurrency(displayGstTotal)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
             <span>
               Taxable: {formatCurrency(displayTaxableRevenue)}
             </span>
-            <span className="font-bold text-violet-300 font-mono">
+            <span className="font-bold text-purple-700 font-mono">
               Disc: {formatCurrency(displayDiscountTotal)}
             </span>
           </div>
-          <div className="mt-2.5 h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div className="mt-2.5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
             <div
-              className="h-full bg-gradient-to-r from-violet-500 to-purple-400 rounded-full transition-all duration-500 shadow-sm shadow-violet-500/50"
+              className="h-full bg-purple-500 rounded-full transition-all duration-500"
               style={{ width: "100%" }}
             />
           </div>

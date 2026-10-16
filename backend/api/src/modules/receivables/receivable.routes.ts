@@ -38,6 +38,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -54,6 +55,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -71,6 +73,7 @@ router.get(
 router.get(
   "/summary",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -85,6 +88,7 @@ router.get(
 router.post(
   "/payment",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -101,6 +105,7 @@ router.post(
 router.post(
   "/update-overdue",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -114,6 +119,7 @@ router.post(
 router.post(
   "/corporate",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -130,6 +136,7 @@ router.post(
 router.get(
   "/corporate",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -146,6 +153,7 @@ router.get(
 router.post(
   "/corporate/balance",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -162,6 +170,7 @@ router.post(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT

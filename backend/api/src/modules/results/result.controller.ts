@@ -25,6 +25,7 @@ const actorId = (req: AuthenticatedRequest): string => {
     updateResult,
     verifyResult,
     approveResult,
+    rejectResult,
     publishResult,
     getResultsMetrics,
     getResultTrend,
@@ -239,6 +240,32 @@ const actorId = (req: AuthenticatedRequest): string => {
         next(error);
       }
     };
+
+  // =======================================================
+  // REJECT
+  // =======================================================
+
+  export const reject = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const id = pathParam(req, "id");
+      const body = req.body || {};
+      const reason = body.reason || body.rejectionReason || body.remarks;
+      const result = await rejectResult(id, reason, req.user?.id);
+
+      res.status(200).json({
+        success: true,
+        message: "Result rejected successfully",
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error in result reject controller:", error);
+      next(error);
+    }
+  };
   
   // =======================================================
   // PUBLISH

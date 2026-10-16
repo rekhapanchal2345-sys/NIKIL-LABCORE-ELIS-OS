@@ -826,6 +826,7 @@ export default function DoctorRequisitionSlipModal({
     } else if (autoOpenModal === "email") {
       openEmailComposer("requisition_slip");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, autoOpenModal, doctor]);
 
   // High-Resolution 1-Click A4 PDF Generator

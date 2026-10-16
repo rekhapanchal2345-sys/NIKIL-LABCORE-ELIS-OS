@@ -19,6 +19,7 @@ import DueAgingTracker from "@/components/invoices/DueAgingTracker";
 import DoctorReferralBilling from "@/components/invoices/DoctorReferralBilling";
 import GSTTaxAuditReport from "@/components/invoices/GSTTaxAuditReport";
 import QuickPOSBilling from "@/components/invoices/QuickPOSBilling";
+import TpaClaimsCenter from "@/components/invoices/TpaClaimsCenter";
 import { ToastManager, showInvoiceToast } from "@/components/invoices/InvoiceToast";
 import { invoiceApi, paymentsApi } from "@/lib/api";
 import type { Invoice } from "@/components/invoices/InvoiceTable";
@@ -59,7 +60,7 @@ export default function InvoicesPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      
+
       if (filters.search) url.searchParams.set("search", filters.search);
       else url.searchParams.delete("search");
 
@@ -99,20 +100,20 @@ export default function InvoicesPage() {
 
   // New Enterprise Features State
   const tabParam = searchParams.get("tab") || "all";
-  const [activeTab, setActiveTab] = useState<"all" | "pos" | "daybook" | "aging" | "b2b" | "gst">(
-    (["all", "pos", "daybook", "aging", "b2b", "gst"].includes(tabParam) ? tabParam : "all") as any
+  const [activeTab, setActiveTab] = useState<"all" | "pos" | "daybook" | "aging" | "b2b" | "gst" | "tpa">(
+    (["all", "pos", "daybook", "aging", "b2b", "gst", "tpa"].includes(tabParam) ? tabParam : "all") as any
   );
   const [quickDrawerInvoice, setQuickDrawerInvoice] = useState<Invoice | null>(null);
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
 
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t && ["all", "pos", "daybook", "aging", "b2b", "gst"].includes(t)) {
+    if (t && ["all", "pos", "daybook", "aging", "b2b", "gst", "tpa"].includes(t)) {
       setActiveTab(t as any);
     }
   }, [searchParams]);
 
-  const handleTabChange = (tab: "all" | "pos" | "daybook" | "aging" | "b2b" | "gst") => {
+  const handleTabChange = (tab: "all" | "pos" | "daybook" | "aging" | "b2b" | "gst" | "tpa") => {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
     if (tab === "all") {
@@ -195,6 +196,7 @@ export default function InvoicesPage() {
       fetchInvoices(1, pagination.limit);
     }, 300);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const handlePageChange = (newPage: number) => {
@@ -232,10 +234,10 @@ export default function InvoicesPage() {
       }
       queryParams.append("page", targetPage.toString());
       queryParams.append("limit", targetLimit.toString());
-      
+
       const query = queryParams.toString();
       const response = await invoiceApi.getAll(query ? `?${query}` : "");
-      
+
       if (response.success && response.data) {
         const data = response.data as any;
 
@@ -250,7 +252,7 @@ export default function InvoicesPage() {
             totalPages: Math.max(1, Math.ceil((data.invoices || []).length / targetLimit)),
           }));
         }
-        
+
         // Transform API data to match component interface
         const transformedInvoices: Invoice[] = (data.invoices || []).map((inv: any) => {
           const payments = inv.order?.payments || [];
@@ -333,7 +335,7 @@ export default function InvoicesPage() {
             dueDate: inv.dueDate,
           };
         });
-        
+
         console.log('Transformed invoices (fallback):', transformedInvoices);
         setInvoices(transformedInvoices);
         setError(null);
@@ -376,12 +378,12 @@ export default function InvoicesPage() {
       const response = await invoiceApi.getById(invoice.id as string);
       if (response.success && response.data) {
         const fullInvoice = response.data as any;
-        
+
         const enhancedInvoice = {
           ...invoice,
           payments: fullInvoice.order?.payments || [],
         };
-        
+
         setSelectedInvoice(enhancedInvoice);
         setPaymentModalOpen(true);
       } else {
@@ -423,7 +425,7 @@ export default function InvoicesPage() {
 
       if (response.success) {
         showInvoiceToast("success", `Payment of ₹${paymentData.amount.toLocaleString("en-IN")} collected successfully`);
-        
+
         // Refresh the invoices to get updated payment status
         await fetchInvoices();
       } else {
@@ -506,7 +508,7 @@ export default function InvoicesPage() {
       } catch (err) {
         console.warn("Could not fetch extra invoice details, using transformed invoice:", err);
       }
-      
+
       setSelectedInvoice(enhancedInvoice);
       if (type === 'thermal') {
         setThermalReceiptOpen(true);
@@ -530,7 +532,7 @@ export default function InvoicesPage() {
       const response = await invoiceApi.getById(invoice.id as string);
       if (response.success && response.data) {
         const fullInvoice = response.data as any;
-        
+
         const enhancedInvoice = {
           ...invoice,
           items: fullInvoice.order?.items?.map((item: any) => ({
@@ -551,9 +553,9 @@ export default function InvoicesPage() {
           sgstAmount: fullInvoice.sgstAmount || 0,
           igstAmount: fullInvoice.igstAmount || 0,
         };
-        
+
         setSelectedInvoice(enhancedInvoice);
-        
+
         if (method === 'whatsapp') {
           setWhatsappShareOpen(true);
         } else {
@@ -589,65 +591,66 @@ export default function InvoicesPage() {
       <ToastManager />
       <div className="space-y-6">
         {/* Executive Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/90 pb-5 bg-white p-5 rounded-2xl border shadow-sm">
           <div>
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-600 shadow-sm ring-4 ring-blue-50/50">
                 <Receipt className="h-5 w-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight text-white">
-                    Diagnostic Billing &amp; Invoicing ERP
+                  <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                    Hospital &amp; Diagnostic Invoicing ERP
                   </h1>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-950/60 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
-                    <Sparkles className="h-3 w-3 text-cyan-400" />
-                    Enterprise LIS
+                  <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                    <Sparkles className="h-3 w-3 text-blue-600" />
+                    Ultra Elite RCM
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Multi-counter billing, front-desk day book reconciliation, overdue debt aging recovery, and GSTR-1 tax compliance.
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Multi-counter OPD/IPD billing, TPA cashless pre-auth reconciliation, front-desk day book, and GSTR-1 tax compliance.
                 </p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-3 py-1.5 text-xs font-medium text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-              Live Billing ERP Sync
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+              Live Billing Sync
             </span>
 
             <button
               onClick={() => handleTabChange("pos")}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all"
+              className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all"
             >
               <Plus className="h-4 w-4" />
               + Quick POS Billing
             </button>
             <button
               onClick={() => handleTabChange("daybook")}
-              className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2 text-xs font-semibold text-slate-200 shadow hover:bg-slate-800 hover:text-white transition-all"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all"
             >
-              <Receipt className="h-4 w-4 text-emerald-400" />
+              <Receipt className="h-4 w-4 text-emerald-600" />
               Day Book Shift Close
             </button>
             <button
               onClick={() => fetchInvoices()}
               title="Refresh register"
-              className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors shadow-sm"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-cyan-400" : "text-cyan-400"}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-blue-600" : "text-blue-600"}`} />
               Refresh
             </button>
           </div>
         </div>
 
         {/* Tab Navigation Pills */}
-        <div className="flex overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/90 p-1.5 text-xs font-semibold scrollbar-none gap-1.5">
+        <div className="flex overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 text-xs font-semibold scrollbar-none gap-1.5 shadow-sm">
           {[
             { id: "all", label: "All Invoices (Register)", count: invoices.length, icon: FileText },
             { id: "pos", label: "Quick POS Billing", isNew: true, icon: CreditCard },
+            { id: "tpa", label: "TPA & Cashless Claims", icon: ShieldCheck },
             { id: "daybook", label: "Day Book & Shift Close", icon: Receipt },
             { id: "aging", label: "Due Aging Tracker", icon: Clock },
             { id: "b2b", label: "B2B & Referral Billing", icon: Stethoscope },
@@ -659,25 +662,23 @@ export default function InvoicesPage() {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id as any)}
-                className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl transition-all ${
-                  isActive
-                    ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold shadow-md shadow-cyan-600/30"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent"
-                }`}
+                className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl transition-all ${isActive
+                  ? "bg-blue-600 text-white font-bold shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent"
+                  }`}
               >
                 <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`} />
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span
-                    className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      isActive ? "bg-white/20 text-white" : "border border-slate-800 bg-slate-900 text-slate-400"
-                    }`}
+                    className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${isActive ? "bg-white/20 text-white" : "border border-slate-200 bg-slate-100 text-slate-600"
+                      }`}
                   >
                     {tab.count}
                   </span>
                 )}
                 {tab.isNew && (
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-950/60 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">
                     Fast
                   </span>
                 )}
@@ -699,12 +700,12 @@ export default function InvoicesPage() {
 
             {/* Batch Operations Bar */}
             {selectedIds.length > 0 && (
-              <div className="flex items-center justify-between rounded-2xl border border-cyan-500/30 bg-slate-950 p-4 text-white shadow-2xl animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-slate-900 shadow-sm animate-in fade-in slide-in-from-top-2">
                 <div className="flex items-center gap-3">
-                  <span className="rounded-xl border border-cyan-500/30 bg-cyan-950/80 px-3 py-1 text-xs font-bold text-cyan-300">
+                  <span className="rounded-xl border border-blue-300 bg-blue-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
                     {selectedIds.length} Selected
                   </span>
-                  <span className="text-xs text-slate-300">
+                  <span className="text-xs font-semibold text-slate-700">
                     Batch actions available for selected invoices:
                   </span>
                 </div>
@@ -712,28 +713,28 @@ export default function InvoicesPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleBatchThermalPrint}
-                    className="flex items-center gap-1.5 rounded-xl bg-amber-950/60 text-amber-300 border border-amber-500/30 px-3 py-1.5 text-xs font-semibold hover:bg-amber-900/60 transition-colors shadow-sm"
+                    className="flex items-center gap-1.5 rounded-xl bg-white text-amber-800 border border-amber-300 px-3 py-1.5 text-xs font-semibold hover:bg-amber-50 transition-colors shadow-sm"
                   >
-                    <Printer className="h-3.5 w-3.5 text-amber-400" />
+                    <Printer className="h-3.5 w-3.5 text-amber-600" />
                     Batch Thermal Print
                   </button>
                   <button
                     onClick={handleBatchA4Print}
-                    className="flex items-center gap-1.5 rounded-xl bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 px-3 py-1.5 text-xs font-semibold hover:bg-cyan-900/60 transition-colors shadow-sm"
+                    className="flex items-center gap-1.5 rounded-xl bg-white text-blue-800 border border-blue-300 px-3 py-1.5 text-xs font-semibold hover:bg-blue-50 transition-colors shadow-sm"
                   >
-                    <FileText className="h-3.5 w-3.5 text-cyan-400" />
+                    <FileText className="h-3.5 w-3.5 text-blue-600" />
                     Batch A4 Print
                   </button>
                   <button
                     onClick={handleBatchExport}
-                    className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-slate-800 transition-colors shadow-sm"
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 transition-colors shadow-sm"
                   >
-                    <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
                     Batch Export CSV
                   </button>
                   <button
                     onClick={() => setSelectedIds([])}
-                    className="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1.5 text-slate-400 hover:text-white"
+                    className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1.5 text-slate-500 hover:text-slate-800 shadow-sm"
                     title="Clear selection"
                   >
                     <X className="h-4 w-4" />
@@ -785,6 +786,16 @@ export default function InvoicesPage() {
               fetchInvoices();
               handleTabChange("all");
             }}
+          />
+        )}
+
+        {/* TAB: TPA & CASHLESS INSURANCE CLAIMS */}
+        {activeTab === "tpa" && (
+          <TpaClaimsCenter
+            invoices={invoices}
+            onRefresh={fetchInvoices}
+            onCollectCopay={handleCollectPayment}
+            onPrintA4={(inv) => handlePrint(inv, "a4")}
           />
         )}
 
@@ -866,14 +877,14 @@ export default function InvoicesPage() {
               items: ((selectedInvoice as any)?.items && (selectedInvoice as any).items.length > 0)
                 ? (selectedInvoice as any).items
                 : [
-                    {
-                      testName: "Diagnostic Laboratory Service",
-                      hsnSacCode: "999312",
-                      quantity: 1,
-                      unitPrice: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
-                      total: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
-                    },
-                  ],
+                  {
+                    testName: "Diagnostic Laboratory Service",
+                    hsnSacCode: "999312",
+                    quantity: 1,
+                    unitPrice: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
+                    total: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
+                  },
+                ],
               subtotal: selectedInvoice.totalAmount || selectedInvoice.netPayable || 0,
               discount: selectedInvoice.discount,
               gstAmount: selectedInvoice.gstAmount,
@@ -942,27 +953,27 @@ export default function InvoicesPage() {
               verifyCode: selectedInvoice.invoiceNumber?.replace(/[^0-9]/g, "").slice(-7) || "LC99120",
               items: ((selectedInvoice as any)?.items && (selectedInvoice as any).items.length > 0)
                 ? (selectedInvoice as any).items.map((item: any) => ({
-                    id: item.id,
-                    testName: item.testName || "Diagnostic Investigation",
-                    testCode: item.testCode,
-                    hsnSacCode: item.hsnSacCode || "999312",
-                    quantity: item.quantity || 1,
-                    unitPrice: Number(item.unitPrice || item.total || 0),
-                    unitRate: Number(item.unitPrice || item.total || 0),
-                    amount: Number(item.total || item.unitPrice || 0),
-                    discount: item.discount || 0,
-                    taxableValue: Number(item.taxableValue || item.total || 0),
-                  }))
+                  id: item.id,
+                  testName: item.testName || "Diagnostic Investigation",
+                  testCode: item.testCode,
+                  hsnSacCode: item.hsnSacCode || "999312",
+                  quantity: item.quantity || 1,
+                  unitPrice: Number(item.unitPrice || item.total || 0),
+                  unitRate: Number(item.unitPrice || item.total || 0),
+                  amount: Number(item.total || item.unitPrice || 0),
+                  discount: item.discount || 0,
+                  taxableValue: Number(item.taxableValue || item.total || 0),
+                }))
                 : [
-                    {
-                      id: "1",
-                      testName: "Diagnostic Laboratory Service Profile",
-                      hsnSacCode: "999312",
-                      quantity: 1,
-                      unitPrice: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
-                      amount: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
-                    },
-                  ],
+                  {
+                    id: "1",
+                    testName: "Diagnostic Laboratory Service Profile",
+                    hsnSacCode: "999312",
+                    quantity: 1,
+                    unitPrice: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
+                    amount: selectedInvoice.netPayable || selectedInvoice.totalAmount || 0,
+                  },
+                ],
               subtotal: selectedInvoice.totalAmount || selectedInvoice.netPayable || 0,
               discount: selectedInvoice.discount || 0,
               taxableAmount: (selectedInvoice.totalAmount || selectedInvoice.netPayable || 0) - (selectedInvoice.discount || 0),
@@ -1028,40 +1039,40 @@ export default function InvoicesPage() {
               const { jsPDF } = await import('jspdf');
               const pdf = new jsPDF("p", "mm", "a4");
               const pageWidth = pdf.internal.pageSize.getWidth();
-              
+
               // Header
               pdf.setFillColor(79, 70, 229);
               pdf.rect(0, 0, pageWidth, 40, "F");
-              
+
               pdf.setTextColor(255, 255, 255);
               pdf.setFontSize(24);
               pdf.setFont("helvetica", "bold");
               pdf.text("LABCORE ELIS", 15, 18);
-              
+
               pdf.setFontSize(10);
               pdf.setFont("helvetica", "normal");
               pdf.text("Enterprise Laboratory Information System", 15, 25);
               pdf.text("Diagnostic Laboratory Services", 15, 30);
-              
+
               pdf.setFontSize(16);
               pdf.setFont("helvetica", "bold");
               pdf.text("TAX INVOICE", pageWidth - 15, 18, { align: "right" });
-              
+
               pdf.setFontSize(10);
               pdf.setFont("helvetica", "normal");
               pdf.text(`Invoice: ${selectedInvoice.invoiceNumber}`, pageWidth - 15, 26, { align: "right" });
               pdf.text(`Date: ${new Date(selectedInvoice.createdAt || '').toLocaleDateString('en-IN')}`, pageWidth - 15, 32, { align: "right" });
-              
+
               pdf.setTextColor(0, 0, 0);
-              
+
               let yPosition = 50;
-              
+
               // Bill To
               pdf.setFontSize(12);
               pdf.setFont("helvetica", "bold");
               pdf.text("Bill To:", 15, yPosition);
               yPosition += 8;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(10);
               pdf.text(`Patient: ${selectedInvoice.patientName || "—"}`, 15, yPosition);
@@ -1074,13 +1085,13 @@ export default function InvoicesPage() {
                 pdf.text(`Phone: ${selectedInvoice.patientPhone}`, 15, yPosition);
                 yPosition += 5;
               }
-              
+
               yPosition += 10;
-              
+
               // Items Table
               pdf.setFillColor(79, 70, 229);
               pdf.rect(15, yPosition, pageWidth - 30, 7, "F");
-              
+
               pdf.setTextColor(255, 255, 255);
               pdf.setFontSize(8);
               pdf.setFont("helvetica", "bold");
@@ -1088,10 +1099,10 @@ export default function InvoicesPage() {
               pdf.text("Description", 25, yPosition + 5);
               pdf.text("Qty", 120, yPosition + 5);
               pdf.text("Amount", pageWidth - 17, yPosition + 5, { align: "right" });
-              
+
               pdf.setTextColor(0, 0, 0);
               yPosition += 7;
-              
+
               const items = (selectedInvoice as any)?.items || [];
               items.forEach((item: any, index: number) => {
                 pdf.setFont("helvetica", "normal");
@@ -1103,21 +1114,21 @@ export default function InvoicesPage() {
                 pdf.text(`₹${(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition + 4, { align: "right" });
                 yPosition += 6;
               });
-              
+
               yPosition += 10;
-              
+
               // Summary
               pdf.setDrawColor(229, 231, 235);
               pdf.line(15, yPosition, pageWidth - 15, yPosition);
               yPosition += 8;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(9);
               pdf.text("Subtotal", 15, yPosition);
               pdf.setFont("helvetica", "bold");
               pdf.text(`₹${(selectedInvoice.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               yPosition += 6;
-              
+
               if (selectedInvoice.discount && selectedInvoice.discount > 0) {
                 pdf.setFont("helvetica", "normal");
                 pdf.text("Discount", 15, yPosition);
@@ -1126,23 +1137,23 @@ export default function InvoicesPage() {
                 pdf.setTextColor(0, 0, 0);
                 yPosition += 6;
               }
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.text("GST", 15, yPosition);
               pdf.setFont("helvetica", "bold");
               pdf.text(`₹${(selectedInvoice.gstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               yPosition += 8;
-              
+
               pdf.setDrawColor(79, 70, 229);
               pdf.line(15, yPosition, pageWidth - 15, yPosition);
               yPosition += 8;
-              
+
               pdf.setFontSize(11);
               pdf.setFont("helvetica", "bold");
               pdf.text("Grand Total", 15, yPosition);
               pdf.text(`₹${(selectedInvoice.netPayable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               yPosition += 6;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(9);
               pdf.text("Amount Paid", 15, yPosition);
@@ -1151,7 +1162,7 @@ export default function InvoicesPage() {
               pdf.text(`₹${(selectedInvoice.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               pdf.setTextColor(0, 0, 0);
               yPosition += 6;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(9);
               pdf.text("Balance Due", 15, yPosition);
@@ -1159,7 +1170,7 @@ export default function InvoicesPage() {
               pdf.setFont("helvetica", "bold");
               pdf.text(`₹${(selectedInvoice.pendingAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               pdf.setTextColor(0, 0, 0);
-              
+
               // Footer
               yPosition = 280;
               pdf.setFontSize(8);
@@ -1167,7 +1178,7 @@ export default function InvoicesPage() {
               pdf.setTextColor(107, 114, 128);
               pdf.text("Generated by LabCore ELIS | For queries, please contact billing department", pageWidth / 2, yPosition, { align: "center" });
               pdf.setTextColor(0, 0, 0);
-              
+
               return pdf.output("blob");
             }}
           />
@@ -1190,40 +1201,40 @@ export default function InvoicesPage() {
               const { jsPDF } = await import('jspdf');
               const pdf = new jsPDF("p", "mm", "a4");
               const pageWidth = pdf.internal.pageSize.getWidth();
-              
+
               // Header
               pdf.setFillColor(79, 70, 229);
               pdf.rect(0, 0, pageWidth, 40, "F");
-              
+
               pdf.setTextColor(255, 255, 255);
               pdf.setFontSize(24);
               pdf.setFont("helvetica", "bold");
               pdf.text("LABCORE ELIS", 15, 18);
-              
+
               pdf.setFontSize(10);
               pdf.setFont("helvetica", "normal");
               pdf.text("Enterprise Laboratory Information System", 15, 25);
               pdf.text("Diagnostic Laboratory Services", 15, 30);
-              
+
               pdf.setFontSize(16);
               pdf.setFont("helvetica", "bold");
               pdf.text("TAX INVOICE", pageWidth - 15, 18, { align: "right" });
-              
+
               pdf.setFontSize(10);
               pdf.setFont("helvetica", "normal");
               pdf.text(`Invoice: ${selectedInvoice.invoiceNumber}`, pageWidth - 15, 26, { align: "right" });
               pdf.text(`Date: ${new Date(selectedInvoice.createdAt || '').toLocaleDateString('en-IN')}`, pageWidth - 15, 32, { align: "right" });
-              
+
               pdf.setTextColor(0, 0, 0);
-              
+
               let yPosition = 50;
-              
+
               // Bill To
               pdf.setFontSize(12);
               pdf.setFont("helvetica", "bold");
               pdf.text("Bill To:", 15, yPosition);
               yPosition += 8;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(10);
               pdf.text(`Patient: ${selectedInvoice.patientName || "—"}`, 15, yPosition);
@@ -1240,13 +1251,13 @@ export default function InvoicesPage() {
                 pdf.text(`Email: ${selectedInvoice.patientEmail}`, 15, yPosition);
                 yPosition += 5;
               }
-              
+
               yPosition += 10;
-              
+
               // Items Table
               pdf.setFillColor(79, 70, 229);
               pdf.rect(15, yPosition, pageWidth - 30, 7, "F");
-              
+
               pdf.setTextColor(255, 255, 255);
               pdf.setFontSize(8);
               pdf.setFont("helvetica", "bold");
@@ -1254,10 +1265,10 @@ export default function InvoicesPage() {
               pdf.text("Description", 25, yPosition + 5);
               pdf.text("Qty", 120, yPosition + 5);
               pdf.text("Amount", pageWidth - 17, yPosition + 5, { align: "right" });
-              
+
               pdf.setTextColor(0, 0, 0);
               yPosition += 7;
-              
+
               const items = (selectedInvoice as any)?.items || [];
               items.forEach((item: any, index: number) => {
                 pdf.setFont("helvetica", "normal");
@@ -1269,21 +1280,21 @@ export default function InvoicesPage() {
                 pdf.text(`₹${(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition + 4, { align: "right" });
                 yPosition += 6;
               });
-              
+
               yPosition += 10;
-              
+
               // Summary
               pdf.setDrawColor(229, 231, 235);
               pdf.line(15, yPosition, pageWidth - 15, yPosition);
               yPosition += 8;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(9);
               pdf.text("Subtotal", 15, yPosition);
               pdf.setFont("helvetica", "bold");
               pdf.text(`₹${(selectedInvoice.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               yPosition += 6;
-              
+
               if (selectedInvoice.discount && selectedInvoice.discount > 0) {
                 pdf.setFont("helvetica", "normal");
                 pdf.text("Discount", 15, yPosition);
@@ -1292,23 +1303,23 @@ export default function InvoicesPage() {
                 pdf.setTextColor(0, 0, 0);
                 yPosition += 6;
               }
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.text("GST", 15, yPosition);
               pdf.setFont("helvetica", "bold");
               pdf.text(`₹${(selectedInvoice.gstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               yPosition += 8;
-              
+
               pdf.setDrawColor(79, 70, 229);
               pdf.line(15, yPosition, pageWidth - 15, yPosition);
               yPosition += 8;
-              
+
               pdf.setFontSize(11);
               pdf.setFont("helvetica", "bold");
               pdf.text("Grand Total", 15, yPosition);
               pdf.text(`₹${(selectedInvoice.netPayable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               yPosition += 6;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(9);
               pdf.text("Amount Paid", 15, yPosition);
@@ -1317,7 +1328,7 @@ export default function InvoicesPage() {
               pdf.text(`₹${(selectedInvoice.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               pdf.setTextColor(0, 0, 0);
               yPosition += 6;
-              
+
               pdf.setFont("helvetica", "normal");
               pdf.setFontSize(9);
               pdf.text("Balance Due", 15, yPosition);
@@ -1325,7 +1336,7 @@ export default function InvoicesPage() {
               pdf.setFont("helvetica", "bold");
               pdf.text(`₹${(selectedInvoice.pendingAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 17, yPosition, { align: "right" });
               pdf.setTextColor(0, 0, 0);
-              
+
               // Footer
               yPosition = 280;
               pdf.setFontSize(8);
@@ -1333,7 +1344,7 @@ export default function InvoicesPage() {
               pdf.setTextColor(107, 114, 128);
               pdf.text("Generated by LabCore ELIS | For queries, please contact billing department", pageWidth / 2, yPosition, { align: "center" });
               pdf.setTextColor(0, 0, 0);
-              
+
               return pdf.output("blob");
             }}
           />

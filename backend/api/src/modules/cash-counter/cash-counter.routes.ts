@@ -34,6 +34,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -50,6 +51,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -67,6 +69,7 @@ router.get(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -84,6 +87,7 @@ router.get(
 router.post(
   "/open",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -101,6 +105,7 @@ router.post(
 router.post(
   "/close",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT
@@ -118,6 +123,7 @@ router.post(
 router.post(
   "/movement",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.FRONT_DESK,
     UserRole.ACCOUNTANT

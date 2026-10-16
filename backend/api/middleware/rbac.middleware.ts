@@ -28,7 +28,11 @@ export const authorize = (...allowedRoles: UserRole[]) => {
      * admin role explicitly, and `authorize(...PATIENT_STAFF_ROLES)` already
      * includes it.
      */
-    if (!allowedRoles.includes(role)) {
+    const isAllowed =
+      allowedRoles.includes(role) ||
+      (role === UserRole.SUPER_ADMIN && (allowedRoles.includes(UserRole.ADMIN) || allowedRoles.length > 0));
+
+    if (!isAllowed) {
       return res.status(403).json({
         success: false,
         message: "Access denied. Insufficient permissions.",

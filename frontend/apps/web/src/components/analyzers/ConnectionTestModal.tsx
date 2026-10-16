@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
   Network,
@@ -47,7 +47,7 @@ export default function ConnectionTestModal({
     errorMessage: null,
   });
 
-  const runTest = async () => {
+  const runTest = useCallback(async () => {
     if (!analyzer) return;
     setTesting(true);
     setStages({
@@ -105,13 +105,13 @@ export default function ConnectionTestModal({
     } finally {
       setTesting(false);
     }
-  };
+  }, [analyzer, onStatusUpdated]);
 
   useEffect(() => {
     if (isOpen && analyzer) {
       runTest();
     }
-  }, [isOpen, analyzer?.id]);
+  }, [isOpen, analyzer, runTest]);
 
   if (!isOpen || !analyzer) return null;
 

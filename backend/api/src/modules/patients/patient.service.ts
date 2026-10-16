@@ -9,6 +9,7 @@ import {
   notificationPreferencesFrom,
   sanitizePhone,
 } from "./patient.mapper";
+import { safeDecrypt } from "../../utils/field-crypto";
 
 type Tx = Prisma.TransactionClient;
 
@@ -31,43 +32,69 @@ const duplicateSelect = {
 
 const UHID_SEQUENCE = /^UHID-\d{4}-(\d+)$/;
 
+let patientCryptoColumnsEnsured = false;
+export async function ensurePatientCryptoColumns(tx: Tx | typeof prisma = prisma): Promise<void> {
+  if (patientCryptoColumnsEnsured) return;
+  try {
+    await (tx as any).$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        BEGIN
+          ALTER TABLE "patients" ALTER COLUMN "aadhaarNumber" TYPE TEXT;
+        EXCEPTION WHEN others THEN NULL;
+        END;
+        BEGIN
+          ALTER TABLE "patients" ALTER COLUMN "panNumber" TYPE TEXT;
+        EXCEPTION WHEN others THEN NULL;
+        END;
+      END $$;
+    `);
+    patientCryptoColumnsEnsured = true;
+  } catch {
+    // Non-fatal if DB migration already widened or table not yet created
+  }
+}
+
 export const generateUHID = async (tx: Tx | typeof prisma = prisma): Promise<string> => {
   const currentYear = new Date().getUTCFullYear();
-  const prefix = `UHID-${currentYear}-`;
+  const fy = String(currentYear);
+  const seriesType = "UHID";
+  const branchId = "MAIN";
+  const seriesKey = `${seriesType}-${fy}-${branchId}`;
 
-  // Fetch recent UHIDs ordered by true creation timestamp to find the real numerical ceiling
-  const recent = await tx.patient.findMany({
-    where: { uhid: { startsWith: prefix } },
-    select: { uhid: true },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  try {
+    const rows: any = await (tx as any).$queryRawUnsafe(`
+      INSERT INTO accounting_sequences (id, series_type, financial_year, branch_id, current_value, updated_at)
+      VALUES ($1, $2, $3, $4, 1, CURRENT_TIMESTAMP)
+      ON CONFLICT (series_type, financial_year, branch_id)
+      DO UPDATE SET 
+        current_value = accounting_sequences.current_value + 1,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING current_value;
+    `, seriesKey, seriesType, fy, branchId);
 
-  let highest = 0;
-  for (const row of recent) {
-    const match = UHID_SEQUENCE.exec(row.uhid);
-    if (match) {
-      const num = Number(match[1]);
-      if (Number.isFinite(num) && num > highest) {
-        highest = num;
+    const nextVal = Array.isArray(rows) && rows[0]?.current_value ? Number(rows[0].current_value) : 1;
+    return `UHID-${currentYear}-${String(nextVal).padStart(5, "0")}`;
+  } catch (err) {
+    // Robust fallback to highest existing numerical sequence if raw query fails in non-pg environments
+    const prefix = `UHID-${currentYear}-`;
+    const recent = await tx.patient.findMany({
+      where: { uhid: { startsWith: prefix } },
+      select: { uhid: true },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    let highest = 0;
+    for (const row of recent) {
+      const match = UHID_SEQUENCE.exec(row.uhid);
+      if (match) {
+        const num = Number(match[1]);
+        if (Number.isFinite(num) && num > highest) highest = num;
       }
     }
+    const nextVal = highest + 1;
+    return `${prefix}${String(nextVal).padStart(5, "0")}`;
   }
-
-  // Random jitter increment breaks lockstep synchronization between simultaneous receptionists
-  const jitter = Math.floor(Math.random() * 3);
-  let candidate = highest + 1 + jitter;
-
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const uhid = `${prefix}${String(candidate).padStart(5, "0")}`;
-    const clash = await tx.patient.findUnique({ where: { uhid }, select: { id: true } });
-    if (!clash) return uhid;
-    candidate += 1 + Math.floor(Math.random() * 2);
-  }
-
-  // High-entropy timestamp fallback guarantee: registration is never blocked
-  const entropy = Date.now().toString().slice(-6);
-  return `${prefix}${entropy}`;
 };
 
 export const checkDuplicatePatient = async (
@@ -103,7 +130,7 @@ export const checkDuplicatePatient = async (
   for (const { field, column, value } of candidates) {
     if (!value) continue;
 
-    const existing = await tx.patient.findFirst({
+    let existing = await tx.patient.findFirst({
       where: {
         [column]: value,
         isDraft: false,
@@ -112,7 +139,46 @@ export const checkDuplicatePatient = async (
       select: duplicateSelect,
     });
 
-    if (existing) return { ...existing, matchedField: field };
+    // If Aadhaar or PAN did not match as plaintext, check against decrypted stored values
+    if (!existing && (field === "Aadhaar" || field === "PAN")) {
+      const candidatePatients = await tx.patient.findMany({
+        where: {
+          [column]: { not: null },
+          isDraft: false,
+          ...(excludePatientId ? { id: { not: excludePatientId } } : {}),
+        } as Prisma.PatientWhereInput,
+        select: duplicateSelect,
+        take: 50,
+      });
+
+      for (const p of candidatePatients) {
+        const rawVal = field === "Aadhaar" ? p.aadhaarNumber : p.panNumber;
+        const decrypted = safeDecrypt(rawVal);
+        if (decrypted && (decrypted === value || (field === "Aadhaar" && decrypted.replace(/\D/g, "") === value))) {
+          existing = p;
+          break;
+        }
+      }
+    }
+
+    if (existing) {
+      const decryptedAadhaar = safeDecrypt(existing.aadhaarNumber);
+      const maskedAadhaar = decryptedAadhaar && decryptedAadhaar.length >= 4
+        ? "********" + decryptedAadhaar.slice(-4)
+        : existing.aadhaarNumber;
+
+      const decryptedPan = safeDecrypt(existing.panNumber);
+      const maskedPan = decryptedPan && decryptedPan.length >= 4
+        ? decryptedPan.slice(0, 2) + "******" + decryptedPan.slice(-2)
+        : existing.panNumber;
+
+      return {
+        ...existing,
+        aadhaarNumber: maskedAadhaar,
+        panNumber: maskedPan,
+        matchedField: field,
+      };
+    }
   }
 
   return null;
@@ -159,12 +225,18 @@ export const formatPatientResponse = (patient: any, maskPii = false) => {
   const pincode = patient.pincode ?? null;
 
   let phone = patient.phone;
-  let aadhaarNumber = patient.aadhaarNumber;
-  let panNumber = patient.panNumber;
+  const decryptedAadhaar = safeDecrypt(patient.aadhaarNumber);
+  const decryptedPan = safeDecrypt(patient.panNumber);
+  let aadhaarNumber = decryptedAadhaar;
+  let panNumber = decryptedPan;
+
+  // Mask Aadhaar per DPDP Act 2023 / UIDAI norms (never expose raw 12 digits in API)
+  if (aadhaarNumber && aadhaarNumber.length >= 4) {
+    aadhaarNumber = "********" + aadhaarNumber.slice(-4);
+  }
 
   if (maskPii) {
     if (phone && phone.length >= 4) phone = phone.slice(0, 3) + "******" + phone.slice(-4);
-    if (aadhaarNumber && aadhaarNumber.length >= 4) aadhaarNumber = "********" + aadhaarNumber.slice(-4);
     if (panNumber && panNumber.length >= 4) panNumber = panNumber.slice(0, 2) + "******" + panNumber.slice(-2);
   }
 
@@ -274,6 +346,7 @@ export const createPatient = async (data: PatientInput, createdById?: string) =>
   while (true) {
     try {
       patient = await prisma.$transaction(async (tx) => {
+        await ensurePatientCryptoColumns(tx);
         const uhid = await generateUHID(tx);
         const patientId = crypto.randomUUID();
         const qrCode = generatePatientQRData(patientId, uhid);

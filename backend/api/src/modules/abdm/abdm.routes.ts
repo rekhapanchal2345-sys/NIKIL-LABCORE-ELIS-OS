@@ -56,6 +56,7 @@ const router = Router();
 
 // Status & Stats
 router.get("/status", getAbdmStatus);
+router.get("/gateway/status", getAbdmStatus);
 router.get("/stats", getAbdmStats);
 router.get("/transactions", getAbdmTransactions);
 
@@ -112,8 +113,32 @@ router.post(
   linkAbhaHandler
 );
 
+router.post(
+  "/patient/:patientId/link",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  (req, res, next) => {
+    req.body = { ...req.body, patientId: req.params.patientId };
+    return linkAbhaHandler(req, res);
+  }
+);
+
 router.delete(
   "/abha/unlink/:patientId",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN),
+  unlinkAbhaHandler
+);
+
+router.delete(
+  "/patient/:patientId/unlink",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN),
+  unlinkAbhaHandler
+);
+
+router.post(
+  "/patient/:patientId/unlink",
   authenticate,
   authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN),
   unlinkAbhaHandler
@@ -126,9 +151,22 @@ router.get(
   getAbhaCard
 );
 
+router.get(
+  "/patient/:patientId/card",
+  authenticate,
+  getAbhaCard
+);
+
 // ── Scan & Share ──
 router.post(
   "/scan-share/generate-qr",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  generateQr
+);
+
+router.post(
+  "/scan-share/qr",
   authenticate,
   authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
   generateQr
@@ -144,6 +182,13 @@ router.post(
 // ── FHIR Preview ──
 router.get(
   "/fhir/preview/:orderId",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.PATHOLOGIST),
+  previewFhirBundle
+);
+
+router.get(
+  "/fhir/bundle/:orderId",
   authenticate,
   authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.PATHOLOGIST),
   previewFhirBundle

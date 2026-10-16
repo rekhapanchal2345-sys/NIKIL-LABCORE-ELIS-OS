@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { formatPatientFullName } from "@/lib/patient-utils";
 
 interface ResultData {
@@ -114,13 +114,7 @@ interface ResultPrintTemplateProps {
 export default function ResultPrintTemplate({ result, onClose }: ResultPrintTemplateProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (printRef.current) {
-      handlePrint();
-    }
-  }, []);
-
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (printRef.current) {
       const printContent = printRef.current.innerHTML;
       const printWindow = window.open('', '', 'width=800,height=600');
@@ -129,7 +123,7 @@ export default function ResultPrintTemplate({ result, onClose }: ResultPrintTemp
         printWindow.document.write(`
           <html>
             <head>
-              <title>Lab Report - ${result.order.orderNumber}</title>
+              <title>Lab Report - ${result.order?.orderNumber || 'Report'}</title>
               <style>
                 ${getPremiumPrintStyles()}
               </style>
@@ -145,7 +139,13 @@ export default function ResultPrintTemplate({ result, onClose }: ResultPrintTemp
         onClose();
       }
     }
-  };
+  }, [result.order?.orderNumber, onClose]);
+
+  useEffect(() => {
+    if (printRef.current) {
+      handlePrint();
+    }
+  }, [handlePrint]);
 
   const getPremiumPrintStyles = () => `
     @page {

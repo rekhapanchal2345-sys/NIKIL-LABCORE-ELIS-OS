@@ -20,6 +20,13 @@ import cache from "../../utils/cache";
   } from "./payment.service";
   
   // =======================================================
+  // IN-FLIGHT IDEMPOTENCY LOCK
+  // PAY-RACE-001: Prevents double-submission race conditions when
+  // concurrent requests arrive with the same x-idempotency-key.
+  // =======================================================
+  const inFlightIdempotencyKeys = new Set<string>();
+
+  // =======================================================
   // CREATE SPLIT PAYMENT
   // =======================================================
 
@@ -29,21 +36,30 @@ import cache from "../../utils/cache";
       res: Response,
       next: NextFunction
     ) => {
-      try {
-        const body = (req as any).validated?.body || req.body;
-        const idempotencyKey = body.idempotencyKey || req.headers['x-idempotency-key'];
-        
-        if (idempotencyKey) {
-          const cachedPayment = cache.get(`idempotency:split:${idempotencyKey}`);
-          if (cachedPayment) {
-            return res.status(200).json({
-              success: true,
-              message: "Split payment created successfully (idempotent)",
-              data: cachedPayment,
-            });
-          }
+      const body = (req as any).validated?.body || req.body;
+      const idempotencyKey = (body.idempotencyKey || req.headers['x-idempotency-key']) as string | undefined;
+
+      if (idempotencyKey) {
+        if (inFlightIdempotencyKeys.has(idempotencyKey)) {
+          return res.status(409).json({
+            success: false,
+            message: "A split payment with this idempotency key is currently processing. Please wait.",
+          });
         }
-        
+
+        const cachedPayment = cache.get(`idempotency:split:${idempotencyKey}`);
+        if (cachedPayment) {
+          return res.status(200).json({
+            success: true,
+            message: "Split payment created successfully (idempotent)",
+            data: cachedPayment,
+          });
+        }
+
+        inFlightIdempotencyKeys.add(idempotencyKey);
+      }
+
+      try {
         const payments =
           await createSplitPayment(
             body,
@@ -62,6 +78,10 @@ import cache from "../../utils/cache";
         });
       } catch (error) {
         next(error);
+      } finally {
+        if (idempotencyKey) {
+          inFlightIdempotencyKeys.delete(idempotencyKey);
+        }
       }
     };
 
@@ -75,22 +95,30 @@ import cache from "../../utils/cache";
       res: Response,
       next: NextFunction
     ) => {
-      try {
-        // Use validated data if available, otherwise fall back to original request
-        const body = (req as any).validated?.body || req.body;
-        const idempotencyKey = body.idempotencyKey || req.headers['x-idempotency-key'];
+      const body = (req as any).validated?.body || req.body;
+      const idempotencyKey = (body.idempotencyKey || req.headers['x-idempotency-key']) as string | undefined;
 
-        if (idempotencyKey) {
-          const cachedPayment = cache.get(`idempotency:pay:${idempotencyKey}`);
-          if (cachedPayment) {
-            return res.status(200).json({
-              success: true,
-              message: "Payment created successfully (idempotent)",
-              data: cachedPayment,
-            });
-          }
+      if (idempotencyKey) {
+        if (inFlightIdempotencyKeys.has(idempotencyKey)) {
+          return res.status(409).json({
+            success: false,
+            message: "A payment with this idempotency key is currently processing. Please wait.",
+          });
         }
-        
+
+        const cachedPayment = cache.get(`idempotency:pay:${idempotencyKey}`);
+        if (cachedPayment) {
+          return res.status(200).json({
+            success: true,
+            message: "Payment created successfully (idempotent)",
+            data: cachedPayment,
+          });
+        }
+
+        inFlightIdempotencyKeys.add(idempotencyKey);
+      }
+
+      try {
         const payment =
           await createPayment(
             body,
@@ -109,6 +137,10 @@ import cache from "../../utils/cache";
         });
       } catch (error) {
         next(error);
+      } finally {
+        if (idempotencyKey) {
+          inFlightIdempotencyKeys.delete(idempotencyKey);
+        }
       }
     };
   

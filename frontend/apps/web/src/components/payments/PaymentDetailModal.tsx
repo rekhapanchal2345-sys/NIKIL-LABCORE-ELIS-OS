@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { paymentApi } from "@/lib/api";
 import {
   X,
@@ -163,12 +163,6 @@ export default function PaymentDetailModal({
   const [reconciling, setReconciling] = useState(false);
   const [reconcileSuccess, setReconcileSuccess] = useState(false);
 
-  useEffect(() => {
-    if (paymentId) {
-      fetchPaymentDetails();
-    }
-  }, [paymentId]);
-
   // Keyboard escape listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -178,7 +172,7 @@ export default function PaymentDetailModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const fetchPaymentDetails = async () => {
+  const fetchPaymentDetails = useCallback(async () => {
     if (!paymentId) return;
     try {
       setLoading(true);
@@ -420,7 +414,13 @@ export default function PaymentDetailModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentId]);
+
+  useEffect(() => {
+    if (paymentId) {
+      fetchPaymentDetails();
+    }
+  }, [paymentId, fetchPaymentDetails]);
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -463,7 +463,7 @@ export default function PaymentDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-2 sm:p-4 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div

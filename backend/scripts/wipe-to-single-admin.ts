@@ -1,4 +1,31 @@
 import 'dotenv/config';
+
+// ─── ISS-004: MANDATORY DESTRUCTIVE-RESET SAFETY GUARD ─────────────────────
+// This script wipes 56 clinical and financial database tables.
+// It MUST NOT run in production, and requires explicit opt-in.
+if (process.env.NODE_ENV === 'production') {
+  console.error('❌ SAFETY ABORT: wipe-to-single-admin.ts is FORBIDDEN in NODE_ENV=production.');
+  console.error('   This script would irreversibly delete ALL clinical records, financial ledgers, and audit trails.');
+  process.exit(1);
+}
+
+const DB_URL = (process.env.DATABASE_URL || '').toLowerCase();
+const isRemoteDb = DB_URL && !DB_URL.includes('localhost') && !DB_URL.includes('127.0.0.1');
+if (isRemoteDb) {
+  console.error('❌ SAFETY ABORT: DATABASE_URL does not point to localhost/127.0.0.1.');
+  console.error('   This script is only allowed against local development databases.');
+  process.exit(1);
+}
+
+if (process.env.ALLOW_DESTRUCTIVE_RESET !== 'I_UNDERSTAND_DATA_LOSS') {
+  console.error('❌ SAFETY ABORT: ALLOW_DESTRUCTIVE_RESET is not set to the required confirmation string.');
+  console.error('   To proceed, add the following to your local .env:');
+  console.error('   ALLOW_DESTRUCTIVE_RESET=I_UNDERSTAND_DATA_LOSS');
+  console.error('   This guard prevents accidental invocation in CI pipelines or staging environments.');
+  process.exit(1);
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 import prisma from '../api/config/database';
 import { hashPassword, comparePassword } from '../api/src/utils/password';
 import { emailBlindIndex, normaliseEmail } from '../api/src/utils/gmail';

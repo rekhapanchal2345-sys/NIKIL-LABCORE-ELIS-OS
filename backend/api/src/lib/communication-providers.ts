@@ -69,32 +69,32 @@ export async function getLaboratorySettings() {
     const dbSettings = Array.isArray(rawSettings) ? rawSettings[0] : rawSettings;
     if (dbSettings) {
       return {
-        emailProvider: dbSettings.email_provider || process.env.EMAIL_PROVIDER || 'smtp',
-        emailApiKey: dbSettings.email_api_key || process.env.EMAIL_API_KEY,
-        emailFromEmail: dbSettings.email_from_email || process.env.EMAIL_FROM_EMAIL || 'nikilpanchal5@gmail.com',
-        emailFromName: dbSettings.email_from_name || process.env.EMAIL_FROM_NAME || 'LabCore Enterprise LIS',
-        smtpHost: dbSettings.smtp_host || process.env.SMTP_HOST || 'smtp.gmail.com',
-        smtpPort: dbSettings.smtp_port ? parseInt(dbSettings.smtp_port) : (process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587),
-        smtpUser: dbSettings.smtp_user || process.env.SMTP_USER || 'nikilpanchal5@gmail.com',
-        smtpPassword: dbSettings.smtp_password || process.env.SMTP_PASSWORD,
+        emailProvider: dbSettings.emailProvider || dbSettings.email_provider || process.env.EMAIL_PROVIDER || 'smtp',
+        emailApiKey: dbSettings.emailApiKey || dbSettings.email_api_key || process.env.EMAIL_API_KEY,
+        emailFromEmail: dbSettings.emailFromEmail || dbSettings.email_from_email || process.env.EMAIL_FROM_EMAIL || 'nikilpanchal5@gmail.com',
+        emailFromName: dbSettings.emailFromName || dbSettings.email_from_name || process.env.EMAIL_FROM_NAME || 'LabCore Enterprise LIS',
+        smtpHost: dbSettings.smtpHost || dbSettings.smtp_host || process.env.SMTP_HOST || 'smtp.gmail.com',
+        smtpPort: (dbSettings.smtpPort ?? dbSettings.smtp_port) ? parseInt(String(dbSettings.smtpPort ?? dbSettings.smtp_port)) : (process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587),
+        smtpUser: dbSettings.smtpUser || dbSettings.smtp_user || process.env.SMTP_USER || 'nikilpanchal5@gmail.com',
+        smtpPassword: dbSettings.smtpPassword || dbSettings.smtp_password || process.env.SMTP_PASSWORD,
         
-        smsProvider: dbSettings.sms_provider || process.env.SMS_PROVIDER || 'custom',
-        smsApiKey: dbSettings.sms_api_key || process.env.SMS_API_KEY,
-        smsApiSecret: dbSettings.sms_api_secret || process.env.SMS_API_SECRET,
-        smsSenderId: dbSettings.sms_sender_id || process.env.SMS_SENDER_ID,
+        smsProvider: dbSettings.smsProvider || dbSettings.sms_provider || process.env.SMS_PROVIDER || 'custom',
+        smsApiKey: dbSettings.smsApiKey || dbSettings.sms_api_key || process.env.SMS_API_KEY,
+        smsApiSecret: dbSettings.smsApiSecret || dbSettings.sms_api_secret || process.env.SMS_API_SECRET,
+        smsSenderId: dbSettings.smsSenderId || dbSettings.sms_sender_id || process.env.SMS_SENDER_ID,
         
-        callProvider: dbSettings.call_provider || process.env.CALL_PROVIDER || 'custom',
-        callApiKey: dbSettings.call_api_key || process.env.CALL_API_KEY,
-        callApiSecret: dbSettings.call_api_secret || process.env.CALL_API_SECRET,
-        callCallerId: dbSettings.call_caller_id || process.env.CALL_CALLER_ID,
+        callProvider: dbSettings.callProvider || dbSettings.call_provider || process.env.CALL_PROVIDER || 'custom',
+        callApiKey: dbSettings.callApiKey || dbSettings.call_api_key || process.env.CALL_API_KEY,
+        callApiSecret: dbSettings.callApiSecret || dbSettings.call_api_secret || process.env.CALL_API_SECRET,
+        callCallerId: dbSettings.callCallerId || dbSettings.call_caller_id || process.env.CALL_CALLER_ID,
         
-        whatsappProvider: process.env.WHATSAPP_PROVIDER || 'twilio',
-        whatsappApiKey: process.env.WHATSAPP_API_KEY,
-        whatsappApiSecret: process.env.WHATSAPP_API_SECRET,
-        whatsappSenderId: process.env.WHATSAPP_SENDER_ID,
-        whatsappBusinessNumber: process.env.WHATSAPP_BUSINESS_NUMBER,
-        whatsappApiVersion: process.env.WHATSAPP_API_VERSION || 'v19.0',
-        whatsappWebhookSecret: process.env.WHATSAPP_WEBHOOK_SECRET,
+        whatsappProvider: dbSettings.whatsappProvider || dbSettings.whatsapp_provider || process.env.WHATSAPP_PROVIDER || 'twilio',
+        whatsappApiKey: dbSettings.whatsappApiKey || dbSettings.whatsapp_api_key || process.env.WHATSAPP_API_KEY,
+        whatsappApiSecret: dbSettings.whatsappApiSecret || dbSettings.whatsapp_api_secret || process.env.WHATSAPP_API_SECRET,
+        whatsappSenderId: dbSettings.whatsappSenderId || dbSettings.whatsapp_sender_id || process.env.WHATSAPP_SENDER_ID,
+        whatsappBusinessNumber: dbSettings.whatsappBusinessNumber || dbSettings.whatsapp_business_number || process.env.WHATSAPP_BUSINESS_NUMBER,
+        whatsappApiVersion: dbSettings.whatsappApiVersion || dbSettings.whatsapp_api_version || process.env.WHATSAPP_API_VERSION || 'v19.0',
+        whatsappWebhookSecret: dbSettings.whatsappWebhookSecret || dbSettings.whatsapp_webhook_secret || process.env.WHATSAPP_WEBHOOK_SECRET,
       };
     }
   } catch (err) {
@@ -1044,10 +1044,14 @@ export const verifyWebhookSignature = (payload: string, signature: string, appSe
   hmac.update(payload);
   const expectedSignature = `sha256=${hmac.digest('hex')}`;
   
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSignature);
+
+  if (sigBuf.length !== expBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 };
 
 export const sendInteractiveButtonMessage = async (to: string, message: string, buttons: Array<{ id: string; title: string }>, header?: string, footer?: string): Promise<WhatsAppResult> => {

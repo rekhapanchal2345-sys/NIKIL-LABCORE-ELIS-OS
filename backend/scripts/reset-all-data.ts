@@ -1,3 +1,25 @@
+import 'dotenv/config';
+
+// ─── ISS-004: MANDATORY DESTRUCTIVE-RESET SAFETY GUARD ─────────────────────
+if (process.env.NODE_ENV === 'production') {
+  console.error('❌ SAFETY ABORT: reset-all-data.ts is FORBIDDEN in NODE_ENV=production.');
+  console.error('   This script would irreversibly delete ALL clinical records and financial ledgers.');
+  process.exit(1);
+}
+
+const _DB_URL = (process.env.DATABASE_URL || '').toLowerCase();
+if (_DB_URL && !_DB_URL.includes('localhost') && !_DB_URL.includes('127.0.0.1')) {
+  console.error('❌ SAFETY ABORT: DATABASE_URL does not point to localhost/127.0.0.1.');
+  console.error('   This script is only allowed against local development databases.');
+  process.exit(1);
+}
+
+if (process.env.ALLOW_DESTRUCTIVE_RESET !== 'I_UNDERSTAND_DATA_LOSS') {
+  console.error('❌ SAFETY ABORT: Set ALLOW_DESTRUCTIVE_RESET=I_UNDERSTAND_DATA_LOSS in your local .env to proceed.');
+  process.exit(1);
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 import prisma from "../api/config/database";
 
 async function resetAllData() {

@@ -5,6 +5,7 @@ import jwt, {
 } from "jsonwebtoken";
 import crypto from "crypto";
 import { HttpError } from "../utils/http-error";
+import { generateJti } from "./token-blacklist";
 
 export type UserRole =
   | "ADMIN"
@@ -39,11 +40,16 @@ export interface JwtPayload {
   fullName: string;
   role: UserRole;
   status: AccountStatus;
-  sid?: string;
-  amr?: string[];
-  typ?: "access" | "mfa" | "mfa_setup" | "owner";
+  sid?: string;           // Session ID
+  jti?: string;           // JWT ID — used for blacklist-based revocation
+  amr?: string[];         // Authentication Method References
+  typ?: "access" | "mfa" | "mfa_setup" | "owner" | "step_up";
+  /** Risk score at the time of issue (0–100). Logged but not re-enforced in middleware. */
+  rsk?: number;
   iat?: number;
   exp?: number;
+  iss?: string;
+  aud?: string | string[];
 }
 
 const VALID_ROLES: UserRole[] = [
@@ -106,10 +112,16 @@ export const sessionTtlMs = (): number =>
 
 export const generateAccessToken = (
   user: AuthUser,
-  extras?: { sid?: string; amr?: string[]; expiresIn?: SignOptions["expiresIn"] }
+  extras?: {
+    sid?: string;
+    amr?: string[];
+    expiresIn?: SignOptions["expiresIn"];
+    riskScore?: number;
+  }
 ): string => {
   const payload: Omit<JwtPayload, "iat" | "exp"> = {
     sub: user.id,
+    jti: generateJti(),          // Unique ID — used for blacklist revocation
     employeeCode: user.employeeCode,
     email: user.email,
     fullName: user.fullName,
@@ -118,6 +130,7 @@ export const generateAccessToken = (
     sid: extras?.sid,
     amr: extras?.amr ?? ["pwd"],
     typ: "access",
+    ...(extras?.riskScore !== undefined && { rsk: extras.riskScore }),
   };
 
   return jwt.sign(payload, getJwtSecret(), {
@@ -131,13 +144,76 @@ export const generateChallengeToken = (
   typ: "mfa" | "mfa_setup"
 ): string => {
   return jwt.sign(
-    { sub: userId, typ },
+    { sub: userId, jti: generateJti(), typ },
     getJwtSecret(),
     {
       expiresIn: "10m",
       ...signOptions(),
     }
   );
+};
+
+/**
+ * Step-up authentication token.
+ *
+ * Issued after a successful MFA step-up challenge for a sensitive operation
+ * (e.g., bulk patient export, changing critical settings). It is short-lived
+ * and bound to the current session and the specific operation scope.
+ */
+export const generateStepUpToken = (
+  user: AuthUser,
+  sessionId: string | undefined,
+  scope: string   // e.g., "pii_export", "bulk_delete", "settings_change"
+): string => {
+  const payload: Omit<JwtPayload, "iat" | "exp"> = {
+    sub: user.id,
+    jti: generateJti(),
+    employeeCode: user.employeeCode,
+    email: user.email,
+    fullName: user.fullName,
+    role: user.role,
+    status: user.status,
+    sid: sessionId,
+    amr: ["pwd", "totp", "step_up"],
+    typ: "step_up",
+  };
+
+  return jwt.sign(
+    { ...payload, scope },
+    getJwtSecret(),
+    { expiresIn: "5m", ...signOptions() }
+  );
+};
+
+/** Verifies a step-up token and returns payload if valid. */
+export const verifyStepUpToken = (
+  token: string,
+  userId: string,
+  sessionId: string | undefined,
+  expectedScope?: string
+): JwtPayload & { scope?: string } => {
+  let decoded: jwt.JwtPayload | string;
+  try {
+    decoded = jwt.verify(token, getJwtSecret(), verifyOptions());
+  } catch {
+    throw new HttpError(
+      "Step-up confirmation expired. Please re-authenticate.",
+      401,
+      "STEP_UP_EXPIRED"
+    );
+  }
+
+  if (typeof decoded !== "object" || decoded === null) {
+    throw new HttpError("Invalid step-up token.", 401, "STEP_UP_INVALID");
+  }
+
+  const p = decoded as Partial<JwtPayload> & { scope?: string };
+  if (p.typ !== "step_up") throw new HttpError("Invalid step-up token.", 401, "STEP_UP_INVALID");
+  if (p.sub !== userId) throw new HttpError("Step-up token belongs to different account.", 401, "STEP_UP_INVALID");
+  if (sessionId && p.sid && p.sid !== sessionId) throw new HttpError("Step-up token is not valid for this session.", 401, "STEP_UP_INVALID");
+  if (expectedScope && p.scope !== expectedScope) throw new HttpError(`Step-up token is not valid for scope '${expectedScope}'.`, 401, "STEP_UP_WRONG_SCOPE");
+
+  return p as JwtPayload & { scope?: string };
 };
 
 /**
@@ -160,6 +236,7 @@ export const generateOwnerToken = (
 ): string => {
   const payload: Omit<JwtPayload, "iat" | "exp"> = {
     sub: user.id,
+    jti: generateJti(),
     employeeCode: user.employeeCode,
     email: user.email,
     fullName: user.fullName,
@@ -174,6 +251,22 @@ export const generateOwnerToken = (
     expiresIn: ownerTokenTtl(),
     ...signOptions(),
   });
+};
+
+/**
+ * Extracts the expiry timestamp (ms) from a raw JWT without verifying it.
+ * Used to set the correct TTL when adding a token to the blacklist.
+ * The token has already been verified by this point.
+ */
+export const getTokenExpiryMs = (token: string): number => {
+  try {
+    const decoded = jwt.decode(token) as { exp?: number } | null;
+    if (decoded?.exp) return decoded.exp * 1000;
+  } catch {
+    // ignore
+  }
+  // Fallback: 15 min from now (conservative)
+  return Date.now() + 15 * 60 * 1000;
 };
 
 /** Throws unless the token is a live owner token belonging to this user and session. */

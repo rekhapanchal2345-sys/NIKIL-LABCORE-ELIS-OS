@@ -83,14 +83,24 @@ export async function interpretOrderWithGemini(orderId: string): Promise<GeminiC
 
   if (apiKey && apiKey.length > 10 && !apiKey.startsWith("YOUR_")) {
     try {
+      /**
+       * ISS-005: DPDP Act 2023 Compliance — De-identified Gemini prompt.
+       * Patient name (firstName/lastName), UHID, orderNumber, and doctor name
+       * are NEVER transmitted to the external Google Gemini API.
+       * Only anonymized clinical demographics and lab values are sent.
+       */
+      const ageBracket =
+        age < 18  ? 'Paediatric (0-17 yrs)' :
+        age < 40  ? 'Young Adult (18-39 yrs)' :
+        age < 60  ? 'Middle-Aged Adult (40-59 yrs)' :
+        age < 75  ? 'Senior (60-74 yrs)' :
+                    'Elderly (75+ yrs)';
+
       const prompt = `You are a Board-Certified Consultant Pathologist AI assistant in an ISO 15189 NABL accredited diagnostic healthcare laboratory in India.
-Analyze the following clinical diagnostic test results for this patient:
-Patient Demographics:
-- Name: ${patient.firstName} ${patient.lastName}
-- Age: ${age} years
-- Gender: ${gender}
-- Order No: ${order.orderNumber}
-- Referring Clinician: ${order.doctor?.fullName || "General OPD"}
+Analyze the following de-identified clinical diagnostic test results:
+Anonymized Patient Demographics (de-identified per DPDP Act 2023):
+- Age Bracket: ${ageBracket}
+- Biological Sex: ${gender}
 
 Analyzed Laboratory Parameters:
 ${paramSummaries.join("\n")}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   ArrowRightLeft, 
   Send, 
@@ -136,7 +136,7 @@ export default function BidirectionalQuerySystem({ analyzerId, onClose }: Bidire
     priority: "NORMAL" as "NORMAL" | "URGENT" | "STAT",
   });
 
-  const fetchWorklistEntries = async () => {
+  const fetchWorklistEntries = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -153,11 +153,11 @@ export default function BidirectionalQuerySystem({ analyzerId, onClose }: Bidire
     } finally {
       setLoading(false);
     }
-  };
+  }, [analyzerId, filter, searchTerm]);
 
   useEffect(() => {
     fetchWorklistEntries();
-  }, [analyzerId, filter, searchTerm]);
+  }, [fetchWorklistEntries]);
 
   const handleSendToAnalyzer = async (entry: WorklistEntry) => {
     setWorklistEntries((prev) =>

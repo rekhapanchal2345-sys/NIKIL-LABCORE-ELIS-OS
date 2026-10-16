@@ -14,12 +14,17 @@ dotenv.config();
 // ─────────────────────────────────────────────────────────────
 
 /**
- * When ABDM_MOCK_MODE=true (default unless live credentials are set),
- * all gateway calls are short-circuited and realistic mock responses are returned.
- * This allows full end-to-end local development / CI without NHA sandbox dependency.
+ * When ABDM_MOCK_MODE=true, all gateway calls are short-circuited and realistic
+ * mock responses are returned. This MUST be explicitly enabled for local dev / CI only.
+ *
+ * ISS-007: Previously defaulted to true (??  "true"), which bypassed RSA SPKI
+ * signature verification on all /v0.5/* webhook endpoints in production.
+ * Now defaults to false (secure). Set ABDM_MOCK_MODE=true in local .env only.
+ * Mock mode is ALWAYS disabled in NODE_ENV=production regardless of env var.
  */
 export const ABDM_MOCK_MODE =
-  (process.env.ABDM_MOCK_MODE ?? "true").toLowerCase() !== "false";
+  process.env.NODE_ENV !== "production" &&
+  (process.env.ABDM_MOCK_MODE ?? "false").toLowerCase() === "true";
 
 // ─────────────────────────────────────────────────────────────
 // Environment Selection

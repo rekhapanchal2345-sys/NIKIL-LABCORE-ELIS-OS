@@ -37,6 +37,7 @@ router.use(authenticate);
 router.post(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -53,6 +54,7 @@ router.post(
 router.get(
   "/",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -69,6 +71,7 @@ router.get(
 router.get(
   "/summary",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -83,6 +86,7 @@ router.get(
 router.post(
   "/process",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -99,6 +103,7 @@ router.post(
 router.post(
   "/reconciliation",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -115,6 +120,33 @@ router.post(
 router.get(
   "/reconciliation",
   authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.ACCOUNTANT
+  ),
+  validate({
+    query: reconciliationQuerySchema,
+  }),
+  listReconciliations
+);
+
+router.get(
+  "/reconciliation/list",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.ACCOUNTANT
+  ),
+  validate({
+    query: reconciliationQuerySchema,
+  }),
+  listReconciliations
+);
+
+router.get(
+  "/reconcile/list",
+  authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -131,6 +163,21 @@ router.get(
 router.post(
   "/reconciliation/reconcile",
   authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.ACCOUNTANT
+  ),
+  validate({
+    body: reconcileSchema,
+  }),
+  reconcile
+);
+
+// Direct reconcile alias for frontend settlementsApi.reconcile
+router.post(
+  "/reconcile",
+  authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),
@@ -147,6 +194,7 @@ router.post(
 router.get(
   "/:id",
   authorize(
+    UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.ACCOUNTANT
   ),

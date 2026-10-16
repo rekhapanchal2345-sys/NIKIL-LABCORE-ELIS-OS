@@ -234,26 +234,26 @@ export default function ShiftHandoverModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in">
+      <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white border border-slate-200/90 p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/25 border border-amber-400/30">
+            <div className="h-11 w-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
               <Clock className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-white tracking-tight">
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">
                 Close Counter & Shift Handover
               </h3>
-              <p className="text-xs font-medium text-slate-400 mt-0.5">
+              <p className="text-xs font-medium text-slate-500 mt-0.5">
                 Reconcile physical cash drawer denominations against expected POS ledger
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition"
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -261,32 +261,32 @@ export default function ShiftHandoverModal({
 
         <div className="space-y-4">
           {/* Active Session Info Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl bg-slate-950/80 p-3.5 text-xs border border-slate-800 gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl bg-slate-50 p-3.5 text-xs border border-slate-200/80 gap-2">
             <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-blue-400" />
-              <span className="text-slate-400">Active Shift: </span>
-              <strong className="text-white font-bold">{counterName}</strong>
+              <Building2 className="h-4 w-4 text-blue-600" />
+              <span className="text-slate-500">Active Shift: </span>
+              <strong className="text-slate-900 font-bold">{counterName}</strong>
             </div>
             <div className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4 text-emerald-400" />
-              <span className="text-slate-400">Cashier: </span>
-              <strong className="text-emerald-300 font-bold">{cashierName}</strong>
+              <UserCheck className="h-4 w-4 text-emerald-600" />
+              <span className="text-slate-500">Cashier: </span>
+              <strong className="text-emerald-700 font-bold">{cashierName}</strong>
             </div>
           </div>
 
           {/* System Expected Drawer Cash Card */}
-          <div className="rounded-2xl bg-gradient-to-r from-blue-950/80 to-indigo-950/80 border border-blue-500/30 p-4.5 shadow-xl flex items-center justify-between">
+          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 shadow-xs flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-blue-300">
-                <Receipt className="h-4 w-4 text-blue-400" />
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-900">
+                <Receipt className="h-4 w-4 text-blue-700" />
                 <span>System Expected Drawer Cash</span>
               </div>
-              <div className="text-[11px] font-semibold text-blue-300/80 mt-1">
+              <div className="text-[11px] font-medium text-blue-700 mt-1">
                 Opening Float + Cash Collections − Cash Refunds
               </div>
             </div>
             <div className="text-right">
-              <span className="font-mono text-2xl font-black text-white drop-shadow">
+              <span className="font-mono text-2xl font-black text-blue-950">
                 {formatCurrency(expectedCash)}
               </span>
             </div>
@@ -295,8 +295,8 @@ export default function ShiftHandoverModal({
           {/* Currency Denominations Grid Header & Tools */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <Coins className="h-4 w-4 text-amber-400" />
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Coins className="h-4 w-4 text-amber-600" />
                 <span>Physical Currency Denominations Count</span>
               </label>
 
@@ -304,7 +304,7 @@ export default function ShiftHandoverModal({
                 <button
                   type="button"
                   onClick={handleAutoFillExact}
-                  className="flex items-center gap-1 text-[11px] font-bold text-blue-400 hover:text-blue-300 bg-blue-950/60 hover:bg-blue-900/60 px-2.5 py-1 rounded-lg border border-blue-800/40 transition"
+                  className="flex items-center gap-1 text-[11px] font-bold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition"
                   title="Auto-fill exact expected cash into denominations"
                 >
                   <Sparkles className="h-3 w-3" />
@@ -313,7 +313,7 @@ export default function ShiftHandoverModal({
                 <button
                   type="button"
                   onClick={handleResetCount}
-                  className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 transition"
+                  className="flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 transition"
                   title="Reset all counts to 0"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -324,14 +324,14 @@ export default function ShiftHandoverModal({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
               {[
-                { note: "₹2000 Note", key: "2000", val: 2000, color: "text-purple-400" },
-                { note: "₹500 Note", key: "500", val: 500, color: "text-amber-400" },
-                { note: "₹200 Note", key: "200", val: 200, color: "text-orange-400" },
-                { note: "₹100 Note", key: "100", val: 100, color: "text-sky-400" },
-                { note: "₹50 Note", key: "50", val: 50, color: "text-cyan-400" },
-                { note: "₹20 Note", key: "20", val: 20, color: "text-red-400" },
-                { note: "₹10 Note", key: "10", val: 10, color: "text-emerald-400" },
-                { note: "Coins (₹)", key: "coins", val: 1, color: "text-yellow-400" },
+                { note: "₹2000 Note", key: "2000", val: 2000, color: "text-purple-700" },
+                { note: "₹500 Note", key: "500", val: 500, color: "text-amber-700" },
+                { note: "₹200 Note", key: "200", val: 200, color: "text-orange-700" },
+                { note: "₹100 Note", key: "100", val: 100, color: "text-sky-700" },
+                { note: "₹50 Note", key: "50", val: 50, color: "text-teal-700" },
+                { note: "₹20 Note", key: "20", val: 20, color: "text-red-700" },
+                { note: "₹10 Note", key: "10", val: 10, color: "text-emerald-700" },
+                { note: "Coins (₹)", key: "coins", val: 1, color: "text-amber-800" },
               ].map(({ note, key, val, color }) => {
                 const count = denominations[key] || 0;
                 const subTotal = count * val;
@@ -339,11 +339,11 @@ export default function ShiftHandoverModal({
                 return (
                   <div
                     key={key}
-                    className="flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-950/90 p-2.5 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20"
+                    className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 transition focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100"
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className={`font-bold ${color}`}>{note}</span>
-                      <span className="text-[10px] font-mono text-slate-500">
+                      <span className="text-[10px] font-mono font-semibold text-slate-500">
                         ₹{subTotal}
                       </span>
                     </div>
@@ -360,7 +360,7 @@ export default function ShiftHandoverModal({
                           })
                         }
                         placeholder="0"
-                        className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-right font-mono font-black text-white outline-none focus:border-blue-500 text-xs"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-mono font-bold text-slate-900 outline-none focus:border-blue-500 text-xs shadow-2xs"
                       />
                     </div>
                   </div>
@@ -370,38 +370,38 @@ export default function ShiftHandoverModal({
           </div>
 
           {/* Variance & Reconciliation Status Card */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/90 p-4 text-xs space-y-2.5 shadow-xl">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-xs space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400 font-semibold">Physical Counted Cash:</span>
-              <strong className="font-mono text-lg font-black text-white">
+              <span className="text-slate-600 font-semibold">Physical Counted Cash:</span>
+              <strong className="font-mono text-lg font-black text-slate-900">
                 {formatCurrency(physicalCash)}
               </strong>
             </div>
 
-            <div className="flex items-center justify-between border-t border-slate-800/80 pt-2.5">
-              <span className="text-slate-300 font-bold">Till Reconciliation Status:</span>
+            <div className="flex items-center justify-between border-t border-slate-200 pt-2.5">
+              <span className="text-slate-700 font-bold">Till Reconciliation Status:</span>
               <span
-                className={`font-black font-mono text-xs inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${
+                className={`font-bold font-mono text-xs inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${
                   variance === 0
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                     : variance > 0
-                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                    : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-rose-50 border-rose-200 text-rose-800"
                 }`}
               >
                 {variance === 0 ? (
                   <>
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                     <span>Balanced (₹0.00 Exact)</span>
                   </>
                 ) : variance > 0 ? (
                   <>
-                    <TrendingUp className="h-3.5 w-3.5 text-amber-400" />
+                    <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
                     <span>+{formatCurrency(variance)} (Excess in Till)</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
                     <span>{formatCurrency(variance)} (Shortage in Till)</span>
                   </>
                 )}
@@ -411,7 +411,7 @@ export default function ShiftHandoverModal({
 
           {/* Handover remarks */}
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
               Handover Remarks / Supervisor Notes
             </label>
             <input
@@ -419,32 +419,32 @@ export default function ShiftHandoverModal({
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               placeholder="e.g. Physical till handed over to evening cashier (Riya Patel)"
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-700 transition"
+              className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handlePrintSlip}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-slate-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 transition"
             >
-              <Printer className="h-4 w-4 text-blue-400" />
+              <Printer className="h-4 w-4 text-blue-600" />
               <span>Print Till Slip</span>
             </button>
             <button
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-2.5 text-xs font-black text-white shadow-lg shadow-amber-600/25 hover:from-amber-500 hover:to-orange-500 active:scale-95 disabled:opacity-50 transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:from-amber-500 hover:to-amber-600 active:scale-95 disabled:opacity-50 transition"
             >
               {submitting ? (
                 <>

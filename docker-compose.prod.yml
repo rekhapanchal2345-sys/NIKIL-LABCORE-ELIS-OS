@@ -1,0 +1,123 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: labcore-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-labcore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeSecurePassword123!}
+      POSTGRES_DB: ${POSTGRES_DB:-labcore_elis}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-labcore} -d ${POSTGRES_DB:-labcore_elis}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - labcore-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: labcore-redis-prod
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-ChangeMeSecureRedisPassword123!}"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ChangeMeSecureRedisPassword123!}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - labcore-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: labcore-backend-prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-labcore}:${POSTGRES_PASSWORD:-ChangeMeSecurePassword123!}@postgres:5432/${POSTGRES_DB:-labcore_elis}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-ChangeMeSecureRedisPassword123!}@redis:6379
+    volumes:
+      - backend_backups:/app/backups
+    ports:
+      - "5000:5000"
+      - "5005:5005"
+    networks:
+      - labcore-network
+
+  web:
+    build:
+      context: ./frontend/apps/web
+      dockerfile: Dockerfile
+    container_name: labcore-web-prod
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      INTERNAL_API_URL: http://backend:5000
+      NEXT_PUBLIC_API_URL: /api
+    ports:
+      - "3001:3001"
+    networks:
+      - labcore-network
+
+  login-portal:
+    build:
+      context: ./login-portal
+      dockerfile: Dockerfile
+    container_name: labcore-portal-prod
+    restart: always
+    ports:
+      - "3002:3002"
+    networks:
+      - labcore-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: labcore-nginx-prod
+    restart: always
+    depends_on:
+      - backend
+      - web
+      - login-portal
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - labcore-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_backups:
+    driver: local
+
+networks:
+  labcore-network:
+    driver: bridge

@@ -49,6 +49,7 @@ model User {
   mfaEnabled                   Boolean                       @default(false)
   totpSecretEnc                String?
   totpPendingEnc               String?
+  lastMfaAt                    DateTime?
   /// Confirmed by a code sent to this Gmail address. Until then the account can
   /// sign in but cannot be trusted for credential recovery.
   emailVerified                Boolean                       @default(false)
@@ -104,6 +105,14 @@ model User {
   createdTriggers              WhatsAppNotificationTrigger[] @relation("TriggerCreator")
   createdWhatsAppTemplates     WhatsAppTemplate[]            @relation("WhatsAppTemplateCreator")
   createdScheduledMessages     WhatsAppScheduledMessage[]   @relation("ScheduledMessageCreator")
+  trustedDevices               TrustedDevice[]
+  webAuthnCredentials          WebAuthnCredential[]
+  permissionOverrides          UserPermissionOverride[] @relation("UserPermissionOverrides")
+  roleOverrides                UserRoleOverride[]       @relation("UserRoleOverrides")
+  ssoAccounts                  SsoAccount[]
+  breakGlassEvents             BreakGlassEvent[]
+  digitalSignatures            DigitalSignature[]
+  createdApiClients            ApiClient[]              @relation("ApiClientCreator")
 
   @@index([role])
   @@index([status])
@@ -135,10 +144,22 @@ model UserSession {
   revokedAt         DateTime?
   revokeReason      String?
   createdAt         DateTime  @default(now())
+
+  /// Refresh token rotation family ID.
+  /// All tokens belonging to the same original login share this ID.
+  /// If a revoked token from the family is presented (reuse attack),
+  /// ALL active sessions in the family are immediately revoked.
+  familyId          String?
+
+  /// Risk score assigned at session creation (0–100).
+  /// Used for session analytics and post-hoc risk review.
+  riskScore         Int       @default(0)
+
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, revokedAt])
+  @@index([familyId])
   @@map("user_sessions")
 }
 
@@ -152,6 +173,45 @@ model MfaBackupCode {
 
   @@index([userId])
   @@map("mfa_backup_codes")
+}
+
+model TrustedDevice {
+  id                String    @id @default(cuid())
+  userId            String
+  deviceFingerprint String
+  deviceName        String
+  trustTokenHash    String    @unique
+  ipAddress         String?
+  userAgent         String?
+  trustedUntil      DateTime
+  lastUsedAt        DateTime  @default(now())
+  revokedAt         DateTime?
+  revokeReason      String?
+  createdAt         DateTime  @default(now())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deviceFingerprint])
+  @@index([trustTokenHash])
+  @@map("trusted_devices")
+}
+
+model WebAuthnCredential {
+  id           String    @id @default(cuid())
+  userId       String
+  credentialId String    @unique
+  publicKey    String
+  counter      BigInt    @default(0)
+  deviceName   String?
+  transports   String?
+  aaguid       String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([credentialId])
+  @@map("webauthn_credentials")
 }
 
 /// Single-use codes emailed to a Gmail address, used for address verification
@@ -212,6 +272,211 @@ model RolePermission {
   @@index([role])
   @@map("role_permissions")
 }
+
+/// Phase 3 — Per-user GRANT or DENY override for a single permission.
+/// Effect resolution: DENY > GRANT > role baseline.
+/// A null expiresAt means the override is permanent until explicitly revoked.
+model UserPermissionOverride {
+  id         String    @id @default(cuid())
+  userId     String
+  permission String
+  /// "GRANT" adds the permission on top of role baseline.
+  /// "DENY"  removes the permission even if the role baseline includes it.
+  effect     String    // "GRANT" | "DENY"
+  reason     String?
+  grantedBy  String
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation("UserPermissionOverrides", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission, effect])
+  @@index([userId])
+  @@index([permission])
+  @@index([expiresAt])
+  @@map("user_permission_overrides")
+}
+
+/// Phase 3 — Temporary role assignment for a user.
+/// Effective when: revokedAt IS NULL AND validFrom <= now() <= validUntil.
+/// Supersedes the user's permanent role for permission resolution during window.
+model UserRoleOverride {
+  id           String    @id @default(cuid())
+  userId       String
+  overrideRole String    // UserRole value
+  reason       String
+  grantedBy    String
+  validFrom    DateTime  @default(now())
+  validUntil   DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  user         User      @relation("UserRoleOverrides", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, revokedAt, validUntil])
+  @@map("user_role_overrides")
+}
+
+/// Phase 4 — Enterprise Identity Provider Configuration (OIDC / SAML 2.0).
+/// Supports Microsoft Entra ID (Azure AD), Google Workspace, Okta, and Ping Identity.
+model SsoProvider {
+  id                String       @id @default(cuid())
+  name              String
+  slug              String       @unique
+  protocol          String       // "OIDC" | "SAML"
+  issuer            String
+  clientId          String
+  clientSecret      String?
+  metadataUrl       String?
+  ssoUrl            String
+  tokenUrl          String?
+  userInfoUrl       String?
+  certificate       String?      // X.509 cert PEM for SAML signature validation
+  enabled           Boolean      @default(true)
+  domainRestriction String?      // Comma-separated allowed email domains (e.g. "hospital.org,lab.net")
+  defaultRole       String       @default("FRONT_DESK")
+  roleAttribute     String?      // Attribute/claim name to map to LabCore role
+  jitEnabled        Boolean      @default(true) // Just-In-Time provisioning
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  accounts          SsoAccount[]
+
+  @@map("sso_providers")
+}
+
+/// Phase 4 — External Identity Provider Link.
+/// Links an enterprise IdP subject / NameID to an internal LabCore user account.
+model SsoAccount {
+  id                String      @id @default(cuid())
+  providerId        String
+  userId            String
+  externalSubjectId String      // IdP sub or NameID
+  email             String
+  profileData       String?     // Raw JSON claims payload from IdP
+  lastLoginAt       DateTime    @default(now())
+  createdAt         DateTime    @default(now())
+
+  provider          SsoProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, externalSubjectId])
+  @@index([userId])
+  @@index([email])
+  @@map("sso_accounts")
+}
+
+/// Phase 4 — Clinical Break-Glass Emergency Access Event.
+/// Allows audited clinical override for urgent patient care (e.g. ICU, trauma, surgery).
+model BreakGlassEvent {
+  id                 String    @id @default(cuid())
+  userId             String
+  targetResourceType String    // "patient" | "result" | "order"
+  targetResourceId   String
+  reason             String    // Mandatory clinical justification
+  tokenHash          String    @unique // SHA-256 hash of emergency token
+  status             String    @default("ACTIVE") // "ACTIVE" | "EXPIRED" | "REVOKED"
+  expiresAt          DateTime
+  reviewedAt         DateTime?
+  reviewedBy         String?
+  reviewNotes        String?
+  approved           Boolean?
+  ipAddress          String?
+  userAgent          String?
+  createdAt          DateTime  @default(now())
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([targetResourceType, targetResourceId])
+  @@index([status, expiresAt])
+  @@map("break_glass_events")
+}
+
+/// Phase 4 — SCIM 2.0 API Bearer Tokens for Automated IdP Directory Provisioning.
+model ScimToken {
+  id          String    @id @default(cuid())
+  name        String
+  tokenHash   String    @unique
+  active      Boolean   @default(true)
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdBy   String
+  createdAt   DateTime  @default(now())
+
+  @@map("scim_tokens")
+}
+
+/// Phase 5 — FDA 21 CFR Part 11 Compliant Electronic & Digital Signatures.
+/// Provides non-repudiation and cryptographic payload binding for clinical sign-offs.
+model DigitalSignature {
+  id               String    @id @default(cuid())
+  userId           String
+  resourceType     String    // "result" | "report" | "order" | "amendment"
+  resourceId       String
+  meaning          String    // "AUTHORED" | "VERIFIED" | "APPROVED" | "AMENDED"
+  reason           String?   // Clinical notes or statement
+  dataSnapshotHash String    // SHA-256 digest of normalized payload
+  signatureHash    String    // Cryptographic signature digest
+  rawPayload       String?   // Serialized canonical JSON snapshot
+  ipAddress        String?
+  userAgent        String?
+  signedAt         DateTime  @default(now())
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([signedAt])
+  @@map("digital_signatures")
+}
+
+/// Phase 5 — OAuth2 Machine-to-Machine (M2M) API Gateway Clients.
+/// Enables secure integration for LIS analyzers (Roche, Abbott, Sysmex), HIS, and EMR bridges.
+model ApiClient {
+  id               String    @id @default(cuid())
+  name             String    // e.g. "Roche Cobas 6000 Interface", "Apollo HIS Bridge"
+  clientId         String    @unique
+  clientSecretHash String
+  scopes           String    // Comma-separated list of granted scopes
+  ipWhitelist      String?   // Comma-separated allowed IPs/CIDRs
+  active           Boolean   @default(true)
+  expiresAt        DateTime?
+  lastUsedAt       DateTime?
+  rateLimit        Int       @default(1000) // requests per hour
+  createdById      String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  creator          User      @relation("ApiClientCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([active])
+  @@map("api_clients")
+}
+
+/// Phase 5 — SIEM & SOC Security Threat Telemetry.
+/// Records real-time automated threat detections for SOC export and automated mitigation.
+model SecurityThreatAlert {
+  id               String    @id @default(cuid())
+  threatType       String    // "CREDENTIAL_STUFFING" | "IMPOSSIBLE_VELOCITY" | "MASS_SCRAPING" | "PRIVILEGE_ABUSE"
+  severity         String    // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  targetUserId     String?
+  sourceIp         String
+  details          String    // JSON stringified telemetry context
+  mitigated        Boolean   @default(false)
+  mitigationAction String?   // "IP_BLOCKED" | "USER_LOCKED" | "STEP_UP_ENFORCED"
+  createdAt        DateTime  @default(now())
+
+  @@index([threatType])
+  @@index([severity])
+  @@index([sourceIp])
+  @@index([createdAt])
+  @@map("security_threat_alerts")
+}
+
+
 
 model Doctor {
   id                     String      @id @default(cuid())
@@ -461,8 +726,8 @@ model Patient {
   height                       Float?
   weight                       Float?
   bmi                          Float?
-  aadhaarNumber                String?              @db.VarChar(12)
-  panNumber                    String?              @db.VarChar(10)
+  aadhaarNumber                String?
+  panNumber                    String?
   patientType                  String?              @default("GENERAL")
   maritalStatus                String?
   occupation                   String?
@@ -996,7 +1261,11 @@ model Sample {
   priority        String?
   trackingHistory SampleTrackingHistory[]
   collectedBy     User?                   @relation("SampleCollector", fields: [collectedById], references: [id])
-  order           Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// ISS-014: Changed from onDelete: Cascade to Restrict.
+  /// Cascade silently destroyed all physical specimen records when an Order was deleted,
+  /// erasing biological custody chain. Restrict forces staff to void samples first through
+  /// the proper SampleStatus workflow before an order can be cancelled.
+  order           Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
   patient         Patient                 @relation(fields: [patientId], references: [id])
   test            Test                    @relation(fields: [testId], references: [id])
 
@@ -1474,6 +1743,15 @@ model AuditLog {
   oldData   Json?
   newData   Json?
   createdAt DateTime @default(now())
+
+  /// Hash of the previous audit log row (SHA-256).
+  /// Creates a tamper-evident chain: any deletion or modification breaks it.
+  prevHash  String?
+
+  /// SHA-256 hash of this row's fields + prevHash.
+  /// Null for rows created before hash chaining was enabled.
+  rowHash   String?
+
   user      User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
@@ -1481,8 +1759,10 @@ model AuditLog {
   @@index([action])
   @@index([recordId])
   @@index([createdAt])
+  @@index([rowHash])
   @@map("audit_logs")
 }
+
 
 model CommunicationLog {
   id                String              @id @default(cuid())
@@ -2872,4 +3152,124 @@ enum EmpiDecision {
   POTENTIAL_DUPLICATE_QUEUE
   /// Score < 60: create a new UHID normally
   DISTINCT_PATIENT
+}
+
+
+
+
+
+
+model DigitalTwinScenario {
+  id                  String                     @id @default(cuid())
+  name                String
+  description         String?
+  horizonHours        Int                        @default(8) @map("horizon_hours")
+  surgeMultiplier     Float                      @default(1.0) @map("surge_multiplier")
+  statRatio           Float                      @default(0.18) @map("stat_ratio")
+  ambientTempCelsius  Float                      @default(23.0) @map("ambient_temp_celsius")
+  analyzerNodesJson   Json                       @map("analyzer_nodes_json")
+  createdBy           String                     @map("created_by")
+  isBaseline          Boolean                    @default(false) @map("is_baseline")
+  createdAt           DateTime                   @default(now()) @map("created_at")
+  updatedAt           DateTime                   @updatedAt @map("updated_at")
+  simulationRuns      DigitalTwinSimulationRun[]
+
+  @@map("digital_twin_scenarios")
+}
+
+model DigitalTwinSimulationRun {
+  id                      String               @id @default(cuid())
+  scenarioId              String?              @map("scenario_id")
+  scenario                DigitalTwinScenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  idempotencyKey          String               @unique @map("idempotency_key")
+  seed                    Int                  @default(42)
+  iterations              Int                  @default(250)
+  inputSnapshotJson       Json                 @map("input_snapshot_json")
+  metricsSummaryJson      Json                 @map("metrics_summary_json")
+  departmentForecastsJson Json                 @map("department_forecasts_json")
+  stabilityAlertsJson     Json                 @map("stability_alerts_json")
+  bottleneckScore         Float                @map("bottleneck_score")
+  predictedSlaBreachPct   Float                @map("predicted_sla_breach_pct")
+  executedBy              String               @map("executed_by")
+  executionDurationMs     Int                  @map("execution_duration_ms")
+  createdAt               DateTime             @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@map("digital_twin_runs")
+}
+
+model AnalyzerFailoverProposal {
+  id                       String    @id @default(cuid())
+  simulationRunId          String?   @map("simulation_run_id")
+  idempotencyKey           String    @unique @map("idempotency_key")
+  faultedAnalyzerId        String    @map("faulted_analyzer_id")
+  faultReason              String    @map("fault_reason")
+  department               String
+  affectedPendingSpecimens Int       @map("affected_pending_specimens")
+  reroutingPlanJson        Json      @map("rerouting_plan_json")
+  estimatedTatSavedMins    Float     @map("estimated_tat_saved_mins")
+  status                   String    @default("PENDING_APPROVAL")
+  proposedBy               String    @map("proposed_by")
+  reviewedBy               String?   @map("reviewed_by")
+  reviewNotes              String?   @map("review_notes")
+  reviewedAt               DateTime? @map("reviewed_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([faultedAnalyzerId])
+  @@map("analyzer_failover_proposals")
+}
+
+model DigitalTwinModelProfile {
+  id               String   @id @default(cuid())
+  modelId          String   @unique @map("model_id")
+  name             String
+  modelType        String   @map("model_type")
+  version          String   @default("1.0.0")
+  isDeployed       Boolean  @default(false) @map("is_deployed")
+  hyperparameters  Json
+  metrics          Json
+  trainingHistory  Json?    @map("training_history")
+  weightsSummary   Json?    @map("weights_summary")
+  sha256Checksum   String   @map("sha256_checksum")
+  policyMatrixJson Json?    @map("policy_matrix_json")
+  trainedByUserId  String   @map("trained_by_user_id")
+  trainingDuration Int      @map("training_duration_ms")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([modelType])
+  @@index([isDeployed])
+  @@map("digital_twin_model_profiles")
+}
+
+model DigitalTwinOperatingPolicy {
+  id                      String   @id @default(cuid())
+  policyId                String   @unique @map("policy_id")
+  name                    String
+  strategyProfile         String   @map("strategy_profile")
+  description             String?
+  isActive                Boolean  @default(false) @map("is_active")
+  expectedTatP90          Float    @map("expected_tat_p90")
+  expectedThermalDriftPct Float    @map("expected_thermal_drift_pct")
+  expectedCostPerTest     Float    @map("expected_cost_per_test")
+  crossAnalyzerBiasRisk   Float    @map("cross_analyzer_bias_risk")
+  allocationRatiosJson    Json     @map("allocation_ratios_json")
+  appliedBy               String   @map("applied_by")
+  appliedAt               DateTime @default(now()) @map("applied_at")
+
+  @@index([isActive])
+  @@map("digital_twin_operating_policies")
+}
+
+model DigitalTwinSurgeRule {
+  id                    String   @id @default(cuid())
+  surgeModeActive       Boolean  @default(false) @map("surge_mode_active")
+  surgeMultiplier       Float    @default(1.0) @map("surge_multiplier")
+  broadcastMessage      String   @map("broadcast_message")
+  targetDepartmentsJson Json     @map("target_departments_json")
+  activatedBy           String   @map("activated_by")
+  activatedAt           DateTime @default(now()) @map("activated_at")
+
+  @@map("digital_twin_surge_rules")
 }
