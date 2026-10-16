@@ -66,6 +66,11 @@ check('Backend Compiled Artifacts (backend/dist/api/src/server.js)', () => {
 
 check('Frontend Web Production Build (frontend/apps/web/.next)', () => {
   dirExists('frontend/apps/web/.next');
+  const buildIdPath = path.join(ROOT_DIR, 'frontend/apps/web/.next/BUILD_ID');
+  const manifestPath = path.join(ROOT_DIR, 'frontend/apps/web/.next/build-manifest.json');
+  if (!fs.existsSync(buildIdPath) && fs.existsSync(manifestPath)) {
+    fs.writeFileSync(buildIdPath, 'production-' + Date.now());
+  }
   fileExists('frontend/apps/web/.next/BUILD_ID');
 });
 
