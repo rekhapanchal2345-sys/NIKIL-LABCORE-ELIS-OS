@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { createAuditLog } from "../audit/audit.service";
+import { encryptField, decryptField, canDecryptField } from "../../utils/field-crypto";
 import {
   assertPatientCreateComplete,
   buildPatientData,
@@ -113,8 +114,6 @@ export const checkDuplicatePatient = async (
 
   const normalisedPhone = asString(sanitizePhone(phone));
   const normalisedEmail = asString(email)?.toLowerCase() ?? null;
-  const normalisedAadhaar = asString(aadhaarNumber)?.replace(/\D/g, "") ?? null;
-  const normalisedPan = asString(panNumber)?.toUpperCase() ?? null;
 
   const candidates: Array<{
     field: string;
@@ -123,8 +122,6 @@ export const checkDuplicatePatient = async (
   }> = [
     { field: "phone", column: "phone", value: normalisedPhone },
     { field: "email", column: "email", value: normalisedEmail },
-    { field: "Aadhaar", column: "aadhaarNumber", value: normalisedAadhaar },
-    { field: "PAN", column: "panNumber", value: normalisedPan },
   ];
 
   for (const { field, column, value } of candidates) {
@@ -233,6 +230,13 @@ export const formatPatientResponse = (patient: any, maskPii = false) => {
   // Mask Aadhaar per DPDP Act 2023 / UIDAI norms (never expose raw 12 digits in API)
   if (aadhaarNumber && aadhaarNumber.length >= 4) {
     aadhaarNumber = "********" + aadhaarNumber.slice(-4);
+  }
+
+  if (aadhaarNumber && canDecryptField(aadhaarNumber)) {
+    aadhaarNumber = decryptField(aadhaarNumber);
+  }
+  if (panNumber && canDecryptField(panNumber)) {
+    panNumber = decryptField(panNumber);
   }
 
   if (maskPii) {

@@ -14,6 +14,7 @@ const router = Router();
 
 // All backup routes require authentication
 router.use(authenticate);
+router.use(authorize(UserRole.SUPER_ADMIN));
 
 /**
  * @route   POST /api/backups

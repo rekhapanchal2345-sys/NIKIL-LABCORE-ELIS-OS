@@ -1,6 +1,7 @@
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import crypto from "crypto";
+import qrcode from "qrcode";
 
 // =======================================================
 // STANDALONE VECTOR QR CODE & BARCODE GENERATOR
