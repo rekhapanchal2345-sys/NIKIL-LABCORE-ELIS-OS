@@ -123,6 +123,27 @@ const menuSections: MenuSection[] = [
         },
       },
       {
+        label: "Omniscient Nexus",
+        href: "/nexus",
+        icon: Sparkles,
+        accent: {
+          bg: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300",
+          text: "text-emerald-400",
+          activeBorder: "border-emerald-400",
+          activeIconBg: "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-slate-950 shadow-[0_0_14px_rgba(16,185,129,0.5)]",
+          activeText: "text-white font-semibold",
+        },
+        children: [
+          { label: "Nexus Command Center", href: "/nexus", badge: "Live", badgeVariant: "emerald" },
+          { label: "2D/3D Floor Twin", href: "/nexus?tab=world-model", badge: "Twin", badgeVariant: "blue" },
+          { label: "Queueing & Little's Law", href: "/nexus?tab=queues" },
+          { label: "Quality (Levey-Jennings)", href: "/nexus?tab=quality", badge: "Westgard", badgeVariant: "amber" },
+          { label: "Reagent Stockout Advisory", href: "/nexus?tab=inventory" },
+          { label: "Controlled Autonomy", href: "/nexus?tab=autonomy", badge: "Gate", badgeVariant: "purple" },
+          { label: "Mathematical Workbench", href: "/nexus?tab=math" },
+        ],
+      },
+      {
         label: "Patient Hub",
         href: "/patients",
         icon: UserCircle2,

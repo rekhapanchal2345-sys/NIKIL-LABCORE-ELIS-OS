@@ -62,9 +62,14 @@ export function readAuth(key: string): string | null {
 
 export function writeAuth(key: string, value: string): void {
   if (typeof window === "undefined") return;
-  const target = isRememberMe() ? window.localStorage : window.sessionStorage;
   try {
-    target.setItem(key, value);
+    window.localStorage.setItem(key, value);
+    window.sessionStorage.setItem(key, value);
+
+    if (key === ACCESS_TOKEN_KEY || key === LEGACY_TOKEN_KEY) {
+      document.cookie = `accessToken=${encodeURIComponent(value)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `token=${encodeURIComponent(value)}; path=/; max-age=604800; SameSite=Lax`;
+    }
   } catch {
     /* ignore quota errors */
   }
@@ -77,6 +82,13 @@ export function eraseAuth(key: string): void {
       store.removeItem(key);
     } catch {
       /* ignore */
+    }
+  }
+  if (typeof document !== "undefined") {
+    document.cookie = `${key}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    if (key === ACCESS_TOKEN_KEY || key === LEGACY_TOKEN_KEY) {
+      document.cookie = "accessToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
   }
 }

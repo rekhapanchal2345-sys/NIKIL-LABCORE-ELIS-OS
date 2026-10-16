@@ -40,6 +40,7 @@ import aiRoutes from "./modules/ai/ai.routes";
 import scimRoutes from "./modules/auth/scim.routes";
 import { oauthTokenHandler } from "./modules/auth/m2m-gateway.controller";
 import digitalTwinRoutes from "./modules/digital-twin/digital-twin.routes";
+import nexusRoutes from "./modules/nexus/nexus.routes";
 
 // =======================================================
 // MIDDLEWARE
@@ -487,6 +488,13 @@ app.use("/api/abdm/v0.5", abdmWebhookRouter);
 
 app.use("/api/v1/digital-twin", digitalTwinRoutes);
 app.use("/api/digital-twin", digitalTwinRoutes);
+
+// =======================================================
+// LABCORE OMNISCIENT NEXUS — ENTERPRISE OPERATIONS INTELLIGENCE
+// =======================================================
+
+app.use("/api/v1/nexus", nexusRoutes);
+app.use("/api/nexus", nexusRoutes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

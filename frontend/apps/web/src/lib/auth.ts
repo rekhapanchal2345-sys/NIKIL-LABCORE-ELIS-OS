@@ -211,10 +211,23 @@ export function setAuthSession(
   }
 
   setStoredUser(session.user);
+
+  try {
+    window.dispatchEvent(new Event("auth-changed"));
+  } catch {
+    /* ignore in environments without Event constructor */
+  }
 }
 
 export function clearAuthSession(): void {
   clearAuthEntries();
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event("auth-changed"));
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 /** Privacy mode: drop every trace of the login from the browser. */

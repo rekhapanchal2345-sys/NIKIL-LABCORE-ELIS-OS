@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthInternal, AuthContext } from "@/hooks/useAuth";
 import { useRouter, usePathname } from "next/navigation";
 
 interface AuthProviderProps {
@@ -18,7 +18,8 @@ const PUBLIC_ROUTES = [
 ];
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { isLoggedIn, loading } = useAuth();
+  const auth = useAuthInternal();
+  const { isLoggedIn, loading } = auth;
   const router = useRouter();
   const pathname = usePathname();
 
@@ -30,28 +31,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (loading) return;
 
     // Unauthenticated user attempting to access protected route -> redirect to login
-    if (!isLoggedIn && !isPublicRoute) {
+    if (!isLoggedIn && !isPublicRoute && pathname !== "/") {
       router.replace("/login");
       return;
     }
 
-    // Already logged in user attempting to access login/forgot-password -> redirect to dashboard
-    if (isLoggedIn && (pathname === "/login" || pathname === "/forgot-password")) {
+    // Already logged in user attempting to access login/forgot-password/root -> redirect to dashboard
+    if (isLoggedIn && (pathname === "/login" || pathname === "/forgot-password" || pathname === "/")) {
       router.replace("/dashboard");
     }
   }, [isPublicRoute, isLoggedIn, loading, pathname, router]);
 
-  // Show loading state during auth check
-  if (loading && !isPublicRoute) {
+  // Show loading state during auth check only on protected routes
+  if (loading && !isPublicRoute && pathname !== "/") {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#020306]">
         <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto" />
-          <p className="text-sm text-gray-600">Loading...</p>
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-sky-500 border-t-transparent mx-auto" />
+          <p className="text-sm font-mono text-white/50">Securing Clinical Workspace...</p>
         </div>
       </div>
     );
   }
 
-  return <>{children}</>;
+  return (
+    <AuthContext.Provider value={auth}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

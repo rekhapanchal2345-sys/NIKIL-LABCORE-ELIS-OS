@@ -291,41 +291,9 @@ export default function ResultsPage() {
     const result = results.find(r => r.id === resultId);
     if (result) {
       console.log("Found result:", result);
-      console.log("Test parameters:", result.test.parameters);
-      
-      // If result doesn't exist yet (PENDING status), create it first
-      if (result.status === "PENDING" || !result.values || result.values.length === 0) {
-        try {
-          console.log("Creating new result for order:", result.orderId, "test:", result.testId);
-          const createResponse = await resultApi.create({
-            orderId: result.orderId,
-            testId: result.testId,
-            values: result.test.parameters?.map(param => ({
-              parameterId: param.id,
-              value: "",
-              flag: "NORMAL" as const,
-              remark: ""
-            })) || []
-          });
-          
-          if (createResponse.success && createResponse.data) {
-            // Update the local result with the newly created one
-            const updatedResult = { ...result, ...createResponse.data };
-            setSelectedResultForEntry(updatedResult);
-            setShowParameterEntry(true);
-            // Refresh the results list
-            fetchResults();
-          } else {
-            throw new Error(createResponse.message || "Failed to create result");
-          }
-        } catch (error) {
-          console.error("Failed to create result:", error);
-          alert(`Failed to create result: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-      } else {
-        setSelectedResultForEntry(result);
-        setShowParameterEntry(true);
-      }
+      console.log("Test parameters:", result.test?.parameters);
+      setSelectedResultForEntry(result);
+      setShowParameterEntry(true);
     } else {
       console.error("Result not found:", resultId);
       alert("Result not found. Please refresh the page and try again.");

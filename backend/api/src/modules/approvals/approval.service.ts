@@ -1,3 +1,4 @@
+import { UserRole } from "@prisma/client";
 import prisma from "../../../config/database";
 import { createAuditLog } from "../audit/audit.service";
 import { HttpError } from "../../utils/http-error";
@@ -430,21 +431,41 @@ export const approve =
     approvedById: string
   ) => {
     const user = await prisma.user.findUnique({ where: { id: approvedById } });
-    if (!user || user.role !== "PATHOLOGIST" || user.status !== "ACTIVE") {
-      throw new HttpError("Only active pathologists can approve diagnostic results", 403);
+    if (!user || user.status !== "ACTIVE") {
+      throw new HttpError("User account not found or inactive", 403);
     }
-    const doctor = await prisma.doctor.findFirst({
-      where: {
-        OR: [
-          { email: user.email },
-          { phone: user.phone },
-          { doctorCode: user.employeeCode }
-        ],
-        isActive: true,
+
+    const authorizedRoles: string[] = [
+      UserRole.PATHOLOGIST,
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.BRANCH_ADMIN,
+    ];
+
+    if (!authorizedRoles.includes(user.role)) {
+      throw new HttpError(
+        "Only active pathologists and authorized laboratory administrators can approve diagnostic results",
+        403
+      );
+    }
+
+    if (user.role === UserRole.PATHOLOGIST) {
+      const doctor = await prisma.doctor.findFirst({
+        where: {
+          OR: [
+            { email: user.email },
+            { phone: user.phone },
+            { doctorCode: user.employeeCode },
+          ],
+          isActive: true,
+        },
+      });
+      if (doctor && !doctor.registrationNumber) {
+        throw new HttpError(
+          "Pathologist profile must have a valid medical council registration number to approve diagnostic results",
+          403
+        );
       }
-    });
-    if (!doctor || !doctor.registrationNumber) {
-      throw new HttpError("Only active pathologists with valid registration can approve diagnostic results", 403);
     }
 
     const result =
@@ -769,21 +790,41 @@ export const batchApprove = async (
   remarks?: string
 ) => {
   const user = await prisma.user.findUnique({ where: { id: approvedById } });
-  if (!user || user.role !== "PATHOLOGIST" || user.status !== "ACTIVE") {
-    throw new HttpError("Only active pathologists can approve diagnostic results", 403);
+  if (!user || user.status !== "ACTIVE") {
+    throw new HttpError("User account not found or inactive", 403);
   }
-  const doctor = await prisma.doctor.findFirst({
-    where: {
-      OR: [
-        { email: user.email },
-        { phone: user.phone },
-        { doctorCode: user.employeeCode }
-      ],
-      isActive: true,
+
+  const authorizedRoles: string[] = [
+    UserRole.PATHOLOGIST,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.BRANCH_ADMIN,
+  ];
+
+  if (!authorizedRoles.includes(user.role)) {
+    throw new HttpError(
+      "Only active pathologists and authorized laboratory administrators can approve diagnostic results",
+      403
+    );
+  }
+
+  if (user.role === UserRole.PATHOLOGIST) {
+    const doctor = await prisma.doctor.findFirst({
+      where: {
+        OR: [
+          { email: user.email },
+          { phone: user.phone },
+          { doctorCode: user.employeeCode },
+        ],
+        isActive: true,
+      },
+    });
+    if (doctor && !doctor.registrationNumber) {
+      throw new HttpError(
+        "Pathologist profile must have a valid medical council registration number to approve diagnostic results",
+        403
+      );
     }
-  });
-  if (!doctor || !doctor.registrationNumber) {
-    throw new HttpError("Only active pathologists with valid registration can approve diagnostic results", 403);
   }
   if (!ids || ids.length === 0) {
     throw new Error("No result IDs provided for batch approval");

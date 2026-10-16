@@ -5,6 +5,8 @@ import {
   useEffect,
   useRef,
   useState,
+  createContext,
+  useContext,
 } from "react";
 
 import {
@@ -32,7 +34,7 @@ interface LoginCredentials {
   password: string;
 }
 
-interface UseAuthReturn {
+export interface UseAuthReturn {
   user: AuthUser | null;
   loading: boolean;
   isLoggedIn: boolean;
@@ -69,10 +71,12 @@ interface UseAuthReturn {
 }
 
 /* =======================================================
-   AUTH HOOK
+   AUTH CONTEXT & INTERNAL HOOK
 ======================================================= */
 
-export function useAuth(): UseAuthReturn {
+export const AuthContext = createContext<UseAuthReturn | null>(null);
+
+export function useAuthInternal(): UseAuthReturn {
   const [user, setUser] =
     useState<AuthUser | null>(null);
 
@@ -133,19 +137,28 @@ export function useAuth(): UseAuthReturn {
   useEffect(() => {
     setIsMounted(true);
 
-    // Client-only: storage is empty during SSR, which would cause hydration drift.
     if (typeof window === "undefined") return;
 
-    if (!isAuthenticated()) {
-      applyUser(null);
+    const syncSession = () => {
+      if (!isAuthenticated()) {
+        applyUser(null);
+        setLoading(false);
+        return;
+      }
+      applyUser(getStoredUser());
       setLoading(false);
-      return;
-    }
+    };
 
-    // Paint immediately from the cached profile, then confirm it server-side.
-    applyUser(getStoredUser());
-    setLoading(false);
+    syncSession();
     void refreshUser();
+
+    window.addEventListener("auth-changed", syncSession);
+    window.addEventListener("storage", syncSession);
+
+    return () => {
+      window.removeEventListener("auth-changed", syncSession);
+      window.removeEventListener("storage", syncSession);
+    };
   }, [refreshUser, applyUser]);
 
   /* -------------------------------------------------------
@@ -312,6 +325,14 @@ export function useAuth(): UseAuthReturn {
     setRememberMe,
     clearSensitiveData,
   };
+}
+
+export function useAuth(): UseAuthReturn {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }
 
 export default useAuth;

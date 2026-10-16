@@ -364,6 +364,14 @@ export const createResult = async (
     });
 
   if (existing) {
+    if (existing.status === "PENDING") {
+      return await updateResult(existing.id, {
+        remarks: data.remarks,
+        interpretation: data.interpretation,
+        values: data.values,
+      });
+    }
+
     throw new Error(
       "Result already exists for this test"
     );

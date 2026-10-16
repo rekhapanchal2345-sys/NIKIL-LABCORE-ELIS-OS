@@ -1114,7 +1114,7 @@ export default function LoginPage() {
             setShowWelcome(false);
             const target =
               returnUrl && !returnUrl.startsWith("/login") && returnUrl !== "/" ? returnUrl : "/dashboard";
-            router.push(target);
+            window.location.href = target;
           }}
         />
       )}
