@@ -368,4 +368,185 @@ export class NexusMathEngine {
         const exponent = activationEnergyOverR * (1.0 / T_REF_KELVIN - 1.0 / tKelvin);
         return kRefPerHour * Math.exp(exponent);
     }
+
+    // =========================================================================
+    // 5. CUSUM (CUMULATIVE SUM) STATISTICAL QUALITY CONTROL
+    // =========================================================================
+
+    /**
+     * Two-sided tabular CUSUM algorithm for detecting small, persistent calibration shifts (0.5 - 1.5 sigma).
+     * S_H[i] = max(0, S_H[i-1] + (Z_i - k))
+     * S_L[i] = max(0, S_L[i-1] - (Z_i + k))
+     * Shift flagged when S_H or S_L exceeds decision threshold h (typically h = 4.0 or 5.0).
+     */
+    public static computeCusumDrift(
+        values: number[],
+        targetMean: number,
+        targetSd: number,
+        kSlack: number = 0.5,
+        hDecision: number = 4.5
+    ): CusumQualityControlResult {
+        const posCusum: number[] = [];
+        const negCusum: number[] = [];
+
+        let currentPos = 0;
+        let currentNeg = 0;
+        let driftDetected = false;
+        let driftShiftRunIndex: number | undefined;
+        let driftDirection: 'UPWARD_SYSTEMATIC' | 'DOWNWARD_SYSTEMATIC' | 'NONE' = 'NONE';
+
+        for (let i = 0; i < values.length; i++) {
+            const z = (values[i] - targetMean) / Math.max(1e-6, targetSd);
+
+            currentPos = Math.max(0, currentPos + (z - kSlack));
+            currentNeg = Math.max(0, currentNeg - (z + kSlack));
+
+            posCusum.push(Number(currentPos.toFixed(3)));
+            negCusum.push(Number(currentNeg.toFixed(3)));
+
+            if (!driftDetected) {
+                if (currentPos >= hDecision) {
+                    driftDetected = true;
+                    driftShiftRunIndex = i + 1;
+                    driftDirection = 'UPWARD_SYSTEMATIC';
+                } else if (currentNeg >= hDecision) {
+                    driftDetected = true;
+                    driftShiftRunIndex = i + 1;
+                    driftDirection = 'DOWNWARD_SYSTEMATIC';
+                }
+            }
+        }
+
+        return {
+            positiveCusum: posCusum,
+            negativeCusum: negCusum,
+            decisionIntervalH: hDecision,
+            slackParameterK: kSlack,
+            driftDetected,
+            driftShiftRunIndex,
+            driftDirection,
+        };
+    }
+
+    // =========================================================================
+    // 6. HIL (HEMOLYSIS, ICTERUS, LIPEMIA) INTERFERENCE EVALUATION
+    // =========================================================================
+
+    /**
+     * Evaluates spectrophotometric HIL indices against clinical assay interference thresholds.
+     */
+    public static computeHilInterference(
+        hemolysisMgDl: number,
+        icterusMgDl: number,
+        lipemiaTurbidity: number,
+        analyteCode: string
+    ): {
+        isInterfered: boolean;
+        interferingFactor?: 'HEMOLYSIS' | 'ICTERUS' | 'LIPEMIA';
+        clinicalAction: 'REJECT_COLD_REDRAW' | 'DILUTE_AND_RERUN' | 'RELEASE_WITH_CAUTION_NOTE' | 'CLEAR_VALID';
+        warningNote?: string;
+    } {
+        // Clinical interference thresholds (Standard CLSI EP07-A2 Guidelines)
+        const THRESHOLDS: Record<string, { h: number; i: number; l: number }> = {
+            K_SERUM: { h: 50, i: 30, l: 300 },       // Extreme sensitivity to erythrocyte lysis
+            LDH: { h: 25, i: 20, l: 200 },           // Highly elevated by lysis
+            AST: { h: 100, i: 25, l: 300 },
+            ALT: { h: 200, i: 30, l: 400 },
+            BILI_TOTAL: { h: 200, i: 999, l: 250 },  // Hemolysis interferes with diazo reaction
+            GLU_PLASMA: { h: 500, i: 40, l: 500 },
+            TROP_I_HS: { h: 150, i: 25, l: 400 },
+        };
+
+        const t = THRESHOLDS[analyteCode] || { h: 250, i: 30, l: 400 };
+
+        if (hemolysisMgDl >= t.h) {
+            return {
+                isInterfered: true,
+                interferingFactor: 'HEMOLYSIS',
+                clinicalAction: analyteCode === 'K_SERUM' || analyteCode === 'LDH' ? 'REJECT_COLD_REDRAW' : 'RELEASE_WITH_CAUTION_NOTE',
+                warningNote: `Hemolysis index (${hemolysisMgDl} mg/dL) exceeds clinical interference cutoff (${t.h} mg/dL). Intracellular release alters analyte accuracy.`,
+            };
+        }
+
+        if (lipemiaTurbidity >= t.l) {
+            return {
+                isInterfered: true,
+                interferingFactor: 'LIPEMIA',
+                clinicalAction: 'DILUTE_AND_RERUN',
+                warningNote: `Lipemia turbidity (${lipemiaTurbidity} turbidity units) exceeds threshold (${t.l}). Optical spectrophotometry scatter detected. High-speed ultracentrifugation or dilution required.`,
+            };
+        }
+
+        if (icterusMgDl >= t.i) {
+            return {
+                isInterfered: true,
+                interferingFactor: 'ICTERUS',
+                clinicalAction: 'RELEASE_WITH_CAUTION_NOTE',
+                warningNote: `High bilirubin icterus index (${icterusMgDl} mg/dL) may cause negative bias in enzymatic creatinine/glucose assays.`,
+            };
+        }
+
+        return {
+            isInterfered: false,
+            clinicalAction: 'CLEAR_VALID',
+        };
+    }
+
+    // =========================================================================
+    // 7. CLINICAL DELTA-CHECK & VELOCITY CALCULATION
+    // =========================================================================
+
+    /**
+     * Evaluates longitudinal delta check and rate of change between previous and current clinical results.
+     */
+    public static computeDeltaCheck(
+        currentVal: number,
+        previousVal: number,
+        elapsedHours: number,
+        analyteCode: string
+    ): {
+        deltaAbs: number;
+        deltaPct: number;
+        velocityPerHour: number;
+        isCriticalAlert: boolean;
+        clinicalInterpretation: string;
+    } {
+        const deltaAbs = currentVal - previousVal;
+        const deltaPct = previousVal !== 0 ? (deltaAbs / Math.abs(previousVal)) * 100 : 0;
+        const validHours = Math.max(0.1, elapsedHours);
+        const velocity = deltaAbs / validHours;
+
+        // Diagnostic criteria
+        const DELTA_THRESHOLDS: Record<string, { maxPct: number; isCriticalOnDrop?: boolean; label: string }> = {
+            HB: { maxPct: 20, isCriticalOnDrop: true, label: 'Hemoglobin' }, // >20% drop in <24h suggests active bleed
+            CREAT: { maxPct: 50, isCriticalOnDrop: false, label: 'Serum Creatinine' }, // >50% rise = Acute Kidney Injury
+            K_SERUM: { maxPct: 25, label: 'Potassium' }, // >25% delta can trigger arrhythmia risk
+            PLT: { maxPct: 40, isCriticalOnDrop: true, label: 'Platelet Count' }, // Sudden drop = DIC, HIT, or clump
+            TROP_I: { maxPct: 100, label: 'Troponin-I' }, // Acute rise in chest pain indicates AMI
+        };
+
+        const rule = DELTA_THRESHOLDS[analyteCode] || { maxPct: 35, label: analyteCode };
+        const isCritical = Math.abs(deltaPct) >= rule.maxPct;
+
+        let interpretation = 'Delta variance within expected biological intra-individual variation.';
+        if (isCritical) {
+            if (analyteCode === 'CREAT' && deltaPct >= 50) {
+                interpretation = `Acute 50%+ rise in Creatinine (${previousVal} -> ${currentVal}) over ${validHours.toFixed(1)}h indicates probable KDIGO Acute Kidney Injury.`;
+            } else if (analyteCode === 'HB' && deltaPct <= -20) {
+                interpretation = `Critical drop in Hemoglobin (${previousVal} -> ${currentVal} g/dL, ${deltaPct.toFixed(1)}%) in ${validHours.toFixed(1)}h indicates acute blood loss.`;
+            } else if (analyteCode === 'K_SERUM') {
+                interpretation = `Rapid potassium shift (${previousVal} -> ${currentVal} mmol/L) requires immediate verification of hemolysis and cardiac telemetry notification.`;
+            } else {
+                interpretation = `Significant clinical delta alert: ${rule.label} changed by ${deltaPct.toFixed(1)}% (Threshold: ${rule.maxPct}%). Rule out IV fluid dilution or patient misidentification.`;
+            }
+        }
+
+        return {
+            deltaAbs: Number(deltaAbs.toFixed(2)),
+            deltaPct: Number(deltaPct.toFixed(1)),
+            velocityPerHour: Number(velocity.toFixed(3)),
+            isCriticalAlert: isCritical,
+            clinicalInterpretation: interpretation,
+        };
+    }
 }
