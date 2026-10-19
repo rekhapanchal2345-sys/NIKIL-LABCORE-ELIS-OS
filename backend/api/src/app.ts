@@ -41,6 +41,7 @@ import scimRoutes from "./modules/auth/scim.routes";
 import { oauthTokenHandler } from "./modules/auth/m2m-gateway.controller";
 import digitalTwinRoutes from "./modules/digital-twin/digital-twin.routes";
 import nexusRoutes from "./modules/nexus/nexus.routes";
+import enterpriseWorkflowsRoutes from "./modules/enterprise-workflows/enterprise-workflows.routes";
 
 // =======================================================
 // MIDDLEWARE
@@ -495,6 +496,14 @@ app.use("/api/digital-twin", digitalTwinRoutes);
 
 app.use("/api/v1/nexus", nexusRoutes);
 app.use("/api/nexus", nexusRoutes);
+
+// =======================================================
+// ENTERPRISE CLINICAL WORKFLOWS (TIER 1)
+// Standards: NABL ISO 15189:2022, CLSI AUTO10-A, CLSI GP41
+// =======================================================
+
+app.use("/api/enterprise", enterpriseWorkflowsRoutes);
+app.use("/api/v1/enterprise", enterpriseWorkflowsRoutes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

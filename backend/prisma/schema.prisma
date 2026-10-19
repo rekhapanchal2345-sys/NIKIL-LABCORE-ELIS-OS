@@ -1197,6 +1197,11 @@ model Order {
   fastingStatus          String?
   reportId               String?                 @unique
   specimenType           String?
+  encounterType          EncounterType?          @default(OPD)
+  wardName               String?
+  roomNumber             String?
+  bedNumber              String?
+  nurseStationId         String?
   invoice                Invoice?
   items                  OrderItem[]
   createdBy              User?                   @relation("OrderCreator", fields: [createdById], references: [id])
@@ -3272,4 +3277,326 @@ model DigitalTwinSurgeRule {
   activatedAt           DateTime @default(now()) @map("activated_at")
 
   @@map("digital_twin_surge_rules")
+}
+
+// ============================================================================
+// NIKIL-LABCORE-ELIS-OS — TIER 1 ENTERPRISE CLINICAL WORKFLOW EXTENSIONS
+// Standards: NABL ISO 15189:2022, CLSI AUTO10-A, CLSI GP41 (Vacutainer Draw)
+// ============================================================================
+
+enum VacutainerTubeType {
+  LAVENDER_EDTA
+  GOLD_SST
+  GREY_FLUORIDE
+  BLUE_CITRATE
+  YELLOW_URINE
+  GREEN_HEPARIN
+  RED_PLAIN
+  BLACK_ESR
+}
+
+enum TubeLifecycleStatus {
+  PENDING_COLLECTION
+  COLLECTED
+  IN_TRANSIT
+  RECEIVED_AT_LAB
+  CENTRIFUGING
+  CENTRIFUGED_DECAPPED
+  ALIQUOTED
+  ON_ANALYZER
+  ARCHIVED_IN_RACK
+  REJECTED_QNS
+  REJECTED_HEMOLYZED
+}
+
+enum AliquotTargetDepartment {
+  BIOCHEMISTRY
+  IMMUNOLOGY
+  HEMATOLOGY
+  COAGULATION
+  CLINICAL_PATHOLOGY
+  SEROLOGY
+  MOLECULAR_BIOLOGY
+}
+
+enum EncounterType {
+  OPD
+  IPD
+  EMERGENCY_STAT
+  ICU
+  DAYCARE
+}
+
+enum StatSlaStatus {
+  ON_TRACK
+  WARNING_75_PERCENT
+  BREACHED_SLA
+  COMPLETED_WITHIN_SLA
+  COMPLETED_BREACHED
+}
+
+enum AutoVerificationVerdict {
+  AUTO_APPROVED
+  ROUTED_TO_PATHOLOGIST
+}
+
+enum AutoVerificationFailTag {
+  DELTA_BREACH
+  PANIC_VALUE
+  QC_SUSPECT
+  UNVERIFIED_INDEX
+  MACHINE_FLAG
+  OUT_OF_REF_RANGE
+}
+
+enum PanicNotificationChannel {
+  WHATSAPP_CLOUD
+  SMS_PRIORITY
+  TELEPHONIC_VOICE
+}
+
+// ----------------------------------------------------------------------------
+// 1. PRIMARY PHYSICAL VACUTAINER TUBE & SECONDARY ALIQUOTS
+// ----------------------------------------------------------------------------
+
+model SpecimenTube {
+  id                     String              @id @default(uuid())
+  orderId                String              @map("order_id")
+  patientId              String              @map("patient_id")
+  primaryBarcode         String              @unique @map("primary_barcode")
+  tubeType               VacutainerTubeType  @map("tube_type")
+  additiveName           String              @map("additive_name")
+  capColorHex            String              @map("cap_color_hex")
+  orderOfDrawRank        Int                 @map("order_of_draw_rank")
+  requiredVolumeMl       Decimal             @map("required_volume_ml") @db.Decimal(5, 2)
+  collectedVolumeMl      Decimal?            @map("collected_volume_ml") @db.Decimal(5, 2)
+  isQnsFlagged           Boolean             @default(false) @map("is_qns_flagged")
+  qnsOverrideReason      String?             @map("qns_override_reason")
+  status                 TubeLifecycleStatus @default(PENDING_COLLECTION)
+  
+  // Phlebotomy & Accessioning Metadata
+  collectedByUserId      String?             @map("collected_by_user_id")
+  collectedAt            DateTime?           @map("collected_at")
+  receivedByUserId       String?             @map("received_by_user_id")
+  receivedAt             DateTime?           @map("received_at")
+  
+  // Centrifuge Tracking (NABL Pre-Analytical Compliance)
+  centrifugeSpeedRpm     Int?                @map("centrifuge_speed_rpm")
+  centrifugeDurationMin  Int?                @map("centrifuge_duration_min")
+  centrifugedAt          DateTime?           @map("centrifuged_at")
+  centrifugedByUserId    String?             @map("centrifuged_by_user_id")
+  isDecapped             Boolean             @default(false) @map("is_decapped")
+  decappedAt             DateTime?           @map("decapped_at")
+
+  // Serum Indices (HIL)
+  hemolysisIndex         Decimal?            @map("hemolysis_index") @db.Decimal(6, 2)
+  icterusIndex           Decimal?            @map("icterus_index") @db.Decimal(6, 2)
+  lipemiaIndex           Decimal?            @map("lipemia_index") @db.Decimal(6, 2)
+
+  // Mapped Order Tests (JSON array of OrderItem IDs & Test Codes consolidated into this tube)
+  consolidatedTestCodes  String[]            @map("consolidated_test_codes")
+  consolidatedOrderItems String[]            @map("consolidated_order_items")
+
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
+
+  aliquots               SpecimenAliquot[]
+
+  @@index([orderId])
+  @@index([patientId])
+  @@index([status])
+  @@map("specimen_tubes")
+}
+
+model SpecimenAliquot {
+  id                  String                  @id @default(uuid())
+  parentTubeId        String                  @map("parent_tube_id")
+  orderId             String                  @map("order_id")
+  aliquotBarcode      String                  @unique @map("aliquot_barcode")
+  aliquotSuffix       String                  @map("aliquot_suffix")
+  targetDepartment    AliquotTargetDepartment @map("target_department")
+  targetAnalyzerCode  String?                 @map("target_analyzer_code")
+  allocatedVolumeMl   Decimal                 @map("allocated_volume_ml") @db.Decimal(5, 2)
+  assignedTestCodes   String[]                @map("assigned_test_codes")
+  status              TubeLifecycleStatus     @default(ALIQUOTED)
+  createdByUserId     String                  @map("created_by_user_id")
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @updatedAt @map("updated_at")
+
+  parentTube          SpecimenTube            @relation(fields: [parentTubeId], references: [id], onDelete: Cascade)
+
+  @@index([parentTubeId])
+  @@index([orderId])
+  @@map("specimen_aliquots")
+}
+
+// ----------------------------------------------------------------------------
+// 2. EMERGENCY STAT & HOSPITAL INPATIENT (IPD/ICU) TRIAGE DESK
+// ----------------------------------------------------------------------------
+
+model StatOrderTracker {
+  id                     String        @id @default(uuid())
+  orderId                String        @unique @map("order_id")
+  orderNumber            String        @map("order_number")
+  patientId              String        @map("patient_id")
+  patientName            String        @map("patient_name")
+  encounterType          EncounterType @default(OPD) @map("encounter_type")
+  
+  // IPD / ICU Location Fields
+  wardName               String?       @map("ward_name")
+  roomNumber             String?       @map("room_number")
+  bedNumber              String?       @map("bed_number")
+  nurseStationId         String?       @map("nurse_station_id")
+  attendingPhysician     String?       @map("attending_physician")
+
+  // Bedside Phlebotomy Requisition
+  requiresBedsideDraw    Boolean       @default(false) @map("requires_bedside_draw")
+  assignedPhlebotomistId String?       @map("assigned_phlebotomist_id")
+  phlebotomyDispatchedAt DateTime?     @map("phlebotomy_dispatched_at")
+  bedsideCollectedAt     DateTime?     @map("bedside_collected_at")
+
+  // STAT SLA Countdown Engine (30m or 45m hard SLA)
+  biomarkerCodes         String[]      @map("biomarker_codes")
+  targetTatMinutes       Int           @default(30) @map("target_tat_minutes")
+  orderedAt              DateTime      @default(now()) @map("ordered_at")
+  warningThresholdAt     DateTime      @map("warning_threshold_at")
+  hardSlaDeadlineAt      DateTime      @map("hard_sla_deadline_at")
+  completedAt            DateTime?     @map("completed_at")
+  slaStatus              StatSlaStatus @default(ON_TRACK) @map("sla_status")
+  audioAlertAcknowledged Boolean       @default(false) @map("audio_alert_acknowledged")
+  acknowledgedByUserId   String?       @map("acknowledged_by_user_id")
+
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  @@index([encounterType])
+  @@index([slaStatus])
+  @@index([hardSlaDeadlineAt])
+  @@map("stat_order_trackers")
+}
+
+// ----------------------------------------------------------------------------
+// 3. CLSI AUTO10-A AUTO-VERIFICATION RULES & EVALUATION LOGS
+// ----------------------------------------------------------------------------
+
+model AutoVerificationRule {
+  id                        String   @id @default(uuid())
+  testCode                  String   @unique @map("test_code")
+  parameterName             String   @map("parameter_name")
+  unit                      String
+  isEnabled                 Boolean  @default(true) @map("is_enabled")
+  
+  // Biological Reference Intervals (Gender & Age Tailored)
+  maleMinRef                Decimal  @map("male_min_ref") @db.Decimal(10, 3)
+  maleMaxRef                Decimal  @map("male_max_ref") @db.Decimal(10, 3)
+  femaleMinRef              Decimal  @map("female_min_ref") @db.Decimal(10, 3)
+  femaleMaxRef              Decimal  @map("female_max_ref") @db.Decimal(10, 3)
+  pediatricMinRef           Decimal? @map("pediatric_min_ref") @db.Decimal(10, 3)
+  pediatricMaxRef           Decimal? @map("pediatric_max_ref") @db.Decimal(10, 3)
+
+  // Critical Panic Limits
+  panicLowLimit             Decimal? @map("panic_low_limit") @db.Decimal(10, 3)
+  panicHighLimit            Decimal? @map("panic_high_limit") @db.Decimal(10, 3)
+
+  // CLSI AUTO10-A Thresholds
+  maxDeltaPercent72h        Decimal  @default(10.00) @map("max_delta_percent_72h") @db.Decimal(5, 2)
+  qcShiftWindowHours        Int      @default(8) @map("qc_shift_window_hours")
+  maxHemolysisIndex         Decimal  @default(50.00) @map("max_hemolysis_index") @db.Decimal(6, 2)
+  maxIcterusIndex           Decimal  @default(15.00) @map("max_icterus_index") @db.Decimal(6, 2)
+  maxLipemiaIndex           Decimal  @default(150.00) @map("max_lipemia_index") @db.Decimal(6, 2)
+
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@map("auto_verification_rules")
+}
+
+model AnalyzerShiftQcLog {
+  id              String   @id @default(uuid())
+  analyzerId      String   @map("analyzer_id")
+  analyzerCode    String   @map("analyzer_code")
+  testCode        String   @map("test_code")
+  qcLevel         String   @map("qc_level")
+  westgardPassed  Boolean  @map("westgard_passed")
+  zScore          Decimal  @map("z_score") @db.Decimal(5, 2)
+  performedAt     DateTime @default(now()) @map("performed_at")
+  validUntil      DateTime @map("valid_until")
+  operatorUserId  String   @map("operator_user_id")
+
+  @@index([analyzerCode, testCode, validUntil])
+  @@map("analyzer_shift_qc_logs")
+}
+
+model AutoVerificationAuditLog {
+  id                    String                    @id @default(uuid())
+  resultId              String                    @map("result_id")
+  orderId               String                    @map("order_id")
+  patientId             String                    @map("patient_id")
+  testCode              String                    @map("test_code")
+  numericValue          Decimal?                  @map("numeric_value") @db.Decimal(10, 3)
+  qualitativeValue      String?                   @map("qualitative_value")
+  
+  // 5-Point Check Booleans
+  qcPassed8h            Boolean                   @map("qc_passed_8h")
+  zeroMachineFlags      Boolean                   @map("zero_machine_flags")
+  withinRefInterval     Boolean                   @map("within_ref_interval")
+  deltaCheckPassed      Boolean                   @map("delta_check_passed")
+  serumIndicesClean     Boolean                   @map("serum_indices_clean")
+
+  // Computed Metrics
+  previousValue72h      Decimal?                  @map("previous_value_72h") @db.Decimal(10, 3)
+  deltaChangePercent    Decimal?                  @map("delta_change_percent") @db.Decimal(6, 2)
+  machineErrorFlags     String[]                  @map("machine_error_flags")
+  failReasonTags        AutoVerificationFailTag[] @map("fail_reason_tags")
+  verdict               AutoVerificationVerdict
+  nablPdfGenerated      Boolean                   @default(false) @map("nabl_pdf_generated")
+  evaluatedAt           DateTime                  @default(now()) @map("evaluated_at")
+
+  @@index([orderId])
+  @@index([verdict])
+  @@map("auto_verification_audit_logs")
+}
+
+// ----------------------------------------------------------------------------
+// 4. CRITICAL PANIC ALERT & TELEPHONIC READ-BACK AUDIT LEDGER (ISO 15189 7.4.2)
+// ----------------------------------------------------------------------------
+
+model PanicAlertReadBackLog {
+  id                     String                     @id @default(uuid())
+  resultId               String                     @map("result_id")
+  orderId                String                     @map("order_id")
+  orderNumber            String                     @map("order_number")
+  patientId              String                     @map("patient_id")
+  patientName            String                     @map("patient_name")
+  testCode               String                     @map("test_code")
+  parameterName          String                     @map("parameter_name")
+  panicValue             String                     @map("panic_value")
+  unit                   String
+  criticalLimitBreached  String                     @map("critical_limit_breached")
+  
+  // Multi-channel Instant Notification Status
+  whatsappDispatched     Boolean                    @default(false) @map("whatsapp_dispatched")
+  whatsappMessageId      String?                    @map("whatsapp_message_id")
+  smsPriorityDispatched  Boolean                    @default(false) @map("sms_priority_dispatched")
+  smsReferenceId         String?                    @map("sms_reference_id")
+  detectedAt             DateTime                   @default(now()) @map("detected_at")
+
+  // Mandatory Telephonic Read-Back Fields (NABL ISO 15189 Clause 7.4.2)
+  notifiedDoctorName     String?                    @map("notified_doctor_name")
+  doctorPhone            String?                    @map("doctor_phone")
+  notifiedByUserId       String?                    @map("notified_by_user_id")
+  notifiedByUserName     String?                    @map("notified_by_user_name")
+  callTimestamp          DateTime?                  @map("call_timestamp")
+  readBackConfirmed      Boolean                    @default(false) @map("read_back_confirmed")
+  clinicalActionRemarks  String?                    @map("clinical_action_remarks")
+  isResolved             Boolean                    @default(false) @map("is_resolved")
+  resolvedAt             DateTime?                  @map("resolved_at")
+
+  createdAt              DateTime                   @default(now()) @map("created_at")
+  updatedAt              DateTime                   @updatedAt @map("updated_at")
+
+  @@index([orderId])
+  @@index([isResolved])
+  @@index([readBackConfirmed])
+  @@map("panic_alert_read_back_logs")
 }
