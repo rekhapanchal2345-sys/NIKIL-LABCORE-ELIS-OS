@@ -59,6 +59,15 @@ router.get('/', nexusController.getCommandCenterOverview);
 router.post('/math/descriptive-stats', nexusController.computeDescriptiveStats);
 router.post('/math/queue-process', nexusController.evaluateQueueProcess);
 router.post('/math/weibull-reliability', nexusController.evaluateWeibull);
+router.post('/math/six-sigma', nexusController.computeSixSigma);
+router.post('/math/kalman-drift', nexusController.evaluateKalmanDrift);
+router.post('/math/enzyme-kinetics', nexusController.evaluateEnzymeKinetics);
+router.post('/math/erlang-b-loss', nexusController.evaluateErlangBLoss);
+router.post('/math/kdigo-staging', nexusController.evaluateKdigoStaging);
+router.post('/math/arrhenius-tti', nexusController.evaluateArrheniusTti);
+router.post('/math/cusum-evaluation', nexusController.evaluateCusum);
+router.post('/math/hil-interference', nexusController.evaluateHil);
+router.post('/math/delta-check', nexusController.evaluateDeltaCheck);
 
 // =========================================================================
 // 3. CONTROLLED AUTONOMY ADJUDICATION

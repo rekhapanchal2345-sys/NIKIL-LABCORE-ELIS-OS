@@ -440,6 +440,7 @@ export const approve =
       UserRole.ADMIN,
       UserRole.SUPER_ADMIN,
       UserRole.BRANCH_ADMIN,
+      UserRole.DOCTOR,
     ];
 
     if (!authorizedRoles.includes(user.role)) {
@@ -799,6 +800,7 @@ export const batchApprove = async (
     UserRole.ADMIN,
     UserRole.SUPER_ADMIN,
     UserRole.BRANCH_ADMIN,
+    UserRole.DOCTOR,
   ];
 
   if (!authorizedRoles.includes(user.role)) {

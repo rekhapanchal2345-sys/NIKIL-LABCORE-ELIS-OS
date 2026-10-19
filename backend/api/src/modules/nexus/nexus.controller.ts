@@ -13,7 +13,17 @@ import {
     ComputeDescriptiveStatsSchema,
     QueueProcessParamsSchema,
     WeibullReliabilityParamsSchema,
+    SixSigmaParamsSchema,
+    KalmanDriftParamsSchema,
+    EnzymeKineticsParamsSchema,
+    ErlangBLossParamsSchema,
+    KdigoAkiParamsSchema,
+    ArrheniusTtiParamsSchema,
+    CusumParamsSchema,
+    HilInterferenceParamsSchema,
+    DeltaCheckParamsSchema,
 } from './nexus.validation';
+
 
 export interface AuthenticatedRequest extends Request {
     user?: {
@@ -155,6 +165,194 @@ export class NexusController {
     };
 
     /**
+     * POST /api/v1/nexus/math/six-sigma
+     */
+    public computeSixSigma = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = SixSigmaParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.computeSixSigmaQuality(
+                parsed.data.allowableTotalErrorTeaPct,
+                parsed.data.biasPercentage,
+                parsed.data.coefficientOfVariationCvPct
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/kalman-drift
+     */
+    public evaluateKalmanDrift = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = KalmanDriftParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.evaluateKalmanSensorDrift(
+                parsed.data.measurements,
+                parsed.data.initialTargetMean,
+                parsed.data.processNoiseQ,
+                parsed.data.measurementNoiseR
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/enzyme-kinetics
+     */
+    public evaluateEnzymeKinetics = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = EnzymeKineticsParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.evaluateEnzymeKinetics(
+                parsed.data.substrateConcentrationMmolL,
+                parsed.data.vMaxUnitsPerMin,
+                parsed.data.kmMmolL,
+                parsed.data.absorbanceDeltaPerMin
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/erlang-b-loss
+     */
+    public evaluateErlangBLoss = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = ErlangBLossParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.computeErlangBLossProbability(
+                parsed.data.channelsC,
+                parsed.data.arrivalRateLambdaPerHour,
+                parsed.data.serviceRateMuPerHour
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/kdigo-staging
+     */
+    public evaluateKdigoStaging = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = KdigoAkiParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.evaluateKdigoAkiAndEgfr(
+                parsed.data.currentCreatinineMgDl,
+                parsed.data.baselineCreatinineMgDl,
+                parsed.data.patientAgeYears,
+                parsed.data.patientSex,
+                parsed.data.urineOutputMlKgHrOver6h
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/arrhenius-tti
+     */
+    public evaluateArrheniusTti = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = ArrheniusTtiParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.computeArrheniusTimeTemperatureIntegral(
+                parsed.data.segments,
+                parsed.data.kRefPerHour,
+                parsed.data.activationEnergyOverR
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/cusum-evaluation
+     */
+    public evaluateCusum = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = CusumParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.computeCusumDrift(
+                parsed.data.values,
+                parsed.data.targetMean,
+                parsed.data.targetSd,
+                parsed.data.kSlack,
+                parsed.data.hDecision
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/hil-interference
+     */
+    public evaluateHil = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = HilInterferenceParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.computeHilInterference(
+                parsed.data.hemolysisMgDl,
+                parsed.data.icterusMgDl,
+                parsed.data.lipemiaTurbidity,
+                parsed.data.analyteCode
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
+     * POST /api/v1/nexus/math/delta-check
+     */
+    public evaluateDeltaCheck = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const parsed = DeltaCheckParamsSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({ success: false, errors: parsed.error.issues });
+            }
+            const result = NexusMathEngine.computeDeltaCheck(
+                parsed.data.currentVal,
+                parsed.data.previousVal,
+                parsed.data.elapsedHours,
+                parsed.data.analyteCode
+            );
+            res.json({ success: true, data: result });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+
+    /**
      * POST /api/v1/nexus/proposals/:id/review
      * Adjudicates a controlled autonomy proposal with safety gate and audit logging.
      */
@@ -195,5 +393,6 @@ export class NexusController {
         }
     };
 }
+
 
 export const nexusController = new NexusController();

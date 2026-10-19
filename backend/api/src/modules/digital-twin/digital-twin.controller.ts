@@ -2,8 +2,12 @@ import { Request, Response } from 'express';
 import { DigitalTwinService, digitalTwinService } from './digital-twin.service';
 import {
     ApplyOperatingPolicySchema,
+    BathtubReliabilityInputSchema,
+    ChaosScenarioInjectionSchema,
+    ExecuteAutonomousRemediationSchema,
     FailoverDecisionInputSchema,
     FailoverOptimizationInputSchema,
+    KalmanTelemetryInputSchema,
     LiveAnalyzerLockoutSchema,
     LiveMaintenanceWindowSchema,
     LiveSpecimenEscalationSchema,
@@ -12,6 +16,8 @@ import {
     LiveWardNotificationSchema,
     LogCalibrationSchema,
     ParetoOptimizationInputSchema,
+    PassingBablokInputSchema,
+    PneumaticsKinematicsInputSchema,
     SaveScenarioSnapshotSchema,
     SimulationRunInputSchema,
     SpecimenStabilityCheckInputSchema,
@@ -830,6 +836,193 @@ export class DigitalTwinController {
                 success: false,
                 error: 'INTERNAL_SERVER_ERROR',
                 message: error instanceof Error ? error.message : 'Failed to get active policy.',
+            });
+        }
+    };
+
+    // =========================================================================
+    // ADVANCED MATHEMATICAL ENGINES & AUTONOMOUS RECOVERY CONTROLLERS
+    // =========================================================================
+
+    public getKalmanTelemetry = async (
+        req: AuthenticatedRequest,
+        res: Response
+    ): Promise<void> => {
+        try {
+            const parsed = KalmanTelemetryInputSchema.safeParse(req.body);
+            const input = parsed.success
+                ? parsed.data
+                : {
+                    analyzerId: (req.query.analyzerId as string) || 'ANZ-BIO-01',
+                    timeHorizonSeconds: 600,
+                    simulatedDisturbance: 'NONE' as const,
+                };
+
+            const data = await this.service.getKalmanTelemetryAnalysis(input);
+            res.status(200).json({
+                success: true,
+                data,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: 'KALMAN_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to execute Kalman telemetry estimation.',
+            });
+        }
+    };
+
+    public getBathtubReliability = async (
+        req: AuthenticatedRequest,
+        res: Response
+    ): Promise<void> => {
+        try {
+            const parsed = BathtubReliabilityInputSchema.safeParse(req.body);
+            const input = parsed.success
+                ? parsed.data
+                : {
+                    analyzerId: (req.query.analyzerId as string) || 'ANZ-BIO-01',
+                    horizonHours: 6000,
+                };
+
+            const data = await this.service.getBathtubReliabilityAnalysis(input);
+            res.status(200).json({
+                success: true,
+                data,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: 'BATHTUB_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to compute Bathtub hazard curve.',
+            });
+        }
+    };
+
+    public getPassingBablok = async (
+        req: AuthenticatedRequest,
+        res: Response
+    ): Promise<void> => {
+        try {
+            const parsed = PassingBablokInputSchema.safeParse(req.body);
+            const input = parsed.success
+                ? parsed.data
+                : {
+                    primaryAnalyzerId: (req.query.primaryAnalyzerId as string) || 'ANZ-BIO-01',
+                    backupAnalyzerId: (req.query.backupAnalyzerId as string) || 'ANZ-BIO-02',
+                    analyteCode: (req.query.analyteCode as string) || 'K_SERUM',
+                };
+
+            const data = await this.service.getPassingBablokAnalysis(input);
+            res.status(200).json({
+                success: true,
+                data,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: 'PASSING_BABLOK_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to compute Passing-Bablok regression.',
+            });
+        }
+    };
+
+    public evaluatePneumatics = async (
+        req: AuthenticatedRequest,
+        res: Response
+    ): Promise<void> => {
+        try {
+            const parsed = PneumaticsKinematicsInputSchema.safeParse(req.body);
+            const input = parsed.success
+                ? parsed.data
+                : {
+                    distanceMeters: 120,
+                    pneumaticAirSpeedMps: 7.5,
+                    elbowBendCount: 6,
+                    hasSoftDecelerationBrake: true,
+                };
+
+            const data = this.service.evaluatePneumaticsKinematics(input);
+            res.status(200).json({
+                success: true,
+                data,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: 'PNEUMATICS_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to evaluate pneumatic transport kinematics.',
+            });
+        }
+    };
+
+    public injectChaosScenario = async (
+        req: AuthenticatedRequest,
+        res: Response
+    ): Promise<void> => {
+        try {
+            const actor = this.extractActor(req);
+            const parsed = ChaosScenarioInjectionSchema.safeParse(req.body);
+            if (!parsed.success) {
+                res.status(400).json({
+                    success: false,
+                    error: 'VALIDATION_ERROR',
+                    details: parsed.error.issues,
+                });
+                return;
+            }
+
+            const data = await this.service.injectChaosScenario(
+                parsed.data,
+                actor?.userId || 'USR-DIRECTOR-01'
+            );
+
+            res.status(201).json({
+                success: true,
+                message: `Injected Chaos Failure Scenario '${parsed.data.scenarioType}' into Digital Twin floor.`,
+                data,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: 'CHAOS_INJECTION_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to inject chaos scenario.',
+            });
+        }
+    };
+
+    public executeAutonomousRemediation = async (
+        req: AuthenticatedRequest,
+        res: Response
+    ): Promise<void> => {
+        try {
+            const actor = this.extractActor(req);
+            const parsed = ExecuteAutonomousRemediationSchema.safeParse(req.body);
+            if (!parsed.success) {
+                res.status(400).json({
+                    success: false,
+                    error: 'VALIDATION_ERROR',
+                    details: parsed.error.issues,
+                });
+                return;
+            }
+
+            const data = await this.service.executeAutonomousRemediation(
+                parsed.data,
+                actor?.userId || 'USR-DIRECTOR-01',
+                actor?.role || 'LAB_DIRECTOR'
+            );
+
+            res.status(200).json({
+                success: true,
+                message: 'Autonomous closed-loop clinical remediation executed successfully.',
+                data,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: 'REMEDIATION_EXECUTION_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to execute autonomous remediation.',
             });
         }
     };

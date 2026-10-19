@@ -2733,12 +2733,11 @@ export default function PaymentsPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleOpenReceipt(payment)}
-                                    className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:from-emerald-500 hover:to-teal-600 transition"
-                                    title="Print / View Receipt"
-                                    aria-label="Print or View Receipt"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 transition-colors"
+                                    title="Print A4 Clinical Receipt"
                                   >
-                                    <Printer className="h-3.5 w-3.5" />
-                                    Receipt
+                                    <Printer className="h-3.5 w-3.5 text-sky-600" />
+                                    Print Receipt
                                   </button>
 
                                   <button
@@ -3513,11 +3512,11 @@ export default function PaymentsPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleOpenReceipt(p)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-2xs hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800 transition"
-                                  title="Print Clinical A4 Receipt"
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 transition-colors"
+                                  title="Print A4 Clinical Receipt"
                                 >
-                                  <Printer className="h-3.5 w-3.5 text-emerald-600" />
-                                  Receipt
+                                  <Printer className="h-3.5 w-3.5 text-sky-600" />
+                                  Print Receipt
                                 </button>
                                 <button
                                   type="button"
@@ -3677,9 +3676,11 @@ export default function PaymentsPage() {
                     <button
                       type="button"
                       onClick={() => handleOpenReceipt(selectedTxnDrawer)}
-                      className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-xs hover:bg-emerald-500 transition flex items-center gap-1"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 transition-colors"
+                      title="Print A4 Clinical Receipt"
                     >
-                      <Printer className="h-3 w-3" /> Print Clinical A4
+                      <Printer className="h-3.5 w-3.5 text-sky-600" />
+                      Print Receipt
                     </button>
                     <button
                       type="button"
@@ -6762,6 +6763,7 @@ export default function PaymentsPage() {
         {selectedReceiptPayment && (
           <PaymentReceipt
             payment={selectedReceiptPayment}
+            isOpen={!!selectedReceiptPayment}
             onClose={() => setSelectedReceiptPayment(null)}
           />
         )}

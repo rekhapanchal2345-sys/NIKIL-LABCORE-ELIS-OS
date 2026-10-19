@@ -138,7 +138,7 @@
               <span>Approvals</span>
               <span class="ml-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
             </div>
-            <div onclick="switchMainView('reports')" class="nav-item">
+            <div onclick="switchMainView('reports')" class="nav-item" id="nav-item-reports">
               <i class="fa-solid fa-file-waveform text-xs w-4"></i>
               <span>Reports</span>
             </div>
@@ -1133,6 +1133,36 @@
         </div>
 
       </div> <!-- End of #aiStudioModuleView -->
+
+      <!-- ==================== REPORTS & PRINT STUDIO MASTER MODULE VIEW CONTAINER ==================== -->
+      <div id="reportsModuleView" class="space-y-4 hidden">
+        <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-black text-sm shrink-0">
+              <i class="fa-solid fa-print"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-lg font-bold text-white tracking-tight">Full A4 Master Hospital, Lab &amp; Clinic Report &amp; Print Studio</h2>
+                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">● 210mm × 297mm Ready</span>
+              </div>
+              <p class="text-xs text-slate-400">9-Column Master LOINC &amp; Delta Table • 4-Zone Chain-of-Custody • High-Resolution Print Ready</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="document.getElementById('reportsStudioFrame').contentWindow.print()" class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-print"></i> Print Report (Ctrl+P)
+            </button>
+            <a href="/reports.html" target="_blank" class="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/20 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Fullscreen Studio
+            </a>
+          </div>
+        </div>
+
+        <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl" style="height: calc(100vh - 210px); min-height: 800px;">
+          <iframe id="reportsStudioFrame" src="/reports.html" class="w-full h-full border-0 bg-white" title="LabCore ELIS OS Report &amp; Print Studio"></iframe>
+        </div>
+      </div> <!-- End of #reportsModuleView -->
 
     </main>
   </div>

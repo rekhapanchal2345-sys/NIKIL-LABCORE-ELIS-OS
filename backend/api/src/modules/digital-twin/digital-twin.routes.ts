@@ -126,4 +126,25 @@ router.post('/pareto/apply-policy', digitalTwinController.applyOperatingPolicy);
 router.post('/pareto/apply', digitalTwinController.applyOperatingPolicy);
 router.get('/pareto/active-policy', digitalTwinController.getActivePolicy);
 
-export default router;
+// =========================================================================
+// ADVANCED MATHEMATICAL ENGINES & AUTONOMOUS ORCHESTRATOR ROUTES
+// =========================================================================
+router.get('/math/kalman', digitalTwinController.getKalmanTelemetry);
+router.post('/math/kalman', digitalTwinController.getKalmanTelemetry);
+
+router.get('/math/bathtub', digitalTwinController.getBathtubReliability);
+router.post('/math/bathtub', digitalTwinController.getBathtubReliability);
+
+router.get('/math/passing-bablok', digitalTwinController.getPassingBablok);
+router.post('/math/passing-bablok', digitalTwinController.getPassingBablok);
+
+router.get('/math/pneumatics', digitalTwinController.evaluatePneumatics);
+router.post('/math/pneumatics', digitalTwinController.evaluatePneumatics);
+
+router.post('/orchestrator/chaos-inject', digitalTwinController.injectChaosScenario);
+router.post('/chaos-inject', digitalTwinController.injectChaosScenario);
+
+router.post('/orchestrator/execute-remediation', digitalTwinController.executeAutonomousRemediation);
+router.post('/execute-remediation', digitalTwinController.executeAutonomousRemediation);
+
+export default router;

@@ -56,46 +56,118 @@ export async function ensurePatientCryptoColumns(tx: Tx | typeof prisma = prisma
   }
 }
 
-export const generateUHID = async (tx: Tx | typeof prisma = prisma): Promise<string> => {
+let uhidSequenceInitialized = false;
+
+export async function ensureUhidSequenceSync(currentYear: number): Promise<void> {
+  if (uhidSequenceInitialized) return;
+  try {
+    const fy = String(currentYear);
+    const seriesType = "UHID";
+    const branchId = "MAIN";
+    const seriesKey = `${seriesType}-${fy}-${branchId}`;
+    const prefix = `UHID-${currentYear}-`;
+
+    // Find the highest regular numerical sequence (ignoring simulation range >= 90000)
+    const existingPatients = await prisma.patient.findMany({
+      where: { uhid: { startsWith: prefix } },
+      select: { uhid: true },
+    });
+
+    let maxRegular = 0;
+    for (const p of existingPatients) {
+      const match = UHID_SEQUENCE.exec(p.uhid);
+      if (match) {
+        const num = Number(match[1]);
+        if (Number.isFinite(num) && num < 90000 && num > maxRegular) {
+          maxRegular = num;
+        }
+      }
+    }
+
+    if (maxRegular > 0) {
+      await (prisma as any).$executeRawUnsafe(`
+        INSERT INTO accounting_sequences (id, series_type, financial_year, branch_id, current_value, updated_at)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        ON CONFLICT (series_type, financial_year, branch_id)
+        DO UPDATE SET 
+          current_value = GREATEST(accounting_sequences.current_value, $5),
+          updated_at = CURRENT_TIMESTAMP;
+      `, seriesKey, seriesType, fy, branchId, maxRegular);
+    }
+    uhidSequenceInitialized = true;
+  } catch (err) {
+    console.warn("Notice: ensureUhidSequenceSync:", err);
+  }
+}
+
+export const generateUHID = async (_tx?: Tx | typeof prisma): Promise<string> => {
   const currentYear = new Date().getUTCFullYear();
   const fy = String(currentYear);
   const seriesType = "UHID";
   const branchId = "MAIN";
   const seriesKey = `${seriesType}-${fy}-${branchId}`;
+  const prefix = `UHID-${currentYear}-`;
 
-  try {
-    const rows: any = await (tx as any).$queryRawUnsafe(`
-      INSERT INTO accounting_sequences (id, series_type, financial_year, branch_id, current_value, updated_at)
-      VALUES ($1, $2, $3, $4, 1, CURRENT_TIMESTAMP)
-      ON CONFLICT (series_type, financial_year, branch_id)
-      DO UPDATE SET 
-        current_value = accounting_sequences.current_value + 1,
-        updated_at = CURRENT_TIMESTAMP
-      RETURNING current_value;
-    `, seriesKey, seriesType, fy, branchId);
+  await ensureUhidSequenceSync(currentYear);
 
-    const nextVal = Array.isArray(rows) && rows[0]?.current_value ? Number(rows[0].current_value) : 1;
-    return `UHID-${currentYear}-${String(nextVal).padStart(5, "0")}`;
-  } catch (err) {
-    // Robust fallback to highest existing numerical sequence if raw query fails in non-pg environments
-    const prefix = `UHID-${currentYear}-`;
-    const recent = await tx.patient.findMany({
-      where: { uhid: { startsWith: prefix } },
-      select: { uhid: true },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-    let highest = 0;
-    for (const row of recent) {
-      const match = UHID_SEQUENCE.exec(row.uhid);
-      if (match) {
-        const num = Number(match[1]);
-        if (Number.isFinite(num) && num > highest) highest = num;
+  let attempts = 0;
+  while (attempts < 100) {
+    attempts++;
+    try {
+      // Use the root non-transactional prisma client so sequence increment is permanent
+      // and not rolled back if caller's transaction aborts.
+      const rows: any = await (prisma as any).$queryRawUnsafe(`
+        INSERT INTO accounting_sequences (id, series_type, financial_year, branch_id, current_value, updated_at)
+        VALUES ($1, $2, $3, $4, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (series_type, financial_year, branch_id)
+        DO UPDATE SET 
+          current_value = accounting_sequences.current_value + 1,
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING current_value;
+      `, seriesKey, seriesType, fy, branchId);
+
+      const nextVal = Array.isArray(rows) && rows[0]?.current_value ? Number(rows[0].current_value) : 1;
+      const candidate = `${prefix}${String(nextVal).padStart(5, "0")}`;
+
+      const existing = await prisma.patient.findUnique({
+        where: { uhid: candidate },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        return candidate;
+      }
+    } catch (err) {
+      // Robust fallback to highest existing numerical sequence if raw query fails in non-pg environments
+      const recent = await prisma.patient.findMany({
+        where: { uhid: { startsWith: prefix } },
+        select: { uhid: true },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+      let highest = 0;
+      for (const row of recent) {
+        const match = UHID_SEQUENCE.exec(row.uhid);
+        if (match) {
+          const num = Number(match[1]);
+          if (Number.isFinite(num) && num < 90000 && num > highest) highest = num;
+        }
+      }
+      let nextVal = highest + 1;
+      while (true) {
+        const candidate = `${prefix}${String(nextVal).padStart(5, "0")}`;
+        const exists = await prisma.patient.findUnique({
+          where: { uhid: candidate },
+          select: { id: true },
+        });
+        if (!exists) return candidate;
+        nextVal++;
       }
     }
-    const nextVal = highest + 1;
-    return `${prefix}${String(nextVal).padStart(5, "0")}`;
   }
+
+  const randomSuffix = Math.floor(10000 + Math.random() * 89999);
+  return `${prefix}${randomSuffix}`;
 };
 
 export const checkDuplicatePatient = async (
@@ -783,7 +855,7 @@ export const createPatientWithOrder = async (
     throw new HttpError("At least one test is required.", 400, "ORDER_ITEMS_REQUIRED");
   }
 
-  let retries = 3;
+  let retries = 5;
   while (true) {
     try {
       const result = await prisma.$transaction(async (tx) => {
@@ -1054,11 +1126,12 @@ export const createPatientWithOrder = async (
     });
     return result;
   } catch (error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002' && (error.meta?.target as any)?.includes?.('uhid')) {
+    if (error.code === 'P2002' && ((error.meta?.target as any)?.includes?.('uhid') || String(error.message).includes('uhid'))) {
       retries--;
       if (retries <= 0) {
         throw new HttpError("Failed to generate unique UHID after multiple attempts. Please try again.", 500, "UHID_GENERATION_FAILED");
       }
+      await new Promise((resolve) => setTimeout(resolve, 15 + Math.random() * 45));
       continue;
     }
     if (error instanceof HttpError || error instanceof Prisma.PrismaClientKnownRequestError) {

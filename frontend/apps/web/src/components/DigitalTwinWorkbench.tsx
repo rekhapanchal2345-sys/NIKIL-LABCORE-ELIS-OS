@@ -1,12 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Virtual3DWorldModel, { WorkstationNode3D } from './nexus/Virtual3DWorldModel';
 import {
     Activity,
     AlertTriangle,
     ArrowRightLeft,
     BarChart3,
     Bell,
+    Bot,
+    Box,
     Brain,
     Calendar,
     Check,
@@ -15,14 +19,24 @@ import {
     Compass,
     Cpu,
     Database,
+    Eye,
+    FileCheck,
+    FileText,
     Flame,
     FlaskConical,
+    Info,
     Layers,
     Lock,
+    Maximize2,
+    Network,
     Play,
+    Printer,
     Radio,
     RefreshCw,
+    RotateCw,
     Save,
+    Send,
+    Shield,
     ShieldAlert,
     ShieldCheck,
     Sliders,
@@ -32,8 +46,11 @@ import {
     TrendingUp,
     Workflow,
     Wrench,
+    X,
     XCircle,
     Zap,
+    ZoomIn,
+    ZoomOut,
 } from 'lucide-react';
 
 interface AnalyzerNode {
@@ -313,14 +330,109 @@ const API_BASE =
     process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export default function DigitalTwinWorkbench() {
+    const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<
+        | 'VIRTUAL_3D_COCKPIT'
+        | 'ADVANCED_MATH_RADAR'
+        | 'CHAOS_ORCHESTRATOR'
+        | 'HL7_FHIR_INTEROP'
         | 'SIMULATOR'
         | 'STABILITY_RADAR'
         | 'FAILOVER_ORCHESTRATOR'
         | 'AI_TRAINING_STUDIO'
         | 'PROGNOSTICS_WEIBULL'
         | 'PARETO_OPTIMIZER'
-    >('SIMULATOR');
+    >('VIRTUAL_3D_COCKPIT');
+
+    // Sync tab from URL query params
+    useEffect(() => {
+        const tabParam = searchParams?.get('tab');
+        if (tabParam) {
+            const validTabs = [
+                'VIRTUAL_3D_COCKPIT',
+                'ADVANCED_MATH_RADAR',
+                'CHAOS_ORCHESTRATOR',
+                'HL7_FHIR_INTEROP',
+                'SIMULATOR',
+                'STABILITY_RADAR',
+                'FAILOVER_ORCHESTRATOR',
+                'AI_TRAINING_STUDIO',
+                'PROGNOSTICS_WEIBULL',
+                'PARETO_OPTIMIZER',
+            ];
+            if (validTabs.includes(tabParam.toUpperCase())) {
+                setActiveTab(tabParam.toUpperCase() as any);
+            }
+        }
+    }, [searchParams]);
+
+    // =========================================================================
+    // 3D HOLOGRAPHIC LAB TWIN COCKPIT & FACILITY STATE
+    // =========================================================================
+    const [selected3DWorkstation, setSelected3DWorkstation] = useState<WorkstationNode3D | null>(null);
+    const [hospitalFacility, setHospitalFacility] = useState<
+        'METRO_CORE' | 'NORTH_TRAUMA' | 'WEST_CANCER' | 'APEX_CLINIC'
+    >('METRO_CORE');
+    const [facilityEmergencyCode, setFacilityEmergencyCode] = useState<
+        'NORMAL' | 'SURGE_3X' | 'CHILLER_CRITICAL' | 'BIO_FAILOVER'
+    >('NORMAL');
+
+    // =========================================================================
+    // ADVANCED MATHEMATICAL ENGINES STATE
+    // =========================================================================
+    // 1. Kalman State Estimator
+    const [kalmanSelectedAnalyzer, setKalmanSelectedAnalyzer] = useState<string>('ANZ-BIO-01');
+    const [kalmanDisturbance, setKalmanDisturbance] = useState<
+        'NONE' | 'SAMPLE_PROBE_CLOT' | 'INCUBATOR_PELTIER_DRIFT' | 'OPTICAL_LAMP_DECAY'
+    >('NONE');
+    const [kalmanResult, setKalmanResult] = useState<any | null>(null);
+    const [loadingKalman, setLoadingKalman] = useState<boolean>(false);
+
+    // 2. Bathtub Hazard Rate & Continuous Reliability
+    const [bathtubSelectedAnalyzer, setBathtubSelectedAnalyzer] = useState<string>('ANZ-BIO-01');
+    const [bathtubHorizon, setBathtubHorizon] = useState<number>(6000);
+    const [bathtubResult, setBathtubResult] = useState<any | null>(null);
+    const [loadingBathtub, setLoadingBathtub] = useState<boolean>(false);
+
+    // 3. CLSI EP09-A3 Passing-Bablok Non-Parametric Comparability
+    const [passingBablokPrimary, setPassingBablokPrimary] = useState<string>('ANZ-BIO-01');
+    const [passingBablokBackup, setPassingBablokBackup] = useState<string>('ANZ-BIO-02');
+    const [passingBablokAnalyte, setPassingBablokAnalyte] = useState<string>('K_SERUM');
+    const [passingBablokResult, setPassingBablokResult] = useState<any | null>(null);
+    const [loadingPassingBablok, setLoadingPassingBablok] = useState<boolean>(false);
+
+    // 4. Pneumatic Transport Kinematics & Hemolysis Shear Stress
+    const [pneumaticDistance, setPneumaticDistance] = useState<number>(120);
+    const [pneumaticSpeed, setPneumaticSpeed] = useState<number>(7.5);
+    const [pneumaticBends, setPneumaticBends] = useState<number>(6);
+    const [pneumaticSoftBrake, setPneumaticSoftBrake] = useState<boolean>(true);
+    const [pneumaticResult, setPneumaticResult] = useState<any | null>(null);
+    const [loadingPneumatics, setLoadingPneumatics] = useState<boolean>(false);
+
+    // =========================================================================
+    // AUTONOMOUS FAULT-RECOVERY & CHAOS ENGINEERING STATE
+    // =========================================================================
+    const [selectedChaosType, setSelectedChaosType] = useState<
+        | 'COBAS_ISE_SHIFT'
+        | 'CENTRIFUGE_RESONANCE'
+        | 'CRYO_CHILLER_LEAK'
+        | 'PNEUMATIC_PRESSURE_DROP'
+        | 'MASS_CASUALTY_SURGE'
+        | 'CHILLER_FAILURE_32C'
+        | 'PNEUMATIC_SHEAR_SHOCK'
+        | 'REAGENT_STOCKOUT_EMERGENCY'
+    >('COBAS_ISE_SHIFT');
+    const [isInjectingChaos, setIsInjectingChaos] = useState<boolean>(false);
+    const [chaosResult, setChaosResult] = useState<any | null>(null);
+    const [chaosAlerts, setChaosAlerts] = useState<string[]>([]);
+    const [pathologistPin, setPathologistPin] = useState<string>('7729');
+    const [signoffNotes, setSignoffNotes] = useState<string>(
+        'Emergency Autonomous Failover approved in accordance with ISO 15189 & FDA 21 CFR Part 11.'
+    );
+    const [showSignoffModal, setShowSignoffModal] = useState<boolean>(false);
+    const [isExecutingRemediation, setIsExecutingRemediation] = useState<boolean>(false);
+    const [remediationReceipt, setRemediationReceipt] = useState<any | null>(null);
+    const [showPrintManifest, setShowPrintManifest] = useState<boolean>(false);
 
     // Advanced AI / ML & Complex Analytics State
     const [trainingModelType, setTrainingModelType] = useState<
@@ -1797,6 +1909,159 @@ export default function DigitalTwinWorkbench() {
         }
     };
 
+    const handleFetchKalman = useCallback(async () => {
+        setLoadingKalman(true);
+        try {
+            const res = await fetch(`${API_BASE}/digital-twin/math/kalman`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    analyzerId: kalmanSelectedAnalyzer,
+                    timeHorizonSeconds: 600,
+                    simulatedDisturbance: kalmanDisturbance,
+                }),
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                setKalmanResult(json.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch Kalman telemetry', err);
+        } finally {
+            setLoadingKalman(false);
+        }
+    }, [kalmanSelectedAnalyzer, kalmanDisturbance]);
+
+    const handleFetchBathtub = useCallback(async () => {
+        setLoadingBathtub(true);
+        try {
+            const res = await fetch(`${API_BASE}/digital-twin/math/bathtub`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    analyzerId: bathtubSelectedAnalyzer,
+                    horizonHours: bathtubHorizon,
+                }),
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                setBathtubResult(json.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch Bathtub reliability', err);
+        } finally {
+            setLoadingBathtub(false);
+        }
+    }, [bathtubSelectedAnalyzer, bathtubHorizon]);
+
+    const handleFetchPassingBablok = useCallback(async () => {
+        setLoadingPassingBablok(true);
+        try {
+            const res = await fetch(`${API_BASE}/digital-twin/math/passing-bablok`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    primaryAnalyzerId: passingBablokPrimary,
+                    backupAnalyzerId: passingBablokBackup,
+                    analyteCode: passingBablokAnalyte,
+                }),
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                setPassingBablokResult(json.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch Passing-Bablok analysis', err);
+        } finally {
+            setLoadingPassingBablok(false);
+        }
+    }, [passingBablokPrimary, passingBablokBackup, passingBablokAnalyte]);
+
+    const handleFetchPneumatics = useCallback(async () => {
+        setLoadingPneumatics(true);
+        try {
+            const res = await fetch(`${API_BASE}/digital-twin/math/pneumatics`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    distanceMeters: pneumaticDistance,
+                    pneumaticAirSpeedMps: pneumaticSpeed,
+                    elbowBendCount: pneumaticBends,
+                    hasSoftDecelerationBrake: pneumaticSoftBrake,
+                }),
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                setPneumaticResult(json.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch Pneumatics kinematics', err);
+        } finally {
+            setLoadingPneumatics(false);
+        }
+    }, [pneumaticDistance, pneumaticSpeed, pneumaticBends, pneumaticSoftBrake]);
+
+    const handleInjectChaos = async (chaosType?: typeof selectedChaosType) => {
+        const typeToInject = chaosType || selectedChaosType;
+        setIsInjectingChaos(true);
+        try {
+            const res = await fetch(`${API_BASE}/digital-twin/orchestrator/chaos-inject`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    scenarioType: typeToInject,
+                    targetAnalyzerId: 'ANZ-BIO-01',
+                    intensityMultiplier: 1.5,
+                }),
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                setChaosResult(json.data);
+                setSuccessBanner(`[CHAOS INJECTED] ${json.data.description}`);
+                if (json.data.triggeredAlerts) {
+                    setChaosAlerts(json.data.triggeredAlerts);
+                }
+                handleRunSimulation();
+            }
+        } catch (err) {
+            setErrorMessage('Failed to inject chaos scenario.');
+        } finally {
+            setIsInjectingChaos(false);
+        }
+    };
+
+    const handleExecuteRemediation = async () => {
+        if (!pathologistPin || pathologistPin.length < 4) {
+            setErrorMessage('Pathologist 4-digit PIN is required for FDA 21 CFR Part 11 sign-off.');
+            return;
+        }
+        setIsExecutingRemediation(true);
+        try {
+            const proposalId = proposals[0]?.proposalId || 'PROP-AUTO-2026';
+            const res = await fetch(`${API_BASE}/digital-twin/orchestrator/execute-remediation`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    proposalId,
+                    actionIds: ['ACT-FAILOVER-01', 'ACT-RECAL-01', 'ACT-STAT-PREEMPT-01'],
+                    pathologistPin,
+                    signoffNotes,
+                }),
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                setRemediationReceipt(json.data);
+                setShowSignoffModal(false);
+                setSuccessBanner('✅ Autonomous closed-loop clinical remediation executed & locked into immutable audit log!');
+                handleRunSimulation();
+            }
+        } catch (err) {
+            setErrorMessage('Failed to execute autonomous remediation.');
+        } finally {
+            setIsExecutingRemediation(false);
+        }
+    };
+
     useEffect(() => {
         handleRunSimulation();
     }, [handleRunSimulation]);
@@ -1984,6 +2249,48 @@ export default function DigitalTwinWorkbench() {
             <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
                 <button
                     type="button"
+                    onClick={() => setActiveTab('VIRTUAL_3D_COCKPIT')}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${activeTab === 'VIRTUAL_3D_COCKPIT'
+                            ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-600/30'
+                            : 'bg-slate-900 text-cyan-300 hover:text-white border border-cyan-800/40 hover:border-cyan-500'
+                        }`}
+                >
+                    <Box className="w-4 h-4 text-cyan-300" />
+                    🌐 3D Holographic Lab Twin Cockpit
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => {
+                        setActiveTab('ADVANCED_MATH_RADAR');
+                        if (!kalmanResult) handleFetchKalman();
+                        if (!bathtubResult) handleFetchBathtub();
+                        if (!passingBablokResult) handleFetchPassingBablok();
+                        if (!pneumaticResult) handleFetchPneumatics();
+                    }}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${activeTab === 'ADVANCED_MATH_RADAR'
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30'
+                            : 'bg-slate-900 text-emerald-300 hover:text-white border border-emerald-800/40 hover:border-emerald-500'
+                        }`}
+                >
+                    <Activity className="w-4 h-4 text-emerald-300" />
+                    🔬 Advanced Math &amp; Kalman Radar
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('CHAOS_ORCHESTRATOR')}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${activeTab === 'CHAOS_ORCHESTRATOR'
+                            ? 'bg-gradient-to-r from-rose-600 to-orange-600 text-white shadow-lg shadow-rose-600/30'
+                            : 'bg-slate-900 text-rose-300 hover:text-white border border-rose-800/40 hover:border-rose-500'
+                        }`}
+                >
+                    <Flame className="w-4 h-4 text-rose-400" />
+                    ⚡ Autonomous Fault-Recovery &amp; Chaos
+                </button>
+
+                <button
+                    type="button"
                     onClick={() => setActiveTab('SIMULATOR')}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${activeTab === 'SIMULATOR'
                             ? 'bg-indigo-600 text-white shadow-md'
@@ -1991,7 +2298,7 @@ export default function DigitalTwinWorkbench() {
                         }`}
                 >
                     <Sliders className="w-4 h-4" />
-                    1. Discrete-Event Capacity Simulator & Topology
+                    Discrete-Event Simulator
                 </button>
 
                 <button
@@ -2060,6 +2367,1185 @@ export default function DigitalTwinWorkbench() {
                     6. Multi-Objective Pareto Frontier
                 </button>
             </div>
+
+            {/* ========================================================================= */}
+            {/* TAB: 3D HOLOGRAPHIC LAB TWIN COCKPIT */}
+            {/* ========================================================================= */}
+            {activeTab === 'VIRTUAL_3D_COCKPIT' && (
+                <div className="space-y-6 animate-fadeIn">
+                    {/* Facility Top Level Command Bar */}
+                    <div className="bg-slate-900 border border-cyan-500/30 rounded-2xl p-5 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                                    <h2 className="text-lg md:text-xl font-bold text-white tracking-wide font-mono flex items-center gap-2">
+                                        <Box className="w-5 h-5 text-cyan-400" />
+                                        HOLOGRAPHIC 3D LABORATORY DIGITAL TWIN
+                                    </h2>
+                                    <span className="px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-700/60 text-cyan-300 text-[10px] font-mono font-bold">
+                                        ISOMETRIC PHYSICS SIMULATION
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Real-time interactive digital twin connecting analytical instrumentation, pneumatic tubes, specimen tracks, and incubator chambers.
+                                </p>
+                            </div>
+
+                            {/* Quick Live Telemetry Counters & Code Red Selector */}
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-2.5 text-xs font-mono">
+                                    <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                                    <div>
+                                        <span className="text-[10px] text-slate-500 block">SYSTEM TELEMETRY</span>
+                                        <span className="text-white font-bold">10/10 SENSORS ACTIVE</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-2 text-xs font-mono">
+                                    <span className="text-slate-500">EMERGENCY CODE:</span>
+                                    <select
+                                        aria-label="Facility Emergency Code Selector"
+                                        value={facilityEmergencyCode}
+                                        onChange={(e) => setFacilityEmergencyCode(e.target.value as any)}
+                                        className="bg-slate-900 border border-slate-700 text-xs font-bold text-cyan-300 rounded px-2 py-1 focus:outline-none"
+                                    >
+                                        <option value="NORMAL">CODE GREEN: NOMINAL CRUISE</option>
+                                        <option value="SURGE_3X">CODE RED: 3.5X TRAUMA SURGE</option>
+                                        <option value="CHILLER_CRITICAL">CODE AMBER: CHILLER TRIP</option>
+                                        <option value="BIO_FAILOVER">CODE VIOLET: COBAS ISE REROUTE</option>
+                                    </select>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleInjectChaos('COBAS_ISE_SHIFT')}
+                                    disabled={isInjectingChaos}
+                                    className="px-3 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/40 text-rose-300 hover:text-white text-xs font-semibold font-mono flex items-center gap-1.5 transition"
+                                >
+                                    <Flame className="w-3.5 h-3.5" />
+                                    Inject 3D Chaos Fault
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Fast Status Ticker */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mt-4 pt-4 border-t border-slate-800/80 text-xs font-mono">
+                            <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60">
+                                <span className="text-slate-500 text-[10px] block">TRACK CONVEYOR</span>
+                                <span className="text-cyan-300 font-bold">1.8 m/sec (Optimal)</span>
+                            </div>
+                            <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60">
+                                <span className="text-slate-500 text-[10px] block">TOTAL FLEET WIP</span>
+                                <span className="text-white font-bold">
+                                    {simulationResult?.analyzerStates?.reduce((sum, a) => sum + a.currentQueueDepth, 0) || 147} Tubes
+                                </span>
+                            </div>
+                            <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60">
+                                <span className="text-slate-500 text-[10px] block">STAT LATENCY</span>
+                                <span className="text-emerald-400 font-bold">&lt; 14.2 min</span>
+                            </div>
+                            <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60">
+                                <span className="text-slate-500 text-[10px] block">INCUBATOR PELTIER</span>
+                                <span className="text-indigo-300 font-bold">37.0°C ± 0.05°C</span>
+                            </div>
+                            <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60">
+                                <span className="text-slate-500 text-[10px] block">COLD STORAGE ARCHIVE</span>
+                                <span className="text-blue-300 font-bold">4.1°C (Safe)</span>
+                            </div>
+                            <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60">
+                                <span className="text-slate-500 text-[10px] block">FAILOVER LASER BEAMS</span>
+                                <span className={proposals.length > 0 ? "text-rose-400 font-bold animate-pulse" : "text-slate-400"}>
+                                    {proposals.length > 0 ? `${proposals.length} Active Reroutes` : 'Standby'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Interactive 3D Canvas Viewport */}
+                    <div className="relative rounded-2xl overflow-hidden border border-cyan-500/20 shadow-2xl bg-slate-950">
+                        <Virtual3DWorldModel
+                            facilityName="METROPOLITAN CORE QUATERNARY HOSPITAL"
+                            emergencyCode={facilityEmergencyCode}
+                            onSelectWorkstation={(ws) => setSelected3DWorkstation(ws)}
+                        />
+                    </div>
+
+                    {/* Selected 3D Workstation Live Telemetry HUD */}
+                    {selected3DWorkstation && (
+                        <div className="bg-slate-900 border border-cyan-500/40 rounded-2xl p-6 shadow-2xl space-y-4 animate-fadeIn">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold font-mono">
+                                        3D
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-base font-bold text-white font-mono">
+                                                {selected3DWorkstation.name}
+                                            </h3>
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                                selected3DWorkstation.status === 'ONLINE' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' : 'bg-rose-950 text-rose-300 border border-rose-700/60'
+                                            }`}>
+                                                {selected3DWorkstation.status}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-slate-400 font-mono">
+                                            Zone ID: {selected3DWorkstation.zoneId} • Department: {selected3DWorkstation.department}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActiveTab('ADVANCED_MATH_RADAR');
+                                            setKalmanSelectedAnalyzer(selected3DWorkstation.id);
+                                            handleFetchKalman();
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold font-mono flex items-center gap-1.5 transition"
+                                    >
+                                        <Activity className="w-3.5 h-3.5" />
+                                        Launch Kalman Telemetry
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActiveTab('FAILOVER_ORCHESTRATOR');
+                                            setSelectedFaultAnalyzerId(selected3DWorkstation.id);
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold font-mono flex items-center gap-1.5 transition"
+                                    >
+                                        <Zap className="w-3.5 h-3.5" />
+                                        Compute Cross-Failover
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelected3DWorkstation(null)}
+                                        className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-xs font-mono">
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">NOMINAL CAPACITY</span>
+                                    <span className="text-white text-base font-bold">{selected3DWorkstation.throughputPerHour} /hr</span>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">CURRENT WIP QUEUE</span>
+                                    <span className="text-amber-300 text-base font-bold">{selected3DWorkstation.currentWip} Tubes</span>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">CHAMBER TEMP</span>
+                                    <span className="text-emerald-400 text-base font-bold">{selected3DWorkstation.temperatureC}°C</span>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">ASPIRATION VACUUM</span>
+                                    <span className="text-cyan-300 text-base font-bold">{selected3DWorkstation.vacuumPressureKpa} kPa</span>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">OPTICAL LAMP HOURS</span>
+                                    <span className="text-indigo-300 text-base font-bold">{selected3DWorkstation.opticalLampHours} hrs</span>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">WEIBULL RUL</span>
+                                    <span className="text-purple-300 text-base font-bold">{selected3DWorkstation.rulHours} hrs</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* TAB: ADVANCED MATHEMATICAL ENGINES & KALMAN RADAR */}
+            {/* ========================================================================= */}
+            {activeTab === 'ADVANCED_MATH_RADAR' && (
+                <div className="space-y-6 animate-fadeIn">
+                    {/* Header */}
+                    <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-lg md:text-xl font-bold text-white font-mono flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-emerald-400" />
+                                    MATHEMATICAL MODELING &amp; STATE ESTIMATION RADAR
+                                </h2>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Discrete Kalman Filter sensor state estimation • Competing-Risks Bathtub Weibull Hazard • CLSI EP09-A3 Passing-Bablok regression • Pneumatics Hemolysis shear modeling.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        handleFetchKalman();
+                                        handleFetchBathtub();
+                                        handleFetchPassingBablok();
+                                        handleFetchPneumatics();
+                                    }}
+                                    disabled={loadingKalman || loadingBathtub}
+                                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold text-xs font-mono flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition"
+                                >
+                                    <RefreshCw className={`w-3.5 h-3.5 ${loadingKalman ? 'animate-spin' : ''}`} />
+                                    Recalculate Metrology Models
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 1: Discrete Kalman Filter Telemetry Estimator */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                                    <Sliders className="w-4 h-4 text-cyan-400" />
+                                    1. DISCRETE KALMAN FILTER TELEMETRY ESTIMATOR (STATE-SPACE NOISE FILTERING)
+                                </h3>
+                                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                    Predict: x̂_(k|k-1) = A·x̂_(k-1) • Innovation: ν_k = y_k - H·x̂ • Gain: K_k = P·H^T·S^-1 • Detects micro-clots &amp; optical drift.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                    aria-label="Kalman Disturbance Selector"
+                                    value={kalmanDisturbance}
+                                    onChange={(e) => setKalmanDisturbance(e.target.value as any)}
+                                    className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono text-cyan-300"
+                                >
+                                    <option value="NONE">Disturbance: None (Nominal)</option>
+                                    <option value="SAMPLE_PROBE_CLOT">Disturbance: Sample Probe Micro-Clot</option>
+                                    <option value="INCUBATOR_PELTIER_DRIFT">Disturbance: Peltier Incubator Drift</option>
+                                    <option value="OPTICAL_LAMP_DECAY">Disturbance: Photometric Lamp Decay</option>
+                                </select>
+
+                                <button
+                                    type="button"
+                                    onClick={handleFetchKalman}
+                                    disabled={loadingKalman}
+                                    className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-semibold"
+                                >
+                                    Run Filter
+                                </button>
+                            </div>
+                        </div>
+
+                        {kalmanResult ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                {/* SVG Kalman Telemetry Plot */}
+                                <div className="lg:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                                    <div className="flex items-center justify-between text-xs font-mono">
+                                        <span className="text-slate-400">
+                                            Telemetry Waveform: Raw Physical Sensor vs. Kalman State Estimate x̂(t)
+                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex items-center gap-1 text-rose-400">
+                                                <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" /> Raw Noisy y(t)
+                                            </span>
+                                            <span className="flex items-center gap-1 text-cyan-300 font-bold">
+                                                <span className="w-3 h-0.5 bg-cyan-400 inline-block" /> Kalman Filtered x̂(t)
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* High-Resolution SVG Plot */}
+                                    <div className="w-full h-52 overflow-hidden">
+                                        <svg viewBox="0 0 700 200" className="w-full h-full font-mono text-[9px]">
+                                            {/* Grid Lines */}
+                                            <line x1="40" y1="20" x2="680" y2="20" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="60" x2="680" y2="60" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="100" x2="680" y2="100" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="140" x2="680" y2="140" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="180" x2="680" y2="180" stroke="#334155" />
+
+                                            {/* Y-Axis Labels */}
+                                            <text x="5" y="24" fill="#64748b">1.10η</text>
+                                            <text x="5" y="64" fill="#64748b">1.00η</text>
+                                            <text x="5" y="104" fill="#64748b">0.90η</text>
+                                            <text x="5" y="144" fill="#64748b">0.80η</text>
+                                            <text x="5" y="184" fill="#64748b">0.70η</text>
+
+                                            {/* Construct Kalman Filter Path */}
+                                            {(() => {
+                                                const pts = kalmanResult.points || [];
+                                                if (pts.length === 0) return null;
+
+                                                const xStep = (680 - 40) / Math.max(1, pts.length - 1);
+                                                // Map efficiency 0.70 (y=180) to 1.10 (y=20)
+                                                const mapY = (val: number) => {
+                                                    const clamped = Math.max(0.7, Math.min(1.1, val));
+                                                    return 180 - ((clamped - 0.7) / 0.4) * 160;
+                                                };
+
+                                                const filteredPath = pts
+                                                    .map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${40 + i * xStep} ${mapY(p.estimatedFiltered.efficiencyEta)}`)
+                                                    .join(' ');
+
+                                                return (
+                                                    <>
+                                                        {/* Raw Noisy Points */}
+                                                        {pts.map((p: any, i: number) => (
+                                                            <circle
+                                                                key={i}
+                                                                cx={40 + i * xStep}
+                                                                cy={mapY(p.measuredRaw.efficiencyEta)}
+                                                                r={p.anomalyDetected ? 4 : 2}
+                                                                fill={p.anomalyDetected ? '#f43f5e' : '#f87171'}
+                                                                opacity={0.7}
+                                                            />
+                                                        ))}
+
+                                                        {/* Filtered Line */}
+                                                        <path d={filteredPath} stroke="#06b6d4" strokeWidth="2.5" fill="none" />
+                                                    </>
+                                                );
+                                            })()}
+                                        </svg>
+                                    </div>
+
+                                    <div className="flex justify-between text-[10px] text-slate-500 font-mono px-4">
+                                        <span>T = 0s</span>
+                                        <span>T = 200s</span>
+                                        <span>T = 400s</span>
+                                        <span>T = 600s</span>
+                                    </div>
+                                </div>
+
+                                {/* Kalman Health & Anomaly Diagnosis */}
+                                <div className="lg:col-span-4 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                                    <div>
+                                        <div className="text-xs font-mono text-slate-400 mb-2">
+                                            KALMAN SENSOR HEALTH SCORE
+                                        </div>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className={`text-4xl font-bold font-mono ${
+                                                kalmanResult.currentOperationalHealthScore >= 80 ? 'text-emerald-400' : kalmanResult.currentOperationalHealthScore >= 50 ? 'text-amber-400' : 'text-rose-400'
+                                            }`}>
+                                                {kalmanResult.currentOperationalHealthScore}
+                                            </span>
+                                            <span className="text-xs text-slate-500 font-mono">/ 100</span>
+                                        </div>
+
+                                        <div className="mt-2">
+                                            <span className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase ${
+                                                kalmanResult.sensorIntegrityStatus === 'OPTIMAL' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' : 'bg-rose-950 text-rose-300 border border-rose-700/60'
+                                            }`}>
+                                                {kalmanResult.sensorIntegrityStatus}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Latest Innovation Residual Diagnostics */}
+                                    <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-xs font-mono space-y-1.5">
+                                        <div className="text-[10px] text-slate-500 font-bold uppercase">
+                                            Innovation Residual Diagnosis:
+                                        </div>
+                                        <p className="text-slate-300 text-[11px] leading-relaxed">
+                                            {kalmanResult.points?.find((p: any) => p.anomalyDetected)?.anomalyDiagnosis ||
+                                                'Optimal Gaussian innovation residuals. No physical sensor fouling or flow-cell occlusion detected.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-8 text-center text-slate-500 font-mono text-xs">
+                                Click &apos;Run Filter&apos; to evaluate real-time Discrete Kalman state space.
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Section 2: Competing-Risks Bathtub Reliability Curve */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-purple-400" />
+                                    2. COMPETING-RISKS BATHTUB RELIABILITY ENGINE (λ(t) HAZARD RATE &amp; RUL)
+                                </h3>
+                                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                    λ(t) = λ_infant(t) [β=0.65] + λ_random [1.8×10^-4] + λ_wearout(t) [β=3.40] • Computes cost-optimal preventive replacement.
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-slate-400">Horizon:</span>
+                                <select
+                                    aria-label="Bathtub Horizon Selector"
+                                    value={bathtubHorizon}
+                                    onChange={(e) => setBathtubHorizon(Number(e.target.value))}
+                                    className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono text-purple-300"
+                                >
+                                    <option value={4000}>4,000 Hours</option>
+                                    <option value={6000}>6,000 Hours</option>
+                                    <option value={10000}>10,000 Hours</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {bathtubResult ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                {/* SVG Bathtub Hazard Plot */}
+                                <div className="lg:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                                    <div className="flex items-center justify-between text-xs font-mono">
+                                        <span className="text-slate-400">
+                                            Instantaneous Hazard Rate λ(t) [Failures / 1,000 Operating Hours]
+                                        </span>
+                                        <div className="flex items-center gap-2.5 text-[10px]">
+                                            <span className="text-emerald-400">-- Infant</span>
+                                            <span className="text-cyan-400">-- Random</span>
+                                            <span className="text-amber-400">-- Wearout</span>
+                                            <span className="text-purple-300 font-bold">— Total Bathtub</span>
+                                        </div>
+                                    </div>
+
+                                    {/* SVG Curve */}
+                                    <div className="w-full h-52 overflow-hidden">
+                                        <svg viewBox="0 0 700 200" className="w-full h-full font-mono text-[9px]">
+                                            <line x1="40" y1="20" x2="680" y2="20" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="60" x2="680" y2="60" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="100" x2="680" y2="100" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="140" x2="680" y2="140" stroke="#1e293b" strokeDasharray="3,3" />
+                                            <line x1="40" y1="180" x2="680" y2="180" stroke="#334155" />
+
+                                            {/* Optimal Overhaul Indicator Line */}
+                                            {(() => {
+                                                const pts = bathtubResult.points || [];
+                                                if (pts.length === 0) return null;
+                                                const maxH = bathtubHorizon;
+                                                const xOpt = 40 + ((bathtubResult.optimalOverhaulHours / maxH) * (680 - 40));
+                                                const xCur = 40 + ((bathtubResult.operatingHours / maxH) * (680 - 40));
+
+                                                // Construct SVG path for bathtub curve
+                                                const maxHazardVal = 0.003;
+                                                const mapY = (val: number) => 180 - Math.min(1.0, val / maxHazardVal) * 160;
+
+                                                const bathtubPath = pts
+                                                    .map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${40 + (p.operatingHours / maxH) * (680 - 40)} ${mapY(p.instantaneousHazardLambda)}`)
+                                                    .join(' ');
+
+                                                return (
+                                                    <>
+                                                        {/* Optimal overhaul marker */}
+                                                        <line x1={xOpt} y1="20" x2={xOpt} y2="180" stroke="#fbbf24" strokeWidth="2" strokeDasharray="4,2" />
+                                                        <text x={xOpt - 45} y="15" fill="#fbbf24">t* Overhaul</text>
+
+                                                        {/* Current Hours Marker */}
+                                                        <line x1={xCur} y1="20" x2={xCur} y2="180" stroke="#f43f5e" strokeWidth="2" />
+                                                        <text x={xCur - 35} y="195" fill="#f43f5e">Current t={bathtubResult.operatingHours}h</text>
+
+                                                        {/* Bathtub curve */}
+                                                        <path d={bathtubPath} stroke="#a855f7" strokeWidth="3" fill="none" />
+                                                    </>
+                                                );
+                                            })()}
+                                        </svg>
+                                    </div>
+
+                                    <div className="flex justify-between text-[10px] text-slate-500 font-mono px-4">
+                                        <span>0 Hours</span>
+                                        <span>{Math.round(bathtubHorizon / 2)} Hours</span>
+                                        <span>{bathtubHorizon} Hours</span>
+                                    </div>
+                                </div>
+
+                                {/* Bathtub KPI Grid */}
+                                <div className="lg:col-span-4 grid grid-cols-2 gap-3 text-xs font-mono">
+                                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                        <span className="text-slate-500 text-[10px] block">OPERATING AGE</span>
+                                        <span className="text-white text-base font-bold">{bathtubResult.operatingHours} hrs</span>
+                                    </div>
+                                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                        <span className="text-slate-500 text-[10px] block">SURVIVAL R(t)</span>
+                                        <span className="text-emerald-400 text-base font-bold">{bathtubResult.currentReliabilityPct}%</span>
+                                    </div>
+                                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                        <span className="text-slate-500 text-[10px] block">RUL (P50 NOMINAL)</span>
+                                        <span className="text-cyan-300 text-base font-bold">{bathtubResult.rulHoursP50} hrs</span>
+                                    </div>
+                                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                        <span className="text-slate-500 text-[10px] block">RUL (P90 SAFETY)</span>
+                                        <span className="text-purple-300 text-base font-bold">{bathtubResult.rulHoursP90Confidence} hrs</span>
+                                    </div>
+                                    <div className="col-span-2 bg-slate-950 p-3 rounded-xl border border-amber-500/30">
+                                        <span className="text-amber-400 text-[10px] font-bold block uppercase">
+                                            Cost-Optimal Overhaul Window t*:
+                                        </span>
+                                        <span className="text-white text-sm font-bold block mt-0.5">
+                                            {bathtubResult.optimalOverhaulHours} Operating Hours
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 block mt-1">
+                                            Minimizes total expected renewal cost: ₹45,000 preventive vs. ₹2,80,000 catastrophic failure.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+
+                    {/* Section 3 & 4: Passing-Bablok and Pneumatics */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* Section 3: CLSI EP09-A3 Passing-Bablok Regression */}
+                        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+                            <div className="border-b border-slate-800 pb-3">
+                                <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                                    <Target className="w-4 h-4 text-cyan-400" />
+                                    3. CLSI EP09-A3 PASSING-BABLOK COMPARABILITY
+                                </h3>
+                                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                    Non-parametric median slope &amp; intercept for paired clinical split-sample validation.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
+                                <select
+                                    aria-label="Passing-Bablok Analyte Selector"
+                                    value={passingBablokAnalyte}
+                                    onChange={(e) => setPassingBablokAnalyte(e.target.value)}
+                                    className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-white"
+                                >
+                                    <option value="K_SERUM">Potassium (K+) mmol/L</option>
+                                    <option value="GLU_PLASMA">Glucose mg/dL</option>
+                                    <option value="LACTATE">Lactate mmol/L</option>
+                                    <option value="TROP_I_HS">hs-Troponin I ng/L</option>
+                                </select>
+
+                                <button
+                                    type="button"
+                                    onClick={handleFetchPassingBablok}
+                                    disabled={loadingPassingBablok}
+                                    className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold"
+                                >
+                                    Compute Regression
+                                </button>
+                            </div>
+
+                            {passingBablokResult && (
+                                <div className="space-y-3">
+                                    {/* SVG Scatter Plot */}
+                                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 h-52 overflow-hidden">
+                                        <svg viewBox="0 0 450 180" className="w-full h-full font-mono text-[9px]">
+                                            <line x1="30" y1="10" x2="430" y2="160" stroke="#334155" strokeDasharray="3,3" />
+                                            <line x1="30" y1="160" x2="430" y2="160" stroke="#475569" />
+                                            <line x1="30" y1="10" x2="30" y2="160" stroke="#475569" />
+
+                                            {/* Identity line Y = X */}
+                                            <line x1="30" y1="160" x2="430" y2="20" stroke="#475569" strokeDasharray="2,2" />
+                                            <text x="370" y="35" fill="#64748b">Line Y=X</text>
+
+                                            {/* Passing-Bablok Regression Line */}
+                                            <line x1="30" y1="158" x2="430" y2="15" stroke="#a855f7" strokeWidth="2.5" />
+                                            <text x="350" y="15" fill="#a855f7">Passing-Bablok</text>
+
+                                            {/* Paired dots */}
+                                            {passingBablokResult.scatterData?.map((p: any, i: number) => {
+                                                const minX = 3.2;
+                                                const maxX = 6.8;
+                                                const cx = 30 + ((p.primaryValue - minX) / (maxX - minX)) * 400;
+                                                const cy = 160 - ((p.backupValue - minX) / (maxX - minX)) * 140;
+                                                return (
+                                                    <circle
+                                                        key={i}
+                                                        cx={cx}
+                                                        cy={cy}
+                                                        r="3.5"
+                                                        fill="#38bdf8"
+                                                        stroke="#0284c7"
+                                                        strokeWidth="1"
+                                                    />
+                                                );
+                                            })}
+                                        </svg>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                            <span className="text-slate-500 text-[10px] block">SLOPE β (PROPORTIONAL BIAS)</span>
+                                            <span className="text-white font-bold text-sm">
+                                                {passingBablokResult.slopeBeta} [{passingBablokResult.slopeCiLower} - {passingBablokResult.slopeCiUpper}]
+                                            </span>
+                                        </div>
+                                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                            <span className="text-slate-500 text-[10px] block">INTERCEPT α (CONSTANT BIAS)</span>
+                                            <span className="text-white font-bold text-sm">
+                                                {passingBablokResult.interceptAlpha} [{passingBablokResult.interceptCiLower} - {passingBablokResult.interceptCiUpper}]
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-slate-950 rounded-lg border border-cyan-500/30 text-xs font-mono">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold text-[10px] border border-emerald-700/60">
+                                                {passingBablokResult.concordanceStatus}
+                                            </span>
+                                        </div>
+                                        <p className="text-slate-300 text-[11px] leading-relaxed">
+                                            {passingBablokResult.clinicalRecommendation}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Section 4: Pneumatic Transport Kinematics */}
+                        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+                            <div className="border-b border-slate-800 pb-3">
+                                <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                                    <Workflow className="w-4 h-4 text-emerald-400" />
+                                    4. PNEUMATIC TUBE KINEMATICS &amp; HEMOLYSIS
+                                </h3>
+                                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                    Mechanical shear stress on erythrocyte membranes during transport.
+                                </p>
+                            </div>
+
+                            <div className="space-y-3 text-xs font-mono">
+                                <div>
+                                    <div className="flex justify-between mb-1 text-slate-300">
+                                        <span>Route Distance (Meters):</span>
+                                        <span className="font-bold text-emerald-400">{pneumaticDistance} m</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={20}
+                                        max={500}
+                                        step={10}
+                                        value={pneumaticDistance}
+                                        onChange={(e) => setPneumaticDistance(Number(e.target.value))}
+                                        className="w-full accent-emerald-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between mb-1 text-slate-300">
+                                        <span>Pneumatic Speed (m/s):</span>
+                                        <span className="font-bold text-emerald-400">{pneumaticSpeed} m/s</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={2}
+                                        max={15}
+                                        step={0.5}
+                                        value={pneumaticSpeed}
+                                        onChange={(e) => setPneumaticSpeed(Number(e.target.value))}
+                                        className="w-full accent-emerald-500"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between pt-1">
+                                    <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={pneumaticSoftBrake}
+                                            onChange={(e) => setPneumaticSoftBrake(e.target.checked)}
+                                            className="rounded border-slate-700 text-emerald-600 focus:ring-0"
+                                        />
+                                        <span>Soft Deceleration Brake Active</span>
+                                    </label>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleFetchPneumatics}
+                                        disabled={loadingPneumatics}
+                                        className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
+                                    >
+                                        Evaluate Shear
+                                    </button>
+                                </div>
+                            </div>
+
+                            {pneumaticResult && (
+                                <div className="space-y-3 pt-2">
+                                    <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                            <span className="text-slate-500 text-[10px] block">PEAK DECELERATION</span>
+                                            <span className="text-white font-bold text-sm">{pneumaticResult.peakDecelerationG} G</span>
+                                        </div>
+                                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                            <span className="text-slate-500 text-[10px] block">RMS G-FORCE</span>
+                                            <span className="text-white font-bold text-sm">{pneumaticResult.rmsAccelerationG} G</span>
+                                        </div>
+                                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                            <span className="text-slate-500 text-[10px] block">HEMOLYSIS INDEX (H)</span>
+                                            <span className={`text-sm font-bold ${
+                                                pneumaticResult.hemolysisIndexPredicted < 50 ? 'text-emerald-400' : 'text-rose-400'
+                                            }`}>
+                                                {pneumaticResult.hemolysisIndexPredicted}
+                                            </span>
+                                        </div>
+                                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                            <span className="text-slate-500 text-[10px] block">SPURIOUS ΔK+ LEAK</span>
+                                            <span className="text-amber-300 font-bold text-sm">+{pneumaticResult.potassiumArtifactDriftMmolL} mmol/L</span>
+                                        </div>
+                                    </div>
+
+                                    <div className={`p-2.5 rounded-lg text-xs font-mono border ${
+                                        pneumaticResult.specimenIntegrityStatus === 'UNCOMPROMISED' ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                                    }`}>
+                                        <span className="font-bold block uppercase">{pneumaticResult.specimenIntegrityStatus}</span>
+                                        {pneumaticResult.clinicalWarning && (
+                                            <p className="text-[11px] mt-1 text-slate-300 leading-relaxed">
+                                                {pneumaticResult.clinicalWarning}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* TAB: AUTONOMOUS FAULT-RECOVERY & CHAOS TESTBED */}
+            {/* ========================================================================= */}
+            {activeTab === 'CHAOS_ORCHESTRATOR' && (
+                <div className="space-y-6 animate-fadeIn">
+                    {/* Header */}
+                    <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-5 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping" />
+                                    <h2 className="text-lg md:text-xl font-bold text-white font-mono flex items-center gap-2">
+                                        <Flame className="w-5 h-5 text-rose-400" />
+                                        AUTONOMOUS FAULT-RECOVERY &amp; CHAOS ENGINEERING
+                                    </h2>
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-950 border border-rose-700/60 text-rose-300 text-[10px] font-mono font-bold">
+                                        FDA 21 CFR PART 11 DUAL SIGN-OFF
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Simulate sudden clinical instrument failures, test autonomous Markov recovery synthesis, and execute closed-loop rerouting.
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSignoffModal(true)}
+                                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs font-mono flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition"
+                                >
+                                    <ShieldCheck className="w-4 h-4" />
+                                    Authorize Closed-Loop Execution
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Chaos Failure Injection Playground */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                        <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-amber-400" />
+                            CLINICAL CHAOS EXPERIMENT CATALOG (TRIGGER RESILIENCE DRILLS)
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3 text-xs font-mono">
+                            <button
+                                type="button"
+                                onClick={() => handleInjectChaos('COBAS_ISE_SHIFT')}
+                                disabled={isInjectingChaos}
+                                className="p-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-rose-500/40 text-left space-y-2 transition group"
+                            >
+                                <div className="flex justify-between items-center">
+                                    <span className="text-rose-400 font-bold">💥 Cobas ISE Shift</span>
+                                    <span className="text-[10px] text-slate-500 font-bold">+2.42σ</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-snug">
+                                    Westgard 2_2s rejection on core chemistry. Halts 42 electrolyte tubes.
+                                </p>
+                                <span className="text-[10px] text-rose-300 font-semibold group-hover:underline block pt-1">
+                                    Inject Fault →
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleInjectChaos('CHILLER_FAILURE_32C')}
+                                disabled={isInjectingChaos}
+                                className="p-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-amber-500/40 text-left space-y-2 transition group"
+                            >
+                                <div className="flex justify-between items-center">
+                                    <span className="text-amber-400 font-bold">❄️ Chiller Trip</span>
+                                    <span className="text-[10px] text-slate-500 font-bold">32.4°C</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-snug">
+                                    Stability buffer room heats up. Arrhenius degradation rate spikes 3.4x.
+                                </p>
+                                <span className="text-[10px] text-amber-300 font-semibold group-hover:underline block pt-1">
+                                    Inject Fault →
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleInjectChaos('PNEUMATIC_SHEAR_SHOCK')}
+                                disabled={isInjectingChaos}
+                                className="p-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-purple-500/40 text-left space-y-2 transition group"
+                            >
+                                <div className="flex justify-between items-center">
+                                    <span className="text-purple-400 font-bold">⚡ Pneumatic Shock</span>
+                                    <span className="text-[10px] text-slate-500 font-bold">6.8G</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-snug">
+                                    Terminal station deceleration shock breaks erythrocyte membranes (H-Index 140).
+                                </p>
+                                <span className="text-[10px] text-purple-300 font-semibold group-hover:underline block pt-1">
+                                    Inject Fault →
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleInjectChaos('REAGENT_STOCKOUT_EMERGENCY')}
+                                disabled={isInjectingChaos}
+                                className="p-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-blue-500/40 text-left space-y-2 transition group"
+                            >
+                                <div className="flex justify-between items-center">
+                                    <span className="text-blue-400 font-bold">🧪 Reagent Stockout</span>
+                                    <span className="text-[10px] text-slate-500 font-bold">0 tests</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-snug">
+                                    High-sensitivity Troponin pack exhausts. 14 emergency patients wait.
+                                </p>
+                                <span className="text-[10px] text-blue-300 font-semibold group-hover:underline block pt-1">
+                                    Inject Fault →
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleInjectChaos('MASS_CASUALTY_SURGE')}
+                                disabled={isInjectingChaos}
+                                className="p-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-rose-500/40 text-left space-y-2 transition group"
+                            >
+                                <div className="flex justify-between items-center">
+                                    <span className="text-rose-400 font-bold">🚑 Trauma Surge</span>
+                                    <span className="text-[10px] text-slate-500 font-bold">3.5x Load</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-snug">
+                                    Emergency Department declares Code Red. Hourly arrival surges to 510 tubes/hr.
+                                </p>
+                                <span className="text-[10px] text-rose-300 font-semibold group-hover:underline block pt-1">
+                                    Inject Fault →
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Triggered Alerts & Autonomous Action Plan Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* Left: Triggered Alerts Feed */}
+                        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                            <h4 className="text-xs font-bold text-white font-mono flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                ACTIVE CLINICAL ALERTS STREAM ({chaosAlerts.length > 0 ? chaosAlerts.length : 2})
+                            </h4>
+
+                            <div className="space-y-2 font-mono text-xs">
+                                {(chaosAlerts.length > 0
+                                    ? chaosAlerts
+                                    : [
+                                        '[CRITICAL QC BREACH] ANZ-BIO-01 failed Westgard 2_2s rule on Level-2 ISE Control (+2.42σ). Immediate lock applied.',
+                                        '[AUTO-FAILOVER TRIGGERED] Rerouting 42 patient tubes to secondary Cobas Pro c503 #2.',
+                                    ]
+                                ).map((alert: string, i: number) => (
+                                    <div
+                                        key={i}
+                                        className="p-3 rounded-xl bg-slate-950 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5 animate-fadeIn"
+                                    >
+                                        <Bell className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                        <span>{alert}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Right: Synthesized Autonomous Remediation Plan */}
+                        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                <div>
+                                    <h4 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                        AUTONOMOUS REMEDIATION PROTOCOL (SYNTHESIZED VIA MDP)
+                                    </h4>
+                                    <p className="text-[11px] text-slate-400 font-mono">
+                                        Closed-loop actions formulated to guarantee SLA compliance &amp; diagnostic integrity.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPrintManifest(true)}
+                                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono font-semibold flex items-center gap-1.5 transition"
+                                >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    Print Track Manifest
+                                </button>
+                            </div>
+
+                            <div className="space-y-3 font-mono text-xs">
+                                <div className="p-3.5 rounded-xl bg-slate-950 border border-cyan-500/40 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-cyan-300 font-bold">1. AUTOMATED TRACK SPECIMEN REROUTE</span>
+                                        <span className="text-emerald-400 font-bold">34.5 min Saved</span>
+                                    </div>
+                                    <p className="text-slate-300 text-[11px] leading-relaxed">
+                                        Automatically split 42 patient tubes to Beckman Coulter AU680 #2. Adjusts proportional bias factor (1.024) via Passing-Bablok transfer formula.
+                                    </p>
+                                    <div className="text-[10px] text-slate-500">
+                                        SHA-256 Sig: a9b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0
+                                    </div>
+                                </div>
+
+                                <div className="p-3.5 rounded-xl bg-slate-950 border border-amber-500/40 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-amber-300 font-bold">2. AUTOMATED 2-POINT RECALIBRATION</span>
+                                        <span className="text-emerald-400 font-bold">18.0 min Saved</span>
+                                    </div>
+                                    <p className="text-slate-300 text-[11px] leading-relaxed">
+                                        Lock fluidic aspirator on ANZ-BIO-01, inject Level-1 and Level-2 liquid controls, and initiate 12-minute automated purge sequence.
+                                    </p>
+                                    <div className="text-[10px] text-slate-500">
+                                        SHA-256 Sig: c8d7e6f5a4b3021928374650192837465abcdef901234567890abcdef1234567
+                                    </div>
+                                </div>
+
+                                <div className="p-3.5 rounded-xl bg-slate-950 border border-purple-500/40 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-purple-300 font-bold">3. STAT CRITICAL PREEMPTION</span>
+                                        <span className="text-emerald-400 font-bold">22.0 min Saved</span>
+                                    </div>
+                                    <p className="text-slate-300 text-[11px] leading-relaxed">
+                                        Preempt 4 ICU troponin specimens to emergency direct aspiration port with 0-wait robotic shuttle priority.
+                                    </p>
+                                    <div className="text-[10px] text-slate-500">
+                                        SHA-256 Sig: f1e2d3c4b5a69780123456789abcdef0123456789abcdef0123456789abcdef0
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Execution Receipt if executed */}
+                    {remediationReceipt && (
+                        <div className="bg-slate-900 border border-emerald-500/50 rounded-2xl p-5 shadow-2xl space-y-3 font-mono text-xs animate-fadeIn">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                    <h4 className="text-sm font-bold text-white">
+                                        OFFICIAL CLOSED-LOOP EXECUTION CERTIFICATE (FDA 21 CFR PART 11)
+                                    </h4>
+                                </div>
+                                <span className="text-emerald-400 font-bold">STATUS: LOCKED &amp; AUDITED</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">AUDIT RECORD HASH</span>
+                                    <span className="text-cyan-300 font-bold text-[11px] break-all">
+                                        {remediationReceipt.fda21CfrPart11AuditRecord?.auditHash}
+                                    </span>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">TIMESTAMP (UTC)</span>
+                                    <span className="text-white font-bold">
+                                        {remediationReceipt.fda21CfrPart11AuditRecord?.timestamp}
+                                    </span>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <span className="text-slate-500 text-[10px] block">STANDARDS COMPLIANCE</span>
+                                    <span className="text-emerald-300 font-bold text-[10px] block">
+                                        ISO 15189:2022 • CAP GEN.43800 • CLSI EP09-A3
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Pathologist Dual-Signoff Modal */}
+            {showSignoffModal && (
+                <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-cyan-500/40 rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl font-mono text-xs">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div className="flex items-center gap-2">
+                                <Shield className="w-5 h-5 text-cyan-400" />
+                                <h3 className="text-sm font-bold text-white">
+                                    FDA 21 CFR PART 11 ELECTRONIC SIGNATURE
+                                </h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowSignoffModal(false)}
+                                className="text-slate-400 hover:text-white"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <p className="text-slate-300 text-[11px] leading-relaxed">
+                            Under hospital medical bylaws and ISO 15189 clause 5.5, the executing Pathologist or Clinical Lab Director must verify credentials before automated instrument rerouting is deployed to sorting robots.
+                        </p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-slate-400 text-[10px] uppercase font-bold mb-1">
+                                    Authorizing Role
+                                </label>
+                                <input
+                                    type="text"
+                                    disabled
+                                    value={userRole}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-cyan-300 font-bold"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-slate-400 text-[10px] uppercase font-bold mb-1">
+                                    Pathologist 4-Digit Security PIN
+                                </label>
+                                <input
+                                    type="password"
+                                    maxLength={6}
+                                    value={pathologistPin}
+                                    onChange={(e) => setPathologistPin(e.target.value)}
+                                    placeholder="Enter 4-digit PIN (e.g. 7729)"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono text-sm tracking-widest"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-slate-400 text-[10px] uppercase font-bold mb-1">
+                                    Clinical Sign-Off Rationale
+                                </label>
+                                <textarea
+                                    rows={2}
+                                    value={signoffNotes}
+                                    onChange={(e) => setSignoffNotes(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowSignoffModal(false)}
+                                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-semibold text-xs"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleExecuteRemediation}
+                                disabled={isExecutingRemediation}
+                                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5"
+                            >
+                                {isExecutingRemediation ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                    <Check className="w-3.5 h-3.5" />
+                                )}
+                                Confirm &amp; Sign Digitally
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Printable Robotic Track Manifest Modal */}
+            {showPrintManifest && (
+                <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full space-y-4 shadow-2xl font-mono text-xs">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div className="flex items-center gap-2">
+                                <Printer className="w-5 h-5 text-indigo-400" />
+                                <h3 className="text-sm font-bold text-white">
+                                    ROBOTIC SPECIMEN TRACK REROUTING MANIFEST
+                                </h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowPrintManifest(false)}
+                                className="text-slate-400 hover:text-white"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300 text-[11px] space-y-1">
+                            <div className="flex justify-between">
+                                <span>MANIFEST ID: <strong>MNF-2026-REROUTE-042</strong></span>
+                                <span>TOTAL TUBES: <strong>42 SPECIMENS</strong></span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>ORIGIN ANALYZER: <strong className="text-rose-400">ANZ-BIO-01 (Cobas Pro #1)</strong></span>
+                                <span>TARGET ANALYZER: <strong className="text-emerald-400">ANZ-BIO-02 (AU680 #2)</strong></span>
+                            </div>
+                        </div>
+
+                        <div className="max-h-64 overflow-y-auto border border-slate-800 rounded-xl">
+                            <table className="w-full text-left text-[11px]">
+                                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                        <th className="p-2">BARCODE</th>
+                                        <th className="p-2">UHID</th>
+                                        <th className="p-2">TEST CODE</th>
+                                        <th className="p-2">PRIORITY</th>
+                                        <th className="p-2">SORT LANE</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                    <tr>
+                                        <td className="p-2 text-cyan-300 font-bold">LC-BC-901842</td>
+                                        <td className="p-2">UHID-7729-ICU</td>
+                                        <td className="p-2">K_SERUM, NA+</td>
+                                        <td className="p-2 text-rose-400 font-bold">STAT_EMERGENCY</td>
+                                        <td className="p-2 text-emerald-400 font-bold">LANE-02-EXPRESS</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 text-cyan-300 font-bold">LC-BC-901845</td>
+                                        <td className="p-2">UHID-8812-ED</td>
+                                        <td className="p-2">GLU_PLASMA</td>
+                                        <td className="p-2 text-amber-300 font-bold">URGENT</td>
+                                        <td className="p-2">LANE-02-ROUTINE</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 text-cyan-300 font-bold">LC-BC-901850</td>
+                                        <td className="p-2">UHID-3310-OPD</td>
+                                        <td className="p-2">LIPID_PROFILE</td>
+                                        <td className="p-2 text-slate-400">ROUTINE</td>
+                                        <td className="p-2">LANE-02-BUFFER</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    window.print();
+                                    setShowPrintManifest(false);
+                                }}
+                                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5"
+                            >
+                                <Printer className="w-3.5 h-3.5" />
+                                Send to Zebra Barcode / Thermal Printer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* TAB 1: DISCRETE-EVENT CAPACITY SIMULATOR */}
             {activeTab === 'SIMULATOR' && (

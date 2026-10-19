@@ -236,9 +236,145 @@ async function runNexusVerificationSuite(): Promise<void> {
         passed++;
     }
 
+    // TEST 11: CUSUM Drift Detection
+    {
+        // Series with systematic 1-sigma shift starting at index 5: target = 100, SD = 5
+        // Shift values: 100, 101, 99, 100, 101, 106, 107, 106, 108, 107
+        const series = [100, 101, 99, 100, 101, 106, 107, 106, 108, 107];
+        const cusum = NexusMathEngine.computeCusumDrift(series, 100, 5, 0.5, 3.5);
+
+        assert.strictEqual(cusum.driftDetected, true, 'CUSUM must detect persistent 1-sigma positive shift');
+        assert.strictEqual(cusum.driftDirection, 'UPWARD_SYSTEMATIC');
+        assert.ok(cusum.driftShiftRunIndex! >= 6, 'Shift index should be detected after index 5');
+        console.log('[PASS] 11. Advanced QC: Two-sided CUSUM drift detection & change-point localization');
+        passed++;
+    }
+
+    // TEST 12: Spectrophotometric HIL Interference Indices
+    {
+        // Potassium is hyper-sensitive to hemolysis (>50 mg/dL)
+        const kHemolysis = NexusMathEngine.computeHilInterference(120, 5, 40, 'K_SERUM');
+        assert.strictEqual(kHemolysis.isInterfered, true);
+        assert.strictEqual(kHemolysis.interferingFactor, 'HEMOLYSIS');
+        assert.strictEqual(kHemolysis.clinicalAction, 'REJECT_COLD_REDRAW');
+
+        // Normal sample passes
+        const cleanSample = NexusMathEngine.computeHilInterference(15, 2, 80, 'K_SERUM');
+        assert.strictEqual(cleanSample.isInterfered, false);
+        assert.strictEqual(cleanSample.clinicalAction, 'CLEAR_VALID');
+        console.log('[PASS] 12. Pre-Analytical Integrity: Spectrophotometric HIL index interference verification');
+        passed++;
+    }
+
+    // TEST 13: Clinical Delta-Check & Kinetic Velocity
+    {
+        // Serum Creatinine rises from 1.0 to 2.2 over 16h (120% rise -> KDIGO Acute Kidney Injury alert)
+        const creatDelta = NexusMathEngine.computeDeltaCheck(2.2, 1.0, 16.0, 'CREAT');
+        assert.strictEqual(creatDelta.deltaAbs, 1.2);
+        assert.strictEqual(creatDelta.deltaPct, 120.0);
+        assert.strictEqual(creatDelta.isCriticalAlert, true);
+        assert.ok(creatDelta.clinicalInterpretation.includes('Acute Kidney Injury'));
+
+        // Normal biological delta
+        const stableDelta = NexusMathEngine.computeDeltaCheck(1.05, 1.0, 24.0, 'CREAT');
+        assert.strictEqual(stableDelta.isCriticalAlert, false);
+        console.log('[PASS] 13. Clinical Safety: Longitudinal Delta-check velocity & critical organ injury alerting');
+        passed++;
+    }
+
+    // TEST 14: Six Sigma Analytical Quality & QGI
+    {
+        // TEa = 10.0%, Bias = 1.0%, CV = 1.5% -> Sigma = (10 - 1) / 1.5 = 6.0 (World Class 6-Sigma)
+        const sixSigma = NexusMathEngine.computeSixSigmaQuality(10.0, 1.0, 1.5);
+        assert.strictEqual(sixSigma.sigmaMetric, 6.0);
+        assert.strictEqual(sixSigma.qualityRating, 'WORLD_CLASS_6_SIGMA');
+        assert.strictEqual(sixSigma.controlsPerRun, 1);
+        assert.ok(sixSigma.criticalSystematicErrorSeCrit > 4.0);
+
+        // Substandard method: TEa = 6.0%, Bias = 2.0%, CV = 2.0% -> Sigma = (6 - 2) / 2 = 2.0 (Unacceptable)
+        const subSigma = NexusMathEngine.computeSixSigmaQuality(6.0, 2.0, 2.0);
+        assert.strictEqual(subSigma.sigmaMetric, 2.0);
+        assert.strictEqual(subSigma.qualityRating, 'UNACCEPTABLE_BELOW_3_SIGMA');
+        assert.strictEqual(subSigma.controlsPerRun, 4);
+        console.log('[PASS] 14. Quality Engineering: Six Sigma analytical metric & QGI root cause evaluation');
+        passed++;
+    }
+
+    // TEST 15: Kalman Filter State Estimator for Sensor Drift
+    {
+        // Drifted series starting at target 100 with noisy measurements drifting upward to 105
+        const measurements = [100.2, 100.8, 101.4, 102.1, 102.9, 103.5, 104.2, 104.9, 105.3];
+        const kalman = NexusMathEngine.evaluateKalmanSensorDrift(measurements, 100.0);
+        assert.strictEqual(kalman.filteredValues.length, measurements.length);
+        assert.ok(kalman.estimatedDriftRatePerRun > 0.4, 'Drift velocity must be positive');
+        assert.ok(kalman.latentCalibrationDriftAbs > 3.0, 'Latent drift must be captured');
+        assert.ok(kalman.predictedRunsUntilRecalibration > 0, 'Recalibration horizon must be positive');
+        console.log('[PASS] 15. Advanced Mathematics: Kalman filter continuous sensor & electrode drift tracking');
+        passed++;
+    }
+
+    // TEST 16: Non-Linear Michaelis-Menten Kinetics & Substrate Depletion
+    {
+        // Normal linear reaction
+        const normalKinetics = NexusMathEngine.evaluateEnzymeKinetics(10.0, 100.0, 5.0, 0.045);
+        assert.strictEqual(normalKinetics.isSubstrateDepleted, false);
+        assert.strictEqual(normalKinetics.dilutedRerunRequired, false);
+
+        // High enzyme activity with depleted substrate (flat slope, velocity near V_max)
+        const depletedKinetics = NexusMathEngine.evaluateEnzymeKinetics(200.0, 100.0, 2.0, 0.001);
+        assert.strictEqual(depletedKinetics.isSubstrateDepleted, true);
+        assert.strictEqual(depletedKinetics.dilutedRerunRequired, true);
+        assert.ok(depletedKinetics.recommendedDilutionRatio.includes('1:10 Saline Dilution'));
+        console.log('[PASS] 16. Biochemical Kinetics: Michaelis-Menten non-linear substrate depletion detection');
+        passed++;
+    }
+
+    // TEST 17: Finite-Capacity Open Queueing with Erlang-B Loss Probability
+    {
+        // 4 arrival ports, lambda = 60/hr, mu = 20/hr per port -> offered load a = 3.0 Erlangs
+        const loss = NexusMathEngine.computeErlangBLossProbability(4, 60, 20);
+        assert.ok(loss.blockingProbabilityB > 0 && loss.blockingProbabilityB < 1.0);
+        assert.ok(loss.carriedTrafficErlangs > 0);
+        assert.ok(loss.spilloverRatePerHour >= 0);
+        console.log('[PASS] 17. Stochastic Queueing: Erlang-B finite-capacity blocking & spillover dispatch');
+        passed++;
+    }
+
+    // TEST 18: KDIGO AKI Complete Staging & CKD-EPI 2021 Race-Free eGFR
+    {
+        // Patient baseline 0.9 mg/dL rises to 3.1 mg/dL (3.44x fold rise -> KDIGO Stage 3)
+        const kdigo = NexusMathEngine.evaluateKdigoAkiAndEgfr(3.1, 0.9, 62, 'MALE');
+        assert.strictEqual(kdigo.akiStage, 'STAGE_3_AKI_CRITICAL');
+        assert.strictEqual(kdigo.creatinineFoldRise, 3.44);
+        assert.strictEqual(kdigo.mandatoryNephrologyConsult, true);
+        assert.ok(kdigo.baselineEgfrMlkMinPer173m2 > 80.0);
+        assert.ok(kdigo.currentEstimatedEgfr < 30.0);
+        console.log('[PASS] 18. Clinical Diagnostic AI: KDIGO AKI complete staging & CKD-EPI 2021 race-free eGFR');
+        passed++;
+    }
+
+    // TEST 19: Arrhenius Time-Temperature Integral (TTI) Cold Chain Integrity
+    {
+        // Specimen spent 2 hours at 4°C, 3 hours at 25°C, and 1 hour at 35°C
+        const segments = [
+            { tempCelsius: 4.0, durationHours: 2.0 },
+            { tempCelsius: 25.0, durationHours: 3.0 },
+            { tempCelsius: 35.0, durationHours: 1.0 },
+        ];
+        // Potassium Ea/R = 4200 K, kRef = 0.005/hr
+        const tti = NexusMathEngine.computeArrheniusTimeTemperatureIntegral(segments, 0.005, 4200);
+        assert.ok(tti.cumulativeDegradationOmega > 0);
+        assert.ok(tti.remainingViabilityPct < 98.0 && tti.remainingViabilityPct > 70.0);
+        assert.strictEqual(tti.isViableForTesting, true);
+        assert.ok(tti.equivalentHoursAtReference4C > 6.0, 'Thermal stress accelerates equivalent 4°C aging');
+        console.log('[PASS] 19. Bio-Stability Physics: Arrhenius non-isothermal time-temperature integral (TTI)');
+        passed++;
+    }
+
     console.log('==============================================================');
-    console.log(` ALL ${passed}/10 NEXUS VERIFICATION SUITES PASSED SUCCESSFULLY `);
+    console.log(` ALL ${passed}/19 NEXUS VERIFICATION SUITES PASSED SUCCESSFULLY `);
     console.log('==============================================================');
+
 }
 
 runNexusVerificationSuite()

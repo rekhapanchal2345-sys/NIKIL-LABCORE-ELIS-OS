@@ -931,6 +931,15 @@ export default function ReportsManagementTable({
                         >
                           <Download className="h-4 w-4" />
                         </button>
+                        <a
+                          href="/reports.html"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-2 text-sky-400 transition-all hover:bg-sky-500/20 hover:text-sky-200"
+                          title="Open Full A4 Master Report & Print Studio"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </a>
                         <div className="relative">
                           <button
                             type="button"

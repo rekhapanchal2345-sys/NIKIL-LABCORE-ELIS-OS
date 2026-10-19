@@ -1,0 +1,2108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LabCore ELIS OS — Full A4 Master Hospital, Lab & Clinic Report & Print Studio</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 7mm 9mm 9mm 9mm;
+    }
+
+    :root {
+      --theme-primary: #0b2545;
+      --theme-accent: #0284c7;
+      --theme-secondary: #0d9488;
+      --theme-tint: #f0f9ff;
+      --theme-border: #bae6fd;
+    }
+
+    body[data-theme="cerulean"] {
+      --theme-primary: #0c4a6e;
+      --theme-accent: #0284c7;
+      --theme-secondary: #0891b2;
+      --theme-tint: #f0f9ff;
+      --theme-border: #bae6fd;
+    }
+
+    body[data-theme="emerald"] {
+      --theme-primary: #064e3b;
+      --theme-accent: #059669;
+      --theme-secondary: #0d9488;
+      --theme-tint: #ecfdf5;
+      --theme-border: #a7f3d0;
+    }
+
+    body[data-theme="burgundy"] {
+      --theme-primary: #4c0519;
+      --theme-accent: #be123c;
+      --theme-secondary: #0f766e;
+      --theme-tint: #fff1f2;
+      --theme-border: #fecdd3;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #e2e8f0;
+      color: #0f172a;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Full A4 Master Printable Sheet (210mm x 297mm) */
+    .a4-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #ffffff !important;
+      color: #0f172a !important;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.08);
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+
+    .a4-sheet * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .clinical-top-accent {
+      height: 4.5px;
+      width: 100%;
+      background: linear-gradient(90deg, var(--theme-primary) 0%, var(--theme-accent) 55%, var(--theme-secondary) 100%);
+      flex-shrink: 0;
+    }
+
+    .institutional-top-microbar {
+      background: #f8fafc;
+      border-bottom: 1px solid #cbd5e1;
+      padding: 3px 9.5mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 7.1px;
+      font-weight: 700;
+      color: #475569;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .institutional-top-microbar strong {
+      color: var(--theme-primary);
+      font-weight: 800;
+    }
+
+    .clinical-watermark {
+      position: absolute;
+      top: 52%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-32deg);
+      font-size: 48px;
+      font-weight: 900;
+      color: rgba(11, 37, 69, 0.018);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+      user-select: none;
+    }
+
+    .a4-inner {
+      padding: 6.5mm 9.5mm 7mm 9.5mm;
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff !important;
+    }
+
+    .letterhead-spacer {
+      height: 38mm;
+      width: 100%;
+      border-bottom: 1px dashed #cbd5e1;
+      margin-bottom: 7px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding-bottom: 4px;
+      font-size: 8px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--theme-primary);
+      margin-bottom: 7px;
+      background: #ffffff;
+    }
+
+    .brand-identity {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      max-width: 62%;
+    }
+
+    .clinical-logo-crest {
+      width: 58px;
+      height: 58px;
+      flex-shrink: 0;
+      border-radius: 11px;
+      background: #f8fafc;
+      border: 1.5px solid var(--theme-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+    }
+
+    .facility-type-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 7.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--theme-accent);
+      background: var(--theme-tint);
+      border: 1px solid var(--theme-border);
+      padding: 1.5px 6px;
+      border-radius: 3px;
+    }
+
+    .abdm-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 7.2px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #0f766e;
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      padding: 1.5px 5.5px;
+      border-radius: 3px;
+    }
+
+    .facility-main-name {
+      font-size: 17.5px;
+      font-weight: 900;
+      color: var(--theme-primary);
+      letter-spacing: -0.35px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .facility-sub-dept {
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--theme-accent);
+      letter-spacing: 0.35px;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .facility-address-line {
+      font-size: 8.5px;
+      color: #334155;
+      line-height: 1.28;
+      margin-top: 1px;
+    }
+
+    .facility-contact-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 8px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-top: 1.5px;
+    }
+
+    .header-accreditation-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      text-align: right;
+      gap: 4px;
+      max-width: 38%;
+    }
+
+    .nabl-seal-box {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 3px solid var(--theme-secondary);
+      border-radius: 4px;
+      padding: 3.5px 6.5px;
+    }
+
+    .report-document-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid var(--theme-primary);
+      border-radius: 4px;
+      padding: 4px 9px;
+      margin-bottom: 7px;
+    }
+
+    /* 4-Zone Complex Demographics & Chain-of-Custody Matrix */
+    .demographics-master-box {
+      display: grid;
+      grid-template-columns: 1.14fr 1.1fr 0.96fr 0.8fr;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      background: #ffffff;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .demo-zone {
+      padding: 5.5px 7.5px;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .demo-zone:last-child {
+      border-right: none;
+      background: #f8fafc;
+    }
+
+    .demo-zone-header {
+      font-size: 7.4px;
+      font-weight: 800;
+      color: var(--theme-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.55px;
+      padding-bottom: 2.5px;
+      margin-bottom: 3.5px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .demo-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .demo-table td {
+      padding: 1.2px 0;
+      vertical-align: top;
+      font-size: 8.1px;
+      line-height: 1.22;
+    }
+
+    .demo-lbl {
+      color: #64748b;
+      font-weight: 600;
+      width: 39%;
+      white-space: nowrap;
+    }
+
+    .demo-sep {
+      color: #94a3b8;
+      width: 5px;
+      text-align: center;
+    }
+
+    .demo-val {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .department-banner {
+      background: #f1f5f9;
+      border-top: 1.5px solid var(--theme-primary);
+      border-bottom: 1px solid #cbd5e1;
+      padding: 2.5px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8.2px;
+      font-weight: 800;
+      color: var(--theme-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      margin-bottom: 3px;
+    }
+
+    .test-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 1.5px 2px 3px 2px;
+      border-bottom: 1.5px solid var(--theme-accent);
+    }
+
+    .clinical-results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.4px;
+      margin-bottom: 5px;
+      border: 1px solid #cbd5e1;
+    }
+
+    .clinical-results-table thead tr {
+      background: #f8fafc !important;
+      border-bottom: 1.5px solid var(--theme-primary);
+    }
+
+    .clinical-results-table th {
+      padding: 4px 5.5px;
+      text-align: left;
+      font-weight: 800;
+      color: var(--theme-primary) !important;
+      text-transform: uppercase;
+      font-size: 7.2px;
+      letter-spacing: 0.35px;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    .clinical-results-table th:last-child {
+      border-right: none;
+    }
+
+    .clinical-results-table td {
+      padding: 3.8px 5.5px;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #f1f5f9;
+      color: #0f172a;
+      vertical-align: middle;
+    }
+
+    .clinical-results-table td:last-child {
+      border-right: none;
+    }
+
+    .clinical-results-table tbody tr:nth-child(even) {
+      background: #fcfdfe;
+    }
+
+    .clinical-results-table tbody tr.abnormal-row {
+      background: #fffdf9 !important;
+    }
+
+    .clinical-results-table tbody tr.critical-row {
+      background: #fef2f2 !important;
+    }
+
+    .clinical-flag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 1px 4.5px;
+      border-radius: 2.5px;
+      font-size: 7px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+
+    .clinical-flag-pill.normal {
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+
+    .clinical-flag-pill.high {
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fdba74;
+    }
+
+    .clinical-flag-pill.low {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #93c5fd;
+    }
+
+    .clinical-flag-pill.critical {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+    }
+
+    .visual-range-track {
+      width: 68px;
+      height: 5px;
+      background: #e2e8f0;
+      border-radius: 2.5px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+    }
+
+    .visual-range-zone-normal {
+      position: absolute;
+      left: 22%;
+      width: 56%;
+      top: 0;
+      bottom: 0;
+      background: #dcfce7;
+      border-left: 1px solid #86efac;
+      border-right: 1px solid #86efac;
+    }
+
+    .visual-range-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4.5px;
+      border-radius: 1.5px;
+    }
+
+    .visual-range-marker.normal { left: 47%; background: #16a34a; }
+    .visual-range-marker.high { left: 84%; background: #ea580c; }
+    .visual-range-marker.low { left: 8%; background: #2563eb; }
+    .visual-range-marker.critical { left: 92%; background: #dc2626; }
+
+    .calculated-ratios-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin-bottom: 7px;
+      font-size: 7.5px;
+      color: #334155;
+      page-break-inside: avoid;
+    }
+
+    .qa-compact-strip {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: #f8fafc;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+
+    .qa-cell {
+      padding: 3.5px 5.5px;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    .qa-cell:last-child {
+      border-right: none;
+    }
+
+    .signatures-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr 1.15fr;
+      gap: 10px;
+      align-items: end;
+      padding-top: 3px;
+      margin-bottom: 6px;
+    }
+
+    .report-footer {
+      padding-top: 5px;
+      border-top: 1.5px solid var(--theme-primary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .a4-sheet {
+        width: 100% !important;
+        min-height: 279mm !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+      .a4-inner {
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body data-theme="navy" class="min-h-screen bg-slate-200/80 text-slate-900">
+
+  <!-- TOP ENTERPRISE COMMAND BAR (HIDDEN ON PRINT) -->
+  <header class="no-print sticky top-0 z-30 border-b border-slate-300 bg-white/95 backdrop-blur-md shadow-xs">
+    <div class="mx-auto max-w-[1600px] px-4 py-2 flex flex-wrap items-center justify-between gap-2.5">
+      <!-- Brand & Active Module -->
+      <div class="flex items-center gap-2.5">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 border border-sky-200 text-sky-900 font-black text-xs shadow-2xs">
+          LC
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900">
+              LabCore ELIS OS — Full A4 Master Clinical Report &amp; Print Engine
+            </h1>
+            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+              ● 210mm × 297mm Full A4 Print Ready
+            </span>
+          </div>
+          <p class="text-[10.5px] font-medium text-slate-500">
+            9-Column Master LOINC &amp; Delta Table • 4-Zone Chain-of-Custody • Hospital, Lab &amp; Clinic Light-White Standard
+          </p>
+        </div>
+      </div>
+
+      <!-- View Switcher & Print Controls -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <!-- Workspace View Mode (Defaults to Full A4 Print View!) -->
+        <div class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-bold" role="group" aria-label="Workspace View">
+          <button type="button" data-view="a4" class="view-mode-btn rounded-lg px-2.5 py-1 bg-white text-slate-900 shadow-2xs border border-slate-200/80 transition">
+            Full A4 Print View
+          </button>
+          <button type="button" data-view="split" class="view-mode-btn rounded-lg px-2.5 py-1 text-slate-600 hover:text-slate-900 transition">
+            Split Studio (Worklist + A4)
+          </button>
+          <button type="button" data-view="worklist" class="view-mode-btn rounded-lg px-2.5 py-1 text-slate-600 hover:text-slate-900 transition">
+            Report Worklist Only
+          </button>
+        </div>
+
+        <!-- Sample Patient Order Selector -->
+        <label class="sr-only" for="patientOrderSelect">Select Patient Report</label>
+        <select
+          id="patientOrderSelect"
+          class="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-sky-600"
+        >
+          <option value="ORD-2026-1042">ORD-2026-1042 • Rajeshwariben Patel (CBC + Lipid + Thyroid)</option>
+          <option value="ORD-2026-1089">ORD-2026-1089 • Arvindbhai Desai (Renal + HbA1c Critical Alert)</option>
+          <option value="ORD-2026-1104">ORD-2026-1104 • Meera Shah (Liver Function &amp; Vitamin Profile)</option>
+          <option value="ORD-2026-1158">ORD-2026-1158 • Devendra Jadeja (Cardiac Troponin-I + Coagulation)</option>
+        </select>
+
+        <!-- Facility Preset Switcher -->
+        <div class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-bold" role="group" aria-label="Facility Preset">
+          <button type="button" data-facility="LAB" class="facility-btn rounded-lg px-2.5 py-1 bg-white text-slate-900 shadow-2xs border border-slate-200/80 transition">
+            Diagnostic Lab
+          </button>
+          <button type="button" data-facility="HOSPITAL" class="facility-btn rounded-lg px-2.5 py-1 text-slate-600 hover:text-slate-900 transition">
+            Hospital
+          </button>
+          <button type="button" data-facility="CLINIC" class="facility-btn rounded-lg px-2.5 py-1 text-slate-600 hover:text-slate-900 transition">
+            Clinic
+          </button>
+        </div>
+
+        <!-- Logo Crest Style Selector -->
+        <select
+          id="logoStyleSelect"
+          aria-label="Medical Crest Style"
+          class="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-sky-600"
+        >
+          <option value="caduceus">Crest: Medical Shield &amp; Pulse</option>
+          <option value="dna">Crest: Molecular DNA &amp; Lab</option>
+          <option value="hospital">Crest: Tertiary Hospital Cross</option>
+        </select>
+
+        <!-- Color Palette Accent Switcher -->
+        <select
+          id="colorThemeSelect"
+          aria-label="Clinical Color Theme"
+          class="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-sky-600"
+        >
+          <option value="navy">Palette: Medical Navy</option>
+          <option value="cerulean">Palette: Clinical Cerulean</option>
+          <option value="emerald">Palette: Hospital Emerald</option>
+          <option value="burgundy">Palette: Academic Burgundy</option>
+        </select>
+
+        <!-- Header vs Letterhead Mode -->
+        <button
+          type="button"
+          id="toggleLetterheadBtn"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+        >
+          <span id="letterheadIndicator" class="h-2 w-2 rounded-full bg-teal-600"></span>
+          <span id="letterheadLabel">Mode: With Header</span>
+        </button>
+
+        <!-- Columns Toggle (9-Col Master -> 6-Col Standard -> 5-Col Compact) -->
+        <button
+          type="button"
+          id="toggleColumnsBtn"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+        >
+          <span id="columnsLabel">Columns: 6 (Full Range Bar)</span>
+        </button>
+
+        <!-- Customize Header Modal Trigger -->
+        <button
+          type="button"
+          id="openCustomizeModalBtn"
+          class="inline-flex items-center gap-1 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100 transition"
+        >
+          Customize Header / Clinic
+        </button>
+
+        <!-- Direct A4 Print Button -->
+        <button
+          type="button"
+          id="printA4Btn"
+          class="inline-flex items-center gap-1.5 rounded-xl bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-sky-800 transition"
+        >
+          🖨️ Print A4 Report
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CUSTOMIZE CLINIC / HOSPITAL HEADER MODAL -->
+  <div id="customizeModal" class="no-print fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+        <div>
+          <h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wide">
+            Customize Hospital / Lab / Clinic Letterhead
+          </h2>
+          <p class="text-xs text-slate-500">Changes update the live A4 printable report immediately.</p>
+        </div>
+        <button type="button" id="closeCustomizeModalBtn" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+          ✕
+        </button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1" for="inputClinicName">Hospital / Lab / Clinic Name</label>
+          <input id="inputClinicName" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold text-slate-900" value="LabCore Diagnostic &amp; Research Centre" />
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1" for="inputClinicDept">Department / Subtitle</label>
+          <input id="inputClinicDept" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold text-slate-900" value="Department of Pathology, Biochemistry, Hematology, Microbiology &amp; Molecular Medicine" />
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1" for="inputClinicAddress">Full Address</label>
+          <input id="inputClinicAddress" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold text-slate-900" value="201, Sanskruti Complex, Alkapuri Road, Vadodara, Gujarat - 390007" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1" for="inputClinicPhone">Helpline / Phone</label>
+            <input id="inputClinicPhone" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold text-slate-900" value="+91 265 234 5678" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1" for="inputClinicEmail">Email</label>
+            <input id="inputClinicEmail" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold text-slate-900" value="reports@labcore.in" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1" for="inputPathologistName">Chief Pathologist Signatory</label>
+            <input id="inputPathologistName" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold text-slate-900" value="Dr. Nikil Panchal, MD (Pathology)" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1" for="inputNablCert">NABL / Clinical Cert No.</label>
+            <input id="inputNablCert" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold text-slate-900" value="MC-4819" />
+          </div>
+        </div>
+      </div>
+      <div class="mt-5 flex justify-end gap-2 border-t border-slate-200 pt-3">
+        <button type="button" id="cancelCustomizeBtn" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">
+          Cancel
+        </button>
+        <button type="button" id="applyCustomizeBtn" class="rounded-xl bg-sky-700 px-4 py-2 text-xs font-bold text-white hover:bg-sky-800">
+          Apply to A4 Report
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE GRID: DEFAULTS TO FULL A4 PRINT VIEW CENTERED -->
+  <div id="workspaceGrid" class="mx-auto max-w-[1600px] px-3 sm:px-5 py-5 grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+
+    <!-- LEFT PANEL: LIGHT-WHITE REPORT MODULE WORKLIST & FILTERS (HIDDEN IN FULL A4 VIEW & ON PRINT) -->
+    <aside id="worklistPanel" class="no-print hidden xl:col-span-5 space-y-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <div class="rounded-2xl border border-slate-200 border-l-4 border-l-sky-600 bg-white p-3.5 shadow-2xs">
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Published Today</div>
+          <div class="mt-1 text-xl font-black font-mono text-slate-900">148</div>
+          <div class="text-[10px] font-semibold text-emerald-700">✓ 98.6% Within SLA</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 border-l-4 border-l-emerald-600 bg-white p-3.5 shadow-2xs">
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">A4 Hard Copy Ready</div>
+          <div class="mt-1 text-xl font-black font-mono text-slate-900">142</div>
+          <div class="text-[10px] font-semibold text-teal-700">Dual-Signoff Verified</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 border-l-4 border-l-rose-600 bg-white p-3.5 shadow-2xs col-span-2 sm:col-span-1">
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Critical Alerts</div>
+          <div class="mt-1 text-xl font-black font-mono text-rose-700">2</div>
+          <div class="text-[10px] font-semibold text-rose-600">!! Priority Escalated</div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <div>
+            <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+              Diagnostic Report Worklist
+            </h2>
+            <p class="text-[11px] text-slate-500">
+              Select any patient order below to load &amp; print its A4 report
+            </p>
+          </div>
+          <span class="rounded-full bg-sky-50 border border-sky-200 px-2.5 py-0.5 text-[10px] font-bold text-sky-800">
+            4 Active Orders
+          </span>
+        </div>
+
+        <div class="flex gap-2">
+          <input
+            id="worklistSearchInput"
+            type="search"
+            placeholder="Filter by patient, UHID, order, or test..."
+            class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-900 outline-none focus:border-sky-600 focus:bg-white"
+          />
+          <select
+            id="worklistCriticalFilter"
+            aria-label="Filter by Critical Status"
+            class="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none"
+          >
+            <option value="ALL">All Reports</option>
+            <option value="CRITICAL">Critical Only</option>
+          </select>
+        </div>
+
+        <div id="worklistItemsMount" class="space-y-2.5 max-h-[540px] overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div>
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+              Live Parameter &amp; Flag Inspector
+            </h3>
+            <p class="text-[11px] text-slate-500">
+              Modify any parameter value or flag below to test live A4 print formatting
+            </p>
+          </div>
+        </div>
+        <div id="liveParameterEditorMount" class="space-y-2 max-h-56 overflow-y-auto pr-1 text-xs"></div>
+      </div>
+    </aside>
+
+    <!-- FULL A4 PRINTABLE DIAGNOSTIC REPORT CANVAS (CENTERED FULL WIDTH BY DEFAULT) -->
+    <main id="a4PreviewColumn" class="xl:col-span-12 overflow-x-auto flex justify-center">
+      <div id="a4ReportSheet" class="a4-sheet">
+        <div class="clinical-top-accent"></div>
+        <!-- TOP INSTITUTIONAL SECURITY & ACCREDITATION MICRO-BAR -->
+        <div class="institutional-top-microbar">
+          <span>
+            <strong>NABL ISO 15189:2022 ACCREDITED</strong> • CERT NO: <span id="microNablCert">MC-4819</span> • <strong>CAP PROFICIENCY:</strong> #8841201
+          </span>
+          <span>
+            <strong>ABDM HFR ID:</strong> IN-GJ-HFR-88412 • <strong>ICMR REG:</strong> ICMR-GJ-049 • <strong>24×7 STAT LAB</strong>
+          </span>
+        </div>
+
+        <div id="watermarkNode" class="clinical-watermark">LABCORE DIAGNOSTICS</div>
+
+        <div class="a4-inner">
+          <!-- DYNAMIC HEADER OR LETTERHEAD SPACER -->
+          <div id="headerMount"></div>
+
+          <!-- DOCUMENT CONTROL & SECURITY BANNER -->
+          <div class="report-document-banner">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-[10.4px] font-black text-[#0b2545] uppercase tracking-wider">
+                Final Diagnostic Laboratory Report
+              </span>
+              <span class="rounded bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[7.5px] font-extrabold text-emerald-700 uppercase">
+                ✓ Dual-Signoff Verified
+              </span>
+              <span id="docPriorityBadge" class="rounded bg-sky-50 border border-sky-200 px-1.5 py-0.5 text-[7.3px] font-extrabold text-sky-800 uppercase">
+                Routine Clinical
+              </span>
+            </div>
+            <div class="flex items-center gap-2.5 text-[8.4px] text-slate-700">
+              <span>Report Ref: <strong id="docReportId" class="font-mono text-slate-950">REP-2026-1042</strong></span>
+              <span>|</span>
+              <span>Accession No: <strong id="docOrderId" class="font-mono text-slate-950">ORD-2026-1042</strong></span>
+            </div>
+          </div>
+
+          <!-- 4-ZONE DEMOGRAPHICS, REFERRAL, CHAIN-OF-CUSTODY & BARCODE/HIL BOX -->
+          <section id="demographicsMount" class="demographics-master-box"></section>
+
+          <!-- CRITICAL ALERT BANNER (DYNAMIC) -->
+          <div id="criticalBannerMount"></div>
+
+          <!-- TEST PANELS & 9-COLUMN MASTER HOSPITAL/LAB TABLE -->
+          <div id="panelsMount"></div>
+
+          <!-- DERIVED CLINICAL RATIOS & CALCULATED INDICES BAR -->
+          <div id="calculatedRatiosMount" class="calculated-ratios-strip"></div>
+
+          <!-- QUALITY ASSURANCE & INSTRUMENT TRACEABILITY STRIP -->
+          <div class="qa-compact-strip">
+            <div class="qa-cell">
+              <div class="text-[6.8px] font-bold text-slate-500 uppercase">Specimen Quality</div>
+              <div class="text-[7.8px] font-bold text-emerald-700">✓ Acceptable</div>
+            </div>
+            <div class="qa-cell">
+              <div class="text-[6.8px] font-bold text-slate-500 uppercase">HIL Serum Index</div>
+              <div class="text-[7.8px] font-bold text-slate-900">H:0 | I:0 | L:0 (Nil)</div>
+            </div>
+            <div class="qa-cell">
+              <div class="text-[6.8px] font-bold text-slate-500 uppercase">Internal IQC</div>
+              <div class="text-[7.8px] font-bold text-emerald-700">Westgard 1-2s Pass</div>
+            </div>
+            <div class="qa-cell">
+              <div class="text-[6.8px] font-bold text-slate-500 uppercase">EQAS Scheme</div>
+              <div class="text-[7.8px] font-bold text-slate-900">NABL / CMC Vellore</div>
+            </div>
+            <div class="qa-cell">
+              <div class="text-[6.8px] font-bold text-slate-500 uppercase">Calibrator Trace</div>
+              <div class="text-[7.8px] font-bold text-emerald-700">IFCC / NIST SRM</div>
+            </div>
+            <div class="qa-cell">
+              <div class="text-[6.8px] font-bold text-slate-500 uppercase">Analytical Sigma</div>
+              <div class="text-[7.8px] font-bold text-emerald-700">99.8% (6.0σ)</div>
+            </div>
+          </div>
+
+          <div class="text-center text-[7.6px] font-extrabold text-slate-500 tracking-[1.6px] uppercase my-1">
+            ─── *** End of Verified Diagnostic Report *** ───
+          </div>
+
+          <!-- BOTTOM SIGNATURES, OFFICIAL ROUND STAMP & VERIFICATION FOOTER -->
+          <div class="mt-auto pt-1">
+            <div class="signatures-grid">
+              <div class="flex flex-col items-center text-center">
+                <div class="h-9 flex items-end justify-center mb-1">
+                  <span class="rounded bg-teal-50 border border-dashed border-teal-600 px-2 py-0.5 text-[7.4px] font-extrabold text-teal-800 uppercase">
+                    ✓ Assayed &amp; Checked
+                  </span>
+                </div>
+                <div class="w-11/12 h-px bg-slate-400 mb-1"></div>
+                <div class="text-[8.8px] font-extrabold text-[#0b2545]">R. K. Sharma, B.Sc. (MLT)</div>
+                <div class="text-[7.4px] font-semibold text-slate-600">Senior Medical Lab Technologist</div>
+                <div class="text-[6.9px] text-slate-500 font-mono">Reg: MLT-GJ-4419 • Clinical Path</div>
+              </div>
+
+              <div class="flex flex-col items-center text-center">
+                <div class="h-9 flex items-end justify-center gap-1.5 mb-1">
+                  <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="24" cy="24" r="21" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="2 1.5"/>
+                    <circle cx="24" cy="24" r="17" stroke="#0b2545" stroke-width="1"/>
+                    <text x="24" y="19" text-anchor="middle" fill="#0b2545" font-size="4.8" font-weight="800">LABCORE PATHOLOGY</text>
+                    <text x="24" y="25.5" text-anchor="middle" fill="#0284c7" font-size="5.2" font-weight="900">NABL VERIFIED</text>
+                    <text x="24" y="31.5" text-anchor="middle" fill="#0f766e" font-size="4.5" font-weight="700">ISO 15189:2022</text>
+                  </svg>
+                  <span class="rounded bg-teal-50 border border-dashed border-teal-600 px-1.5 py-0.5 text-[7.2px] font-extrabold text-teal-800 uppercase">
+                    ✓ QC Validated
+                  </span>
+                </div>
+                <div class="w-11/12 h-px bg-slate-400 mb-1"></div>
+                <div class="text-[8.8px] font-extrabold text-[#0b2545]">Jaya Ashapurama, M.Sc. (Biochem)</div>
+                <div class="text-[7.4px] font-semibold text-slate-600">Chief Quality Manager &amp; Supervisor</div>
+                <div class="text-[6.9px] text-slate-500 font-mono">ISO 15189:2022 Technical Sign-Off</div>
+              </div>
+
+              <div class="flex flex-col items-center text-center">
+                <div class="h-9 flex items-end justify-center mb-1">
+                  <span id="sigScriptName" class="font-serif italic text-[12.5px] font-bold text-[#0b2545] border-b border-dotted border-slate-400 px-2.5">
+                    Dr. Nikil Panchal
+                  </span>
+                </div>
+                <div class="w-11/12 h-px bg-slate-400 mb-1"></div>
+                <div id="sigFullName" class="text-[8.8px] font-extrabold text-[#0b2545]">Dr. Nikil Panchal, MD (Pathology)</div>
+                <div class="text-[7.4px] font-semibold text-slate-600">MBBS, MD (Pathology) • Chief Consultant Pathologist</div>
+                <div class="text-[6.9px] text-slate-500 font-mono">Reg No: GMC / NMC-74829</div>
+              </div>
+            </div>
+
+            <footer class="report-footer">
+              <div class="flex items-center gap-2">
+                <div id="qrMount" class="w-10 h-10 border border-slate-300 rounded p-0.5 bg-white flex items-center justify-center"></div>
+                <div class="text-[7.4px] text-slate-600 leading-tight">
+                  <strong class="text-[#0b2545] uppercase text-[7.8px]">Digital Authenticity Seal</strong><br />
+                  Scan QR to verify online<br />
+                  ID: <span id="footerReportId" class="font-mono font-bold text-slate-900">REP-2026-1042</span>
+                </div>
+              </div>
+
+              <div class="flex-1 text-[7px] text-slate-600 leading-snug text-justify px-2">
+                <strong>Mandatory Clinical Note:</strong> Test results relate strictly to the specimen analyzed and must be correlated clinically by the treating physician. Biological reference intervals follow CLSI C28-A3c &amp; NABL ISO 15189:2022 standards. Partial reproduction is prohibited. Not valid for medico-legal purpose.
+              </div>
+
+              <div class="text-right text-[7.2px] text-slate-600 whitespace-nowrap leading-snug">
+                <div>Printed: 17 Oct 2026</div>
+                <div>LabCore ELIS OS v4.5</div>
+                <div class="inline-block font-extrabold text-[#0b2545] bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded mt-0.5">
+                  A4 • Page 1 of 1
+                </div>
+              </div>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const CODE128_B = [
+      "212222","222122","222221","121223","121322","131222","122213","122312","132212","221213",
+      "221312","231212","112232","122132","122231","113222","123122","123221","223211","221132",
+      "221231","213212","223112","312131","311222","321122","321221","312212","322112","322211",
+      "212123","212321","232121","111323","131123","131321","112313","132113","132311","211313",
+      "231113","231311","112133","112331","132131","113123","113321","133121","313121","211331",
+      "231131","213113","213311","213131","311123","311321","331121","312113","312311","332111",
+      "314111","221411","431111","111224","111422","121124","121421","141122","141221","112214",
+      "112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
+      "111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
+      "214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
+      "114131","311141","411131","211412","211214","211232","2331112"
+    ];
+
+    function buildBarcodeSvg(text, width = 132, height = 18) {
+      const safe = (text || "ORD-2026").replace(/[^ -~]/g, "");
+      const codes = [104];
+      let checksum = 104;
+      for (let i = 0; i < safe.length; i++) {
+        const v = safe.charCodeAt(i) - 32;
+        codes.push(v);
+        checksum += v * (i + 1);
+      }
+      codes.push(checksum % 103);
+      let seq = "";
+      for (const c of codes) seq += CODE128_B[c] || CODE128_B[0];
+      seq += CODE128_B[106];
+
+      let x = 6;
+      let rects = "";
+      for (let i = 0; i < seq.length; i++) {
+        const w = parseInt(seq[i], 10) * 1.25;
+        if (i % 2 === 0) {
+          rects += `<rect x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${height}" fill="#0f172a" />`;
+        }
+        x += w;
+      }
+      const totalW = Math.ceil(x + 6);
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${height}" width="${width}" height="${height}" style="display:block;margin:0 auto;">
+        <rect width="${totalW}" height="${height}" fill="#ffffff" />
+        ${rects}
+      </svg>`;
+    }
+
+    function buildQrSvg(seedText) {
+      let hash = 2166136261;
+      for (let i = 0; i < seedText.length; i++) {
+        hash ^= seedText.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      const size = 21;
+      const grid = Array.from({ length: size }, () => Array(size).fill(false));
+      function drawFinder(r0, c0) {
+        for (let r = 0; r < 7; r++) {
+          for (let c = 0; c < 7; c++) {
+            const border = r === 0 || r === 6 || c === 0 || c === 6;
+            const inner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+            grid[r0 + r][c0 + c] = border || inner;
+          }
+        }
+      }
+      drawFinder(0, 0);
+      drawFinder(0, size - 7);
+      drawFinder(size - 7, 0);
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const inFinder = (r < 8 && c < 8) || (r < 8 && c >= size - 8) || (r >= size - 8 && c < 8);
+          if (!inFinder) {
+            hash ^= (r * 31 + c * 17) & 0xff;
+            hash = Math.imul(hash, 16777619);
+            grid[r][c] = (Math.abs(hash) % 10) < 4;
+          }
+        }
+      }
+      let rects = "";
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (grid[r][c]) {
+            rects += `<rect x="${c}" y="${r}" width="1" height="1" fill="#0b2545"/>`;
+          }
+        }
+      }
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="38" height="38" shape-rendering="crispEdges">
+        <rect width="${size}" height="${size}" fill="#ffffff"/>
+        ${rects}
+      </svg>`;
+    }
+
+    function getLogoSvg(style) {
+      if (style === "dna") {
+        return `<svg viewBox="0 0 68 68" width="50" height="50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="60" height="60" rx="14" fill="#f0f9ff" stroke="#0284c7" stroke-width="2"/>
+          <circle cx="34" cy="34" r="24" fill="#ffffff" stroke="#0b2545" stroke-width="1.8"/>
+          <path d="M24 18C32 24 36 28 44 34C36 40 32 44 24 50" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M44 18C36 24 32 28 24 34C32 40 36 44 44 50" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="27" y1="22" x2="41" y2="22" stroke="#0b2545" stroke-width="1.5"/>
+          <line x1="29" y1="28" x2="39" y2="28" stroke="#0b2545" stroke-width="1.5"/>
+          <line x1="29" y1="40" x2="39" y2="40" stroke="#0b2545" stroke-width="1.5"/>
+          <line x1="27" y1="46" x2="41" y2="46" stroke="#0b2545" stroke-width="1.5"/>
+        </svg>`;
+      }
+      if (style === "hospital") {
+        return `<svg viewBox="0 0 68 68" width="50" height="50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="34" cy="34" r="30" fill="#f0fdfa" stroke="#0d9488" stroke-width="2"/>
+          <circle cx="34" cy="34" r="25" fill="#ffffff" stroke="#0b2545" stroke-width="1.5"/>
+          <rect x="29" y="16" width="10" height="36" rx="2.5" fill="#0284c7"/>
+          <rect x="16" y="29" width="36" height="10" rx="2.5" fill="#0284c7"/>
+          <circle cx="34" cy="34" r="4" fill="#ffffff"/>
+        </svg>`;
+      }
+      return `<svg viewBox="0 0 68 68" width="50" height="50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="34" cy="34" r="31" fill="#f8fafc" stroke="#0b2545" stroke-width="1.8"/>
+        <circle cx="34" cy="34" r="27" fill="#ffffff" stroke="#0284c7" stroke-width="1" stroke-dasharray="3 2"/>
+        <path d="M34 11L51 18V32C51 44.5 43.4 53.6 34 57C24.6 53.6 17 44.5 17 32V18L34 11Z" fill="#f0f9ff" stroke="#0b2545" stroke-width="2"/>
+        <rect x="31" y="19" width="6" height="25" rx="2" fill="#0284c7"/>
+        <rect x="21.5" y="28.5" width="25" height="6" rx="2" fill="#0284c7"/>
+        <path d="M19 31.5H26.5L29.5 24L34 40L38 27L41 31.5H49" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="34" cy="31.5" r="2.3" fill="#0b2545"/>
+      </svg>`;
+    }
+
+    const ORDERS_DB = {
+      "ORD-2026-1042": {
+        reportId: "REP-2026-1042",
+        orderId: "ORD-2026-1042",
+        barcode: "LC26104288",
+        priority: "Routine Clinical",
+        patientName: "Mrs. Rajeshwariben K. Patel",
+        uhid: "UHID-GJ-88412",
+        abhaId: "91-4829-1042-8819",
+        age: "46 Yrs",
+        gender: "Female (B+ve)",
+        contact: "+91 98250 44190",
+        address: "14, Shantinagar Society, Alkapuri, Vadodara",
+        category: "OPD / Walk-In",
+        referringDoctor: "Dr. Siddharth Mehta, MD (Med)",
+        referringDept: "Internal Medicine & Lipid Clinic",
+        clinicalIndication: "Dyslipidemia & Hypothyroid Evaluation",
+        specimen: "Whole Blood EDTA & Fasting Serum",
+        sampleCollected: "16 Oct 2026, 08:15 AM",
+        sampleReceived: "16 Oct 2026, 08:42 AM",
+        reportApproved: "16 Oct 2026, 11:40 AM",
+        tatSummary: "3h 25m (✓ Within SLA)",
+        fastingStatus: "12 Hrs Overnight Fasting",
+        ratios: [
+          ["TC / HDL Ratio", "4.75 (Borderline)"],
+          ["LDL / HDL Ratio", "3.16 (Elevated)"],
+          ["Atherogenic Index (AIP)", "0.17 (Intermediate)"],
+          ["Mentzer Index (MCV/RBC)", "19.1 (Normal >13)"]
+        ],
+        clinicalInterpretation:
+          "Mildly elevated Total Cholesterol (228 mg/dL) and LDL-Cholesterol (151.6 mg/dL) noted alongside subclinical hypothyroidism (Ultra-TSH: 5.84 mIU/L). Complete Blood Count parameters and platelet indices are within normal biological reference intervals. Clinical correlation & lipid lifestyle management advised.",
+        panels: [
+          {
+            department: "Department of Hematology & Clinical Pathology",
+            testName: "Complete Blood Count (CBC) with Automated Differential",
+            testCode: "HEM-CBC-01",
+            sampleType: "Whole Blood (K2-EDTA)",
+            method: "Automated 6-Part Laser Flow Cytometry (Sysmex XN-1000)",
+            results: [
+              { parameterName: "Hemoglobin (Hb)", loinc: "718-7", result: "13.4", unit: "g/dL", prev: "13.1 (14 Jul)", delta: "+2.3%", referenceRange: "12.0 - 15.5", flag: "NORMAL", method: "SLS-Hb Photometry" },
+              { parameterName: "Total RBC Count", loinc: "789-8", result: "4.58", unit: "×10⁶/µL", prev: "4.50 (14 Jul)", delta: "+1.8%", referenceRange: "3.80 - 5.20", flag: "NORMAL", method: "Sheath Flow DC" },
+              { parameterName: "Packed Cell Volume (PCV / HCT)", loinc: "4544-3", result: "40.2", unit: "%", prev: "39.6 (14 Jul)", delta: "+1.5%", referenceRange: "36.0 - 46.0", flag: "NORMAL", method: "Cumulative Pulse Height" },
+              { parameterName: "Mean Corpuscular Volume (MCV)", loinc: "787-2", result: "87.8", unit: "fL", prev: "88.0 (14 Jul)", delta: "-0.2%", referenceRange: "80.0 - 100.0", flag: "NORMAL", method: "Calculated" },
+              { parameterName: "Total Leukocyte Count (WBC)", loinc: "6690-2", result: "7,420", unit: "cells/µL", prev: "6,980 (14 Jul)", delta: "+6.3%", referenceRange: "4,000 - 10,500", flag: "NORMAL", method: "Fluorescence Flow Cytometry" },
+              { parameterName: "Platelet Count (PLT)", loinc: "777-3", result: "2,68,000", unit: "cells/µL", prev: "2,55,000 (14 Jul)", delta: "+5.1%", referenceRange: "1,50,000 - 4,10,000", flag: "NORMAL", method: "Optical / Impedance" }
+            ]
+          },
+          {
+            department: "Department of Clinical Biochemistry & Lipidology",
+            testName: "Comprehensive Lipid Profile (NCEP ATP-III Fasting)",
+            testCode: "BIO-LIP-04",
+            sampleType: "Fasting Serum (SST Gel)",
+            method: "Enzymatic Spectrophotometry (Roche Cobas Pro c503)",
+            results: [
+              { parameterName: "Total Cholesterol", loinc: "2093-3", result: "228", unit: "mg/dL", prev: "212 (14 Jul)", delta: "+7.5%", referenceRange: "125 - 200", flag: "HIGH", method: "CHOD-PAP" },
+              { parameterName: "Triglycerides (Fasting)", loinc: "2571-8", result: "142", unit: "mg/dL", prev: "148 (14 Jul)", delta: "-4.1%", referenceRange: "40 - 150", flag: "NORMAL", method: "GPO-PAP" },
+              { parameterName: "HDL Cholesterol (Direct)", loinc: "2085-9", result: "48", unit: "mg/dL", prev: "46 (14 Jul)", delta: "+4.3%", referenceRange: "40 - 60", flag: "NORMAL", method: "Polymer Detergent" },
+              { parameterName: "LDL Cholesterol (Direct)", loinc: "2089-1", result: "151.6", unit: "mg/dL", prev: "136.4 (14 Jul)", delta: "+11.1%", referenceRange: "< 100", flag: "HIGH", method: "Selective Solubilization" },
+              { parameterName: "Non-HDL Cholesterol", loinc: "43396-1", result: "180.0", unit: "mg/dL", prev: "166.0 (14 Jul)", delta: "+8.4%", referenceRange: "< 130", flag: "HIGH", method: "Calculated" }
+            ]
+          },
+          {
+            department: "Department of Endocrinology & Immunoassay",
+            testName: "Thyroid Function Cascade (FT3, FT4, Ultra-TSH)",
+            testCode: "IMM-THY-03",
+            sampleType: "Serum (SST)",
+            method: "Electrochemiluminescence Immunoassay (ECLIA)",
+            results: [
+              { parameterName: "Free Triiodothyronine (Free T3)", loinc: "3051-0", result: "3.12", unit: "pg/mL", prev: "3.20 (14 Jul)", delta: "-2.5%", referenceRange: "2.00 - 4.40", flag: "NORMAL", method: "ECLIA" },
+              { parameterName: "Free Thyroxine (Free T4)", loinc: "3024-7", result: "1.18", unit: "ng/dL", prev: "1.24 (14 Jul)", delta: "-4.8%", referenceRange: "0.93 - 1.70", flag: "NORMAL", method: "ECLIA" },
+              { parameterName: "Thyroid Stimulating Hormone (Ultra-TSH)", loinc: "3016-3", result: "5.84", unit: "mIU/L", prev: "4.62 (14 Jul)", delta: "+26.4%", referenceRange: "0.27 - 4.20", flag: "HIGH", method: "3rd Gen Sandwich ECLIA" }
+            ]
+          }
+        ]
+      },
+      "ORD-2026-1089": {
+        reportId: "REP-2026-1089",
+        orderId: "ORD-2026-1089",
+        barcode: "LC26108941",
+        priority: "STAT Emergency",
+        patientName: "Mr. Arvindbhai M. Desai",
+        uhid: "UHID-GJ-90218",
+        abhaId: "91-7712-9021-3310",
+        age: "62 Yrs",
+        gender: "Male (O+ve)",
+        contact: "+91 98791 11204",
+        address: "B-302, Suryakiran Residency, Race Course, Vadodara",
+        category: "Hospital IPD • Ward 4B",
+        referringDoctor: "Dr. K. V. Trivedi, DM (Nephro)",
+        referringDept: "Department of Nephrology & ICU",
+        clinicalIndication: "CKD Stage 4 Monitoring & Hyperkalemia Watch",
+        specimen: "Fasting Venous Blood (EDTA & Fluoride / Serum)",
+        sampleCollected: "16 Oct 2026, 07:30 AM",
+        sampleReceived: "16 Oct 2026, 07:48 AM",
+        reportApproved: "16 Oct 2026, 10:15 AM",
+        tatSummary: "2h 45m (✓ STAT Met)",
+        fastingStatus: "Overnight Fasting",
+        ratios: [
+          ["BUN / Creatinine Ratio", "12.6 (Intrinsic Renal)"],
+          ["CKD-EPI Stage", "Stage G4 (Severely Decreased)"],
+          ["Anion Gap", "14.2 mEq/L (Normal)"],
+          ["Estimated Osmolality", "306 mOsm/kg (Elevated)"]
+        ],
+        clinicalInterpretation:
+          "CRITICAL PANIC ALERT: Serum Potassium (6.4 mEq/L) and Serum Creatinine (3.85 mg/dL) are markedly elevated with poorly controlled glycemic status (HbA1c: 9.2%). Panic values telephonically communicated to treating nephrologist Dr. K. V. Trivedi at 10:12 AM.",
+        panels: [
+          {
+            department: "Department of Clinical Biochemistry & Renal Sciences",
+            testName: "Renal Function & Electrolyte Panel (RFT + ISE)",
+            testCode: "BIO-RFT-02",
+            sampleType: "Serum (SST)",
+            method: "Spectrophotometry & Direct Ion-Selective Electrode (ISE)",
+            results: [
+              { parameterName: "Blood Urea Nitrogen (BUN)", loinc: "3094-0", result: "48.5", unit: "mg/dL", prev: "41.0 (02 Sep)", delta: "+18.3%", referenceRange: "7.0 - 20.0", flag: "HIGH", method: "Urease GLDH" },
+              { parameterName: "Serum Creatinine (IDMS Traceable)", loinc: "2160-0", result: "3.85", unit: "mg/dL", prev: "3.10 (02 Sep)", delta: "+24.2%", referenceRange: "0.70 - 1.30", flag: "CRITICAL", method: "Enzymatic Sarcosine Oxidase" },
+              { parameterName: "Estimated GFR (CKD-EPI 2021)", loinc: "98979-8", result: "16.4", unit: "mL/min/1.73m²", prev: "21.2 (02 Sep)", delta: "-22.6%", referenceRange: "> 60.0", flag: "LOW", method: "CKD-EPI Equation" },
+              { parameterName: "Serum Uric Acid", loinc: "3084-1", result: "8.4", unit: "mg/dL", prev: "7.8 (02 Sep)", delta: "+7.7%", referenceRange: "3.5 - 7.2", flag: "HIGH", method: "Uricase PAP" },
+              { parameterName: "Serum Sodium (Na⁺)", loinc: "2951-2", result: "136", unit: "mEq/L", prev: "138 (02 Sep)", delta: "-1.4%", referenceRange: "135 - 145", flag: "NORMAL", method: "Direct ISE" },
+              { parameterName: "Serum Potassium (K⁺)", loinc: "2823-3", result: "6.4", unit: "mEq/L", prev: "5.3 (02 Sep)", delta: "+20.8%", referenceRange: "3.5 - 5.1", flag: "CRITICAL", method: "Direct ISE" }
+            ]
+          },
+          {
+            department: "Department of Diabetology & HbA1c Reference Lab",
+            testName: "Glycosylated Hemoglobin (HbA1c) & Fasting Glucose",
+            testCode: "DIA-HBA-01",
+            sampleType: "Whole Blood EDTA & Sodium Fluoride Plasma",
+            method: "NGSP Certified Ion-Exchange HPLC (Bio-Rad D-10)",
+            results: [
+              { parameterName: "Fasting Plasma Glucose (FPG)", loinc: "1558-6", result: "214", unit: "mg/dL", prev: "188 (02 Sep)", delta: "+13.8%", referenceRange: "70 - 100", flag: "HIGH", method: "Hexokinase G-6-PDH" },
+              { parameterName: "HbA1c (NGSP / DCCT)", loinc: "4548-4", result: "9.2", unit: "%", prev: "8.6 (02 Sep)", delta: "+7.0%", referenceRange: "4.0 - 5.6", flag: "HIGH", method: "Ion-Exchange HPLC" },
+              { parameterName: "Estimated Average Glucose (eAG)", loinc: "27353-2", result: "217", unit: "mg/dL", prev: "200 (02 Sep)", delta: "+8.5%", referenceRange: "70 - 126", flag: "HIGH", method: "ADAG Formula" }
+            ]
+          }
+        ]
+      },
+      "ORD-2026-1104": {
+        reportId: "REP-2026-1104",
+        orderId: "ORD-2026-1104",
+        barcode: "LC26110477",
+        priority: "Routine Wellness",
+        patientName: "Ms. Meera N. Shah",
+        uhid: "UHID-GJ-91504",
+        abhaId: "91-6391-5520-1104",
+        age: "29 Yrs",
+        gender: "Female (A+ve)",
+        contact: "+91 97240 88310",
+        address: "7, Green Park Bungalows, Nizampura, Vadodara",
+        category: "Executive Wellness Clinic",
+        referringDoctor: "Dr. Anjali Nair, MD (Gen Med)",
+        referringDept: "Preventive Health & Outpatient Clinic",
+        clinicalIndication: "Annual Executive Nutritional & Hepatic Screen",
+        specimen: "Venous Serum (Light-Protected SST)",
+        sampleCollected: "16 Oct 2026, 09:00 AM",
+        sampleReceived: "16 Oct 2026, 09:22 AM",
+        reportApproved: "16 Oct 2026, 01:20 PM",
+        tatSummary: "4h 20m (✓ Within SLA)",
+        fastingStatus: "Random / Non-Fasting",
+        ratios: [
+          ["De Ritis Ratio (AST/ALT)", "0.88 (Normal <1.0)"],
+          ["Albumin / Globulin (A/G) Ratio", "1.57 (Normal 1.1–2.2)"],
+          ["Indirect Bilirubin", "0.57 mg/dL (Normal)"],
+          ["Serum Globulin", "2.80 g/dL (Normal)"]
+        ],
+        clinicalInterpretation:
+          "Hepatic transaminases, alkaline phosphatase, and bilirubin fractions are within normal reference limits. Vitamin D (25-OH) is insufficient (18.4 ng/mL) and Vitamin B12 is borderline low (192 pg/mL). Nutritional supplementation recommended.",
+        panels: [
+          {
+            department: "Department of Clinical Biochemistry & Hepatology",
+            testName: "Liver Function Test (LFT Complete Panel)",
+            testCode: "BIO-LFT-01",
+            sampleType: "Serum (SST)",
+            method: "IFCC Standardized Spectrophotometry",
+            results: [
+              { parameterName: "Total Bilirubin", loinc: "1975-2", result: "0.78", unit: "mg/dL", prev: "0.82 (10 Jan)", delta: "-4.9%", referenceRange: "0.20 - 1.20", flag: "NORMAL", method: "Diazo Jendrassik-Grof" },
+              { parameterName: "Direct Bilirubin", loinc: "1968-7", result: "0.21", unit: "mg/dL", prev: "0.22 (10 Jan)", delta: "-4.5%", referenceRange: "0.00 - 0.30", flag: "NORMAL", method: "Diazo Direct" },
+              { parameterName: "SGPT / ALT (Alanine Transaminase)", loinc: "1742-6", result: "24", unit: "U/L", prev: "26 (10 Jan)", delta: "-7.7%", referenceRange: "7 - 35", flag: "NORMAL", method: "IFCC without P5P" },
+              { parameterName: "SGOT / AST (Aspartate Transaminase)", loinc: "1920-8", result: "21", unit: "U/L", prev: "22 (10 Jan)", delta: "-4.5%", referenceRange: "8 - 33", flag: "NORMAL", method: "IFCC Kinetic" },
+              { parameterName: "Alkaline Phosphatase (ALP)", loinc: "6768-6", result: "76", unit: "U/L", prev: "79 (10 Jan)", delta: "-3.8%", referenceRange: "44 - 147", flag: "NORMAL", method: "AMP Buffer" },
+              { parameterName: "Total Serum Proteins", loinc: "2885-2", result: "7.2", unit: "g/dL", prev: "7.1 (10 Jan)", delta: "+1.4%", referenceRange: "6.4 - 8.3", flag: "NORMAL", method: "Biuret Reaction" },
+              { parameterName: "Serum Albumin", loinc: "1751-7", result: "4.4", unit: "g/dL", prev: "4.3 (10 Jan)", delta: "+2.3%", referenceRange: "3.5 - 5.2", flag: "NORMAL", method: "Bromocresol Green" }
+            ]
+          },
+          {
+            department: "Department of Special Immunoassay & Nutritional Biomarkers",
+            testName: "Vitamin D (25-Hydroxy) & Vitamin B12 Assay",
+            testCode: "IMM-VIT-02",
+            sampleType: "Serum (SST)",
+            method: "Chemiluminescent Microparticle Immunoassay (CMIA)",
+            results: [
+              { parameterName: "25-Hydroxy Vitamin D (Total)", loinc: "1989-3", result: "18.4", unit: "ng/mL", prev: "22.0 (10 Jan)", delta: "-16.4%", referenceRange: "30.0 - 100.0", flag: "LOW", method: "CMIA" },
+              { parameterName: "Vitamin B12 (Cyanocobalamin)", loinc: "2132-9", result: "192", unit: "pg/mL", prev: "218 (10 Jan)", delta: "-11.9%", referenceRange: "211 - 911", flag: "LOW", method: "Intrinsic Factor CMIA" }
+            ]
+          }
+        ]
+      },
+      "ORD-2026-1158": {
+        reportId: "REP-2026-1158",
+        orderId: "ORD-2026-1158",
+        barcode: "LC26115892",
+        priority: "STAT Cardiac Triage",
+        patientName: "Mr. Devendrasinh R. Jadeja",
+        uhid: "UHID-GJ-92811",
+        abhaId: "91-8841-2910-5501",
+        age: "58 Yrs",
+        gender: "Male (AB+ve)",
+        contact: "+91 99251 77402",
+        address: "102, Rajpath Heights, Sevasi Road, Vadodara",
+        category: "Emergency Cardiac Care (CCU)",
+        referringDoctor: "Dr. Vikramaditya Rao, DM (Cardiology)",
+        referringDept: "Coronary Care Unit (CCU) • Bed 03",
+        clinicalIndication: "Acute Chest Pain & Anticoagulation Monitoring",
+        specimen: "Citrated Plasma (3.2% Na-Citrate) & Heparin Plasma",
+        sampleCollected: "16 Oct 2026, 11:10 AM",
+        sampleReceived: "16 Oct 2026, 11:18 AM",
+        reportApproved: "16 Oct 2026, 12:05 PM",
+        tatSummary: "0h 55m (✓ STAT Rapid)",
+        fastingStatus: "Emergency / Non-Fasting",
+        ratios: [
+          ["PT / MNPT Ratio", "2.20 (Therapeutic)"],
+          ["INR (ISI 1.02)", "2.24 (Target 2.0–3.0)"],
+          ["0h/1h hs-cTnI Delta", "+2188% (Acute Myocardial Injury)"],
+          ["HEART Risk Score", "8 / 10 (High Risk)"]
+        ],
+        clinicalInterpretation:
+          "CRITICAL CARDIAC ALERT: High-Sensitivity Troponin-I is significantly elevated (412 ng/L; URL < 34 ng/L) with elevated NT-proBNP (1,480 pg/mL), consistent with acute myocardial injury. Prothrombin Time / INR (2.24) is within therapeutic anticoagulation range.",
+        panels: [
+          {
+            department: "Department of Emergency Cardiac Biomarkers & Immunoassay",
+            testName: "High-Sensitivity Cardiac Troponin-I (hs-cTnI) & Natriuretic Panel",
+            testCode: "CRD-TRN-01",
+            sampleType: "Lithium Heparin Plasma / SST",
+            method: "High-Sensitivity Chemiluminescence (Architect Stat)",
+            results: [
+              { parameterName: "hs-Troponin I (High Sensitivity)", loinc: "89579-7", result: "412.0", unit: "ng/L", prev: "18.0 (Baseline)", delta: "+2188%", referenceRange: "< 34.0", flag: "CRITICAL", method: "hs-CMIA STAT" },
+              { parameterName: "NT-proBNP (N-Terminal Pro-BNP)", loinc: "33762-6", result: "1,480", unit: "pg/mL", prev: "420 (Baseline)", delta: "+252%", referenceRange: "< 125", flag: "HIGH", method: "ECLIA" },
+              { parameterName: "CK-MB (Creatine Kinase-MB Mass)", loinc: "13969-1", result: "14.8", unit: "ng/mL", prev: "3.2 (Baseline)", delta: "+362%", referenceRange: "0.0 - 4.9", flag: "HIGH", method: "Electrochemiluminescence" }
+            ]
+          },
+          {
+            department: "Department of Coagulation & Thrombosis",
+            testName: "Prothrombin Time (PT / INR) & D-Dimer Assay",
+            testCode: "COA-PTI-02",
+            sampleType: "Citrated Plasma (3.2% Sodium Citrate 9:1)",
+            method: "Optical Clotting & Immunoturbidimetry (Sysmex CS-2500)",
+            results: [
+              { parameterName: "Prothrombin Time (Patient PT)", loinc: "5902-2", result: "26.8", unit: "Seconds", prev: "13.2 (Baseline)", delta: "+103%", referenceRange: "11.0 - 14.5", flag: "HIGH", method: "Photo-Optical Clot" },
+              { parameterName: "Mean Normal Prothrombin Time (MNPT)", loinc: "3243-3", result: "12.2", unit: "Seconds", prev: "12.2", delta: "0.0%", referenceRange: "11.5 - 13.0", flag: "NORMAL", method: "ISI 1.02 Control" },
+              { parameterName: "International Normalized Ratio (INR)", loinc: "6301-6", result: "2.24", unit: "Ratio", prev: "1.08 (Baseline)", delta: "+107%", referenceRange: "2.00 - 3.00 (Therapeutic)", flag: "NORMAL", method: "Calculated (PT/MNPT)^ISI" },
+              { parameterName: "D-Dimer (FEU Quantitative)", loinc: "48065-7", result: "680", unit: "ng/mL FEU", prev: "240 (Baseline)", delta: "+183%", referenceRange: "< 500", flag: "HIGH", method: "Latex Immunoturbidimetry" }
+            ]
+          }
+        ]
+      }
+    };
+
+    const FACILITY_PRESETS = {
+      LAB: {
+        badge: "NABL Accredited Reference Diagnostic Laboratory",
+        name: "LabCore Diagnostic & Research Centre",
+        dept: "Department of Pathology, Biochemistry, Hematology, Microbiology & Molecular Medicine"
+      },
+      HOSPITAL: {
+        badge: "Tertiary Multi-Specialty Hospital & Pathology Wing",
+        name: "Apex Multispecialty Hospital & Diagnostic Wing",
+        dept: "24×7 Hospital Central Pathology, Biochemistry, Hematology & Critical Care Lab"
+      },
+      CLINIC: {
+        badge: "Specialty Polyclinic & Outpatient Diagnostic Centre",
+        name: "LifeCare Specialty Polyclinic & Pathology Centre",
+        dept: "Clinical Pathology, Preventive Health & Outpatient Diagnostic Services"
+      }
+    };
+
+    let state = {
+      selectedOrderKey: "ORD-2026-1042",
+      facilityType: "LAB",
+      logoStyle: "caduceus",
+      colorTheme: "navy",
+      letterheadMode: false,
+      columnMode: 9, // 9 = Master (LOINC + Prior + Delta % + Visual Spectrum), 6 = Standard, 5 = Compact
+      worklistSearch: "",
+      worklistCriticalOnly: false,
+      customBranding: {
+        name: "LabCore Diagnostic & Research Centre",
+        dept: "Department of Pathology, Biochemistry, Hematology, Microbiology & Molecular Medicine",
+        address: "201, Sanskruti Complex, Alkapuri Road, Vadodara, Gujarat - 390007",
+        phone: "+91 265 234 5678",
+        email: "reports@labcore.in",
+        pathologist: "Dr. Nikil Panchal, MD (Pathology)",
+        nablCert: "MC-4819"
+      }
+    };
+
+    function getFlagMeta(flag) {
+      const f = (flag || "NORMAL").toUpperCase();
+      if (f === "CRITICAL") return { css: "critical", label: "!! CRITICAL", symbol: "!! " };
+      if (f === "HIGH") return { css: "high", label: "▲ HIGH", symbol: "▲ " };
+      if (f === "LOW") return { css: "low", label: "▼ LOW", symbol: "▼ " };
+      return { css: "normal", label: "NORMAL", symbol: "" };
+    }
+
+    function renderWorklist() {
+      const mount = document.getElementById("worklistItemsMount");
+      if (!mount) return;
+      const q = state.worklistSearch.toLowerCase();
+
+      const entries = Object.values(ORDERS_DB).filter(o => {
+        const hasCrit = o.panels.some(p => p.results.some(r => r.flag === "CRITICAL"));
+        if (state.worklistCriticalOnly && !hasCrit) return false;
+        if (!q) return true;
+        const blob = `${o.orderId} ${o.reportId} ${o.patientName} ${o.uhid} ${o.referringDoctor} ${o.panels.map(p => p.testName).join(" ")}`.toLowerCase();
+        return blob.includes(q);
+      });
+
+      mount.innerHTML = entries.map(o => {
+        const active = o.orderId === state.selectedOrderKey;
+        const hasCrit = o.panels.some(p => p.results.some(r => r.flag === "CRITICAL"));
+        const highCount = o.panels.flatMap(p => p.results).filter(r => r.flag === "HIGH" || r.flag === "LOW").length;
+
+        return `
+          <div
+            data-order-card="${o.orderId}"
+            class="order-worklist-card cursor-pointer rounded-xl border p-3 transition-all ${
+              active
+                ? "border-sky-600 bg-sky-50/70 shadow-xs ring-1 ring-sky-500/30"
+                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+            }"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono text-xs font-extrabold text-slate-900">${o.reportId}</span>
+                  <span class="text-[10px] font-mono text-slate-500">(${o.orderId})</span>
+                  ${hasCrit
+                    ? `<span class="rounded bg-rose-100 border border-rose-300 px-1.5 py-0.5 text-[9px] font-extrabold text-rose-800 uppercase">!! Critical</span>`
+                    : `<span class="rounded bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 uppercase">✓ Verified</span>`
+                  }
+                </div>
+                <div class="mt-1 text-xs font-extrabold text-slate-900">${o.patientName}</div>
+                <div class="text-[10.5px] font-medium text-slate-500">
+                  ${o.uhid} • ${o.age} / ${o.gender} • ${o.category}
+                </div>
+              </div>
+              <button
+                type="button"
+                data-quick-print="${o.orderId}"
+                class="quick-print-btn rounded-lg border border-sky-200 bg-white px-2.5 py-1 text-[10px] font-extrabold text-sky-700 hover:bg-sky-600 hover:text-white transition"
+              >
+                🖨️ Print A4
+              </button>
+            </div>
+            <div class="mt-2 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-600">
+              <span class="font-semibold truncate max-w-[230px]">${o.panels.map(p => p.testCode).join(" + ")} (${o.panels.length} Panels)</span>
+              <span class="font-mono text-[9.5px] ${highCount > 0 ? 'text-amber-700 font-bold' : 'text-emerald-700'}">
+                ${highCount} Abnormal • TAT ${o.tatSummary.split(" ")[0]}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".order-worklist-card").forEach(card => {
+        card.addEventListener("click", () => {
+          const id = card.getAttribute("data-order-card");
+          state.selectedOrderKey = id;
+          const sel = document.getElementById("patientOrderSelect");
+          if (sel) sel.value = id;
+          renderReport();
+          renderWorklist();
+          renderLiveParameterEditor();
+        });
+      });
+
+      document.querySelectorAll(".quick-print-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const id = btn.getAttribute("data-quick-print");
+          state.selectedOrderKey = id;
+          const sel = document.getElementById("patientOrderSelect");
+          if (sel) sel.value = id;
+          renderReport();
+          renderWorklist();
+          renderLiveParameterEditor();
+          setTimeout(() => window.print(), 100);
+        });
+      });
+    }
+
+    function renderLiveParameterEditor() {
+      const mount = document.getElementById("liveParameterEditorMount");
+      if (!mount) return;
+      const order = ORDERS_DB[state.selectedOrderKey];
+      let html = "";
+
+      order.panels.forEach((panel, pIdx) => {
+        panel.results.forEach((r, rIdx) => {
+          html += `
+            <div class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-1.5">
+              <div class="min-w-0 flex-1">
+                <div class="truncate font-bold text-slate-800 text-[11px]">${r.parameterName}</div>
+                <div class="text-[9.5px] text-slate-500">Ref: ${r.referenceRange} ${r.unit}</div>
+              </div>
+              <input
+                type="text"
+                data-edit-val="${pIdx}-${rIdx}"
+                value="${r.result}"
+                aria-label="Result for ${r.parameterName}"
+                class="live-val-input w-20 rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs font-bold text-slate-900 text-right"
+              />
+              <select
+                data-edit-flag="${pIdx}-${rIdx}"
+                aria-label="Flag for ${r.parameterName}"
+                class="live-flag-select rounded border border-slate-300 bg-white px-1.5 py-1 text-[10px] font-extrabold text-slate-800"
+              >
+                <option value="NORMAL" ${r.flag === "NORMAL" ? "selected" : ""}>NORMAL</option>
+                <option value="HIGH" ${r.flag === "HIGH" ? "selected" : ""}>▲ HIGH</option>
+                <option value="LOW" ${r.flag === "LOW" ? "selected" : ""}>▼ LOW</option>
+                <option value="CRITICAL" ${r.flag === "CRITICAL" ? "selected" : ""}>!! CRITICAL</option>
+              </select>
+            </div>
+          `;
+        });
+      });
+
+      mount.innerHTML = html;
+
+      document.querySelectorAll(".live-val-input").forEach(inp => {
+        inp.addEventListener("input", () => {
+          const [pIdx, rIdx] = inp.getAttribute("data-edit-val").split("-").map(Number);
+          ORDERS_DB[state.selectedOrderKey].panels[pIdx].results[rIdx].result = inp.value;
+          renderReport();
+        });
+      });
+
+      document.querySelectorAll(".live-flag-select").forEach(sel => {
+        sel.addEventListener("change", () => {
+          const [pIdx, rIdx] = sel.getAttribute("data-edit-flag").split("-").map(Number);
+          ORDERS_DB[state.selectedOrderKey].panels[pIdx].results[rIdx].flag = sel.value;
+          renderReport();
+          renderWorklist();
+        });
+      });
+    }
+
+    function renderReport() {
+      const order = ORDERS_DB[state.selectedOrderKey];
+      if (!order) return;
+      const preset = FACILITY_PRESETS[state.facilityType] || FACILITY_PRESETS.LAB;
+      const showLoinc = state.columnMode >= 6;
+      const showDelta = state.columnMode === 9;
+      const showVisualBar = state.columnMode >= 6;
+
+      document.body.setAttribute("data-theme", state.colorTheme);
+      const watermarkEl = document.getElementById("watermarkNode");
+      if (watermarkEl) watermarkEl.textContent = state.customBranding.name;
+      const microNablEl = document.getElementById("microNablCert");
+      if (microNablEl) microNablEl.textContent = state.customBranding.nablCert;
+      const docRepEl = document.getElementById("docReportId");
+      if (docRepEl) docRepEl.textContent = order.reportId;
+      const docOrdEl = document.getElementById("docOrderId");
+      if (docOrdEl) docOrdEl.textContent = order.orderId;
+      const footRepEl = document.getElementById("footerReportId");
+      if (footRepEl) footRepEl.textContent = order.reportId;
+
+      const prioBadge = document.getElementById("docPriorityBadge");
+      if (prioBadge) {
+        prioBadge.textContent = order.priority;
+        prioBadge.className = order.priority.includes("STAT")
+          ? "rounded bg-rose-50 border border-rose-300 px-1.5 py-0.5 text-[7.3px] font-extrabold text-rose-800 uppercase"
+          : "rounded bg-sky-50 border border-sky-200 px-1.5 py-0.5 text-[7.3px] font-extrabold text-sky-800 uppercase";
+      }
+
+      const shortSig = state.customBranding.pathologist.split(",")[0];
+      const sigScriptEl = document.getElementById("sigScriptName");
+      if (sigScriptEl) sigScriptEl.textContent = shortSig;
+      const sigFullEl = document.getElementById("sigFullName");
+      if (sigFullEl) sigFullEl.textContent = state.customBranding.pathologist;
+
+      // Render Header or Pre-printed Letterhead Spacer
+      const headerMount = document.getElementById("headerMount");
+      if (headerMount) {
+        if (state.letterheadMode) {
+          headerMount.innerHTML = `
+            <div class="letterhead-spacer">
+              <span>Pre-Printed Hospital / Lab Letterhead Zone (38mm Reserved)</span>
+              <span>Ref: ${order.reportId} | Order: ${order.orderId}</span>
+            </div>
+          `;
+        } else {
+          headerMount.innerHTML = `
+            <header class="report-header">
+              <div class="brand-identity">
+                <div class="clinical-logo-crest">
+                  ${getLogoSvg(state.logoStyle)}
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
+                    <span class="facility-type-pill">${preset.badge}</span>
+                    <span class="abdm-pill">✓ ABDM &amp; HL7 FHIR R4 Ready</span>
+                  </div>
+                  <div class="facility-main-name">${state.customBranding.name}</div>
+                  <div class="facility-sub-dept">${state.customBranding.dept}</div>
+                  <div class="facility-address-line">${state.customBranding.address}</div>
+                  <div class="facility-contact-strip">
+                    <span><strong class="text-slate-500">24×7 Helpline:</strong> ${state.customBranding.phone}</span>
+                    <span><strong class="text-slate-500">Email:</strong> ${state.customBranding.email}</span>
+                    <span><strong class="text-slate-500">Web:</strong> www.labcore-lis.com</span>
+                  </div>
+                </div>
+              </div>
+              <div class="header-accreditation-panel">
+                <div class="nabl-seal-box">
+                  <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="18" cy="18" r="16" fill="#f0fdfa" stroke="#0d9488" stroke-width="2"/>
+                    <circle cx="18" cy="18" r="12" stroke="#0b2545" stroke-width="1" stroke-dasharray="2 2"/>
+                    <path d="M12.5 18.5L16 22L24 14" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <div class="text-left leading-tight">
+                    <div class="text-[7.8px] font-extrabold text-[#0b2545] uppercase">NABL ISO 15189:2022</div>
+                    <div class="text-[7px] font-bold text-teal-700">Cert: ${state.customBranding.nablCert} • CAP / NABH</div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-x-2.5 gap-y-0.5 text-[7.3px] text-slate-600 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-right">
+                  <span><strong class="text-slate-900">Reg:</strong> GJ-MED-0912</span>
+                  <span><strong class="text-slate-900">HFR:</strong> IN-GJ-88412</span>
+                  <span><strong class="text-slate-900">GSTIN:</strong> 24AABCL1234F1Z8</span>
+                  <span><strong class="text-slate-900">QC:</strong> Six-Sigma 6.0σ</span>
+                </div>
+              </div>
+            </header>
+          `;
+        }
+      }
+
+      // Render 4-Zone Demographics & Chain-of-Custody
+      const demoMount = document.getElementById("demographicsMount");
+      if (demoMount) {
+        demoMount.innerHTML = `
+          <div class="demo-zone">
+            <div class="demo-zone-header">
+              <span>1. Patient Demographics</span>
+              <span class="rounded bg-sky-50 border border-sky-200 px-1 py-0.2 text-[6.5px] font-bold text-sky-700">${order.category}</span>
+            </div>
+            <table class="demo-table">
+              <tbody>
+                <tr>
+                  <td class="demo-lbl">Patient Name</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val text-[9.4px] font-black text-[#0b2545] uppercase">${order.patientName}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">UHID / MRN</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val font-mono font-bold text-[8px]">${order.uhid}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">ABHA Health ID</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val font-mono text-[7.9px]">${order.abhaId}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Age / Sex</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.age} / ${order.gender}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Contact</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.contact}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="demo-zone">
+            <div class="demo-zone-header">
+              <span>2. Clinical &amp; Referral</span>
+              <span class="rounded bg-sky-50 border border-sky-200 px-1 py-0.2 text-[6.5px] font-bold text-sky-700">Physician Link</span>
+            </div>
+            <table class="demo-table">
+              <tbody>
+                <tr>
+                  <td class="demo-lbl">Referred By</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val font-extrabold text-[#0b2545]">${order.referringDoctor}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Ref. Dept</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.referringDept}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Specimen</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.specimen}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Sampling State</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.fastingStatus}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Indication</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.clinicalIndication}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="demo-zone">
+            <div class="demo-zone-header">
+              <span>3. ISO Chain of Custody</span>
+              <span class="rounded bg-emerald-50 border border-emerald-200 px-1 py-0.2 text-[6.5px] font-bold text-emerald-700">SLA Tracked</span>
+            </div>
+            <table class="demo-table">
+              <tbody>
+                <tr>
+                  <td class="demo-lbl">Collected</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.sampleCollected}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Lab Received</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.sampleReceived}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Released</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">${order.reportApproved}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Total TAT</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val font-extrabold text-emerald-700">${order.tatSummary}</td>
+                </tr>
+                <tr>
+                  <td class="demo-lbl">Cold-Chain</td>
+                  <td class="demo-sep">:</td>
+                  <td class="demo-val">22.2°C / 4.1°C Verified</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="demo-zone">
+            <div class="demo-zone-header">
+              <span>4. Barcode &amp; HIL Index</span>
+              <span class="rounded bg-emerald-50 border border-emerald-200 px-1 py-0.2 text-[6.5px] font-bold text-emerald-700">Optical ID</span>
+            </div>
+            <div class="text-center">
+              ${buildBarcodeSvg(order.barcode, 130, 18)}
+              <div class="font-mono text-[6.9px] font-bold text-slate-600 tracking-widest mt-0.5">*${order.barcode}*</div>
+            </div>
+            <div class="flex justify-between gap-1 mt-1 pt-1 border-t border-slate-200 text-[6.5px] font-bold text-slate-600">
+              <span class="flex-1 text-center bg-white border border-slate-200 rounded py-0.5">H: <strong class="text-emerald-700">0 Nil</strong></span>
+              <span class="flex-1 text-center bg-white border border-slate-200 rounded py-0.5">I: <strong class="text-emerald-700">0 Nil</strong></span>
+              <span class="flex-1 text-center bg-white border border-slate-200 rounded py-0.5">L: <strong class="text-emerald-700">0 Clr</strong></span>
+            </div>
+          </div>
+        `;
+      }
+
+      // Check Critical Rows
+      const allRows = order.panels.flatMap(p => p.results);
+      const criticals = allRows.filter(r => r.flag === "CRITICAL");
+      const critMount = document.getElementById("criticalBannerMount");
+      if (critMount) {
+        if (criticals.length > 0) {
+          critMount.innerHTML = `
+            <div class="flex items-center justify-between bg-red-50 border border-red-300 border-l-4 border-l-red-600 rounded px-3 py-1 mb-2 text-[8.3px] text-red-900">
+              <div>
+                <strong class="font-extrabold uppercase">!! Critical Panic Value Alert:</strong>
+                ${criticals.map(c => `${c.parameterName} (${c.result} ${c.unit})`).join(", ")} — Immediate clinical correlation &amp; physician notification logged.
+              </div>
+              <span class="font-extrabold text-[7.3px] uppercase whitespace-nowrap ml-2">NABL Critical Call Verified</span>
+            </div>
+          `;
+        } else {
+          critMount.innerHTML = "";
+        }
+      }
+
+      // Render Panels & 9-Column Master Table
+      const panelsHtml = order.panels.map(panel => {
+        const rowsHtml = panel.results.map(r => {
+          const fm = getFlagMeta(r.flag);
+          const rowClass = fm.css === "critical" ? "critical-row" : (fm.css === "high" || fm.css === "low") ? "abnormal-row" : "";
+          const valColor = fm.css === "critical" ? "text-red-700 font-black underline" : fm.css === "high" ? "text-amber-800 font-extrabold" : fm.css === "low" ? "text-blue-700 font-extrabold" : "text-slate-900 font-bold";
+          const deltaColor = r.delta.includes("+") && fm.css !== "normal" ? "text-amber-700 font-bold" : r.delta.includes("-") && fm.css !== "normal" ? "text-blue-700 font-bold" : "text-emerald-700 font-semibold";
+
+          return `
+            <tr class="${rowClass}">
+              ${showLoinc ? `<td class="font-mono text-[7.2px] font-bold text-slate-500">${r.loinc}</td>` : ""}
+              <td>
+                <div class="font-bold text-slate-900 text-[8.8px]">${r.parameterName}</div>
+                <div class="text-[6.9px] text-slate-500">Method: ${r.method}</div>
+              </td>
+              <td class="font-mono text-[9.3px] ${valColor}">${fm.symbol}${r.result}</td>
+              <td class="text-slate-700 font-semibold text-[7.9px]">${r.unit}</td>
+              <td class="font-mono font-semibold text-slate-800 text-[7.9px]">${r.referenceRange}</td>
+              <td><span class="clinical-flag-pill ${fm.css}">${fm.label}</span></td>
+              ${showDelta ? `
+                <td class="font-mono text-[7.3px] text-slate-600">${r.prev}</td>
+                <td class="font-mono text-[7.3px] ${deltaColor}">${r.delta}</td>
+              ` : ""}
+              ${showVisualBar ? `
+                <td>
+                  <div class="flex flex-col gap-0.5">
+                    <div class="visual-range-track">
+                      <div class="visual-range-zone-normal"></div>
+                      <div class="visual-range-marker ${fm.css}"></div>
+                    </div>
+                    <span class="text-[6.5px] text-slate-500 font-semibold">
+                      ${fm.css === 'normal' ? 'Optimal Zone' : fm.css === 'critical' ? 'Panic Limit' : 'Out of Ref'}
+                    </span>
+                  </div>
+                </td>
+              ` : ""}
+            </tr>
+          `;
+        }).join("");
+
+        return `
+          <section class="mb-2" style="page-break-inside:avoid;">
+            <div class="department-banner">
+              <span>${panel.department}</span>
+              <span class="text-[7px] font-bold text-slate-500">NABL Scope: ISO 15189:2022 • CLSI Validated</span>
+            </div>
+            <div class="test-panel-header">
+              <div class="text-[9.9px] font-extrabold text-[#0b2545] uppercase">
+                ${panel.testName} <span class="text-[7.9px] font-bold text-sky-600 ml-1">[${panel.testCode}]</span>
+              </div>
+              <div class="text-[7.4px] font-semibold text-slate-600">
+                Specimen: <strong>${panel.sampleType}</strong> • Platform: <strong>${panel.method}</strong>
+              </div>
+            </div>
+            <table class="clinical-results-table">
+              <thead>
+                <tr>
+                  ${showLoinc ? `<th style="width:7.5%;">LOINC</th>` : ""}
+                  <th style="width:${state.columnMode === 5 ? '36%' : showDelta ? '24.5%' : '33%'};">Test Parameter / Investigation &amp; Method</th>
+                  <th style="width:11.5%;">Observed Value</th>
+                  <th style="width:8%;">Unit</th>
+                  <th style="width:14%;">Bio. Ref. Interval</th>
+                  <th style="width:9%;">Flag</th>
+                  ${showDelta ? `
+                    <th style="width:9%;">Prior Result</th>
+                    <th style="width:6.5%;">Delta %</th>
+                  ` : ""}
+                  ${showVisualBar ? `<th style="width:10%;">Visual Spectrum</th>` : ""}
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </section>
+        `;
+      }).join("");
+
+      const panelsMount = document.getElementById("panelsMount");
+      if (panelsMount) {
+        panelsMount.innerHTML = `
+          ${panelsHtml}
+          <div class="grid grid-cols-12 gap-2 mb-1.5" style="page-break-inside:avoid;">
+            <div class="col-span-8 bg-slate-50 border border-slate-300 border-l-4 border-l-sky-600 rounded px-2.5 py-1.5">
+              <div class="text-[7.8px] font-extrabold text-[#0b2545] uppercase tracking-wider mb-0.5">
+                Clinical Interpretation, Pathologist Commentary &amp; Follow-Up Advisory
+              </div>
+              <div class="text-[7.9px] text-slate-700 leading-snug">
+                ${order.clinicalInterpretation}
+              </div>
+            </div>
+            <div class="col-span-4 bg-white border border-slate-300 rounded px-2 py-1.5 text-[7px] text-slate-700">
+              <div class="font-extrabold text-[#0b2545] uppercase border-b border-slate-200 pb-0.5 mb-1">
+                CLSI / Decision Thresholds
+              </div>
+              <div class="flex justify-between"><strong>Normal:</strong><span>95% Central Pop.</span></div>
+              <div class="flex justify-between"><strong>▲ High / ▼ Low:</strong><span>Outside ±2SD Limit</span></div>
+              <div class="flex justify-between"><strong>!! Critical:</strong><span>Urgent Action Zone</span></div>
+              <div class="flex justify-between"><strong>Delta RCV:</strong><span>±20% vs Prior Assay</span></div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Render Calculated Clinical Ratios Strip
+      const calcMount = document.getElementById("calculatedRatiosMount");
+      if (calcMount) {
+        calcMount.innerHTML = `
+          <span class="font-extrabold text-[#0b2545] uppercase">Derived Clinical Indices:</span>
+          ${order.ratios.map(([lbl, val]) => `<span><strong>${lbl}:</strong> ${val}</span>`).join('<span>•</span>')}
+        `;
+      }
+
+      const qrMount = document.getElementById("qrMount");
+      if (qrMount) {
+        qrMount.innerHTML = buildQrSvg(order.reportId);
+      }
+    }
+
+    // Event Listeners
+    const orderSel = document.getElementById("patientOrderSelect");
+    if (orderSel) {
+      orderSel.addEventListener("change", (e) => {
+        state.selectedOrderKey = e.target.value;
+        renderReport();
+        renderWorklist();
+        renderLiveParameterEditor();
+      });
+    }
+
+    const logoSel = document.getElementById("logoStyleSelect");
+    if (logoSel) {
+      logoSel.addEventListener("change", (e) => {
+        state.logoStyle = e.target.value;
+        renderReport();
+      });
+    }
+
+    const colThemeSel = document.getElementById("colorThemeSelect");
+    if (colThemeSel) {
+      colThemeSel.addEventListener("change", (e) => {
+        state.colorTheme = e.target.value;
+        renderReport();
+      });
+    }
+
+    document.querySelectorAll(".view-mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const view = btn.getAttribute("data-view");
+        const worklist = document.getElementById("worklistPanel");
+        const a4Col = document.getElementById("a4PreviewColumn");
+
+        document.querySelectorAll(".view-mode-btn").forEach(b => {
+          b.className = "view-mode-btn rounded-lg px-2.5 py-1 text-slate-600 hover:text-slate-900 transition";
+        });
+        btn.className = "view-mode-btn rounded-lg px-2.5 py-1 bg-white text-slate-900 shadow-2xs border border-slate-200/80 transition";
+
+        if (view === "a4") {
+          if (worklist) worklist.classList.add("hidden");
+          if (a4Col) {
+            a4Col.classList.remove("hidden");
+            a4Col.className = "xl:col-span-12 overflow-x-auto flex justify-center";
+          }
+        } else if (view === "worklist") {
+          if (worklist) {
+            worklist.classList.remove("hidden");
+            worklist.className = "no-print xl:col-span-12 space-y-4";
+          }
+          if (a4Col) a4Col.classList.add("hidden");
+        } else {
+          if (worklist) {
+            worklist.classList.remove("hidden");
+            worklist.className = "no-print xl:col-span-5 space-y-4";
+          }
+          if (a4Col) {
+            a4Col.classList.remove("hidden");
+            a4Col.className = "xl:col-span-7 overflow-x-auto flex justify-center";
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll(".facility-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const type = btn.getAttribute("data-facility");
+        state.facilityType = type;
+        const preset = FACILITY_PRESETS[type];
+        state.customBranding.name = preset.name;
+        state.customBranding.dept = preset.dept;
+        const clinicNameInp = document.getElementById("inputClinicName");
+        if (clinicNameInp) clinicNameInp.value = preset.name;
+        const clinicDeptInp = document.getElementById("inputClinicDept");
+        if (clinicDeptInp) clinicDeptInp.value = preset.dept;
+
+        document.querySelectorAll(".facility-btn").forEach((b) => {
+          b.className = "facility-btn rounded-lg px-2.5 py-1 text-slate-600 hover:text-slate-900 transition";
+        });
+        btn.className = "facility-btn rounded-lg px-2.5 py-1 bg-white text-slate-900 shadow-2xs border border-slate-200/80 transition";
+        renderReport();
+      });
+    });
+
+    const toggleLhBtn = document.getElementById("toggleLetterheadBtn");
+    if (toggleLhBtn) {
+      toggleLhBtn.addEventListener("click", () => {
+        state.letterheadMode = !state.letterheadMode;
+        const lhLbl = document.getElementById("letterheadLabel");
+        if (lhLbl) {
+          lhLbl.textContent = state.letterheadMode
+            ? "Mode: Pre-Printed Letterhead"
+            : "Mode: With Header";
+        }
+        const lhInd = document.getElementById("letterheadIndicator");
+        if (lhInd) {
+          lhInd.className = state.letterheadMode
+            ? "h-2 w-2 rounded-full bg-amber-500"
+            : "h-2 w-2 rounded-full bg-teal-600";
+        }
+        renderReport();
+      });
+    }
+
+    const toggleColBtn = document.getElementById("toggleColumnsBtn");
+    if (toggleColBtn) {
+      toggleColBtn.addEventListener("click", () => {
+        const colLbl = document.getElementById("columnsLabel");
+        if (state.columnMode === 9) {
+          state.columnMode = 6;
+          if (colLbl) colLbl.textContent = "Columns: 6 (Full Range Bar)";
+        } else if (state.columnMode === 6) {
+          state.columnMode = 5;
+          if (colLbl) colLbl.textContent = "Columns: 5 (Compact)";
+        } else {
+          state.columnMode = 9;
+          if (colLbl) colLbl.textContent = "Columns: 9 (Master + Delta)";
+        }
+        renderReport();
+      });
+    }
+
+    const wlSearchInp = document.getElementById("worklistSearchInput");
+    if (wlSearchInp) {
+      wlSearchInp.addEventListener("input", (e) => {
+        state.worklistSearch = e.target.value;
+        renderWorklist();
+      });
+    }
+
+    const wlCritFil = document.getElementById("worklistCriticalFilter");
+    if (wlCritFil) {
+      wlCritFil.addEventListener("change", (e) => {
+        state.worklistCriticalOnly = e.target.value === "CRITICAL";
+        renderWorklist();
+      });
+    }
+
+    const modal = document.getElementById("customizeModal");
+    const openCustBtn = document.getElementById("openCustomizeModalBtn");
+    if (openCustBtn && modal) {
+      openCustBtn.addEventListener("click", () => {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      });
+    }
+
+    function closeModal() {
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    }
+
+    const closeCustBtn = document.getElementById("closeCustomizeModalBtn");
+    if (closeCustBtn) closeCustBtn.addEventListener("click", closeModal);
+    const cancelCustBtn = document.getElementById("cancelCustomizeBtn");
+    if (cancelCustBtn) cancelCustBtn.addEventListener("click", closeModal);
+
+    const applyCustBtn = document.getElementById("applyCustomizeBtn");
+    if (applyCustBtn) {
+      applyCustBtn.addEventListener("click", () => {
+        const cName = document.getElementById("inputClinicName")?.value.trim();
+        if (cName) state.customBranding.name = cName;
+        const cDept = document.getElementById("inputClinicDept")?.value.trim();
+        if (cDept) state.customBranding.dept = cDept;
+        const cAddr = document.getElementById("inputClinicAddress")?.value.trim();
+        if (cAddr) state.customBranding.address = cAddr;
+        const cPhone = document.getElementById("inputClinicPhone")?.value.trim();
+        if (cPhone) state.customBranding.phone = cPhone;
+        const cEmail = document.getElementById("inputClinicEmail")?.value.trim();
+        if (cEmail) state.customBranding.email = cEmail;
+        const cPath = document.getElementById("inputPathologistName")?.value.trim();
+        if (cPath) state.customBranding.pathologist = cPath;
+        const cNabl = document.getElementById("inputNablCert")?.value.trim();
+        if (cNabl) state.customBranding.nablCert = cNabl;
+        closeModal();
+        renderReport();
+      });
+    }
+
+    const printBtn = document.getElementById("printA4Btn");
+    if (printBtn) {
+      printBtn.addEventListener("click", () => {
+        window.print();
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      renderReport();
+      renderWorklist();
+      renderLiveParameterEditor();
+    });
+    renderReport();
+    renderWorklist();
+    renderLiveParameterEditor();
+  </script>
+</body>
+</html>

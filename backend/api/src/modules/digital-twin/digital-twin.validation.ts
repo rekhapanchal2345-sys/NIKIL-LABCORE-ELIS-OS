@@ -192,4 +192,52 @@ export const LogCalibrationSchema = z.object({
     reagentsUsed: z.string().trim().optional(),
     notes: z.string().trim().max(1000).optional(),
 });
+
+export const KalmanTelemetryInputSchema = z.object({
+    analyzerId: z.string().trim().min(1).default('ANZ-BIO-01'),
+    timeHorizonSeconds: z.number().int().min(30).max(3600).default(600),
+    simulatedDisturbance: z.enum([
+        'NONE',
+        'SAMPLE_PROBE_CLOT',
+        'INCUBATOR_PELTIER_DRIFT',
+        'OPTICAL_LAMP_DECAY',
+    ]).default('NONE'),
+});
+
+export const BathtubReliabilityInputSchema = z.object({
+    analyzerId: z.string().trim().min(1).default('ANZ-BIO-01'),
+    horizonHours: z.number().int().min(500).max(20000).default(6000),
+});
+
+export const PassingBablokInputSchema = z.object({
+    primaryAnalyzerId: z.string().trim().min(1).default('ANZ-BIO-01'),
+    backupAnalyzerId: z.string().trim().min(1).default('ANZ-BIO-02'),
+    analyteCode: z.string().trim().min(1).default('K_SERUM'),
+});
+
+export const PneumaticsKinematicsInputSchema = z.object({
+    distanceMeters: z.number().min(10).max(1000).default(120),
+    pneumaticAirSpeedMps: z.number().min(1).max(20).default(7.5),
+    elbowBendCount: z.number().int().min(0).max(30).default(6),
+    hasSoftDecelerationBrake: z.boolean().default(true),
+});
+
+export const ChaosScenarioInjectionSchema = z.object({
+    scenarioType: z.enum([
+        'COBAS_ISE_SHIFT',
+        'CHILLER_FAILURE_32C',
+        'PNEUMATIC_SHEAR_SHOCK',
+        'REAGENT_STOCKOUT_EMERGENCY',
+        'MASS_CASUALTY_SURGE',
+    ]),
+    targetAnalyzerId: z.string().trim().optional(),
+    intensityMultiplier: z.number().min(0.5).max(5.0).default(1.0),
+});
+
+export const ExecuteAutonomousRemediationSchema = z.object({
+    proposalId: z.string().trim().min(1),
+    actionIds: z.array(z.string()).min(1),
+    pathologistPin: z.string().trim().optional(),
+    signoffNotes: z.string().trim().min(3).max(1000).default('Autonomous clinical failover authorized under emergency medical protocol.'),
+});
 

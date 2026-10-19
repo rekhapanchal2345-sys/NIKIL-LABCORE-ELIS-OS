@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import { reportApi } from "@/lib/api";
-import { FileText, RefreshCw, AlertCircle, TrendingUp, ShieldCheck, Send, Clock3, AlertTriangle, Timer, CalendarCheck, Gauge } from "lucide-react";
+import { FileText, RefreshCw, AlertCircle, TrendingUp, ShieldCheck, Send, Clock3, AlertTriangle, Timer, CalendarCheck, Gauge, Printer, Eye } from "lucide-react";
 import ReportFilters from "@/components/reports/ReportFilters";
 import ReportAnalyticsCards from "@/components/reports/ReportAnalyticsCards";
 import ReportsManagementTable from "@/components/reports/ReportsManagementTable";
@@ -52,7 +52,7 @@ export default function ReportsPage() {
   const [reports, setReports] = useState<PublishedResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"reports" | "analytics">("reports");
+  const [activeTab, setActiveTab] = useState<"reports" | "analytics" | "print-studio">("reports");
   
   // Filter states
   const [search, setSearch] = useState("");
@@ -228,6 +228,14 @@ export default function ReportsPage() {
             </span>
 
             <button
+              onClick={() => setActiveTab("print-studio")}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-md hover:from-sky-500 hover:to-indigo-500 transition"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span>A4 Print Studio</span>
+            </button>
+
+            <button
               onClick={fetchReports}
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition shadow-sm"
@@ -269,6 +277,20 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4" />
             <span>Performance Analytics</span>
           </button>
+          <button
+            onClick={() => setActiveTab("print-studio")}
+            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl transition-all ${
+              activeTab === "print-studio"
+                ? "bg-gradient-to-r from-sky-600 to-indigo-600 text-white font-bold shadow-md shadow-sky-600/30"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent"
+            }`}
+          >
+            <Printer className="h-4 w-4 text-sky-400" />
+            <span>A4 Master Print Studio</span>
+            <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-extrabold uppercase">
+              Full A4 Ready
+            </span>
+          </button>
         </div>
 
         {error && (
@@ -281,7 +303,46 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {activeTab === "reports" ? (
+        {activeTab === "print-studio" ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/90 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-400 shadow-sm">
+                  <Printer className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-white">Full A4 Master Hospital, Lab &amp; Clinic Report &amp; Print Studio</h2>
+                    <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold">
+                      ● 210mm × 297mm Ready
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    9-Column Master LOINC &amp; Delta Table • 4-Zone Chain-of-Custody • Dual-Signoff Verified
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <a
+                  href="/reports.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 transition shadow-sm"
+                >
+                  <Eye className="h-3.5 w-3.5 text-sky-400" />
+                  <span>Open Fullscreen Studio</span>
+                </a>
+              </div>
+            </div>
+            <div className="w-full bg-white rounded-2xl overflow-hidden border border-slate-800 shadow-2xl" style={{ height: "calc(100vh - 240px)", minHeight: "850px" }}>
+              <iframe
+                src="/reports.html"
+                className="w-full h-full border-0"
+                title="LabCore ELIS OS Report &amp; Print Studio"
+              />
+            </div>
+          </div>
+        ) : activeTab === "reports" ? (
           <>
             {/* Diagnostic Analytics Summary Cards */}
             <ReportAnalyticsCards />

@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import { UserRole } from "@prisma/client";
 
 import { authenticate } from "../../../middleware/auth.middleware";
@@ -29,17 +29,21 @@ const router = Router();
 
 router.use(authenticate);
 
+const APPROVAL_ROLES = [
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.BRANCH_ADMIN,
+  UserRole.PATHOLOGIST,
+  UserRole.DOCTOR,
+];
+
 // =======================================================
 // APPROVAL METRICS
 // =======================================================
 
 router.get(
   "/metrics",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   getMetrics
 );
 
@@ -49,11 +53,7 @@ router.get(
 
 router.get(
   "/",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     query: approvalQuerySchema,
   }),
@@ -62,11 +62,7 @@ router.get(
 
 router.get(
   "/pending",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     query: approvalQuerySchema,
   }),
@@ -79,11 +75,7 @@ router.get(
 
 router.post(
   "/batch-approve",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     body: batchApproveSchema,
   }),
@@ -96,11 +88,7 @@ router.post(
 
 router.get(
   "/:id",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     params: approvalIdSchema,
   }),
@@ -113,11 +101,7 @@ router.get(
 
 router.get(
   "/:id/history",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     params: approvalIdSchema,
   }),
@@ -130,11 +114,7 @@ router.get(
 
 router.post(
   "/:id/critical-ack",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     params: approvalIdSchema,
     body: criticalAckSchema,
@@ -148,11 +128,7 @@ router.post(
 
 router.post(
   "/:id/approve",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     params: approvalIdSchema,
   }),
@@ -165,11 +141,7 @@ router.post(
 
 router.post(
   "/:id/reject",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     params: approvalIdSchema,
     body: rejectApprovalSchema,
@@ -183,11 +155,7 @@ router.post(
 
 router.post(
   "/:id/publish",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.PATHOLOGIST
-  ),
+  authorize(...APPROVAL_ROLES),
   validate({
     params: approvalIdSchema,
   }),

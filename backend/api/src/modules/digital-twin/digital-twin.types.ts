@@ -403,4 +403,164 @@ export interface SeedHospitalShiftResult {
     message: string;
     timestamp: string;
 }
+
+// =========================================================================
+// ADVANCED MATHEMATICS & AUTONOMOUS RECOVERY CONTRACTS
+// =========================================================================
+
+export interface KalmanTelemetryAnalysisRequest {
+    analyzerId: string;
+    timeHorizonSeconds?: number;
+    simulatedDisturbance?: 'NONE' | 'SAMPLE_PROBE_CLOT' | 'INCUBATOR_PELTIER_DRIFT' | 'OPTICAL_LAMP_DECAY';
+}
+
+export interface KalmanTelemetryAnalysisResponse {
+    analyzerId: string;
+    analyzerName: string;
+    department: string;
+    points: {
+        timeOffsetSeconds: number;
+        measuredRaw: {
+            efficiencyEta: number;
+            chamberTempCelsius: number;
+            aspirationPressureKpa: number;
+            opticalTransmittanceBias: number;
+        };
+        estimatedFiltered: {
+            efficiencyEta: number;
+            chamberTempCelsius: number;
+            aspirationPressureKpa: number;
+            opticalTransmittanceBias: number;
+        };
+        estimationUncertaintySigma: {
+            efficiencyEta: number;
+            chamberTempCelsius: number;
+            aspirationPressureKpa: number;
+            opticalTransmittanceBias: number;
+        };
+        innovationResidualNorm: number;
+        anomalyDetected: boolean;
+        anomalyDiagnosis?: string;
+    }[];
+    currentOperationalHealthScore: number;
+    sensorIntegrityStatus: 'OPTIMAL' | 'DRIFT_DETECTED' | 'CRITICAL_FAULT';
+}
+
+export interface BathtubReliabilityAnalysisRequest {
+    analyzerId: string;
+    horizonHours?: number;
+}
+
+export interface BathtubReliabilityAnalysisResponse {
+    analyzerId: string;
+    analyzerName: string;
+    department: string;
+    operatingHours: number;
+    points: {
+        operatingHours: number;
+        instantaneousHazardLambda: number;
+        infantMortalityComponent: number;
+        randomHardwareFailureComponent: number;
+        wearoutDegradationComponent: number;
+        reliabilitySurvivalPct: number;
+        cumulativeFailureProbPct: number;
+        isOptimalMaintenanceWindow: boolean;
+    }[];
+    optimalOverhaulHours: number;
+    currentInstantaneousHazard: number;
+    currentReliabilityPct: number;
+    rulHoursP50: number;
+    rulHoursP90Confidence: number;
+}
+
+export interface PassingBablokAnalysisRequest {
+    primaryAnalyzerId: string;
+    backupAnalyzerId: string;
+    analyteCode: string;
+}
+
+export interface PassingBablokAnalysisResponse {
+    primaryAnalyzerId: string;
+    backupAnalyzerId: string;
+    analyteCode: string;
+    samplePairsCount: number;
+    slopeBeta: number;
+    slopeCiLower: number;
+    slopeCiUpper: number;
+    interceptAlpha: number;
+    interceptCiLower: number;
+    interceptCiUpper: number;
+    concordanceStatus: 'CLINICALLY_EQUIVALENT' | 'PROPORTIONAL_BIAS_DETECTED' | 'CONSTANT_OFFSET_DETECTED' | 'SUBSTANTIAL_DISCORDANCE';
+    clinicalRecommendation: string;
+    scatterData: { primaryValue: number; backupValue: number; sampleBarcode: string }[];
+    regressionLine: { x: number; y: number }[];
+}
+
+export interface PneumaticsKinematicsRequest {
+    distanceMeters: number;
+    pneumaticAirSpeedMps: number;
+    elbowBendCount: number;
+    hasSoftDecelerationBrake: boolean;
+}
+
+export interface ChaosScenarioInjectionRequest {
+    scenarioType:
+    | 'COBAS_ISE_SHIFT'
+    | 'CHILLER_FAILURE_32C'
+    | 'PNEUMATIC_SHEAR_SHOCK'
+    | 'REAGENT_STOCKOUT_EMERGENCY'
+    | 'MASS_CASUALTY_SURGE';
+    targetAnalyzerId?: string;
+    intensityMultiplier?: number;
+}
+
+export interface ChaosScenarioInjectionResponse {
+    scenarioId: string;
+    scenarioType: string;
+    description: string;
+    injectedAtIso: string;
+    impactSummary: string;
+    triggeredAlerts: string[];
+    generatedAutonomousActions: {
+        actionId: string;
+        actionType: string;
+        description: string;
+        targetAnalyzerId: string;
+        affectedSpecimensCount: number;
+        expectedTatSavedMinutes: number;
+        clinicalSafetyGate: {
+            requiresPathologistSignoff: boolean;
+            signoffRole: string;
+            fdaAuditVerification: string;
+        };
+        digitalSignatureSha256: string;
+    }[];
+}
+
+export interface ExecuteAutonomousRemediationRequest {
+    proposalId: string;
+    actionIds: string[];
+    pathologistPin?: string;
+    signoffNotes: string;
+}
+
+export interface ExecuteAutonomousRemediationResponse {
+    executionId: string;
+    proposalId: string;
+    executedAtIso: string;
+    executedByUserId: string;
+    executedActionsCount: number;
+    reroutedSpecimensCount: number;
+    recalibratedAnalyzers: string[];
+    fda21CfrPart11AuditRecord: {
+        auditHash: string;
+        timestamp: string;
+        dualSignatureVerified: boolean;
+        signoffUser: string;
+        signoffRole: string;
+        standardCompliance: string[];
+    };
+    manifestPdfReadyUrl?: string;
+    status: 'EXECUTED_SUCCESSFULLY';
+}
 

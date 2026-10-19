@@ -706,6 +706,16 @@ export default function OrderReportPage({ params }: { params: Promise<{ orderId:
               <MessageSquare className="h-4 w-4" />
               WhatsApp / Email
             </button>
+            <a
+              href="/reports.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-sky-700 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 transition"
+              title="Open Full A4 Master Hospital, Lab & Clinic Print Studio"
+            >
+              <Printer className="h-4 w-4" />
+              <span>Full A4 Print Studio</span>
+            </a>
             <button
               onClick={handlePrint}
               className="btn btn-secondary flex items-center gap-2"

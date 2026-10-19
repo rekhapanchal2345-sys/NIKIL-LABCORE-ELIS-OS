@@ -461,12 +461,14 @@ function deleteDoctor(id) {
 function switchMainView(viewName) {
   const docView = document.getElementById('doctorsModuleView');
   const aiView = document.getElementById('aiStudioModuleView');
+  const repView = document.getElementById('reportsModuleView');
 
   // Reset top nav item active classes
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
   if (viewName === 'ai-studio') {
     if (docView) docView.classList.add('hidden');
+    if (repView) repView.classList.add('hidden');
     if (aiView) aiView.classList.remove('hidden');
     const aiNav = document.getElementById('nav-item-ai-studio');
     if (aiNav) aiNav.classList.add('active');
@@ -474,9 +476,17 @@ function switchMainView(viewName) {
       window.AiStudio.init();
     }
     showToast(`Navigated to AI STUDIO & RESEARCH.`, 'info');
-  } else {
-    if (docView) docView.classList.remove('hidden');
+  } else if (viewName === 'reports') {
+    if (docView) docView.classList.add('hidden');
     if (aiView) aiView.classList.add('hidden');
+    if (repView) repView.classList.remove('hidden');
+    const repNav = document.getElementById('nav-item-reports');
+    if (repNav) repNav.classList.add('active');
+    showToast(`Navigated to Full A4 Master Report & Print Studio.`, 'success');
+  } else {
+    if (repView) repView.classList.add('hidden');
+    if (aiView) aiView.classList.add('hidden');
+    if (docView) docView.classList.remove('hidden');
     if (viewName === 'doctors') {
       const docNav = document.querySelectorAll('.nav-item')[2]; // Doctors nav
       if (docNav) docNav.classList.add('active');

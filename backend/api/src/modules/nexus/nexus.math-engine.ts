@@ -549,4 +549,385 @@ export class NexusMathEngine {
             clinicalInterpretation: interpretation,
         };
     }
+
+    // =========================================================================
+    // 8. SIX SIGMA ANALYTICAL QUALITY METRICS & OPSPECS (CLSI C24-A4)
+    // =========================================================================
+
+    /**
+     * Evaluates analytical Six Sigma Quality Metric and Quality Goal Index (QGI).
+     * Sigma = (TEa - |Bias%|) / CV%
+     * QGI = (Bias% / (1.5 * TEa)) / (CV% / (0.5 * TEa))
+     * Delta SE_crit = ((TEa - |Bias%|) / CV%) - 1.65
+     */
+    public static computeSixSigmaQuality(
+        allowableTotalErrorTeaPct: number,
+        biasPercentage: number,
+        coefficientOfVariationCvPct: number
+    ): {
+        sigmaMetric: number;
+        qualityRating: 'WORLD_CLASS_6_SIGMA' | 'EXCELLENT_5_SIGMA' | 'GOOD_4_SIGMA' | 'MARGINAL_3_SIGMA' | 'UNACCEPTABLE_BELOW_3_SIGMA';
+        qualityGoalIndexQgi: number;
+        rootCauseImbalance: 'EXCESSIVE_IMPRECISION_CV' | 'EXCESSIVE_SYSTEMATIC_BIAS' | 'BALANCED_ERROR';
+        criticalSystematicErrorSeCrit: number;
+        recommendedQcProtocol: string;
+        controlsPerRun: number;
+    } {
+        const tea = Math.max(0.1, allowableTotalErrorTeaPct);
+        const cv = Math.max(0.01, coefficientOfVariationCvPct);
+        const absBias = Math.abs(biasPercentage);
+
+        const sigmaMetric = (tea - absBias) / cv;
+
+        let qualityRating: 'WORLD_CLASS_6_SIGMA' | 'EXCELLENT_5_SIGMA' | 'GOOD_4_SIGMA' | 'MARGINAL_3_SIGMA' | 'UNACCEPTABLE_BELOW_3_SIGMA' = 'WORLD_CLASS_6_SIGMA';
+        let recommendedQcProtocol = 'Single 1:3s rule per 1,000 patient specimens (Minimal QC overhead).';
+        let controlsPerRun = 1;
+
+        if (sigmaMetric >= 6.0) {
+            qualityRating = 'WORLD_CLASS_6_SIGMA';
+            recommendedQcProtocol = 'Single 1:3s rule evaluation per 1,000 patient specimens. Auto-verification enabled without routine holds.';
+            controlsPerRun = 1;
+        } else if (sigmaMetric >= 5.0) {
+            qualityRating = 'EXCELLENT_5_SIGMA';
+            recommendedQcProtocol = '1:3s and 2:2s Westgard rules with 2 levels of control every 400 specimens.';
+            controlsPerRun = 2;
+        } else if (sigmaMetric >= 4.0) {
+            qualityRating = 'GOOD_4_SIGMA';
+            recommendedQcProtocol = '1:3s, 2:2s, and R:4s rules with 2 control levels run every 200 specimens.';
+            controlsPerRun = 2;
+        } else if (sigmaMetric >= 3.0) {
+            qualityRating = 'MARGINAL_3_SIGMA';
+            recommendedQcProtocol = 'Multi-rule 1:3s/2:2s/R:4s/4:1s. Run 3 control levels every 100 specimens. Weekly recalibration required.';
+            controlsPerRun = 3;
+        } else {
+            qualityRating = 'UNACCEPTABLE_BELOW_3_SIGMA';
+            recommendedQcProtocol = 'CRITICAL: Full Westgard multi-rules (including 10x). 4 control levels run before every patient batch. Method redesign or immediate analyzer maintenance required.';
+            controlsPerRun = 4;
+        }
+
+        // Quality Goal Index (QGI) for root cause discernment
+        // QGI < 0.8 => Imprecision dominates; QGI > 1.2 => Inaccuracy/Bias dominates
+        const qgi = (absBias / Math.max(0.01, 1.5 * tea)) / (cv / Math.max(0.01, 0.5 * tea));
+        let rootCauseImbalance: 'EXCESSIVE_IMPRECISION_CV' | 'EXCESSIVE_SYSTEMATIC_BIAS' | 'BALANCED_ERROR' = 'BALANCED_ERROR';
+        if (qgi < 0.8) {
+            rootCauseImbalance = 'EXCESSIVE_IMPRECISION_CV';
+        } else if (qgi > 1.2) {
+            rootCauseImbalance = 'EXCESSIVE_SYSTEMATIC_BIAS';
+        }
+
+        const criticalSystematicErrorSeCrit = Math.max(0, sigmaMetric - 1.65);
+
+        return {
+            sigmaMetric: Number(sigmaMetric.toFixed(2)),
+            qualityRating,
+            qualityGoalIndexQgi: Number(qgi.toFixed(2)),
+            rootCauseImbalance,
+            criticalSystematicErrorSeCrit: Number(criticalSystematicErrorSeCrit.toFixed(2)),
+            recommendedQcProtocol,
+            controlsPerRun,
+        };
+    }
+
+    // =========================================================================
+    // 9. KALMAN FILTERING ESTIMATOR FOR CONTINUOUS SENSOR DRIFT
+    // =========================================================================
+
+    /**
+     * 1D Discrete Kalman Filter state update for tracking true analyte concentrations
+     * and estimating latent photometer / electrode calibration drift velocity.
+     *
+     * State equation: x_k = x_{k-1} + v_{k-1} * dt + w_k
+     * Measurement:   z_k = x_k + v_k
+     */
+    public static evaluateKalmanSensorDrift(
+        measurements: number[],
+        initialTargetMean: number,
+        processNoiseQ: number = 0.005,
+        measurementNoiseR: number = 0.04
+    ): {
+        filteredValues: number[];
+        estimatedDriftRatePerRun: number;
+        estimatedCurrentTrueValue: number;
+        latentCalibrationDriftAbs: number;
+        predictedRunsUntilRecalibration: number;
+    } {
+        if (!measurements || measurements.length === 0) {
+            return {
+                filteredValues: [],
+                estimatedDriftRatePerRun: 0,
+                estimatedCurrentTrueValue: initialTargetMean,
+                latentCalibrationDriftAbs: 0,
+                predictedRunsUntilRecalibration: 999,
+            };
+        }
+
+        let stateEstimate = initialTargetMean;
+        let errorCovarianceP = 1.0;
+        const filteredValues: number[] = [];
+
+        for (let i = 0; i < measurements.length; i++) {
+            const z = measurements[i];
+
+            // 1. Time Update (Predict)
+            const predictedEstimate = stateEstimate;
+            const predictedP = errorCovarianceP + processNoiseQ;
+
+            // 2. Measurement Update (Correct)
+            const kalmanGainK = predictedP / (predictedP + measurementNoiseR);
+            stateEstimate = predictedEstimate + kalmanGainK * (z - predictedEstimate);
+            errorCovarianceP = (1 - kalmanGainK) * predictedP;
+
+            filteredValues.push(Number(stateEstimate.toFixed(3)));
+        }
+
+        const n = filteredValues.length;
+        const totalChange = filteredValues[n - 1] - filteredValues[0];
+        const estimatedDriftRate = n > 1 ? totalChange / (n - 1) : 0;
+        const latentDrift = stateEstimate - initialTargetMean;
+
+        // Predict runs until drift exceeds 3x measurement noise (~0.12 or critical threshold)
+        const criticalDriftThreshold = 3 * Math.sqrt(measurementNoiseR);
+        let predictedRunsUntilRecalibration = 999;
+        if (Math.abs(estimatedDriftRate) > 1e-4) {
+            const remainingToLimit = Math.max(0, criticalDriftThreshold - Math.abs(latentDrift));
+            predictedRunsUntilRecalibration = Math.round(remainingToLimit / Math.abs(estimatedDriftRate));
+        }
+
+        return {
+            filteredValues,
+            estimatedDriftRatePerRun: Number(estimatedDriftRate.toFixed(4)),
+            estimatedCurrentTrueValue: Number(stateEstimate.toFixed(3)),
+            latentCalibrationDriftAbs: Number(Math.abs(latentDrift).toFixed(3)),
+            predictedRunsUntilRecalibration: Math.max(1, predictedRunsUntilRecalibration),
+        };
+    }
+
+    // =========================================================================
+    // 10. NON-LINEAR ENZYME KINETICS & SUBSTRATE DEPLETION (MICHAELIS-MENTEN)
+    // =========================================================================
+
+    /**
+     * Evaluates enzyme velocity via Michaelis-Menten kinetics and detects
+     * photometric substrate depletion in extreme high-activity clinical specimens
+     * (e.g. ALT > 2000 U/L where absorbance flattening falsifies readings).
+     *
+     * Velocity: v = (V_max * [S]) / (K_m + [S])
+     */
+    public static evaluateEnzymeKinetics(
+        substrateConcentrationMmolL: number,
+        vMaxUnitsPerMin: number,
+        kmMmolL: number,
+        absorbanceDeltaPerMin: number
+    ): {
+        reactionVelocityUnitsPerMin: number;
+        isSubstrateDepleted: boolean;
+        recommendedDilutionRatio: string;
+        dilutedRerunRequired: boolean;
+        lineweaverBurkSlope: number;
+    } {
+        const s = Math.max(0.001, substrateConcentrationMmolL);
+        const vMax = Math.max(0.1, vMaxUnitsPerMin);
+        const km = Math.max(0.001, kmMmolL);
+
+        const velocity = (vMax * s) / (km + s);
+
+        // Substrate depletion occurs when reaction velocity reaches plateau (>96% of V_max)
+        // or measured absorbance slope is flat despite active enzyme
+        const isDepleted = velocity >= 0.96 * vMax || absorbanceDeltaPerMin < 0.002;
+        let recommendedDilutionRatio = '1:1 (Direct Neat Sample)';
+        let dilutedRerunRequired = false;
+
+        if (isDepleted) {
+            dilutedRerunRequired = true;
+            recommendedDilutionRatio = '1:10 Saline Dilution (Automated Secondary Rerun)';
+        }
+
+        const lineweaverBurkSlope = km / vMax;
+
+        return {
+            reactionVelocityUnitsPerMin: Number(velocity.toFixed(2)),
+            isSubstrateDepleted: isDepleted,
+            recommendedDilutionRatio,
+            dilutedRerunRequired,
+            lineweaverBurkSlope: Number(lineweaverBurkSlope.toFixed(4)),
+        };
+    }
+
+    // =========================================================================
+    // 11. FINITE-CAPACITY QUEUEING NETWORK WITH ERLANG-B LOSS (M/M/c/K)
+    // =========================================================================
+
+    /**
+     * Erlang-B loss probability formula for finite-capacity pneumatic tube ports and STAT infeed channels:
+     *   B(c, a) = (a^c / c!) / sum_{k=0}^c (a^k / k!)
+     */
+    public static computeErlangBLossProbability(
+        channelsC: number,
+        arrivalRateLambdaPerHour: number,
+        serviceRateMuPerHour: number
+    ): {
+        blockingProbabilityB: number;
+        spilloverRatePerHour: number;
+        carriedTrafficErlangs: number;
+        backupCourierDispatchRequired: boolean;
+    } {
+        const c = Math.max(1, Math.round(channelsC));
+        const lambda = Math.max(0.1, arrivalRateLambdaPerHour);
+        const mu = Math.max(0.1, serviceRateMuPerHour);
+        const a = lambda / mu;
+
+        // Numerically stable recursive computation of Erlang B:
+        // B(0, a) = 1
+        // B(k, a) = (a * B(k-1, a)) / (k + a * B(k-1, a))
+        let b = 1.0;
+        for (let k = 1; k <= c; k++) {
+            b = (a * b) / (k + a * b);
+        }
+
+        const blockingProbability = Math.max(0, Math.min(1.0, b));
+        const spilloverRate = lambda * blockingProbability;
+        const carriedTraffic = a * (1 - blockingProbability);
+        const dispatchRequired = blockingProbability >= 0.05; // >5% port congestion requires physical backup courier
+
+        return {
+            blockingProbabilityB: Number(blockingProbability.toFixed(4)),
+            spilloverRatePerHour: Number(spilloverRate.toFixed(1)),
+            carriedTrafficErlangs: Number(carriedTraffic.toFixed(2)),
+            backupCourierDispatchRequired: dispatchRequired,
+        };
+    }
+
+    // =========================================================================
+    // 12. KDIGO AKI COMPLETE STAGING & CKD-EPI 2021 RACE-FREE eGFR
+    // =========================================================================
+
+    /**
+     * Staging of Acute Kidney Injury conforming to KDIGO Clinical Practice Guidelines
+     * and baseline filtration estimation using the CKD-EPI 2021 Race-Free formula:
+     * eGFR = 142 * min(Scr/kappa, 1)^alpha * max(Scr/kappa, 1)^-1.200 * 0.9938^Age * [1.012 if female]
+     */
+    public static evaluateKdigoAkiAndEgfr(
+        currentCreatinineMgDl: number,
+        baselineCreatinineMgDl: number,
+        patientAgeYears: number,
+        patientSex: 'FEMALE' | 'MALE',
+        urineOutputMlKgHrOver6h?: number
+    ): {
+        akiStage: 'NO_AKI' | 'STAGE_1_AKI' | 'STAGE_2_AKI' | 'STAGE_3_AKI_CRITICAL';
+        creatinineFoldRise: number;
+        absoluteDeltaMgDl: number;
+        baselineEgfrMlkMinPer173m2: number;
+        currentEstimatedEgfr: number;
+        clinicalGuidelineDirective: string;
+        mandatoryNephrologyConsult: boolean;
+    } {
+        const cCurr = Math.max(0.1, currentCreatinineMgDl);
+        const cBase = Math.max(0.1, baselineCreatinineMgDl);
+        const age = Math.max(18, Math.min(110, patientAgeYears));
+
+        const absDelta = cCurr - cBase;
+        const foldRise = cCurr / cBase;
+
+        // CKD-EPI 2021 Race-Free parameters
+        const isFemale = patientSex === 'FEMALE';
+        const kappa = isFemale ? 0.7 : 0.9;
+        const alpha = isFemale ? -0.241 : -0.302;
+        const genderFactor = isFemale ? 1.012 : 1.000;
+
+        const calcEgfr = (scr: number) => {
+            const minRatio = Math.min(scr / kappa, 1.0);
+            const maxRatio = Math.max(scr / kappa, 1.0);
+            return (
+                142 *
+                Math.pow(minRatio, alpha) *
+                Math.pow(maxRatio, -1.200) *
+                Math.pow(0.9938, age) *
+                genderFactor
+            );
+        };
+
+        const baselineEgfr = calcEgfr(cBase);
+        const currentEgfr = calcEgfr(cCurr);
+
+        // KDIGO Staging Criteria
+        let akiStage: 'NO_AKI' | 'STAGE_1_AKI' | 'STAGE_2_AKI' | 'STAGE_3_AKI_CRITICAL' = 'NO_AKI';
+        let directive = 'Renal filtration parameters within stable intra-individual baseline.';
+        let mandatoryConsult = false;
+
+        if (cCurr >= 4.0 || foldRise >= 3.0 || (urineOutputMlKgHrOver6h !== undefined && urineOutputMlKgHrOver6h < 0.3)) {
+            akiStage = 'STAGE_3_AKI_CRITICAL';
+            directive = 'CRITICAL KDIGO STAGE 3 AKI: Creatinine >= 3.0x baseline or >= 4.0 mg/dL. Immediate emergent nephrology notification, discontinue nephrotoxic agents, assess for RRT.';
+            mandatoryConsult = true;
+        } else if (foldRise >= 2.0 && foldRise < 3.0) {
+            akiStage = 'STAGE_2_AKI';
+            directive = 'KDIGO STAGE 2 AKI: 2.0-2.9x increase in serum creatinine. Fluid balance monitoring, renal ultrasound, and dosage adjustment of renal-cleared medications mandatory.';
+            mandatoryConsult = true;
+        } else if (absDelta >= 0.3 || (foldRise >= 1.5 && foldRise < 2.0)) {
+            akiStage = 'STAGE_1_AKI';
+            directive = 'KDIGO STAGE 1 AKI: Acute rise >= 0.3 mg/dL within 48h or 1.5-1.9x baseline. Repeat serum creatinine in 12-24 hours; avoid contrast and NSAIDs.';
+            mandatoryConsult = false;
+        }
+
+        return {
+            akiStage,
+            creatinineFoldRise: Number(foldRise.toFixed(2)),
+            absoluteDeltaMgDl: Number(absDelta.toFixed(2)),
+            baselineEgfrMlkMinPer173m2: Number(baselineEgfr.toFixed(1)),
+            currentEstimatedEgfr: Number(currentEgfr.toFixed(1)),
+            clinicalGuidelineDirective: directive,
+            mandatoryNephrologyConsult: mandatoryConsult,
+        };
+    }
+
+    // =========================================================================
+    // 13. ARRHENIUS TIME-TEMPERATURE INTEGRAL (TTI) COLD CHAIN LOGGING
+    // =========================================================================
+
+    /**
+     * Computes cumulative biochemical degradation across non-isothermal temperature intervals:
+     *   Omega = sum_{i=1}^m k(T_i) * Delta t_i
+     *   Viability = max(0, 100% * (1 - Omega))
+     */
+    public static computeArrheniusTimeTemperatureIntegral(
+        segments: { tempCelsius: number; durationHours: number }[],
+        kRefPerHour: number,
+        activationEnergyOverR: number
+    ): {
+        cumulativeDegradationOmega: number;
+        remainingViabilityPct: number;
+        equivalentHoursAtReference4C: number;
+        isViableForTesting: boolean;
+        sampleAction: 'PROCEED_AUTOMATED_RUN' | 'ATTACH_PREANALYTICAL_CAUTION' | 'REJECT_MANDATORY_REDRAW';
+    } {
+        let totalOmega = 0;
+
+        for (const seg of segments) {
+            const k = this.computeArrheniusRateConstant(
+                kRefPerHour,
+                activationEnergyOverR,
+                seg.tempCelsius
+            );
+            totalOmega += k * Math.max(0, seg.durationHours);
+        }
+
+        const remainingViabilityPct = Math.max(0, Math.min(100, (1 - totalOmega) * 100));
+        const kRef = this.computeArrheniusRateConstant(kRefPerHour, activationEnergyOverR, 4.0);
+        const equivalentHoursAt4C = kRef > 0 ? totalOmega / kRef : 0;
+
+        let sampleAction: 'PROCEED_AUTOMATED_RUN' | 'ATTACH_PREANALYTICAL_CAUTION' | 'REJECT_MANDATORY_REDRAW' = 'PROCEED_AUTOMATED_RUN';
+        if (remainingViabilityPct < 70.0) {
+            sampleAction = 'REJECT_MANDATORY_REDRAW';
+        } else if (remainingViabilityPct < 85.0) {
+            sampleAction = 'ATTACH_PREANALYTICAL_CAUTION';
+        }
+
+        return {
+            cumulativeDegradationOmega: Number(totalOmega.toFixed(4)),
+            remainingViabilityPct: Number(remainingViabilityPct.toFixed(1)),
+            equivalentHoursAtReference4C: Number(equivalentHoursAt4C.toFixed(1)),
+            isViableForTesting: remainingViabilityPct >= 70.0,
+            sampleAction,
+        };
+    }
 }
+
