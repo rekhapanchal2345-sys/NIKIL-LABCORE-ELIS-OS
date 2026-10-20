@@ -1,801 +1,867 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import DashboardLayout from "@/components/layout/dashboardlayout";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { dashboardApi, ApiError } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import { getRoleLabel, isAuthenticated, getAccessToken } from "@/lib/auth";
-
-// Upgraded & New Dashboard Components
-import LuxuryKpiGrid from "@/components/dashboard/LuxuryKpiGrid";
-import SpecimenPipeline from "@/components/dashboard/SpecimenPipeline";
-import QuickActions from "@/components/dashboard/QuickActions";
-import RecentOrders from "@/components/dashboard/RecentOrders";
-import ApprovalQueue from "@/components/dashboard/ApprovalQueue";
-import CriticalAlerts from "@/components/dashboard/CriticalAlerts";
-import AnalyzerTelemetryWidget from "@/components/dashboard/AnalyzerTelemetryWidget";
-import TurnaroundTimeWidget from "@/components/dashboard/TurnaroundTimeWidget";
-import FinancialAnalyticsWidget from "@/components/dashboard/FinancialAnalyticsWidget";
-import WorkloadCharts from "@/components/dashboard/WorkloadCharts";
-import LiveActivityFeed from "@/components/dashboard/LiveActivityFeed";
-import DateRangeSelector from "@/components/dashboard/DateRangeSelector";
-
-// Brand New Hospital, Lab & Clinic Modules
-import HospitalIntakeMatrix from "@/components/dashboard/HospitalIntakeMatrix";
-import CriticalPanicActionDesk from "@/components/dashboard/CriticalPanicActionDesk";
-import DepartmentWorkstationGrid from "@/components/dashboard/DepartmentWorkstationGrid";
-import OpdTokenQueueWidget from "@/components/dashboard/OpdTokenQueueWidget";
-import ShiftHandoverReconciliation from "@/components/dashboard/ShiftHandoverReconciliation";
-
-// Ultra-Advanced Integration Engine Modules
-import IntegrationEngineDashboard from "@/components/dashboard/IntegrationEngineDashboard";
-import IntegrationEngineWidget from "@/components/dashboard/IntegrationEngineWidget";
-
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/components/layout/dashboardlayout';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import {
-  RefreshCw,
-  Clock,
-  Sparkles,
-  Layers,
-  AlertTriangle,
-  Cpu,
-  TrendingUp,
   Activity,
-  IndianRupee,
-  Calendar,
+  FlaskConical,
+  Cpu,
+  BedDouble,
+  Clock,
   CheckCircle2,
-  ShieldCheck,
-  Zap,
-  Building2,
-  Stethoscope,
-  Flame,
-  PhoneCall,
-  Printer,
-  FileText,
-  Users,
+  AlertTriangle,
+  RefreshCw,
+  UserPlus,
   QrCode,
-  MapPin,
-  Award,
-  ChevronDown,
-  BellRing,
-  Server
-} from "lucide-react";
+  FileCheck2,
+  Receipt,
+  ArrowUpRight,
+  ShieldCheck,
+  Microscope,
+  Wifi,
+  WifiOff,
+  SlidersHorizontal,
+} from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import * as ApiModule from '@/lib/api';
+import {
+  HospitalMetricBar,
+  DEFAULT_HOSPITAL_METRICS,
+  HospitalMetricsData,
+} from '@/components/dashboard/HospitalMetricBar';
+import {
+  ClinicalTriageDesk,
+  INITIAL_TRIAGE_ITEMS,
+  CriticalTriageItem,
+} from '@/components/dashboard/ClinicalTriageDesk';
+export type ClinicalPersona =
+  | 'ALL'
+  | 'RECEPTIONIST'
+  | 'PHLEBOTOMIST'
+  | 'PATHOLOGIST'
+  | 'HOSPITAL_ADMIN';
 
-export default function DashboardPage() {
-  const { user, isLoggedIn, loading: authLoading } = useAuth();
-  const [dateRange, setDateRange] = useState("today");
-  const [activeTab, setActiveTab] = useState<
-    "live" | "engine" | "panic" | "workstations" | "token" | "tat" | "revenue" | "audit"
-  >("live");
+interface WardStatItem {
+  id: string;
+  wardName: string;
+  wingCode: string;
+  activeStatSamples: number;
+  breachedCount: number;
+  within30MinCount: number;
+  within60MinCount: number;
+  leadPhysician: string;
+  bedHighlights: {
+    bed: string;
+    patient: string;
+    test: string;
+    tatRemainingMin: number;
+  }[];
+}
 
-  const [activeBranch, setActiveBranch] = useState("Main Hospital Central Lab (Block A - Level 1)");
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+interface DepartmentPipelineRow {
+  id: string;
+  department: string;
+  code: string;
+  accessioned: number;
+  runningOnAnalyzer: number;
+  autoVerified: number;
+  pendingDoctorSignOff: number;
+  meanTatMin: number;
+  slaTargetMin: number;
+  westgardQcStatus: 'PASS_1_2S' | 'WARN_1_2S' | 'REJECT_1_3S';
+}
 
-  // Dashboard state
-  const [stats, setStats] = useState<any>(null);
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
-  const [approvalQueue, setApprovalQueue] = useState<any[]>([]);
-  const [criticalAlerts, setCriticalAlerts] = useState<any[]>([]);
-  const [paymentStats, setPaymentStats] = useState<any>(null);
-  const [testStats, setTestStats] = useState<any>(null);
-  const [sampleStats, setSampleStats] = useState<any>(null);
-  const [activities, setActivities] = useState<any[]>([]);
-  const [orderTrends, setOrderTrends] = useState<any[]>([]);
-  const [avgTatHours, setAvgTatHours] = useState<number>(2.1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface AnalyzerTelemetryNode {
+  id: string;
+  name: string;
+  model: string;
+  protocol: 'ASTM E1394' | 'HL7 v2.5.1';
+  department: string;
+  status: 'ONLINE' | 'CALIBRATING' | 'OFFLINE';
+  throughputPerHour: number;
+  activeRack: string;
+  reagentLevelPercent: number;
+  lastHeartbeat: string;
+}
 
-  // Real-time IST Digital Clock
-  const [currentTime, setCurrentTime] = useState<string>("");
-  const [currentDateStr, setCurrentDateStr] = useState<string>("");
+const HOSPITAL_WARD_STAT_MATRIX: WardStatItem[] = [
+  {
+    id: 'ward-icu',
+    wardName: 'Medical & Cardiac ICU',
+    wingCode: 'ICU-BLK-A',
+    activeStatSamples: 14,
+    breachedCount: 0,
+    within30MinCount: 9,
+    within60MinCount: 5,
+    leadPhysician: 'Dr. S. K. Deshmukh',
+    bedHighlights: [
+      {
+        bed: 'ICU Bed 12',
+        patient: 'Rajeshwari Devi',
+        test: 'Troponin-I & Serum K+',
+        tatRemainingMin: 13,
+      },
+      {
+        bed: 'ICU Bed 04',
+        patient: 'Mahendra Solanki',
+        test: 'Arterial Blood Gas (ABG)',
+        tatRemainingMin: 18,
+      },
+    ],
+  },
+  {
+    id: 'ward-er',
+    wardName: 'Emergency & Trauma Center',
+    wingCode: 'ER-STAT-01',
+    activeStatSamples: 19,
+    breachedCount: 1,
+    within30MinCount: 12,
+    within60MinCount: 6,
+    leadPhysician: 'Dr. R. K. Verma',
+    bedHighlights: [
+      {
+        bed: 'Trauma Bay 02',
+        patient: 'Harbhajan Singh',
+        test: 'CBC + Crossmatch STAT',
+        tatRemainingMin: 22,
+      },
+      {
+        bed: 'ER Obs Bed 07',
+        patient: 'Farida Begum',
+        test: 'D-Dimer & PT/INR',
+        tatRemainingMin: 41,
+      },
+    ],
+  },
+  {
+    id: 'ward-nicu',
+    wardName: 'Neonatal & Pediatric ICU (NICU)',
+    wingCode: 'NICU-FL2',
+    activeStatSamples: 8,
+    breachedCount: 1,
+    within30MinCount: 5,
+    within60MinCount: 2,
+    leadPhysician: 'Dr. Anjali Mehta',
+    bedHighlights: [
+      {
+        bed: 'Incubator 04',
+        patient: 'B/O Meena Patel',
+        test: 'Neonatal Bilirubin & Glucose',
+        tatRemainingMin: -4,
+      },
+      {
+        bed: 'Warmer 02',
+        patient: 'B/O Kavita Joshi',
+        test: 'CRP High-Sensitivity',
+        tatRemainingMin: 25,
+      },
+    ],
+  },
+  {
+    id: 'ward-opd',
+    wardName: 'Outpatient Fast-Track (OPD)',
+    wingCode: 'OPD-WING-C',
+    activeStatSamples: 27,
+    breachedCount: 0,
+    within30MinCount: 8,
+    within60MinCount: 19,
+    leadPhysician: 'Dr. Nikil MD (Path)',
+    bedHighlights: [
+      {
+        bed: 'OPD Token #108',
+        patient: 'Vikramaditya Sharma',
+        test: 'HbA1c & Lipid Profile',
+        tatRemainingMin: 48,
+      },
+      {
+        bed: 'OPD Token #114',
+        patient: 'Sushila Chaudhary',
+        test: 'Thyroid Panel (TSH/FT4)',
+        tatRemainingMin: 54,
+      },
+    ],
+  },
+];
 
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString("en-IN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        })
-      );
-      setCurrentDateStr(
-        now.toLocaleDateString("en-IN", {
-          weekday: "short",
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-      );
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
+const DEPARTMENT_PIPELINE_MATRIX: DepartmentPipelineRow[] = [
+  {
+    id: 'dept-heme',
+    department: 'Hematology & Coagulation (CBC)',
+    code: 'HEME-01',
+    accessioned: 28,
+    runningOnAnalyzer: 42,
+    autoVerified: 89,
+    pendingDoctorSignOff: 5,
+    meanTatMin: 38,
+    slaTargetMin: 60,
+    westgardQcStatus: 'PASS_1_2S',
+  },
+  {
+    id: 'dept-biochem',
+    department: 'Clinical Biochemistry (LFT/RFT)',
+    code: 'CHEM-02',
+    accessioned: 36,
+    runningOnAnalyzer: 54,
+    autoVerified: 112,
+    pendingDoctorSignOff: 4,
+    meanTatMin: 56,
+    slaTargetMin: 90,
+    westgardQcStatus: 'PASS_1_2S',
+  },
+  {
+    id: 'dept-immuno',
+    department: 'Chemiluminescence Immunoassay',
+    code: 'IMMU-03',
+    accessioned: 18,
+    runningOnAnalyzer: 24,
+    autoVerified: 44,
+    pendingDoctorSignOff: 3,
+    meanTatMin: 74,
+    slaTargetMin: 120,
+    westgardQcStatus: 'WARN_1_2S',
+  },
+  {
+    id: 'dept-micro',
+    department: 'Clinical Pathology & Microbiology',
+    code: 'MICR-04',
+    accessioned: 12,
+    runningOnAnalyzer: 12,
+    autoVerified: 18,
+    pendingDoctorSignOff: 2,
+    meanTatMin: 82,
+    slaTargetMin: 120,
+    westgardQcStatus: 'PASS_1_2S',
+  },
+];
 
-  // Keyboard shortcut listener for fast laboratory workflow actions
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!e.altKey) return;
-      switch (e.key.toLowerCase()) {
-        case "p":
-          e.preventDefault();
-          window.location.href = "/patients/new";
-          break;
-        case "o":
-          e.preventDefault();
-          window.location.href = "/orders/new";
-          break;
-        case "s":
-          e.preventDefault();
-          window.location.href = "/samples";
-          break;
-        case "r":
-          e.preventDefault();
-          window.location.href = "/results";
-          break;
-        case "a":
-          e.preventDefault();
-          window.location.href = "/approvals";
-          break;
-        case "b":
-          e.preventDefault();
-          window.location.href = "/invoices";
-          break;
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+const ANALYZER_TELEMETRY_NODES: AnalyzerTelemetryNode[] = [
+  {
+    id: 'anlz-sysmex',
+    name: 'Sysmex XN-1000',
+    model: '6-Part Diff Hematology',
+    protocol: 'ASTM E1394',
+    department: 'Hematology',
+    status: 'ONLINE',
+    throughputPerHour: 96,
+    activeRack: 'RACK-H08 (Slot 4/10)',
+    reagentLevelPercent: 88,
+    lastHeartbeat: '2 sec ago',
+  },
+  {
+    id: 'anlz-cobas',
+    name: 'Roche Cobas 6000 (c501/e601)',
+    model: 'Photometric + ECLIA',
+    protocol: 'HL7 v2.5.1',
+    department: 'Biochemistry & Immunoassay',
+    status: 'ONLINE',
+    throughputPerHour: 240,
+    activeRack: 'RACK-C14 (Slot 9/15)',
+    reagentLevelPercent: 74,
+    lastHeartbeat: '1 sec ago',
+  },
+  {
+    id: 'anlz-mindray',
+    name: 'Mindray BS-480',
+    model: 'STAT Clinical Chemistry',
+    protocol: 'ASTM E1394',
+    department: 'Emergency STAT Lab',
+    status: 'ONLINE',
+    throughputPerHour: 115,
+    activeRack: 'STAT-WHEEL-02',
+    reagentLevelPercent: 92,
+    lastHeartbeat: '4 sec ago',
+  },
+  {
+    id: 'anlz-vitek',
+    name: 'bioMérieux VITEK 2 Compact',
+    model: 'Automated ID / AST System',
+    protocol: 'HL7 v2.5.1',
+    department: 'Microbiology',
+    status: 'CALIBRATING',
+    throughputPerHour: 32,
+    activeRack: 'CAROUSEL-A',
+    reagentLevelPercent: 61,
+    lastHeartbeat: '12 sec ago',
+  },
+];
 
-  // Parallel data fetching across all dashboard modules
-  const fetchDashboardData = useCallback(async () => {
-    // Never query protected stats without an active session
-    if (!isAuthenticated() && !getAccessToken()) {
-      return;
-    }
+const PERSONA_SWITCHER_CARDS: {
+  id: ClinicalPersona;
+  title: string;
+  subtitle: string;
+  primaryActionLabel: string;
+  primaryActionRoute: string;
+}[] = [
+  {
+    id: 'ALL',
+    title: 'Unified Hospital Cockpit',
+    subtitle: 'Complete OPD/IPD/ICU & NABL overview',
+    primaryActionLabel: 'Open Order Queue',
+    primaryActionRoute: '/orders',
+  },
+  {
+    id: 'RECEPTIONIST',
+    title: 'Receptionist (OPD & Billing)',
+    subtitle: 'Patient DPDP registration, ABHA & GST POS',
+    primaryActionLabel: '+ New Patient / Bill',
+    primaryActionRoute: '/patients/new',
+  },
+  {
+    id: 'PHLEBOTOMIST',
+    title: 'Phlebotomist (Tube Accession)',
+    subtitle: 'Vacutainer barcoding & order-of-draw desk',
+    primaryActionLabel: 'Scan & Collect Tube',
+    primaryActionRoute: '/samples/tube-accessioning',
+  },
+  {
+    id: 'PATHOLOGIST',
+    title: 'Pathologist (MD Sign-Off)',
+    subtitle: 'Panic read-back, delta check & NABL seal',
+    primaryActionLabel: 'Review 14 Sign-Offs',
+    primaryActionRoute: '/approvals',
+  },
+  {
+    id: 'HOSPITAL_ADMIN',
+    title: 'Hospital Admin (TAT & Audit)',
+    subtitle: 'SLA compliance, cash daybook & doctor tariff',
+    primaryActionLabel: 'Shift Daybook Audit',
+    primaryActionRoute: '/payments',
+  },
+];
 
+export default function DashboardCockpitPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const [activePersona, setActivePersona] = useState<ClinicalPersona>('ALL');
+  const [metrics, setMetrics] = useState<HospitalMetricsData>(
+    DEFAULT_HOSPITAL_METRICS
+  );
+  const [triageItems] = useState<CriticalTriageItem[]>(INITIAL_TRIAGE_ITEMS);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string>('Just now');
+
+  const fetchCockpitTelemetry = useCallback(async () => {
+    setIsRefreshing(true);
     try {
-      setLoading(true);
-      setError(null);
-
-      const [
-        statsRes,
-        ordersRes,
-        approvalRes,
-        alertsRes,
-        sampleRes,
-        paymentRes,
-        testRes,
-        activityRes,
-      ] = await Promise.allSettled([
-        dashboardApi.getStats(),
-        dashboardApi.getOrderStats(),
-        dashboardApi.getApprovalQueue("?limit=6"),
-        dashboardApi.getAttentionResults("?limit=6"),
-        dashboardApi.getSampleStats(),
-        dashboardApi.getPaymentStats(),
-        dashboardApi.getTestStats(),
-        dashboardApi.getActivity(12),
-      ]);
-
-      // 1. Core Stats
-      if (statsRes.status === "fulfilled" && statsRes.value?.success && statsRes.value?.data) {
-        setStats(statsRes.value.data);
-      }
-
-      // 2. Orders & Trends
-      if (ordersRes.status === "fulfilled" && ordersRes.value?.success && ordersRes.value?.data) {
-        if (ordersRes.value.data?.dailyTrend) {
-          setOrderTrends(ordersRes.value.data.dailyTrend);
+      const apiAny = ApiModule as Record<string, any>;
+      const client = apiAny.default || apiAny.apiClient || apiAny.api;
+      if (client && typeof client.get === 'function') {
+        const res = await client.get('/dashboard/metrics').catch(() => null);
+        if (res && res.data && typeof res.data === 'object') {
+          setMetrics((prev) => ({
+            ...prev,
+            ...res.data,
+          }));
         }
       }
-
-      // Fetch Recent Orders via orderApi
-      try {
-        const { orderApi } = await import("@/lib/api");
-        const recentOrdersData = await orderApi.getAll("?limit=6");
-        if (recentOrdersData.success && recentOrdersData.data?.orders) {
-          setRecentOrders(recentOrdersData.data.orders.slice(0, 6));
-        } else if (recentOrdersData.success && Array.isArray(recentOrdersData.data)) {
-          setRecentOrders(recentOrdersData.data.slice(0, 6));
-        }
-      } catch (e) {
-        if (!(e instanceof ApiError && e.status === 401)) {
-          console.error("Error fetching recent orders:", e);
-        }
-      }
-
-      // 3. Approval Queue
-      if (approvalRes.status === "fulfilled" && approvalRes.value?.success && approvalRes.value?.data) {
-        const approvalData = approvalRes.value.data;
-        const approvalsArray = Array.isArray(approvalData.approvals)
-          ? approvalData.approvals
-          : Array.isArray(approvalData.results)
-          ? approvalData.results
-          : Array.isArray(approvalData)
-          ? approvalData
-          : [];
-        setApprovalQueue(approvalsArray);
-      } else {
-        setApprovalQueue([]);
-      }
-
-      // 4. Critical Panic Alerts
-      if (alertsRes.status === "fulfilled" && alertsRes.value?.success && alertsRes.value?.data) {
-        const alertsData = alertsRes.value.data;
-        const criticalResults = Array.isArray(alertsData.critical)
-          ? alertsData.critical
-          : Array.isArray(alertsData.results)
-          ? alertsData.results
-          : [];
-        setCriticalAlerts(
-          criticalResults.map((result: any) => ({
-            id: result.id,
-            severity: "critical" as const,
-            title: "Panic Value Alert",
-            description: `${result.test?.testName || "Diagnostic Test"} for ${result.order?.patient?.firstName || "Patient"} ${result.order?.patient?.lastName || ""} (UHID: ${result.order?.patient?.uhid || "N/A"})`,
-            createdAt: result.createdAt,
-            actionUrl: `/results/${result.id}`,
-          }))
-        );
-      } else {
-        setCriticalAlerts([]);
-      }
-
-      // 5. Sample & Turnaround Time
-      if (sampleRes.status === "fulfilled" && sampleRes.value?.success && sampleRes.value?.data) {
-        setSampleStats(sampleRes.value.data);
-        if (sampleRes.value.data?.averageTurnaroundTimeHours) {
-          setAvgTatHours(sampleRes.value.data.averageTurnaroundTimeHours);
-        }
-      }
-
-      // 6. Payment Stats
-      if (paymentRes.status === "fulfilled" && paymentRes.value?.success && paymentRes.value?.data) {
-        setPaymentStats(paymentRes.value.data);
-      }
-
-      // 7. Test Stats
-      if (testRes.status === "fulfilled" && testRes.value?.success && testRes.value?.data) {
-        setTestStats(testRes.value.data);
-      }
-
-      // 8. Live Activity Feed
-      if (activityRes.status === "fulfilled" && activityRes.value?.success && activityRes.value?.data) {
-        setActivities(activityRes.value.data);
-      }
-    } catch (err) {
-      if (!(err instanceof ApiError && err.status === 401)) {
-        console.error("Error loading dashboard data:", err);
-        setError("Failed to fetch fresh laboratory statistics");
-      }
+      setLastSyncedAt(
+        new Date().toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      );
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    if (authLoading || !isLoggedIn) return;
-    fetchDashboardData();
-  }, [authLoading, isLoggedIn, fetchDashboardData]);
+    fetchCockpitTelemetry();
+  }, [fetchCockpitTelemetry]);
 
-  // Optional background 30-second poll
-  useEffect(() => {
-    if (!autoSyncEnabled || authLoading || !isLoggedIn) return;
-    const interval = setInterval(() => {
-      fetchDashboardData();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [autoSyncEnabled, authLoading, isLoggedIn, fetchDashboardData]);
-
-  // Dynamic Greeting based on current hour
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
-  }, []);
-
-  const criticalCount = stats?.results?.critical || criticalAlerts.length || 0;
+  const activePersonaConfig =
+    PERSONA_SWITCHER_CARDS.find((p) => p.id === activePersona) ||
+    PERSONA_SWITCHER_CARDS[0];
 
   return (
     <ProtectedRoute>
-      <DashboardLayout>
-        <div className="space-y-6 pb-12">
-          
-          {/* ========================================================
-              STAT EMERGENCY & CRITICAL URGENCY FLASH TICKER
-              ======================================================== */}
-          <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-sky-50 border border-slate-200/90 rounded-2xl p-2.5 px-4 shadow-2xs flex items-center justify-between gap-3 text-xs overflow-hidden">
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-600 text-white font-black text-[10px] uppercase tracking-wider shadow-2xs animate-pulse">
-                <Flame className="h-3 w-3" /> STAT TICKER
-              </span>
-            </div>
-
-            <div className="flex items-center gap-6 overflow-x-auto text-[11px] text-slate-700 font-medium whitespace-nowrap scrollbar-none py-0.5">
-              <span className="flex items-center gap-1.5 text-rose-900 font-bold">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-600 animate-ping" />
-                [CASUALTY STAT] ICU Bed #04: Serum Potassium 6.9 mmol/L (Sub-15m Doctor Call Pending)
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1.5 text-slate-800">
-                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                [NABL QC PASSED] Cobas c311 Chemistry Level 1 & 2 controls within 1-2s range
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1.5 text-sky-800">
-                <QrCode className="h-3 w-3 text-sky-600" />
-                [ABHA COUNTER] Fast-Track Token #A-042 called at Phlebotomy Desk 01
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1.5 text-teal-800">
-                <ShieldCheck className="h-3 w-3 text-teal-600" />
-                [COLD CHAIN] North Clinic B2B Specimen Batch #48 verified at 4.1°C
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1.5 text-indigo-900 font-bold">
-                <Server className="h-3 w-3 text-indigo-600" />
-                [INTEGRATION ENGINE] 10/10 Channels Synced • MLLP:2575 & ASTM:COM3 Ingest Active
-              </span>
-            </div>
-
-            <button
-              onClick={() => setActiveTab("panic")}
-              className="text-[11px] font-extrabold text-rose-700 hover:text-rose-900 flex-shrink-0 flex items-center gap-1 hover:underline"
-            >
-              Action Desk &rarr;
-            </button>
-          </div>
-
-          {/* ========================================================
-              EXECUTIVE CLINICAL HOSPITAL COMMAND CENTER HEADER
-              (Light White Medical Aesthetic with Hospital Emblem & Accreditation)
-              ======================================================== */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 relative overflow-hidden transition-all duration-300">
-            {/* Subtle medical ambient accent glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-100/40 via-teal-50/30 to-transparent rounded-full pointer-events-none -mr-24 -mt-24 blur-3xl" />
-
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
-              
-              {/* Left Column: Hospital Emblem Logo, Institution Name, Accreditations */}
-              <div className="flex items-start gap-4">
-                {/* Official Medical Heraldic Logo Emblem */}
-                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-sky-500 p-0.5 shadow-md flex-shrink-0">
-                  <div className="h-full w-full bg-white rounded-[14px] flex flex-col items-center justify-center p-1 text-center shadow-inner relative overflow-hidden">
-                    <div className="absolute -top-3 -right-3 h-8 w-8 bg-sky-100 rounded-full blur-xs pointer-events-none" />
-                    {/* SVG Medical Cross + DNA Helix + Laurel Badge */}
-                    <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-10 sm:w-10 text-sky-600" fill="currentColor">
-                      <path d="M10.5 4a1.5 1.5 0 0 1 3 0v4.5H18a1.5 1.5 0 0 1 0 3h-4.5V16a1.5 1.5 0 0 1-3 0v-4.5H6a1.5 1.5 0 0 1 0-3h4.5V4z" />
-                      <circle cx="12" cy="10" r="1.5" className="text-amber-500" fill="#f59e0b" />
-                    </svg>
-                    <span className="text-[8px] font-black uppercase tracking-wider text-slate-800 leading-none mt-0.5">
-                      LABCORE
-                    </span>
-                    <span className="text-[6.5px] font-bold text-sky-700 tracking-tighter">
-                      CLINICAL LIS
-                    </span>
-                  </div>
+      <DashboardLayout title="Hospital Clinical Laboratory Intelligence Cockpit">
+        <div className="min-h-full bg-[#F8FAFC] text-[#0F172A] p-4 lg:p-6 space-y-6">
+          {/* Top Clinical Command Bar & Role-Based Persona Switcher */}
+          <div className="bg-white rounded-xl border border-slate-200/80 p-4 lg:p-5 space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-teal-50 text-[#0F766E] border border-teal-200">
+                    NABL ISO 15189:2022 ACCREDITED
+                  </span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-sky-50 text-[#0284C7] border border-sky-200">
+                    ABDM / ABHA v0.5 GATEWAY READY
+                  </span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-[#ECFDF5] text-[#059669] border border-emerald-200">
+                    DPDP ACT 2023 COMPLIANT
+                  </span>
                 </div>
-
-                {/* Institution Identity & Doctor Greeting */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      LIS Core Online • 99.98% Uptime
-                    </span>
-
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
-                      <Award className="h-3 w-3 text-sky-600" />
-                      NABL ISO 15189:2022 (MC-5421)
-                    </span>
-
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                      <QrCode className="h-3 w-3 text-indigo-600" />
-                      ABDM / ABHA HIP M1-M3
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("engine")}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-300 hover:bg-sky-100 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <Server className="h-3 w-3 text-sky-600" />
-                      Integration Engine: 10/10 Active &rarr;
-                    </button>
-                  </div>
-
-                  <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                      APEX MULTI-SPECIALTY HOSPITAL & REFERENCE DIAGNOSTICS
-                    </h1>
-                    <p className="text-xs text-slate-500 font-medium">
-                      {greeting}, <strong className="text-slate-800 font-bold">{user?.fullName || "Duty Officer"}</strong> ({getRoleLabel(user?.role) || "Laboratory Administrator"}). Hospital central pathology, automated analyzer telemetry, and patient specimen command hub.
-                    </p>
-                  </div>
-
-                  {/* Branch Location Selector */}
-                  <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
-                    <span className="flex items-center gap-1 font-bold text-slate-800">
-                      <MapPin className="h-3.5 w-3.5 text-rose-500" /> Facility Unit:
-                    </span>
-                    <select
-                      value={activeBranch}
-                      onChange={(e) => setActiveBranch(e.target.value)}
-                      className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:border-sky-500 cursor-pointer"
-                    >
-                      <option value="Main Hospital Central Lab (Block A - Level 1)">Main Hospital Central Lab (Block A - Level 1)</option>
-                      <option value="OPD Phlebotomy & Day-Care Collection Centre">OPD Phlebotomy & Day-Care Collection Centre</option>
-                      <option value="Emergency / Casualty STAT Satellite Unit">Emergency / Casualty STAT Satellite Unit</option>
-                      <option value="North City B2B Referral Annex">North City B2B Referral Annex</option>
-                    </select>
-                  </div>
-                </div>
+                <h1 className="text-lg lg:text-xl font-extrabold tracking-tight text-[#0F172A] mt-2">
+                  Hospital Clinical Laboratory Intelligence Cockpit
+                </h1>
+                <p className="text-xs text-[#475569] mt-0.5">
+                  Logged in as{' '}
+                  <strong className="text-[#0F172A]">
+                    {typeof user?.fullName === 'string'
+                      ? user.fullName
+                      : typeof user?.name === 'string'
+                      ? user.name
+                      : 'Dr. Nikil MD (Pathology)'}
+                  </strong>{' '}
+                  • Active Workstation Mode:{' '}
+                  <strong className="text-[#0F766E]">
+                    {activePersonaConfig.title}
+                  </strong>{' '}
+                  • Telemetry Synced: {lastSyncedAt}
+                </p>
               </div>
 
-              {/* Right Column: Duty Officers Strip, Live IST Clock, Controls */}
-              <div className="flex flex-col sm:flex-row xl:flex-col items-start xl:items-end justify-between gap-3 flex-shrink-0">
-                {/* On-Duty Clinical Officers Badge Box */}
-                <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/90 text-xs space-y-1 w-full sm:w-auto">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                      <Stethoscope className="h-3 w-3 text-sky-600" /> Duty Pathologist
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                      Active On Desk
-                    </span>
-                  </div>
-                  <p className="font-extrabold text-slate-900 text-xs">
-                    Dr. Sandeep Deshmukh, MD Path <span className="font-mono text-[10px] text-slate-500">[MCI-48921]</span>
-                  </p>
-                  <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-200/60 gap-4">
-                    <span>Shift MLT: <strong>Priya Sharma</strong></span>
-                    <span className="text-slate-400">•</span>
-                    <span className="text-sky-700 font-bold">Phleb Ext: 401</span>
-                  </div>
-                </div>
+              {/* Quick Action Triggers */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchCockpitTelemetry}
+                  disabled={isRefreshing}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200/80 bg-white hover:bg-[#F8FAFC] text-xs font-semibold text-[#475569] transition-colors"
+                >
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 text-[#0F766E] ${
+                      isRefreshing ? 'animate-spin' : ''
+                    }`}
+                  />
+                  <span>Sync Telemetry</span>
+                </button>
 
-                {/* Clock & Action Controls Bar */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Live IST Clock */}
-                  <div className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xs flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-sky-600" />
-                    <div>
-                      <p className="text-xs font-mono font-black tracking-wide text-slate-900">
-                        {currentTime || "--:--:--"}
+                <button
+                  type="button"
+                  onClick={() => router.push('/patients/new')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100/70 text-[#0F766E] text-xs font-bold transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Register Patient</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => router.push('/samples/tube-accessioning')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100/70 text-[#0284C7] text-xs font-bold transition-colors"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>Tube Barcode Desk</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(activePersonaConfig.primaryActionRoute)
+                  }
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0F766E] hover:bg-teal-800 text-white text-xs font-bold transition-colors"
+                >
+                  <FileCheck2 className="w-3.5 h-3.5" />
+                  <span>{activePersonaConfig.primaryActionLabel}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Role-Based Persona Switcher Bar */}
+            <div className="pt-3 border-t border-slate-200/80">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-[#475569]">
+                  ROLE-BASED CLINICAL WORKSTATION PERSONA SWITCHER
+                </span>
+                <span className="text-[11px] font-medium text-[#0284C7]">
+                  Tailors cockpit widgets to active clinical duty
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                {PERSONA_SWITCHER_CARDS.map((card) => {
+                  const isSelected = activePersona === card.id;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setActivePersona(card.id)}
+                      className={`p-2.5 rounded-lg border text-left transition-all ${
+                        isSelected
+                          ? 'bg-teal-50/70 border-[#0F766E] ring-1 ring-[#0F766E]/20'
+                          : 'bg-[#F8FAFC] border-slate-200/80 hover:bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`text-xs font-bold ${
+                            isSelected ? 'text-[#0F766E]' : 'text-[#0F172A]'
+                          }`}
+                        >
+                          {card.title}
+                        </span>
+                        {isSelected && (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#0F766E] shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#475569] mt-0.5 line-clamp-1">
+                        {card.subtitle}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        {currentDateStr || "IST"}
-                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* 1. Unified Single-Source Hospital Metric Bar */}
+          <HospitalMetricBar
+            metrics={metrics}
+            onSelectCard={(key) => {
+              if (key === 'PATIENTS') router.push('/patients');
+              if (key === 'PIPELINE') router.push('/samples');
+              if (key === 'PANIC') router.push('/approvals/panic-triage');
+              if (key === 'TAT') router.push('/orders/stat-triage');
+              if (key === 'REVENUE') router.push('/invoices');
+            }}
+          />
+
+          {/* 2. Critical Panic Triage & Action Desk (Shown for All, Pathologist, Admin, Phlebotomist) */}
+          {(activePersona === 'ALL' ||
+            activePersona === 'PATHOLOGIST' ||
+            activePersona === 'HOSPITAL_ADMIN' ||
+            activePersona === 'PHLEBOTOMIST') && (
+            <ClinicalTriageDesk items={triageItems} />
+          )}
+
+          {/* 3. Live Hospital Ward & Bed STAT Matrix */}
+          <section
+            aria-label="Live Hospital Ward and Bed STAT Matrix"
+            className="bg-white rounded-xl border border-slate-200/80 overflow-hidden"
+          >
+            <div className="px-5 py-3.5 bg-[#F8FAFC] border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BedDouble className="w-4 h-4 text-[#0284C7]" />
+                <h2 className="text-sm font-extrabold text-[#0F172A] tracking-tight">
+                  LIVE HOSPITAL WARD &amp; BED STAT SAMPLE MATRIX (ICU / ER / NICU / OPD)
+                </h2>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-bold tracking-wider uppercase">
+                <span className="px-2 py-0.5 rounded bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]">
+                  &lt; 30 MIN URGENT: 34
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#FFFBEB] text-[#D97706] border border-amber-200">
+                  &lt; 60 MIN SLA: 32
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#DC2626] text-white">
+                  BREACHED: 2
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200/80">
+              {HOSPITAL_WARD_STAT_MATRIX.map((ward) => (
+                <div key={ward.id} className="p-4 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-1.5 py-0.5 rounded bg-sky-50 text-[#0284C7] border border-sky-200">
+                        {ward.wingCode}
+                      </span>
+                      <span className="text-xs font-extrabold text-[#0F172A]">
+                        {ward.activeStatSamples} Active STAT
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold text-[#0F172A] mt-2">
+                      {ward.wardName}
+                    </h3>
+                    <p className="text-[11px] text-[#475569]">
+                      In-Charge: {ward.leadPhysician}
+                    </p>
+
+                    {/* SLA Breakdown Pills */}
+                    <div className="grid grid-cols-3 gap-1.5 mt-3">
+                      <div className="px-2 py-1 rounded bg-[#FEF2F2] border border-[#FCA5A5] text-center">
+                        <span className="block text-xs font-extrabold text-[#DC2626]">
+                          {ward.within30MinCount}
+                        </span>
+                        <span className="text-[9px] font-bold uppercase text-[#DC2626]">
+                          &lt;30m SLA
+                        </span>
+                      </div>
+                      <div className="px-2 py-1 rounded bg-[#FFFBEB] border border-amber-200 text-center">
+                        <span className="block text-xs font-extrabold text-[#D97706]">
+                          {ward.within60MinCount}
+                        </span>
+                        <span className="text-[9px] font-bold uppercase text-[#D97706]">
+                          &lt;60m SLA
+                        </span>
+                      </div>
+                      <div
+                        className={`px-2 py-1 rounded border text-center ${
+                          ward.breachedCount > 0
+                            ? 'bg-[#DC2626] text-white border-[#DC2626]'
+                            : 'bg-[#ECFDF5] text-[#059669] border-emerald-200'
+                        }`}
+                      >
+                        <span className="block text-xs font-extrabold">
+                          {ward.breachedCount}
+                        </span>
+                        <span className="text-[9px] font-bold uppercase">
+                          Breached
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <DateRangeSelector value={dateRange} onChange={setDateRange} />
+                  {/* Active Bed Specimen Highlights */}
+                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-[#475569]">
+                      PRIORITY BED SAMPLES
+                    </span>
+                    {ward.bedHighlights.map((bedItem, idx) => {
+                      const isBreached = bedItem.tatRemainingMin <= 0;
+                      const isUnder30 =
+                        bedItem.tatRemainingMin > 0 && bedItem.tatRemainingMin <= 30;
+                      return (
+                        <div
+                          key={idx}
+                          className="p-2 rounded-lg bg-[#F8FAFC] border border-slate-200/80 flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-bold text-[#0F172A]">
+                                {bedItem.bed}
+                              </span>
+                              <span className="text-[11px] text-[#475569] truncate">
+                                • {bedItem.patient}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#475569] truncate">
+                              {bedItem.test}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-1.5 py-0.5 text-[10px] font-mono font-bold rounded shrink-0 ${
+                              isBreached
+                                ? 'bg-[#DC2626] text-white'
+                                : isUnder30
+                                ? 'bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]'
+                                : 'bg-[#FFFBEB] text-[#D97706] border border-amber-200'
+                            }`}
+                          >
+                            {isBreached
+                              ? `BREACH ${Math.abs(bedItem.tatRemainingMin)}m`
+                              : `${bedItem.tatRemainingMin}m left`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
 
+          {/* 4. Specimen Pipeline & Department Matrix + Lightweight Analyzer Telemetry */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Left 2 Columns: Specimen Pipeline & Department Matrix */}
+            <section
+              aria-label="Department Specimen Pipeline Matrix"
+              className="xl:col-span-2 bg-white rounded-xl border border-slate-200/80 overflow-hidden flex flex-col justify-between"
+            >
+              <div>
+                <div className="px-5 py-3.5 bg-[#F8FAFC] border-b border-slate-200/80 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-[#0F766E]" />
+                    <h2 className="text-sm font-extrabold text-[#0F172A] tracking-tight">
+                      SPECIMEN PIPELINE &amp; CLINICAL DEPARTMENT MATRIX
+                    </h2>
+                  </div>
                   <button
-                    onClick={fetchDashboardData}
-                    disabled={loading}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition-all shadow-2xs disabled:opacity-50"
+                    type="button"
+                    onClick={() => router.push('/results')}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#0F766E] hover:underline"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-sky-600" : ""}`} />
-                    <span>Sync</span>
+                    <span>Open Workstations</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200/80 bg-[#F8FAFC]/60 text-[10px] font-bold tracking-wider uppercase text-[#475569]">
+                        <th className="py-3 px-4">Clinical Department</th>
+                        <th className="py-3 px-3 text-center">Accessioned</th>
+                        <th className="py-3 px-3 text-center">In Analyzer</th>
+                        <th className="py-3 px-3 text-center">Auto-Verified</th>
+                        <th className="py-3 px-3 text-center">MD Sign-Off</th>
+                        <th className="py-3 px-3 text-center">Mean TAT</th>
+                        <th className="py-3 px-4 text-right">Westgard QC</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/80 text-xs">
+                      {DEPARTMENT_PIPELINE_MATRIX.map((row) => (
+                        <tr
+                          key={row.id}
+                          className="hover:bg-[#F8FAFC] transition-colors"
+                        >
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-[#0F172A]">
+                              {row.department}
+                            </div>
+                            <div className="text-[10px] font-mono text-[#475569]">
+                              {row.code} • SLA Target &lt;{row.slaTargetMin}m
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-[#D97706]">
+                            {row.accessioned}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-[#0284C7]">
+                            {row.runningOnAnalyzer}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-[#059669]">
+                            {row.autoVerified}
+                          </td>
+                          <td className="py-3.5 px-3 text-center">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-sky-50 text-[#0284C7] border border-sky-200">
+                              {row.pendingDoctorSignOff}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 text-center">
+                            <span className="font-mono font-bold text-[#0F172A]">
+                              {row.meanTatMin}m
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded border ${
+                                row.westgardQcStatus === 'PASS_1_2S'
+                                  ? 'bg-[#ECFDF5] text-[#059669] border-emerald-200'
+                                  : 'bg-[#FFFBEB] text-[#D97706] border-amber-200'
+                              }`}
+                            >
+                              {row.westgardQcStatus === 'PASS_1_2S'
+                                ? 'LJ QC PASS'
+                                : '1-2S WARN'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+
+              {/* Pipeline Footer Bar */}
+              <div className="px-5 py-3 bg-[#F8FAFC] border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs text-[#475569]">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#059669]" />
+                  <span>
+                    CLSI AUTO10-A Autoverification Engine Active (84.2% Pass Rate)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push('/approvals')}
+                  className="font-bold text-[#0284C7] hover:underline"
+                >
+                  Batch Sign-Off 14 Verified Reports &rarr;
+                </button>
+              </div>
+            </section>
+
+            {/* Right Column: Lightweight Analyzer Telemetry Health Indicator */}
+            <section
+              aria-label="Analyzer Telemetry Status"
+              className="bg-white rounded-xl border border-slate-200/80 overflow-hidden flex flex-col justify-between"
+            >
+              <div>
+                <div className="px-5 py-3.5 bg-[#F8FAFC] border-b border-slate-200/80 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-[#0284C7]" />
+                    <h2 className="text-sm font-extrabold text-[#0F172A] tracking-tight">
+                      ANALYZER TELEMETRY (ASTM / HL7)
+                    </h2>
+                  </div>
+                  <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-[#ECFDF5] text-[#059669] border border-emerald-200">
+                    4 INSTRUMENTS
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-200/80">
+                  {ANALYZER_TELEMETRY_NODES.map((node) => {
+                    const isOnline = node.status === 'ONLINE';
+                    const isCalibrating = node.status === 'CALIBRATING';
+                    return (
+                      <div
+                        key={node.id}
+                        className="p-3.5 hover:bg-[#F8FAFC] transition-colors space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-[#0F172A]">
+                                {node.name}
+                              </span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-[#475569]">
+                                {node.protocol}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#475569]">
+                              {node.department} • {node.activeRack}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded border ${
+                              isOnline
+                                ? 'bg-[#ECFDF5] text-[#059669] border-emerald-200'
+                                : isCalibrating
+                                ? 'bg-[#FFFBEB] text-[#D97706] border-amber-200'
+                                : 'bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5]'
+                            }`}
+                          >
+                            {isOnline ? (
+                              <Wifi className="w-3 h-3" />
+                            ) : (
+                              <WifiOff className="w-3 h-3" />
+                            )}
+                            {node.status}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-[#475569]">
+                          <span>
+                            Throughput:{' '}
+                            <strong className="text-[#0F172A]">
+                              {node.throughputPerHour} tests/hr
+                            </strong>
+                          </span>
+                          <span>
+                            Reagent:{' '}
+                            <strong className="text-[#0F766E]">
+                              {node.reagentLevelPercent}%
+                            </strong>
+                          </span>
+                          <span className="font-mono text-[10px]">
+                            Ping: {node.lastHeartbeat}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="px-5 py-3 bg-[#F8FAFC] border-t border-slate-200/80 flex items-center justify-between text-xs">
+                <span className="text-[#475569]">TCP Socket Listener: Port 5000</span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/analyzers')}
+                  className="inline-flex items-center gap-1 font-bold text-[#0F766E] hover:underline"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Configure Drivers</span>
+                </button>
+              </div>
+            </section>
           </div>
-
-          {/* ========================================================
-              CRITICAL PANIC EMERGENCY PROMPT BAR (If Criticals Exist)
-              ======================================================== */}
-          {criticalCount > 0 && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-rose-50/80 to-amber-50/60 border-2 border-rose-300 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs flex-shrink-0 animate-pulse">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-rose-950">
-                    High Priority: {criticalCount} Critical Panic Value Result{criticalCount > 1 ? "s" : ""} Flagged
-                  </h3>
-                  <p className="text-xs text-rose-700 mt-0.5">
-                    Biological alert limits breached. NABL ISO 15189 requires immediate doctor notification & documented verbal read-back.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveTab("panic")}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
-              >
-                <PhoneCall className="h-3.5 w-3.5" />
-                <span>Open Panic Action Desk &rarr;</span>
-              </button>
-            </div>
-          )}
-
-          {/* ========================================================
-              BENTO KPI METRICS GRID & TELEMETRY STRIP
-              ======================================================== */}
-          <LuxuryKpiGrid 
-            stats={stats} 
-            loading={loading} 
-            avgTatHours={avgTatHours} 
-          />
-
-          {/* ========================================================
-              INTERACTIVE SPECIMEN PROGRESSION FUNNEL
-              ======================================================== */}
-          <SpecimenPipeline
-            ordersCount={stats?.orders?.today ?? 0}
-            samplesCollected={stats?.samples?.completed ?? 0}
-            testingCount={stats?.tests?.inProgress ?? 0}
-            resultsPending={stats?.results?.pending ?? 0}
-            approvedCount={stats?.results?.approved ?? 0}
-            completedCount={stats?.orders?.completed ?? 0}
-            loading={loading}
-          />
-
-          {/* ========================================================
-              NAVIGATION TABS CONSOLE (7 HIGH-UTILITY HOSPITAL TABS)
-              ======================================================== */}
-          <div className="flex items-center justify-between border-b border-slate-200/90 pb-3">
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200 overflow-x-auto max-w-full">
-              <button
-                onClick={() => setActiveTab("live")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "live"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Building2 className="h-3.5 w-3.5 text-sky-600" />
-                <span>Live Operations</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("engine")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "engine"
-                    ? "bg-white text-sky-800 shadow-xs border border-sky-300 ring-1 ring-sky-200"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Server className="h-3.5 w-3.5 text-sky-600" />
-                <span>Integration Engine</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              </button>
-
-              <button
-                onClick={() => setActiveTab("panic")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "panic"
-                    ? "bg-white text-rose-700 shadow-xs border border-rose-200"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
-                <span>Critical Panic Desk</span>
-                {criticalCount > 0 && (
-                  <span className="h-2 w-2 rounded-full bg-rose-600 animate-ping" />
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab("workstations")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "workstations"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Cpu className="h-3.5 w-3.5 text-indigo-600" />
-                <span>Analyzers & Stations</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("token")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "token"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <BellRing className="h-3.5 w-3.5 text-amber-600" />
-                <span>OPD Token Queue</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("tat")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "tat"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Clock className="h-3.5 w-3.5 text-teal-600" />
-                <span>TAT SLA & Compliance</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("revenue")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "revenue"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <IndianRupee className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Day-Close & Handover</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("audit")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap font-bold ${
-                  activeTab === "audit"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Activity className="h-3.5 w-3.5 text-slate-600" />
-                <span>Live Audit</span>
-              </button>
-            </div>
-
-            <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-              <Sparkles className="h-3.5 w-3.5 text-sky-500" /> Auto-sync: 30s
-            </span>
-          </div>
-
-          {/* ========================================================
-              TAB VIEW 1: LIVE OPERATIONS (CORE COMMAND CENTER)
-              ======================================================== */}
-          {activeTab === "live" && (
-            <div className="space-y-6">
-              {/* Multi-Channel Hospital Requisition Matrix */}
-              <HospitalIntakeMatrix
-                stats={{
-                  opdCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.55) : 64,
-                  ipdCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.25) : 38,
-                  statCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.08) : 12,
-                  b2bCount: stats?.orders?.today ? Math.round(stats.orders.today * 0.12) : 42,
-                  total: stats?.orders?.today || 156,
-                }}
-                loading={loading}
-              />
-
-              {/* Rapid Command Shortcuts */}
-              <QuickActions userRole={getRoleLabel(user?.role)} />
-
-              {/* Core 2-Column Operational Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left: Recent Workorders Stream (7 Cols) */}
-                <div className="lg:col-span-7">
-                  <RecentOrders orders={recentOrders} loading={loading} />
-                </div>
-
-                {/* Right: Pathologist Sign-off Queue (5 Cols) */}
-                <div className="lg:col-span-5">
-                  <ApprovalQueue approvals={approvalQueue} loading={loading} />
-                </div>
-              </div>
-
-              {/* Secondary Operational Row: Critical Alerts & Analyzer Telemetry */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <CriticalAlerts alerts={criticalAlerts} loading={loading} />
-                <AnalyzerTelemetryWidget stats={stats?.analyzers} loading={loading} />
-              </div>
-
-              {/* Tertiary Operational Row: Ultra-Advanced Integration Engine Widget */}
-              <IntegrationEngineWidget onOpenEngine={() => setActiveTab("engine")} loading={loading} />
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW: ULTRA-ADVANCED HOSPITAL INTEGRATION ENGINE
-              ======================================================== */}
-          {activeTab === "engine" && (
-            <div className="space-y-6">
-              <IntegrationEngineDashboard />
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW 2: NABL CRITICAL & PANIC VALUES ACTION DESK
-              ======================================================== */}
-          {activeTab === "panic" && (
-            <div className="space-y-6">
-              <CriticalPanicActionDesk alerts={criticalAlerts} loading={loading} />
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW 3: DEPARTMENT WORKSTATIONS & ANALYZER INTERFACING
-              ======================================================== */}
-          {activeTab === "workstations" && (
-            <div className="space-y-6">
-              <DepartmentWorkstationGrid />
-              <AnalyzerTelemetryWidget stats={stats?.analyzers} loading={loading} />
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW 4: OPD TOKEN QUEUE & RECEPTION DESK
-              ======================================================== */}
-          {activeTab === "token" && (
-            <div className="space-y-6">
-              <OpdTokenQueueWidget />
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW 5: TURNAROUND TIME & QUALITY SLA
-              ======================================================== */}
-          {activeTab === "tat" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7">
-                <TurnaroundTimeWidget 
-                  averageTatHours={avgTatHours} 
-                  sampleStats={sampleStats} 
-                  loading={loading} 
-                />
-              </div>
-              <div className="lg:col-span-5">
-                <AnalyzerTelemetryWidget stats={stats?.analyzers} loading={loading} />
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW 6: REVENUE & SHIFT HANDOVER RECONCILIATION
-              ======================================================== */}
-          {activeTab === "revenue" && (
-            <div className="space-y-6">
-              <ShiftHandoverReconciliation
-                todayRevenue={stats?.financial?.todayRevenue || 144950}
-                pendingPayments={stats?.financial?.pendingPayments || 12400}
-              />
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-7">
-                  <WorkloadCharts 
-                    orderTrends={orderTrends} 
-                    topTests={testStats?.mostRequested} 
-                    loading={loading} 
-                  />
-                </div>
-                <div className="lg:col-span-5">
-                  <FinancialAnalyticsWidget
-                    paymentStats={paymentStats}
-                    todayRevenue={stats?.financial?.todayRevenue || 0}
-                    pendingPayments={stats?.financial?.pendingPayments || 0}
-                    totalInvoices={stats?.invoices?.total || 0}
-                    paidInvoices={stats?.invoices?.paid || 0}
-                    pendingInvoices={stats?.invoices?.pending || 0}
-                    loading={loading}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================
-              TAB VIEW 7: LIVE AUDIT ACTIVITY STREAM
-              ======================================================== */}
-          {activeTab === "audit" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7">
-                <LiveActivityFeed activities={activities} loading={loading} />
-              </div>
-              <div className="lg:col-span-5">
-                <RecentOrders orders={recentOrders} loading={loading} />
-              </div>
-            </div>
-          )}
-
         </div>
       </DashboardLayout>
     </ProtectedRoute>

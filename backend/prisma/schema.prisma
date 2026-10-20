@@ -4094,3 +4094,62 @@ model NexusReagentEvaporationLog {
   @@index([analyzerId, analyteCode])
   @@map("nexus_reagent_evaporation_logs")
 }
+
+// ==============================================================================
+// OMNI-SENTINEL™ // NEXUS-BIO-TENSOR™ AUDIT TELEMETRY
+// ==============================================================================
+
+enum NexusAuditVerdictEnum {
+  AUTORELEASE_TO_DISPATCH
+  HOLD_PATHOLOGIST_AUDIT
+  HARD_LOCK_REJECT_AND_REDRAW
+}
+
+model NexusBioTensorAudit {
+  id                          String                @id @default(cuid())
+  specimenId                  String                @map("specimen_id")
+  patientId                   String                @map("patient_id")
+  verdict                     NexusAuditVerdictEnum @default(HOLD_PATHOLOGIST_AUDIT)
+
+  // Riemannian Mahalanobis Manifold Telemetry
+  mahalanobisDSquared         Float                 @map("mahalanobis_d_squared")
+  mahalanobisPValue           Float                 @map("mahalanobis_p_value")
+  pathologyDiscordanceFlag    String                @map("pathology_discordance_flag")
+
+  // Stewart-Fencl Physicochemical Acid-Base Telemetry
+  stewartSidApparent          Float                 @map("stewart_sid_apparent")
+  stewartSidEffective         Float                 @map("stewart_sid_effective")
+  stewartStrongIonGap         Float                 @map("stewart_strong_ion_gap")
+  stewartClassification       String                @map("stewart_classification")
+
+  // Pre-Analytical Stoichiometry & Artifact Forensics
+  edtaContaminationDetected   Boolean               @default(false) @map("edta_contamination_detected")
+  ivDilutionDetected          Boolean               @default(false) @map("iv_dilution_detected")
+  hemolysisClassification     String                @map("hemolysis_classification")
+
+  // Ornstein-Uhlenbeck SDE Trajectory & Lyapunov Stability
+  maxLyapunovExponent         Float                 @map("max_lyapunov_exponent")
+  systemicMeanReversionTheta  Float                 @map("systemic_mean_reversion_theta")
+  decompensationHorizonHours  Float?                @map("decompensation_horizon_hours")
+
+  // Shannon Information Entropy & Pareto Reflex Optimization
+  shannonEntropyBits          Float                 @map("shannon_entropy_bits")
+  optimalReflexTestCode       String?               @map("optimal_reflex_test_code")
+
+  // Complete Structured JSONB Tensors & Gemini Executive Briefing
+  stoichiometryJson           Json                  @map("stoichiometry_json")
+  mahalanobisJson             Json                  @map("mahalanobis_json")
+  stewartJson                 Json                  @map("stewart_json")
+  trajectoryJson              Json                  @map("trajectory_json")
+  entropyReflexJson           Json                  @map("entropy_reflex_json")
+  executiveBriefingJson       Json                  @map("executive_briefing_json")
+  regulatoryComplianceTags    String[]              @map("regulatory_compliance_tags")
+
+  createdAt                   DateTime              @default(now()) @map("created_at")
+  updatedAt                   DateTime              @updatedAt @map("updated_at")
+
+  @@index([specimenId])
+  @@index([createdAt])
+  @@index([patientId, createdAt])
+  @@map("nexus_bio_tensor_audits")
+}

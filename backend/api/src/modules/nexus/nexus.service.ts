@@ -1094,3 +1094,5 @@ export class NexusService {
     }
 }
 
+export * from './nexus-bio-tensor.service';
+

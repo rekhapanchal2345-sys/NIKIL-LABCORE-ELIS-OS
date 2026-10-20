@@ -101,4 +101,81 @@ router.post('/clinical-intelligence/reagent-evaporation', (req, res) =>
   nexusAdvancedController.evaluateReagentEvaporation(req, res)
 );
 
+// =========================================================================
+// 5. OMNI-SENTINEL™ // NEXUS-BIO-TENSOR™ AUDIT WORKFLOW
+// =========================================================================
+import { nexusBioTensorService } from './nexus-bio-tensor.service';
+
+/**
+ * POST /api/v1/nexus/audit/:specimenId
+ * Executes full 5-stage biophysical manifold, pre-analytical stoichiometry,
+ * Stewart-Fencl acid-base, Ornstein-Uhlenbeck SDE trajectory, and Shannon entropy reflex audit.
+ */
+router.post('/audit/:specimenId', async (req, res, next) => {
+  try {
+    const rawParam = req.params.specimenId;
+    const specimenId = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+
+    if (!specimenId || specimenId.trim().length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'MISSING_SPECIMEN_ID',
+        message: 'Path parameter :specimenId is required.',
+      });
+      return;
+    }
+
+    const auditPayload = await nexusBioTensorService.performBioTensorAudit(
+      specimenId.trim()
+    );
+
+    res.setHeader('X-Omni-Sentinel-Verdict', auditPayload.verdict);
+    res.setHeader(
+      'X-Regulatory-Compliance',
+      auditPayload.regulatoryComplianceTags.join(',')
+    );
+
+    res.status(200).json({
+      success: true,
+      engine: 'OMNI-SENTINEL // NEXUS-BIO-TENSOR v4.0',
+      data: auditPayload,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/v1/nexus/audit/:specimenId
+ * Retrieves latest persisted NEXUS-BIO-TENSOR™ audit telemetry and verdict.
+ */
+router.get('/audit/:specimenId', async (req, res, next) => {
+  try {
+    const rawParam = req.params.specimenId;
+    const specimenId = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+
+    if (!specimenId || specimenId.trim().length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'MISSING_SPECIMEN_ID',
+        message: 'Path parameter :specimenId is required.',
+      });
+      return;
+    }
+
+    const auditPayload = await nexusBioTensorService.getLatestBioTensorAudit(
+      specimenId.trim()
+    );
+
+    res.setHeader('X-Omni-Sentinel-Verdict', auditPayload.verdict);
+    res.status(200).json({
+      success: true,
+      engine: 'OMNI-SENTINEL // NEXUS-BIO-TENSOR v4.0',
+      data: auditPayload,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
