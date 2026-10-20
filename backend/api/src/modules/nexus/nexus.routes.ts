@@ -7,6 +7,7 @@
 
 import { Router, RequestHandler } from 'express';
 import { nexusController } from './nexus.controller';
+import { nexusAdvancedController } from './nexus-advanced.controller';
 import { authenticate } from '../../../middleware/auth';
 import { extractBearerToken } from '../../lib/auth';
 
@@ -74,5 +75,30 @@ router.post('/math/delta-check', nexusController.evaluateDeltaCheck);
 // =========================================================================
 router.post('/proposals/:id/review', nexusController.reviewProposal);
 router.post('/proposals/:id/decision', nexusController.reviewProposal);
+
+// =========================================================================
+// 4. HIGH-ORDER CLINICAL MATHEMATICS & OPERATIONS RESEARCH (CLINICAL INTELLIGENCE)
+// =========================================================================
+router.get('/clinical-intelligence/snapshot', (req, res) =>
+  nexusAdvancedController.getSnapshot(req, res)
+);
+router.post('/clinical-intelligence/bulls-moving-average', (req, res) =>
+  nexusAdvancedController.evaluateBullsMovingAverage(req, res)
+);
+router.post('/clinical-intelligence/truncated-ewma', (req, res) =>
+  nexusAdvancedController.evaluateTruncatedEwma(req, res)
+);
+router.post('/clinical-intelligence/physiological-plausibility', (req, res) =>
+  nexusAdvancedController.evaluatePlausibility(req, res)
+);
+router.post('/clinical-intelligence/sepsis-sofa-kinetics', (req, res) =>
+  nexusAdvancedController.evaluateSepsisSofa(req, res)
+);
+router.post('/clinical-intelligence/tat-sla-hazard', (req, res) =>
+  nexusAdvancedController.evaluateTatHazard(req, res)
+);
+router.post('/clinical-intelligence/reagent-evaporation', (req, res) =>
+  nexusAdvancedController.evaluateReagentEvaporation(req, res)
+);
 
 export default router;

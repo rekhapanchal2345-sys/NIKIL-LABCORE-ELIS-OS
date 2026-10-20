@@ -3600,3 +3600,497 @@ model PanicAlertReadBackLog {
   @@index([readBackConfirmed])
   @@map("panic_alert_read_back_logs")
 }
+
+// ============================================================================
+// NIKIL-LABCORE-ELIS-OS: TIER 2 ENTERPRISE CLINICAL WORKFLOWS SCHEMA
+// Modules:
+//   1. Clinical Microbiology, Culture & AST (CLSI M100 / EUCAST) + HICC Antibiogram
+//   2. Reagent Consumable Inventory Control & Cost-Per-Test (CPT) Engine
+//   3. B2B Hub-and-Spoke Logistics Manifesting & Franchisee Wallet Ledger
+// ============================================================================
+
+enum CultureSampleSite {
+  BLOOD
+  URINE
+  SPUTUM
+  PUS_SWAB
+  CSF
+  STOOL
+  BRONCHOALVEOLAR_LAVAGE
+  PLEURAL_FLUID
+  ASCITIC_FLUID
+  TISSUE_BIOPSY
+}
+
+enum CultureStatus {
+  ACCESSIONED
+  PRELIMINARY_GRAM_STAIN
+  INCUBATING_24H
+  INCUBATING_48H
+  ORGANISM_ISOLATED
+  AST_IN_PROGRESS
+  FINAL_VERIFIED
+  NO_GROWTH
+  CONTAMINATED
+}
+
+enum AstInterpretation {
+  S // Susceptible
+  I // Intermediate / Susceptible Increased Exposure
+  R // Resistant
+}
+
+enum MdroFlagType {
+  NONE
+  MRSA // Methicillin-Resistant Staphylococcus aureus
+  VRE  // Vancomycin-Resistant Enterococcus
+  ESBL // Extended-Spectrum Beta-Lactamase
+  CRE  // Carbapenem-Resistant Enterobacterales / Carbapenemase Producer
+  MDR_PSEUDOMONAS
+  CRAB // Carbapenem-Resistant Acinetobacter baumannii
+}
+
+enum ReagentLotStatus {
+  ACTIVE_ON_BOARD
+  STANDBY_REFRIGERATED
+  DEPLETED
+  EXPIRED
+  STABILITY_BREACHED
+  QUARANTINED
+}
+
+enum B2BPartnerTier {
+  SILVER_COLLECTION_CENTER
+  GOLD_FRANCHISEE
+  PLATINUM_HOSPITAL_SPOKE
+  INSTITUTIONAL_GOVT
+}
+
+enum WalletTransactionType {
+  CREDIT_TOPUP
+  DEBIT_ORDER_BOOKING
+  CREDIT_ORDER_CANCELLATION
+  CREDIT_LIMIT_ADJUSTMENT
+  SETTLEMENT_RECONCILIATION
+}
+
+enum ManifestStatus {
+  PACKED_AT_SPOKE
+  IN_TRANSIT_COLD_CHAIN
+  RECEIVED_AT_HUB
+  RECEIVED_WITH_DISCREPANCY
+  REJECTED_TEMP_EXCURSION
+}
+
+// ----------------------------------------------------------------------------
+// MODULE 1: CLINICAL MICROBIOLOGY, CULTURE & AST
+// ----------------------------------------------------------------------------
+
+model MicrobiologyCulture {
+  id                     String                 @id @default(uuid())
+  accessionNumber        String                 @unique @map("accession_number")
+  sampleId               String                 @map("sample_id")
+  orderId                String                 @map("order_id")
+  patientId              String                 @map("patient_id")
+  wardOrUnit             String                 @default("OPD") @map("ward_or_unit")
+  isIcuPatient           Boolean                @default(false) @map("is_icu_patient")
+  sampleSite             CultureSampleSite      @map("sample_site")
+  status                 CultureStatus          @default(ACCESSIONED)
+  gramStainMorphology    String?                @map("gram_stain_morphology")
+  pusCellsCount          String?                @map("pus_cells_count")
+  epithelialCellsCount   String?                @map("epithelial_cells_count")
+  preliminaryReportAt    DateTime?              @map("preliminary_report_at")
+  preliminaryReportedBy  String?                @map("preliminary_reported_by")
+  incubationTempCelsius  Decimal                @default(37.0) @map("incubation_temp_celsius") @db.Decimal(4, 1)
+  incubationStartedAt    DateTime               @default(now()) @map("incubation_started_at")
+  colonyCountCfu         String?                @map("colony_count_cfu")
+  finalClinicalNotes     String?                @map("final_clinical_notes")
+  verifiedByUserId       String?                @map("verified_by_user_id")
+  verifiedAt             DateTime?              @map("verified_at")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  isolates               MicrobiologyIsolate[]
+
+  @@index([sampleId])
+  @@index([orderId])
+  @@index([status, isIcuPatient])
+  @@index([createdAt])
+  @@map("microbiology_cultures")
+}
+
+model MicrobiologyIsolate {
+  id                     String                     @id @default(uuid())
+  cultureId              String                     @map("culture_id")
+  isolateNumber          Int                        @map("isolate_number") // 1, 2, 3
+  organismCode           String                     @map("organism_code")
+  organismName           String                     @map("organism_name")  // e.g., Escherichia coli
+  gramReaction           String                     @map("gram_reaction")  // GRAM_NEGATIVE, GRAM_POSITIVE, YEAST
+  growthDensity          String                     @map("growth_density") // Heavy, Moderate, Scanty, >10^5 CFU/mL
+  mdroFlags              MdroFlagType[]             @map("mdro_flags")
+  isHiccAlertTriggered   Boolean                    @default(false) @map("is_hicc_alert_triggered")
+  isolatedAt             DateTime                   @default(now()) @map("isolated_at")
+
+  culture                MicrobiologyCulture        @relation(fields: [cultureId], references: [id], onDelete: Cascade)
+  susceptibilities       AntibioticSusceptibility[]
+
+  @@unique([cultureId, isolateNumber])
+  @@index([organismName])
+  @@map("microbiology_isolates")
+}
+
+model AntibioticSusceptibility {
+  id                     String              @id @default(uuid())
+  isolateId              String              @map("isolate_id")
+  antibioticCode         String              @map("antibiotic_code")
+  antibioticName         String              @map("antibiotic_name")
+  antibioticClass        String              @map("antibiotic_class")
+  method                 String              @default("VITEK2_MIC") // KIRBY_BAUER_DISK, VITEK2_MIC, E_TEST
+  zoneDiameterMm         Decimal?            @map("zone_diameter_mm") @db.Decimal(5, 1)
+  micValueUgMl           Decimal?            @map("mic_value_ug_ml") @db.Decimal(8, 3)
+  clsiBreakpointS        String              @map("clsi_breakpoint_s")
+  clsiBreakpointR        String              @map("clsi_breakpoint_r")
+  interpretation         AstInterpretation
+  isRestrictedReserve    Boolean             @default(false) @map("is_restricted_reserve") // e.g., Colistin, Linezolid
+  testedAt               DateTime            @default(now()) @map("tested_at")
+
+  isolate                MicrobiologyIsolate @relation(fields: [isolateId], references: [id], onDelete: Cascade)
+
+  @@unique([isolateId, antibioticCode])
+  @@index([antibioticName, interpretation])
+  @@map("antibiotic_susceptibilities")
+}
+
+// ----------------------------------------------------------------------------
+// MODULE 2: REAGENT CONSUMABLE INVENTORY & CPT PROFITABILITY ENGINE
+// ----------------------------------------------------------------------------
+
+model ReagentMaster {
+  id                     String                 @id @default(uuid())
+  reagentCode            String                 @unique @map("reagent_code")
+  reagentName            String                 @map("reagent_name")
+  manufacturer           String
+  analyzerModel          String                 @map("analyzer_model")
+  unitOfMeasure          String                 @default("mL") @map("unit_of_measure")
+  packSizeVolume         Decimal                @map("pack_size_volume") @db.Decimal(10, 2)
+  onBoardStabilityDays   Int                    @map("on_board_stability_days")
+  minimumStockAlertVol   Decimal                @map("minimum_stock_alert_vol") @db.Decimal(10, 2)
+  storageTempRange       String                 @default("2°C - 8°C") @map("storage_temp_range")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  lots                   ReagentLot[]
+  recipes                TestReagentRecipe[]
+
+  @@map("reagent_masters")
+}
+
+model ReagentLot {
+  id                     String                 @id @default(uuid())
+  reagentMasterId        String                 @map("reagent_master_id")
+  lotNumber              String                 @map("lot_number")
+  expiryDate             DateTime               @map("expiry_date")
+  openedOnCarouselAt     DateTime?              @map("opened_on_carousel_at")
+  calibratorFactor       Decimal                @default(1.0000) @map("calibrator_factor") @db.Decimal(8, 4)
+  initialVolumeMl        Decimal                @map("initial_volume_ml") @db.Decimal(10, 3)
+  remainingVolumeMl      Decimal                @map("remaining_volume_ml") @db.Decimal(10, 3)
+  kitPurchaseCostInr     Decimal                @map("kit_purchase_cost_inr") @db.Decimal(12, 2)
+  calibratorCostPerTest  Decimal                @default(4.50) @map("calibrator_cost_per_test") @db.Decimal(8, 2)
+  status                 ReagentLotStatus       @default(STANDBY_REFRIGERATED)
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  reagentMaster          ReagentMaster          @relation(fields: [reagentMasterId], references: [id], onDelete: Cascade)
+  consumptionLogs        ReagentConsumptionLog[]
+
+  @@unique([reagentMasterId, lotNumber])
+  @@index([status, expiryDate])
+  @@map("reagent_lots")
+}
+
+model TestReagentRecipe {
+  id                     String                 @id @default(uuid())
+  testId                 String                 @map("test_id")
+  testCode               String                 @map("test_code")
+  testName               String                 @map("test_name")
+  reagentMasterId        String                 @map("reagent_master_id")
+  volumePerTestMl        Decimal                @map("volume_per_test_ml") @db.Decimal(8, 4)
+  reactionCuvettesCount  Int                    @default(1) @map("reaction_cuvettes_count")
+  pipetteTipsCount       Int                    @default(1) @map("pipette_tips_count")
+  consumableOverheadInr  Decimal                @default(3.25) @map("consumable_overhead_inr") @db.Decimal(8, 2)
+
+  reagentMaster          ReagentMaster          @relation(fields: [reagentMasterId], references: [id], onDelete: Cascade)
+
+  @@unique([testCode, reagentMasterId])
+  @@index([testId])
+  @@map("test_reagent_recipes")
+}
+
+model ReagentConsumptionLog {
+  id                     String                 @id @default(uuid())
+  reagentLotId           String                 @map("reagent_lot_id")
+  testCode               String                 @map("test_code")
+  orderId                String?                @map("order_id")
+  sampleBarcode          String?                @map("sample_barcode")
+  volumeConsumedMl       Decimal                @map("volume_consumed_ml") @db.Decimal(8, 4)
+  cuvettesUsed           Int                    @map("cuvettes_used")
+  tipsUsed               Int                    @map("tips_used")
+  computedReagentCostInr Decimal                @map("computed_reagent_cost_inr") @db.Decimal(10, 2)
+  consumedAt             DateTime               @default(now()) @map("consumed_at")
+  consumedByUserId       String?                @map("consumed_by_user_id")
+
+  reagentLot             ReagentLot             @relation(fields: [reagentLotId], references: [id], onDelete: Cascade)
+
+  @@index([testCode, consumedAt])
+  @@map("reagent_consumption_logs")
+}
+
+// ----------------------------------------------------------------------------
+// MODULE 3: B2B HUB-AND-SPOKE LOGISTICS & FRANCHISEE WALLET LEDGER
+// ----------------------------------------------------------------------------
+
+model B2BPartnerSpoke {
+  id                     String                 @id @default(uuid())
+  partnerCode            String                 @unique @map("partner_code")
+  centerName             String                 @map("center_name")
+  tier                   B2BPartnerTier         @default(GOLD_FRANCHISEE)
+  city                   String
+  contactPerson          String                 @map("contact_person")
+  contactPhone           String                 @map("contact_phone")
+  walletBalanceInr       Decimal                @default(0.00) @map("wallet_balance_inr") @db.Decimal(14, 2)
+  creditLimitInr         Decimal                @default(25000.00) @map("credit_limit_inr") @db.Decimal(14, 2)
+  discountPercentage     Decimal                @default(35.00) @map("discount_percentage") @db.Decimal(5, 2)
+  isBookingFrozen        Boolean                @default(false) @map("is_booking_frozen")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  walletLedger           B2BWalletLedger[]
+  manifests              ConsignmentManifest[]
+
+  @@index([partnerCode, isBookingFrozen])
+  @@map("b2b_partner_spokes")
+}
+
+model B2BWalletLedger {
+  id                     String                 @id @default(uuid())
+  partnerId              String                 @map("partner_id")
+  transactionRef         String                 @unique @map("transaction_ref")
+  transactionType        WalletTransactionType  @map("transaction_type")
+  amountInr              Decimal                @map("amount_inr") @db.Decimal(12, 2)
+  balanceBeforeInr       Decimal                @map("balance_before_inr") @db.Decimal(14, 2)
+  balanceAfterInr        Decimal                @map("balance_after_inr") @db.Decimal(14, 2)
+  orderId                String?                @map("order_id")
+  remarks                String
+  createdByUserId        String?                @map("created_by_user_id")
+  createdAt              DateTime               @default(now()) @map("created_at")
+
+  partner                B2BPartnerSpoke        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, createdAt])
+  @@map("b2b_wallet_ledgers")
+}
+
+model ConsignmentManifest {
+  id                     String                 @id @default(uuid())
+  manifestBarcode        String                 @unique @map("manifest_barcode") // MNF-YYYYMMDD-XXXXX
+  partnerId              String                 @map("partner_id")
+  tamperSealNumber       String                 @map("tamper_seal_number")
+  courierRunnerName      String                 @map("courier_runner_name")
+  courierRunnerPhone     String                 @map("courier_runner_phone")
+  departureTempCelsius   Decimal                @map("departure_temp_celsius") @db.Decimal(4, 1)
+  arrivalTempCelsius     Decimal?               @map("arrival_temp_celsius") @db.Decimal(4, 1)
+  expectedTubeCount      Int                    @map("expected_tube_count")
+  receivedTubeCount      Int?                   @map("received_tube_count")
+  discrepancyCount       Int                    @default(0) @map("discrepancy_count")
+  status                 ManifestStatus         @default(PACKED_AT_SPOKE)
+  dispatchedAt           DateTime               @default(now()) @map("dispatched_at")
+  receivedAtHubAt        DateTime?              @map("received_at_hub_at")
+  receivedByHubUserId    String?                @map("received_by_hub_user_id")
+  discrepancyNotes       String?                @map("discrepancy_notes")
+
+  partner                B2BPartnerSpoke        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  items                  ConsignmentManifestItem[]
+
+  @@index([manifestBarcode])
+  @@index([partnerId, status])
+  @@map("consignment_manifests")
+}
+
+model ConsignmentManifestItem {
+  id                     String                 @id @default(uuid())
+  manifestId             String                 @map("manifest_id")
+  tubeBarcode            String                 @map("tube_barcode")
+  sampleId               String?                @map("sample_id")
+  orderNumber            String                 @map("order_number")
+  patientName            String                 @map("patient_name")
+  vacutainerType         String                 @map("vacutainer_type")
+  isScannedAtHub         Boolean                @default(false) @map("is_scanned_at_hub")
+  hubScannedAt           DateTime?              @map("hub_scanned_at")
+  conditionStatus        String                 @default("INTACT") @map("condition_status") // INTACT, MISSING, HEMOLYZED, LEAKING
+
+  manifest               ConsignmentManifest    @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+
+  @@unique([manifestId, tubeBarcode])
+  @@index([tubeBarcode])
+  @@map("consignment_manifest_items")
+}
+
+// ============================================================================
+// LABCORE OMNISCIENT NEXUS - HIGH-ORDER CLINICAL MATHEMATICS & OPERATIONS
+// ============================================================================
+
+enum NexusAlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+  EMERGENT_INTERLOCK
+}
+
+enum AcidBaseClassification {
+  NORMAL_ACID_BASE
+  PURE_HIGH_ANION_GAP_METABOLIC_ACIDOSIS
+  HYPERCHLOREMIC_NORMAL_ANION_GAP_ACIDOSIS
+  COMBINED_HIGH_AND_NORMAL_AG_ACIDOSIS
+  HIGH_AG_ACIDOSIS_WITH_CONCOMITANT_METABOLIC_ALKALOSIS
+  METABOLIC_ALKALOSIS_OR_RESPIRATORY_COMPENSATION
+}
+
+enum IvContaminationType {
+  NONE
+  NORMAL_SALINE_0_9_PERCENT
+  DEXTROSE_5_PERCENT_D5W
+  K_EDTA_CROSS_CONTAMINATION
+  NON_SPECIFIC_HEMODILUTION
+}
+
+model NexusMovingAverageBatch {
+  id                  String   @id @default(cuid())
+  analyzerId          String
+  protocolType        String   // "BULL_XB" | "CEMBROWSKI_EWMA"
+  analyteCode         String   // "MCV" | "MCH" | "MCHC" | "NA" | "K" | "CL" | "GLU" | "BUN"
+  batchNumber         Int
+  sampleCount         Int
+  previousMean        Float
+  currentSmoothedMean Float
+  batchRawMean        Float
+  standardDeviation   Float
+  lowerControlLimit   Float
+  upperControlLimit   Float
+  driftBiasPercent    Float
+  isOutOfControl      Boolean  @default(false)
+  shiftDirection      String?  // "POSITIVE_DRIFT" | "NEGATIVE_DRIFT" | "STABLE"
+  diagnosticHypothesis String?
+  sampleIdsJson       Json
+  createdAt           DateTime @default(now())
+
+  @@index([analyzerId, analyteCode, createdAt])
+  @@map("nexus_moving_average_batches")
+}
+
+model NexusPlausibilityAudit {
+  id                       String                 @id @default(cuid())
+  orderId                  String?
+  sampleId                 String?
+  patientId                String?
+  naMmolL                  Float
+  kMmolL                   Float
+  clMmolL                  Float
+  hco3MmolL                Float
+  albuminGdL               Float?
+  glucoseMgDl              Float?
+  bunMgDl                  Float?
+  measuredOsmolality       Float?
+  uncorrectedAnionGap      Float
+  albuminCorrectedAnionGap Float
+  deltaDeltaRatio          Float?
+  calculatedOsmolality     Float?
+  osmolalGap               Float?
+  acidBaseClass            AcidBaseClassification
+  ivContaminationType      IvContaminationType    @default(NONE)
+  ivContaminationConfidence Float                 @default(0)
+  autoverificationBlocked  Boolean                @default(false)
+  clinicalFindingsJson     Json
+  createdAt                DateTime               @default(now())
+
+  @@index([patientId, createdAt])
+  @@index([sampleId])
+  @@map("nexus_plausibility_audits")
+}
+
+model NexusSepsisKineticLog {
+  id                         String             @id @default(cuid())
+  patientId                  String
+  orderId                    String?
+  plateletsCount             Float              // x10^3 / uL
+  totalBilirubinMgDl         Float              // mg/dL
+  creatinineMgDl             Float              // mg/dL
+  lactateCurrentMmolL        Float              // mmol/L
+  lactatePreviousMmolL       Float?             // mmol/L
+  procalcitoninCurrentNgMl   Float?             // ng/mL
+  procalcitoninBaselineNgMl  Float?             // ng/mL
+  elapsedHours               Float?
+  coagulationSofaSubscore    Int
+  liverSofaSubscore          Int
+  renalSofaSubscore          Int
+  totalLabSofaScore          Int
+  deltaSofaScore             Int                @default(0)
+  lactateClearancePercent    Float?
+  lactateVelocityMmolPerHr   Float?
+  pctDeclinePercent          Float?
+  codeSepsisInterlock        Boolean            @default(false)
+  alertSeverity              NexusAlertSeverity
+  clinicalDirective          String
+  createdAt                  DateTime           @default(now())
+
+  @@index([patientId, createdAt])
+  @@index([codeSepsisInterlock])
+  @@map("nexus_sepsis_kinetic_logs")
+}
+
+model NexusTatHazardPrediction {
+  id                        String   @id @default(cuid())
+  sampleId                  String
+  barcode                   String
+  analyzerId                String
+  department                String
+  isIcuOrStat               Boolean
+  queueDepth                Int
+  centrifugeDelayMinutes    Float
+  sampleHilIndex            Int
+  elapsedMinutes            Float
+  slaTargetMinutes          Float
+  hazardRatio               Float
+  probBreachAt10Min         Float
+  probBreachAt20Min         Float
+  probBreachAt30Min         Float
+  overallBreachProbability  Float
+  recommendPreemptiveReroute Boolean @default(false)
+  recommendedTargetAnalyzer String?
+  createdAt                 DateTime @default(now())
+
+  @@index([sampleId, createdAt])
+  @@index([recommendPreemptiveReroute])
+  @@map("nexus_tat_hazard_predictions")
+}
+
+model NexusReagentEvaporationLog {
+  id                        String   @id @default(cuid())
+  analyzerId                String
+  analyteCode               String
+  reagentLotNumber          String?
+  initialVolumeMl           Float
+  daysPierced               Float
+  carouselTempCelsius       Float
+  evaporationRateMgPerDay   Float
+  cumulativeVolumeLossMl    Float
+  remainingVolumeMl         Float
+  concentrationFactorPhi    Float
+  analyticalDriftPercent    Float
+  clsiAllowableTotalError   Float
+  exceedsClsiTeaLimit       Boolean  @default(false)
+  estimatedHoursToFailure   Float
+  createdAt                 DateTime @default(now())
+
+  @@index([analyzerId, analyteCode])
+  @@map("nexus_reagent_evaporation_logs")
+}

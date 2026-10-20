@@ -42,6 +42,7 @@ import { oauthTokenHandler } from "./modules/auth/m2m-gateway.controller";
 import digitalTwinRoutes from "./modules/digital-twin/digital-twin.routes";
 import nexusRoutes from "./modules/nexus/nexus.routes";
 import enterpriseWorkflowsRoutes from "./modules/enterprise-workflows/enterprise-workflows.routes";
+import enterpriseTier2Routes from "./modules/enterprise-workflows-tier2/enterprise-tier2.routes";
 
 // =======================================================
 // MIDDLEWARE
@@ -504,6 +505,14 @@ app.use("/api/nexus", nexusRoutes);
 
 app.use("/api/enterprise", enterpriseWorkflowsRoutes);
 app.use("/api/v1/enterprise", enterpriseWorkflowsRoutes);
+
+// =======================================================
+// ENTERPRISE CLINICAL WORKFLOWS (TIER 2)
+// Microbiology & AST, Reagent CPT Engine, B2B Logistics
+// =======================================================
+
+app.use("/api/enterprise-tier2", enterpriseTier2Routes);
+app.use("/api/v1/enterprise-tier2", enterpriseTier2Routes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

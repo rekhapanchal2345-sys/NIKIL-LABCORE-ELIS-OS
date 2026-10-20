@@ -42,13 +42,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [isPublicRoute, isLoggedIn, loading, pathname, router]);
 
-  // Show loading state during auth check only on protected routes
-  if (loading && !isPublicRoute && pathname !== "/") {
+  // On protected routes, block unauthenticated access from rendering protected children
+  if (!isPublicRoute && pathname !== "/" && (loading || !isLoggedIn)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#020306]">
         <div className="text-center">
           <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-sky-500 border-t-transparent mx-auto" />
-          <p className="text-sm font-mono text-white/50">Securing Clinical Workspace...</p>
+          <p className="text-sm font-mono text-white/50">
+            {loading ? "Securing Clinical Workspace..." : "Redirecting to clinical login..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Prevent flash of login/auth screens if already logged in and redirecting to dashboard
+  if (isLoggedIn && (pathname === "/login" || pathname === "/forgot-password" || pathname === "/")) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#020306]">
+        <div className="text-center">
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-sky-500 border-t-transparent mx-auto" />
+          <p className="text-sm font-mono text-white/50">Opening Clinical Workspace...</p>
         </div>
       </div>
     );

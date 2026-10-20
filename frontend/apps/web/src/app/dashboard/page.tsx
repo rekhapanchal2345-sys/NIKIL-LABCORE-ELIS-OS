@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { dashboardApi } from "@/lib/api";
+import { dashboardApi, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { getRoleLabel } from "@/lib/auth";
+import { getRoleLabel, isAuthenticated, getAccessToken } from "@/lib/auth";
 
 // Upgraded & New Dashboard Components
 import LuxuryKpiGrid from "@/components/dashboard/LuxuryKpiGrid";
@@ -62,7 +62,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
   const [dateRange, setDateRange] = useState("today");
   const [activeTab, setActiveTab] = useState<
     "live" | "engine" | "panic" | "workstations" | "token" | "tat" | "revenue" | "audit"
@@ -151,6 +151,11 @@ export default function DashboardPage() {
 
   // Parallel data fetching across all dashboard modules
   const fetchDashboardData = useCallback(async () => {
+    // Never query protected stats without an active session
+    if (!isAuthenticated() && !getAccessToken()) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -197,7 +202,9 @@ export default function DashboardPage() {
           setRecentOrders(recentOrdersData.data.slice(0, 6));
         }
       } catch (e) {
-        console.error("Error fetching recent orders:", e);
+        if (!(e instanceof ApiError && e.status === 401)) {
+          console.error("Error fetching recent orders:", e);
+        }
       }
 
       // 3. Approval Queue
@@ -260,25 +267,28 @@ export default function DashboardPage() {
         setActivities(activityRes.value.data);
       }
     } catch (err) {
-      console.error("Error loading dashboard data:", err);
-      setError("Failed to fetch fresh laboratory statistics");
+      if (!(err instanceof ApiError && err.status === 401)) {
+        console.error("Error loading dashboard data:", err);
+        setError("Failed to fetch fresh laboratory statistics");
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (authLoading || !isLoggedIn) return;
     fetchDashboardData();
-  }, [fetchDashboardData]);
+  }, [authLoading, isLoggedIn, fetchDashboardData]);
 
   // Optional background 30-second poll
   useEffect(() => {
-    if (!autoSyncEnabled) return;
+    if (!autoSyncEnabled || authLoading || !isLoggedIn) return;
     const interval = setInterval(() => {
       fetchDashboardData();
     }, 30000);
     return () => clearInterval(interval);
-  }, [autoSyncEnabled, fetchDashboardData]);
+  }, [autoSyncEnabled, authLoading, isLoggedIn, fetchDashboardData]);
 
   // Dynamic Greeting based on current hour
   const greeting = useMemo(() => {

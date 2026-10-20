@@ -57,6 +57,16 @@ export function readAuth(key: string): string | null {
       /* ignore unreadable store */
     }
   }
+  if (typeof document !== "undefined") {
+    try {
+      const match = document.cookie.match(new RegExp("(?:^|;\\s*)" + key + "=([^;]*)"));
+      if (match && match[1]) {
+        return decodeURIComponent(match[1]);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   return null;
 }
 

@@ -133,6 +133,7 @@ async function sendRequest(
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: options.credentials || 'same-origin',
   });
 
   const responseText = await response.text();
@@ -174,7 +175,21 @@ const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<any
   let result: Awaited<ReturnType<typeof sendRequest>>;
 
   try {
-    result = await sendRequest(endpoint, options, getAuthToken());
+    let token = getAuthToken();
+
+    // If an access token is missing and this is a protected endpoint:
+    if (!token && !isAuthEndpoint(endpoint)) {
+      // If a refresh token is present, attempt to recover a fresh access token before firing
+      if (getRefreshToken()) {
+        token = await refreshSessionOnce();
+      }
+      // If we still have no access token, don't fire an unauthorized request across the wire
+      if (!token) {
+        throw new ApiError('Authentication required. Please sign in.', 401, 'UNAUTHORIZED');
+      }
+    }
+
+    result = await sendRequest(endpoint, options, token);
 
     // One transparent retry with a fresh token before giving up the session.
     if (!result.ok && result.status === 401 && !isRefreshEndpoint(endpoint)) {
@@ -3900,6 +3915,14 @@ export const aiApi = {
   },
 };
 
+// Suppress console.error on expected unauthenticated / session-expired 401 responses
+const logDashboardFallback = (context: string, error: unknown) => {
+  if (error instanceof ApiError && error.status === 401) {
+    return;
+  }
+  console.error(`${context}, using fallback:`, error);
+};
+
 // Dashboard API
 export const dashboardApi = {
   // Get dashboard stats
@@ -3907,7 +3930,7 @@ export const dashboardApi = {
     try {
       return await apiCall('/api/dashboard/stats');
     } catch (error) {
-      console.error('Dashboard stats API error, using fallback:', error);
+      logDashboardFallback('Dashboard stats API error', error);
       return {
         success: true,
         data: {
@@ -3960,7 +3983,7 @@ export const dashboardApi = {
     try {
       return await apiCall('/api/dashboard/orders');
     } catch (error) {
-      console.error('Dashboard order stats API error, using fallback:', error);
+      logDashboardFallback('Dashboard order stats API error', error);
       return {
         success: true,
         data: {
@@ -3982,7 +4005,7 @@ export const dashboardApi = {
     try {
       return await apiCall(`/api/dashboard/approvals/queue${queryString}`);
     } catch (error) {
-      console.error('Dashboard approval queue API error, using fallback:', error);
+      logDashboardFallback('Dashboard approval queue API error', error);
       return {
         success: true,
         data: {
@@ -4044,7 +4067,7 @@ export const dashboardApi = {
     try {
       return await apiCall(`/api/dashboard/results/attention${queryString}`);
     } catch (error) {
-      console.error('Dashboard attention results API error, using fallback:', error);
+      logDashboardFallback('Dashboard attention results API error', error);
       return {
         success: true,
         data: {
@@ -4084,7 +4107,7 @@ export const dashboardApi = {
     try {
       return await apiCall('/api/dashboard/samples');
     } catch (error) {
-      console.error('Dashboard sample stats API error, using fallback:', error);
+      logDashboardFallback('Dashboard sample stats API error', error);
       return {
         success: true,
         data: {
@@ -4110,7 +4133,7 @@ export const dashboardApi = {
     try {
       return await apiCall(`/api/dashboard/activity?limit=${limit}`);
     } catch (error) {
-      console.error('Dashboard activity API error, using fallback:', error);
+      logDashboardFallback('Dashboard activity API error', error);
       return {
         success: true,
         data: []
@@ -4124,7 +4147,7 @@ export const dashboardApi = {
     try {
       return await apiCall(`/api/dashboard/payments${queryString}`);
     } catch (error) {
-      console.error('Dashboard payment analytics API error, using fallback:', error);
+      logDashboardFallback('Dashboard payment analytics API error', error);
       return {
         success: true,
         data: {
@@ -4145,7 +4168,7 @@ export const dashboardApi = {
     try {
       return await apiCall(`/api/dashboard/tests${queryString}`);
     } catch (error) {
-      console.error('Dashboard test analytics API error, using fallback:', error);
+      logDashboardFallback('Dashboard test analytics API error', error);
       return {
         success: true,
         data: {
