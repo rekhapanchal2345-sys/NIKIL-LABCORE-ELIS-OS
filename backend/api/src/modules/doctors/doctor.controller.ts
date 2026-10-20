@@ -29,6 +29,12 @@ import {
 } from "./doctor.service";
 
 import { successResponse, createdResponse } from "../../utils/response";
+import prisma from "../../../config/database";
+import { HttpError } from "../../utils/http-error";
+import {
+  saveSignatureImage,
+  getDoctorSealInfo,
+} from "../approvals/digital-signature.service";
 
 const actorOf = (req: Request) => ({
   userId: (req as any).user?.id as string | undefined,
@@ -515,4 +521,79 @@ const uploadField = (field: "signatureUrl" | "photoUrl") =>
   };
 
 export const uploadPhoto = uploadField("photoUrl");
-export const uploadSignature = uploadField("signatureUrl");
+
+export const uploadSignature = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const params = (req as any).validated?.params || req.params;
+    const { signatureUrl, signatureData, mimeType } = req.body;
+
+    let finalUrl = signatureUrl;
+
+    // Check if incoming payload is a base64 image or data URL
+    if (signatureData || (signatureUrl && signatureUrl.startsWith("data:image/"))) {
+      const dataToSave = signatureData || signatureUrl;
+      const uploadRes = await saveSignatureImage(params.id as string, dataToSave, mimeType);
+      finalUrl = uploadRes.signatureUrl;
+    }
+
+    if (!finalUrl) {
+      throw new HttpError("No signature image data or URL provided", 400);
+    }
+
+    // Update Doctor record
+    const doctor = await updateDoctor(params.id as string, { signatureUrl: finalUrl });
+
+    // Also synchronize to linked User account if present
+    if (doctor && (doctor.email || doctor.doctorCode)) {
+      await prisma.user.updateMany({
+        where: {
+          OR: [
+            { email: doctor.email || undefined },
+            { employeeCode: doctor.doctorCode },
+          ],
+        },
+        data: {
+          signature: finalUrl,
+        },
+      });
+    }
+
+    // Generate electronic seal preview
+    const sealInfo = await getDoctorSealInfo(params.id as string);
+
+    return successResponse(
+      res,
+      {
+        doctor,
+        signatureUrl: finalUrl,
+        seal: sealInfo,
+      },
+      "Doctor signature uploaded and NABL electronic seal generated successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSeal = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const params = (req as any).validated?.params || req.params;
+    const sealInfo = await getDoctorSealInfo(params.id as string);
+
+    return successResponse(
+      res,
+      sealInfo,
+      "Doctor electronic seal retrieved successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};

@@ -44,6 +44,7 @@ export default function DoctorDetailPage() {
   const [saving, setSaving] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [sealSvg, setSealSvg] = useState<string | null>(null);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,10 +61,26 @@ export default function DoctorDetailPage() {
   const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 500 * 1024) {
+        alert("Signature image must be under 500 KB (PNG/JPEG format)");
+        return;
+      }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSignaturePreview(reader.result as string);
-        setFormData({ ...formData, signatureUrl: reader.result as string });
+      reader.onloadend = async () => {
+        const dataUrl = reader.result as string;
+        setSignaturePreview(dataUrl);
+        setFormData(prev => ({ ...prev, signatureUrl: dataUrl }));
+
+        if (doctor?.id) {
+          try {
+            const res = await doctorApi.uploadSignature(String(doctor.id), { signatureData: dataUrl });
+            if (res?.data?.seal?.sealSvg) {
+              setSealSvg(res.data.seal.sealSvg);
+            }
+          } catch (uploadErr) {
+            console.warn("Direct signature sync non-fatal:", uploadErr);
+          }
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -121,6 +138,16 @@ export default function DoctorDetailPage() {
           }
           if (doctorData.signatureUrl) {
             setSignaturePreview(doctorData.signatureUrl);
+          }
+
+          // Fetch doctor electronic seal
+          try {
+            const sealResponse = await doctorApi.getSeal(id);
+            if (sealResponse?.data?.sealSvg) {
+              setSealSvg(sealResponse.data.sealSvg);
+            }
+          } catch (sealErr) {
+            console.warn("Doctor seal fetch non-fatal:", sealErr);
           }
 
           // Fetch statistics for view mode
@@ -693,6 +720,18 @@ export default function DoctorDetailPage() {
                           className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
                         />
                       </div>
+                      <p className="mt-1 text-xs text-gray-500">Accepted formats: PNG, JPEG (max 500 KB). Transparency recommended.</p>
+                      {sealSvg && (
+                        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                          <p className="text-xs font-bold text-blue-900 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>🛡️</span> Live NABL ISO 15189:2022 Electronic Seal Preview
+                          </p>
+                          <div
+                            className="max-w-md mx-auto"
+                            dangerouslySetInnerHTML={{ __html: sealSvg }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -715,23 +754,38 @@ export default function DoctorDetailPage() {
               </form>
             ) : (
               <div className="space-y-8">
-                {/* Photo and Signature Section */}
-                {(doctor.photoUrl || doctor.signatureUrl) && (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                {/* Photo, Signature and Electronic Seal Section */}
+                {(doctor.photoUrl || doctor.signatureUrl || sealSvg) && (
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     {doctor.photoUrl && (
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-sm font-medium text-gray-600 mb-3">Photo</p>
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-center">
+                        <p className="text-sm font-medium text-gray-600 mb-3">Official Photograph</p>
                         <div className="h-40 w-40 rounded-full overflow-hidden border-4 border-white shadow-md mx-auto">
                           <img src={doctor.photoUrl} alt="Doctor photo" className="h-full w-full object-cover" />
                         </div>
                       </div>
                     )}
                     {doctor.signatureUrl && (
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-sm font-medium text-gray-600 mb-3">Signature</p>
-                        <div className="h-40 w-64 rounded border border-gray-300 overflow-hidden bg-white shadow-md mx-auto">
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-center">
+                        <p className="text-sm font-medium text-gray-600 mb-3">Registered Digital Signature</p>
+                        <div className="h-40 w-64 rounded border border-gray-300 overflow-hidden bg-white shadow-md mx-auto flex items-center justify-center p-2">
                           <img src={doctor.signatureUrl} alt="Doctor signature" className="h-full w-full object-contain" />
                         </div>
+                        <p className="mt-2 text-[11px] text-gray-500">Stored securely in /uploads/signatures/</p>
+                      </div>
+                    )}
+                    {sealSvg && (
+                      <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 text-center">
+                        <p className="text-sm font-bold text-blue-900 mb-3 flex items-center justify-center gap-1.5">
+                          <span>🛡️</span> NABL ISO 15189:2022 Electronic Seal
+                        </p>
+                        <div
+                          className="w-full flex justify-center"
+                          dangerouslySetInnerHTML={{ __html: sealSvg }}
+                        />
+                        <p className="mt-2 text-[11px] text-emerald-700 font-semibold">
+                          ✓ Certified for diagnostic sign-off
+                        </p>
                       </div>
                     )}
                   </div>

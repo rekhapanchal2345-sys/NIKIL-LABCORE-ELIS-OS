@@ -115,11 +115,11 @@ const menuSections: MenuSection[] = [
         href: "/dashboard",
         icon: LayoutDashboard,
         accent: {
-          bg: "bg-sky-500/10 text-sky-400 group-hover:bg-sky-500/20 group-hover:text-sky-300",
-          text: "text-sky-400",
-          activeBorder: "border-sky-400",
-          activeIconBg: "bg-gradient-to-br from-sky-400 to-blue-600 text-white shadow-[0_0_12px_rgba(56,189,248,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-teal-50 text-[#0F766E] group-hover:bg-teal-100/70 group-hover:text-[#0F766E]",
+          text: "text-[#0F766E]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
       },
       {
@@ -127,11 +127,11 @@ const menuSections: MenuSection[] = [
         href: "/nexus",
         icon: Sparkles,
         accent: {
-          bg: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300",
-          text: "text-emerald-400",
-          activeBorder: "border-emerald-400",
-          activeIconBg: "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-slate-950 shadow-[0_0_14px_rgba(16,185,129,0.5)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-teal-50 text-[#0F766E] group-hover:bg-teal-100/70 group-hover:text-[#0F766E]",
+          text: "text-[#0F766E]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Nexus Command Center", href: "/nexus", badge: "Live", badgeVariant: "emerald" },
@@ -148,11 +148,11 @@ const menuSections: MenuSection[] = [
         href: "/patients",
         icon: UserCircle2,
         accent: {
-          bg: "bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-300",
-          text: "text-indigo-400",
-          activeBorder: "border-indigo-400",
-          activeIconBg: "bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-[0_0_14px_rgba(99,102,241,0.5)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-sky-50 text-[#0284C7] group-hover:bg-sky-100/70 group-hover:text-[#0284C7]",
+          text: "text-[#0284C7]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           // ── CORE ──────────────────────────────────────────
@@ -240,11 +240,11 @@ const menuSections: MenuSection[] = [
         href: "/doctors",
         icon: Stethoscope,
         accent: {
-          bg: "bg-teal-500/10 text-teal-400 group-hover:bg-teal-500/20 group-hover:text-teal-300",
-          text: "text-teal-400",
-          activeBorder: "border-teal-400",
-          activeIconBg: "bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-[0_0_12px_rgba(20,184,166,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-teal-50 text-[#0F766E] group-hover:bg-teal-100/70 group-hover:text-[#0F766E]",
+          text: "text-[#0F766E]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "All Doctors", href: "/doctors" },
@@ -256,11 +256,11 @@ const menuSections: MenuSection[] = [
         href: "/abdm",
         icon: ShieldCheck,
         accent: {
-          bg: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300",
-          text: "text-emerald-400",
-          activeBorder: "border-emerald-400",
-          activeIconBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-[#ECFDF5] text-[#059669] group-hover:bg-emerald-100/70 group-hover:text-[#059669]",
+          text: "text-[#059669]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Overview & Milestones", href: "/abdm" },
@@ -283,11 +283,11 @@ const menuSections: MenuSection[] = [
         href: "/tests",
         icon: FlaskConical,
         accent: {
-          bg: "bg-violet-500/10 text-violet-400 group-hover:bg-violet-500/20 group-hover:text-violet-300",
-          text: "text-violet-400",
-          activeBorder: "border-violet-400",
-          activeIconBg: "bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-[0_0_12px_rgba(168,85,247,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-sky-50 text-[#0284C7] group-hover:bg-sky-100/70 group-hover:text-[#0284C7]",
+          text: "text-[#0284C7]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "All Tests", href: "/tests" },
@@ -302,11 +302,11 @@ const menuSections: MenuSection[] = [
         href: "/orders",
         icon: ClipboardList,
         accent: {
-          bg: "bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:text-blue-300",
-          text: "text-blue-400",
-          activeBorder: "border-blue-400",
-          activeIconBg: "bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-sky-50 text-[#0284C7] group-hover:bg-sky-100/70 group-hover:text-[#0284C7]",
+          text: "text-[#0284C7]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "All Orders", href: "/orders" },
@@ -318,11 +318,11 @@ const menuSections: MenuSection[] = [
         href: "/samples",
         icon: TestTube,
         accent: {
-          bg: "bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 group-hover:text-amber-300",
-          text: "text-amber-400",
-          activeBorder: "border-amber-400",
-          activeIconBg: "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-[#FFFBEB] text-[#D97706] group-hover:bg-amber-100/70 group-hover:text-[#D97706]",
+          text: "text-[#D97706]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
       },
       {
@@ -330,11 +330,11 @@ const menuSections: MenuSection[] = [
         href: "/analyzers",
         icon: Cpu,
         accent: {
-          bg: "bg-fuchsia-500/10 text-fuchsia-400 group-hover:bg-fuchsia-500/20 group-hover:text-fuchsia-300",
-          text: "text-fuchsia-400",
-          activeBorder: "border-fuchsia-400",
-          activeIconBg: "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-[0_0_12px_rgba(217,70,239,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-teal-50 text-[#0F766E] group-hover:bg-teal-100/70 group-hover:text-[#0F766E]",
+          text: "text-[#0F766E]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Fleet Dashboard", href: "/analyzers" },
@@ -357,11 +357,11 @@ const menuSections: MenuSection[] = [
         href: "/digital-twin",
         icon: Cpu,
         accent: {
-          bg: "bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-300",
-          text: "text-cyan-400",
-          activeBorder: "border-cyan-400",
-          activeIconBg: "bg-gradient-to-br from-cyan-500 to-teal-600 text-white shadow-[0_0_12px_rgba(6,182,212,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-teal-50 text-[#0F766E] group-hover:bg-teal-100/70 group-hover:text-[#0F766E]",
+          text: "text-[#0F766E]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
       },
       {
@@ -369,11 +369,11 @@ const menuSections: MenuSection[] = [
         href: "/integrations",
         icon: Server,
         accent: {
-          bg: "bg-sky-500/10 text-sky-400 group-hover:bg-sky-500/20 group-hover:text-sky-300",
-          text: "text-sky-400",
-          activeBorder: "border-sky-400",
-          activeIconBg: "bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-[0_0_12px_rgba(56,189,248,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-sky-50 text-[#0284C7] group-hover:bg-sky-100/70 group-hover:text-[#0284C7]",
+          text: "text-[#0284C7]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Channel Matrix", href: "/integrations" },
@@ -397,11 +397,11 @@ const menuSections: MenuSection[] = [
         href: "/results",
         icon: CheckCircle,
         accent: {
-          bg: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300",
-          text: "text-emerald-400",
-          activeBorder: "border-emerald-400",
-          activeIconBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-[#ECFDF5] text-[#059669] group-hover:bg-emerald-100/70 group-hover:text-[#059669]",
+          text: "text-[#059669]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
       },
       {
@@ -410,11 +410,11 @@ const menuSections: MenuSection[] = [
         icon: FileCheck,
         badgeKey: "approvals",
         accent: {
-          bg: "bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20 group-hover:text-rose-300",
-          text: "text-rose-400",
-          activeBorder: "border-rose-400",
-          activeIconBg: "bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-[#FEF2F2] text-[#DC2626] group-hover:bg-red-100/70 group-hover:text-[#DC2626]",
+          text: "text-[#DC2626]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Approval Queue (Ready)", href: "/approvals" },
@@ -432,11 +432,11 @@ const menuSections: MenuSection[] = [
         href: "/reports",
         icon: ReportIcon,
         accent: {
-          bg: "bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-300",
-          text: "text-cyan-400",
-          activeBorder: "border-cyan-400",
-          activeIconBg: "bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-[0_0_12px_rgba(6,182,212,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-sky-50 text-[#0284C7] group-hover:bg-sky-100/70 group-hover:text-[#0284C7]",
+          text: "text-[#0284C7]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
       },
     ],
@@ -451,11 +451,11 @@ const menuSections: MenuSection[] = [
         href: "/ai-studio",
         icon: Brain,
         accent: {
-          bg: "bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:text-blue-300",
-          text: "text-blue-400",
-          activeBorder: "border-blue-400",
-          activeIconBg: "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-teal-50 text-[#0F766E] group-hover:bg-teal-100/70 group-hover:text-[#0F766E]",
+          text: "text-[#0F766E]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Clinical AI Hub", href: "/ai-studio" },
@@ -482,11 +482,11 @@ const menuSections: MenuSection[] = [
         icon: FileText,
         badgeKey: "invoices",
         accent: {
-          bg: "bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:text-blue-300",
-          text: "text-blue-400",
-          activeBorder: "border-blue-400",
-          activeIconBg: "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-sky-50 text-[#0284C7] group-hover:bg-sky-100/70 group-hover:text-[#0284C7]",
+          text: "text-[#0284C7]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "All Invoices (Register)", href: "/invoices" },
@@ -503,11 +503,11 @@ const menuSections: MenuSection[] = [
         href: "/payments",
         icon: DollarSign,
         accent: {
-          bg: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300",
-          text: "text-emerald-400",
-          activeBorder: "border-emerald-400",
-          activeIconBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-[#ECFDF5] text-[#059669] group-hover:bg-emerald-100/70 group-hover:text-[#059669]",
+          text: "text-[#059669]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Cashier Command Desk", href: "/payments" },
@@ -526,11 +526,11 @@ const menuSections: MenuSection[] = [
         href: "/communication",
         icon: MessageSquare,
         accent: {
-          bg: "bg-violet-500/10 text-violet-400 group-hover:bg-violet-500/20 group-hover:text-violet-300",
-          text: "text-violet-400",
-          activeBorder: "border-violet-400",
-          activeIconBg: "bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-[0_0_12px_rgba(139,92,246,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-teal-50 text-[#0F766E] group-hover:bg-teal-100/70 group-hover:text-[#0F766E]",
+          text: "text-[#0F766E]",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "Communication Hub", href: "/communication" },
@@ -546,11 +546,11 @@ const menuSections: MenuSection[] = [
         // Mirrors `settings:view` in backend/api/middleware/rbac.middleware.ts.
         allowedRoles: SETTINGS_VIEW_ROLES,
         accent: {
-          bg: "bg-slate-700/30 text-slate-300 group-hover:bg-slate-700/50 group-hover:text-slate-200",
-          text: "text-slate-300",
-          activeBorder: "border-slate-400",
-          activeIconBg: "bg-gradient-to-br from-slate-600 to-slate-800 text-white shadow-[0_0_12px_rgba(148,163,184,0.4)]",
-          activeText: "text-white font-semibold",
+          bg: "bg-slate-100 text-slate-700 group-hover:bg-slate-200/70 group-hover:text-[#0F172A]",
+          text: "text-slate-700",
+          activeBorder: "border-[#0F766E]",
+          activeIconBg: "bg-[#0F766E] text-white shadow-xs",
+          activeText: "text-[#0F766E] font-bold",
         },
         children: [
           { label: "General Settings", href: "/settings" },
@@ -861,30 +861,26 @@ export default function Sidebar({
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[998] hidden sidebar-overlay"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-[998] hidden sidebar-overlay"
         />
       )}
 
       <aside
-        className="w-[260px] min-w-[260px] h-screen bg-[#090D1A] text-slate-200 border-r border-slate-800/80 fixed left-0 top-0 bottom-0 z-[999] flex flex-col transition-transform duration-300 ease-in-out labcore-sidebar shadow-2xl select-none"
+        className="w-[260px] min-w-[260px] h-screen bg-white text-[#0F172A] border-r border-slate-200/90 fixed left-0 top-0 bottom-0 z-[999] flex flex-col transition-transform duration-300 ease-in-out labcore-sidebar shadow-sm select-none"
         style={{
           transform: isOpen ? "translateX(0)" : "translateX(-100%)",
-          background: "linear-gradient(180deg, #0a0f1e 0%, #0d1527 50%, #080d19 100%)",
         }}
       >
-        {/* Subtle Ambient Radial Glow */}
-        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-sky-500/10 via-indigo-500/5 to-transparent pointer-events-none" />
-
         {/* ================================================= */}
         {/* BRAND HEADER */}
         {/* ================================================= */}
-        <div className="h-[64px] min-h-[64px] px-5 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/40 backdrop-blur-md relative z-10">
+        <div className="h-[64px] min-h-[64px] px-5 flex items-center justify-between border-b border-slate-200/90 bg-white relative z-10">
           <Link
             href="/dashboard"
             onClick={onClose}
             className="flex items-center no-underline group"
           >
-            <LabCoreLogo size="md" variant="full" theme="dark" animated={true} sparkle={true} />
+            <LabCoreLogo size="md" variant="full" theme="light" animated={true} sparkle={true} />
           </Link>
 
           {/* Mobile Close */}
@@ -892,7 +888,7 @@ export default function Sidebar({
             type="button"
             onClick={onClose}
             aria-label="Close sidebar"
-            className="hidden p-1.5 rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 text-lg cursor-pointer sidebar-close hover:text-white hover:bg-slate-700 transition-colors"
+            className="hidden p-1.5 rounded-lg border border-slate-200 bg-[#F8FAFC] text-slate-500 text-lg cursor-pointer sidebar-close hover:text-[#0F172A] hover:bg-slate-100 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -901,29 +897,24 @@ export default function Sidebar({
         {/* ================================================= */}
         {/* EXECUTIVE CREDENTIALS & SIGNATORY PROFILE CARD */}
         {/* ================================================= */}
-        <div className="px-3 pt-3 pb-2 border-b border-slate-800/70 relative z-10">
+        <div className="px-3 pt-3 pb-2 border-b border-slate-200/80 relative z-10">
           <Link
             href="/settings"
             onClick={(event) => {
-              // This card doubles as a "My Profile" shortcut. Roles without
-              // `settings:view` have no Settings section, so keep it inert
-              // rather than dropping them on a page they cannot use.
               if (!isAllowedForRole(SETTINGS_VIEW_ROLES)) {
                 event.preventDefault();
               }
             }}
             aria-disabled={!isAllowedForRole(SETTINGS_VIEW_ROLES)}
-            className={`block relative group overflow-hidden rounded-xl border border-slate-800/80 bg-gradient-to-b from-slate-900/90 to-[#0c1424] p-3 transition-all duration-300 no-underline ${isAllowedForRole(SETTINGS_VIEW_ROLES)
-              ? "hover:border-sky-500/50 hover:shadow-[0_0_20px_rgba(56,189,248,0.15)] cursor-pointer"
-              : "cursor-default"
-              }`}
+            className={`block relative group overflow-hidden rounded-xl border border-slate-200/90 bg-[#F8FAFC] p-3 transition-all duration-200 no-underline ${
+              isAllowedForRole(SETTINGS_VIEW_ROLES)
+                ? "hover:bg-white hover:border-[#0F766E]/50 hover:shadow-sm cursor-pointer"
+                : "cursor-default"
+            }`}
           >
-            {/* Top glass highlight sheen */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent" />
-
             <div className="relative z-10 flex items-center gap-2.5">
               <div className="relative shrink-0">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-sky-600 to-teal-500 font-bold text-xs text-white shadow-md shadow-indigo-900/50 ring-2 ring-sky-400/30 overflow-hidden">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0F766E] font-bold text-xs text-white shadow-xs overflow-hidden">
                   {userAvatar ? (
                     <img src={userAvatar} alt="Avatar" className="h-full w-full object-cover" />
                   ) : (
@@ -933,38 +924,38 @@ export default function Sidebar({
                 {/* Active Live Heartbeat Dot */}
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border-2 border-[#0B1120]"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#059669] border-2 border-white"></span>
                 </span>
               </div>
 
               {/* Identity & Accreditation */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
-                  <span className="truncate font-bold text-xs text-slate-100 group-hover:text-white transition-colors">
+                  <span className="truncate font-bold text-xs text-[#0F172A] group-hover:text-[#0F766E] transition-colors">
                     {isMounted ? userName : 'Jaya Ashapurama'}
                   </span>
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#059669] shrink-0" />
                 </div>
 
                 <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span className="rounded px-1.5 py-0.2 text-[9px] font-extrabold tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  <span className="rounded px-1.5 py-0.2 text-[9px] font-extrabold tracking-wider bg-teal-50 text-[#0F766E] border border-teal-200">
                     {isMounted ? userRole : 'ADMIN'}
                   </span>
-                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                    NABL
+                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-semibold bg-[#ECFDF5] text-[#059669] border border-emerald-200">
+                    NABL VERIFIED
                   </span>
                 </div>
               </div>
 
-              <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+              <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all shrink-0" />
             </div>
 
             {/* Micro accreditation footer */}
-            <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[9px] text-slate-400">
-              <span className="font-mono tracking-tight text-slate-400">
+            <div className="mt-2 pt-2 border-t border-slate-200/80 flex items-center justify-between text-[9px] text-[#475569]">
+              <span className="font-mono tracking-tight text-slate-500">
                 NABL-2026-DIR • ISO 15189
               </span>
-              <span className="text-sky-400 font-medium group-hover:underline">
+              <span className="text-[#0F766E] font-bold group-hover:underline">
                 Manage
               </span>
             </div>
@@ -982,18 +973,18 @@ export default function Sidebar({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Quick jump to menu..."
-              className="w-full bg-slate-900/80 border border-slate-800/90 text-xs text-slate-200 placeholder:text-slate-400 rounded-lg pl-8 pr-7 py-1.5 focus:outline-none focus:border-sky-500/60 focus:ring-1 focus:ring-sky-500/30 transition-all"
+              className="w-full bg-[#F8FAFC] border border-slate-200/90 text-xs text-[#0F172A] placeholder:text-slate-400 rounded-lg pl-8 pr-7 py-1.5 focus:outline-none focus:border-[#0F766E] focus:bg-white focus:ring-1 focus:ring-[#0F766E]/20 transition-all"
             />
             {searchQuery ? (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 text-slate-400 hover:text-white text-xs p-0.5"
+                className="absolute right-2 text-slate-400 hover:text-slate-700 text-xs p-0.5"
               >
                 ×
               </button>
             ) : (
-              <kbd className="absolute right-2 px-1.5 py-0.5 text-[9px] font-mono font-medium text-slate-400 bg-slate-800/90 rounded border border-slate-700/60 pointer-events-none">
+              <kbd className="absolute right-2 px-1.5 py-0.5 text-[9px] font-mono font-medium text-slate-400 bg-white rounded border border-slate-200 pointer-events-none">
                 ⌘K
               </kbd>
             )}
@@ -1007,10 +998,10 @@ export default function Sidebar({
           {filteredSections.map((section) => (
             <div key={section.id} className="space-y-0.5">
               {/* Section Header */}
-              <div className="px-2.5 pb-1.5 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+              <div className="px-2.5 pb-1.5 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                 <span>{section.title}</span>
                 {section.badge && (
-                  <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-slate-800/90 text-slate-400 border border-slate-700/50">
+                  <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
                     {section.badge}
                   </span>
                 )}
@@ -1032,30 +1023,33 @@ export default function Sidebar({
                       <button
                         type="button"
                         onClick={() => toggleMenu(item.label)}
-                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 border cursor-pointer ${isSelected
-                          ? "bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-transparent border-sky-500/30 text-white shadow-sm"
-                          : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-slate-800"
-                          }`}
+                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 border cursor-pointer ${
+                          isSelected
+                            ? "bg-teal-50/80 border-teal-500/30 text-[#0F766E] shadow-2xs"
+                            : "border-transparent text-[#334155] hover:text-[#0F172A] hover:bg-[#F8FAFC] hover:border-slate-200/60"
+                        }`}
                       >
                         {/* Active Left Indicator Bar */}
                         {isSelected && (
-                          <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b from-sky-400 to-blue-500 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+                          <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-[#0F766E]" />
                         )}
 
                         {/* Icon Box */}
                         <span
-                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${isSelected
-                            ? item.accent.activeIconBg
-                            : item.accent.bg
-                            }`}
+                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                            isSelected
+                              ? item.accent.activeIconBg
+                              : item.accent.bg
+                          }`}
                         >
                           <IconComponent className="w-4 h-4" />
                         </span>
 
                         {/* Label */}
                         <span
-                          className={`flex-1 text-xs truncate ${isSelected ? "font-semibold text-white" : "font-medium text-slate-300 group-hover:text-white"
-                            }`}
+                          className={`flex-1 text-xs truncate ${
+                            isSelected ? "font-bold text-[#0F766E]" : "font-semibold text-[#334155] group-hover:text-[#0F172A]"
+                          }`}
                         >
                           {item.label}
                         </span>
@@ -1066,7 +1060,7 @@ export default function Sidebar({
                           <div className="flex items-center gap-1 mr-1">
                             {patientHubMetrics.criticalCount > 0 && (
                               <span
-                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/25 text-rose-300 border border-rose-500/40 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.35)]"
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5] animate-pulse"
                                 title={`${patientHubMetrics.criticalCount} Critical patient(s) need attention`}
                               >
                                 <span className="mr-0.5">!</span>{patientHubMetrics.criticalCount}
@@ -1074,7 +1068,7 @@ export default function Sidebar({
                             )}
                             {patientHubMetrics.todayCount > 0 && (
                               <span
-                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-50 text-[#0284C7] border border-sky-200"
                                 title={`${patientHubMetrics.todayCount} patients registered today`}
                               >
                                 {patientHubMetrics.todayCount}
@@ -1088,7 +1082,7 @@ export default function Sidebar({
                           <div className="flex items-center gap-1 mr-1">
                             {approvalMetrics.critical > 0 && (
                               <span
-                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/25 text-rose-300 border border-rose-500/40 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.4)]"
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5] animate-pulse"
                                 title={`${approvalMetrics.critical} Critical panic alert(s)`}
                               >
                                 ! {approvalMetrics.critical}
@@ -1096,7 +1090,7 @@ export default function Sidebar({
                             )}
                             {approvalMetrics.pending > 0 && (
                               <span
-                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30"
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-50 text-[#0284C7] border border-sky-200"
                                 title={`${approvalMetrics.pending} Pending report(s)`}
                               >
                                 {approvalMetrics.pending}
@@ -1108,7 +1102,7 @@ export default function Sidebar({
                         {item.label === "Invoices" && invoiceMetrics.pendingAmount > 0 && (
                           <div className="flex items-center gap-1 mr-1">
                             <span
-                              className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                              className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-[#FFFBEB] text-[#D97706] border border-amber-200"
                               title={`Pending Dues: ₹${invoiceMetrics.pendingAmount.toLocaleString('en-IN')}`}
                             >
                               Due
@@ -1118,8 +1112,9 @@ export default function Sidebar({
 
                         {/* Chevron Indicator */}
                         <ChevronDown
-                          className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 group-hover:text-slate-300 ${isMenuOpen ? "rotate-180 text-sky-400" : ""
-                            }`}
+                          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 group-hover:text-slate-600 ${
+                            isMenuOpen ? "rotate-180 text-[#0F766E]" : ""
+                          }`}
                         />
                       </button>
                     ) : (
@@ -1127,37 +1122,40 @@ export default function Sidebar({
                       <Link
                         href={item.href || "#"}
                         onClick={onClose}
-                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg no-underline transition-all duration-200 border ${active
-                          ? "bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-transparent border-sky-500/30 text-white shadow-sm"
-                          : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-slate-800"
-                          }`}
+                        className={`group relative w-full min-h-[38px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg no-underline transition-all duration-200 border ${
+                          active
+                            ? "bg-teal-50/80 border-teal-500/30 text-[#0F766E] shadow-2xs"
+                            : "border-transparent text-[#334155] hover:text-[#0F172A] hover:bg-[#F8FAFC] hover:border-slate-200/60"
+                        }`}
                       >
                         {/* Active Left Indicator Bar */}
                         {active && (
-                          <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b from-sky-400 to-blue-500 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+                          <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-[#0F766E]" />
                         )}
 
                         {/* Icon Box */}
                         <span
-                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${active
-                            ? item.accent.activeIconBg
-                            : item.accent.bg
-                            }`}
+                          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                            active
+                              ? item.accent.activeIconBg
+                              : item.accent.bg
+                          }`}
                         >
                           <IconComponent className="w-4 h-4" />
                         </span>
 
                         {/* Label */}
                         <span
-                          className={`flex-1 text-xs truncate ${active ? "font-semibold text-white" : "font-medium text-slate-300 group-hover:text-white"
-                            }`}
+                          className={`flex-1 text-xs truncate ${
+                            active ? "font-bold text-[#0F766E]" : "font-semibold text-[#334155] group-hover:text-[#0F172A]"
+                          }`}
                         >
                           {item.label}
                         </span>
 
                         {/* Active Dot Indicator */}
                         {active && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.9)] mr-1" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0F766E] mr-1" />
                         )}
                       </Link>
                     )}
@@ -1166,7 +1164,7 @@ export default function Sidebar({
                     {/* SUBMENU ACCORDION */}
                     {/* ============================================= */}
                     {hasChildren && isMenuOpen && (
-                      <div className="ml-5 pl-2.5 border-l border-slate-800/80 my-1 space-y-0.5">
+                      <div className="ml-5 pl-2.5 border-l border-slate-200 my-1 space-y-0.5">
                         {item.children?.map((child, childIdx) => {
                           // ── Divider / Section separator ────────────────────
                           if (child.isDivider) {
@@ -1178,7 +1176,7 @@ export default function Sidebar({
                                 <span className="text-[8.5px] font-extrabold tracking-[0.16em] uppercase text-slate-500">
                                   {child.dividerLabel}
                                 </span>
-                                <div className="flex-1 h-px bg-slate-800/80" />
+                                <div className="flex-1 h-px bg-slate-200" />
                               </div>
                             );
                           }
@@ -1201,32 +1199,36 @@ export default function Sidebar({
                                 <button
                                   type="button"
                                   onClick={() => toggleMenu(child.label)}
-                                  className={`w-full min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md cursor-pointer text-left text-xs transition-all duration-150 ${childIsActive
-                                    ? "text-indigo-300 bg-indigo-500/15 font-semibold"
-                                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-                                    }`}
+                                  className={`w-full min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md cursor-pointer text-left text-xs transition-all duration-150 ${
+                                    childIsActive
+                                      ? "text-[#0F766E] bg-teal-50/80 font-bold"
+                                      : "text-slate-600 hover:text-[#0F172A] hover:bg-slate-100/70"
+                                  }`}
                                 >
                                   <span className="truncate">{child.label}</span>
                                   <ChevronDown
-                                    className={`w-3 h-3 text-slate-500 transition-transform duration-200 ${isChildMenuOpen ? "rotate-180" : ""
-                                      }`}
+                                    className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${
+                                      isChildMenuOpen ? "rotate-180 text-[#0F766E]" : ""
+                                    }`}
                                   />
                                 </button>
                               ) : (
                                 <Link
                                   href={child.href}
                                   onClick={onClose}
-                                  className={`group/sub min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md no-underline text-xs transition-all duration-150 ${childIsActive
-                                    ? "text-indigo-300 bg-gradient-to-r from-indigo-500/15 to-transparent font-semibold border-l-2 border-indigo-400 pl-2"
-                                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50"
-                                    }`}
+                                  className={`group/sub min-h-[32px] flex items-center justify-between px-2.5 py-1 rounded-md no-underline text-xs transition-all duration-150 ${
+                                    childIsActive
+                                      ? "text-[#0F766E] bg-teal-50/80 font-bold border-l-2 border-[#0F766E] pl-2"
+                                      : "text-slate-600 hover:text-[#0F172A] hover:bg-slate-100/70"
+                                  }`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <span
-                                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all ${childIsActive
-                                        ? "bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.8)] scale-110"
-                                        : "bg-slate-600 group-hover/sub:bg-slate-400"
-                                        }`}
+                                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all ${
+                                        childIsActive
+                                          ? "bg-[#0F766E] scale-110"
+                                          : "bg-slate-300 group-hover/sub:bg-slate-500"
+                                      }`}
                                     />
                                     <span className="truncate">{child.label}</span>
                                   </div>
@@ -1235,10 +1237,11 @@ export default function Sidebar({
                                     {/* Live count badge (patient hub metrics) */}
                                     {child.liveKey && liveCount > 0 && (
                                       <span
-                                        className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${child.liveKey === "criticalPatients"
-                                          ? "bg-rose-500/25 text-rose-300 border-rose-500/40 animate-pulse"
-                                          : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                                          }`}
+                                        className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${
+                                          child.liveKey === "criticalPatients"
+                                            ? "bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5] animate-pulse"
+                                            : "bg-[#ECFDF5] text-[#059669] border border-emerald-200"
+                                        }`}
                                       >
                                         {liveCount}
                                       </span>
@@ -1247,18 +1250,17 @@ export default function Sidebar({
                                     {/* Static badge from menu data */}
                                     {child.badge && !child.liveKey && (
                                       <span
-                                        className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${child.badgeVariant === "red"
-                                          ? "bg-rose-500/25 text-rose-300 border-rose-500/40 animate-pulse"
-                                          : child.badgeVariant === "emerald"
-                                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                        className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${
+                                          child.badgeVariant === "red"
+                                            ? "bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5] animate-pulse"
+                                            : child.badgeVariant === "emerald"
+                                            ? "bg-[#ECFDF5] text-[#059669] border border-emerald-200"
                                             : child.badgeVariant === "amber"
-                                              ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                                              : child.badgeVariant === "purple"
-                                                ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
-                                                : child.badgeVariant === "violet"
-                                                  ? "bg-violet-500/20 text-violet-300 border-violet-500/30"
-                                                  : "bg-sky-500/20 text-sky-300 border-sky-500/30"
-                                          }`}
+                                            ? "bg-[#FFFBEB] text-[#D97706] border border-amber-200"
+                                            : child.badgeVariant === "purple" || child.badgeVariant === "violet"
+                                            ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                            : "bg-sky-50 text-[#0284C7] border border-sky-200"
+                                        }`}
                                       >
                                         {child.badge}
                                       </span>
@@ -1266,12 +1268,12 @@ export default function Sidebar({
 
                                     {/* Approval module badges */}
                                     {child.label.includes("Critical") && approvalMetrics.critical > 0 && !child.liveKey && (
-                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/25 text-rose-300 animate-pulse border border-rose-500/40">
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] animate-pulse border border-[#FCA5A5]">
                                         {approvalMetrics.critical}
                                       </span>
                                     )}
                                     {child.label.includes("Queue") && approvalMetrics.pending > 0 && !child.liveKey && (
-                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-50 text-[#0284C7] border border-sky-200">
                                         {approvalMetrics.pending}
                                       </span>
                                     )}
@@ -1281,7 +1283,7 @@ export default function Sidebar({
 
                               {/* Nested Submenu */}
                               {hasGrandChildren && isChildMenuOpen && (
-                                <div className="ml-3 pl-2.5 border-l border-slate-800/60 my-1 space-y-0.5">
+                                <div className="ml-3 pl-2.5 border-l border-slate-200 my-1 space-y-0.5">
                                   {child.children?.map((grandChild) => {
                                     const grandChildIsActive = isActive(grandChild.href);
 
@@ -1290,10 +1292,11 @@ export default function Sidebar({
                                         key={grandChild.href}
                                         href={grandChild.href}
                                         onClick={onClose}
-                                        className={`min-h-[28px] flex items-center px-2 py-1 rounded text-xs no-underline transition-all duration-150 ${grandChildIsActive
-                                          ? "text-sky-300 bg-sky-500/15 font-semibold"
-                                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-                                          }`}
+                                        className={`min-h-[28px] flex items-center px-2 py-1 rounded text-xs no-underline transition-all duration-150 ${
+                                          grandChildIsActive
+                                            ? "text-[#0F766E] bg-teal-50/80 font-bold"
+                                            : "text-slate-600 hover:text-[#0F172A] hover:bg-slate-100/70"
+                                        }`}
                                       >
                                         <span className="truncate">{grandChild.label}</span>
                                       </Link>
@@ -1316,17 +1319,17 @@ export default function Sidebar({
         {/* ================================================= */}
         {/* BOTTOM UTILITY & TELEMETRY DOCK */}
         {/* ================================================= */}
-        <div className="p-2.5 border-t border-slate-800/80 bg-slate-950/60 backdrop-blur-md relative z-10 space-y-1">
+        <div className="p-2.5 border-t border-slate-200/90 bg-white relative z-10 space-y-1">
           {/* LIS Core Telemetry Status Pill */}
-          <div className="px-2.5 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800/90 flex items-center justify-between text-[10px]">
+          <div className="px-2.5 py-1.5 rounded-lg bg-[#F8FAFC] border border-slate-200 flex items-center justify-between text-[10px]">
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#059669]"></span>
               </span>
-              <span className="font-semibold text-slate-300">LIS Core Online</span>
+              <span className="font-bold text-[#0F172A]">LIS Core Online</span>
             </div>
-            <span className="text-[9px] font-mono font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+            <span className="text-[9px] font-mono font-bold text-[#059669] bg-[#ECFDF5] px-1.5 py-0.2 rounded border border-emerald-200">
               ASTM / HL7
             </span>
           </div>
@@ -1337,28 +1340,28 @@ export default function Sidebar({
               <Link
                 href="/settings"
                 onClick={onClose}
-                className="flex-1 min-h-[34px] flex items-center justify-center gap-1.5 px-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/70 text-xs no-underline transition-colors border border-transparent hover:border-slate-800"
+                className="flex-1 min-h-[34px] flex items-center justify-center gap-1.5 px-2 rounded-lg text-slate-600 hover:text-[#0F172A] hover:bg-slate-100 text-xs no-underline transition-colors border border-slate-200 hover:border-slate-300"
                 title="System Configuration"
               >
-                <Settings className="w-3.5 h-3.5" />
-                <span>Settings</span>
+                <Settings className="w-3.5 h-3.5 text-slate-500" />
+                <span className="font-semibold">Settings</span>
               </Link>
             )}
 
             <button
               type="button"
               onClick={handleLogout}
-              className={`${isAllowedForRole(SETTINGS_VIEW_ROLES) ? "flex-1" : "w-full"} min-h-[34px] flex items-center justify-center gap-1.5 px-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs border border-transparent hover:border-rose-500/20 cursor-pointer transition-colors`}
+              className={`${isAllowedForRole(SETTINGS_VIEW_ROLES) ? "flex-1" : "w-full"} min-h-[34px] flex items-center justify-center gap-1.5 px-2 rounded-lg text-[#DC2626] hover:text-red-700 hover:bg-red-50 text-xs border border-slate-200 hover:border-red-200 cursor-pointer transition-colors font-semibold`}
               title="Terminate Secure Session"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-3.5 h-3.5 text-[#DC2626]" />
               <span>Logout</span>
             </button>
           </div>
 
-          <div className="px-2 pt-1 flex items-center justify-between text-[9px] text-slate-400 font-mono">
+          <div className="px-2 pt-1 flex items-center justify-between text-[9px] text-[#475569] font-mono">
             <span>LabCore ELIS v1.3.0</span>
-            <span className="text-slate-400">NABL ISO 15189</span>
+            <span className="text-[#0F766E] font-bold">NABL ISO 15189</span>
           </div>
         </div>
       </aside>
@@ -1374,11 +1377,11 @@ export default function Sidebar({
           background: transparent;
         }
         .labcore-sidebar-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(148, 163, 184, 0.2);
+          background: rgba(148, 163, 184, 0.3);
           border-radius: 9999px;
         }
         .labcore-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(148, 163, 184, 0.4);
+          background: rgba(148, 163, 184, 0.5);
         }
 
         @media (max-width: 900px) {

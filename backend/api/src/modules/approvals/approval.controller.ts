@@ -16,6 +16,8 @@ import {
   batchApprove,
   recordCriticalAck,
   getHistoricalTrend,
+  getApprovalSignature,
+  verifyApprovalSignature,
 } from "./approval.service";
 
 // =======================================================
@@ -111,11 +113,15 @@ export const approveResult = async (
   try {
     const params = (req as any).validated?.params || req.params;
 
-    const result = await approve(params.id as string, req.user!.id);
+    const result = await approve(params.id as string, req.user!.id, {
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      reason: req.body?.remarks || req.body?.reason,
+    });
 
     res.status(200).json({
       success: true,
-      message: "Result approved successfully",
+      message: "Result approved successfully with digital seal",
       data: result,
     });
   } catch (error) {
@@ -138,12 +144,16 @@ export const batchApproveResults = async (
     const result = await batchApprove(
       body.ids,
       req.user!.id,
-      body.remarks
+      body.remarks,
+      {
+        ipAddress: req.ip || req.socket?.remoteAddress,
+        userAgent: req.headers["user-agent"],
+      }
     );
 
     res.status(200).json({
       success: true,
-      message: `Batch approval completed: ${result.approvedCount} approved`,
+      message: `Batch approval completed: ${result.approvedCount} approved with digital seal`,
       data: result,
     });
   } catch (error) {
@@ -250,6 +260,52 @@ export const publishResult = async (
     res.status(200).json({
       success: true,
       message: "Result published successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =======================================================
+// DIGITAL SIGNATURE & VERIFICATION
+// =======================================================
+
+export const getSignature = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const params = (req as any).validated?.params || req.params;
+    const result = await getApprovalSignature(params.id as string);
+
+    res.status(200).json({
+      success: true,
+      message: result.isAuthentic
+        ? "Digital signature verified successfully"
+        : "Digital signature verification issue detected",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifySignature = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const params = (req as any).validated?.params || req.params;
+    const result = await verifyApprovalSignature(params.id as string);
+
+    res.status(200).json({
+      success: true,
+      message: result.isAuthentic
+        ? "Digital signature verified authentic and untampered"
+        : "Digital signature integrity check failed",
       data: result,
     });
   } catch (error) {

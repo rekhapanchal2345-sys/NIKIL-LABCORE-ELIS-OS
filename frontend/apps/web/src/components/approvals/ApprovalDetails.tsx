@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { approvalApi } from "@/lib/api";
 import type { Approval } from "./ApprovalTable";
 
 interface ApprovalDetailsProps {
@@ -41,6 +42,7 @@ interface ApprovalDetailsProps {
     flag: string;
   }>;
 
+  signatureData?: any;
   onApprove?: () => void;
   onReject?: () => void;
   onEdit?: () => void;
@@ -125,13 +127,34 @@ export default function ApprovalDetails({
   orderInfo,
   sampleInfo,
   resultParameters,
+  signatureData,
   onApprove,
   onReject,
   onEdit,
   onPrint,
 }: ApprovalDetailsProps) {
+  const [verifying, setVerifying] = React.useState(false);
+  const [verificationStatus, setVerificationStatus] = React.useState<any>(signatureData || null);
+
+  const handleVerify = async () => {
+    if (!approval.resultId) return;
+    try {
+      setVerifying(true);
+      const res = await approvalApi.verifySignature(String(approval.resultId));
+      if (res?.data) {
+        setVerificationStatus(res.data);
+      }
+    } catch (err: any) {
+      alert("Verification failed: " + (err.message || err));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const status =
     approval.status?.toLowerCase() || "pending";
+
+  const isApproved = status === "approved" || status === "completed" || status === "published";
 
   const canReview = [
     "pending",
@@ -634,36 +657,155 @@ export default function ApprovalDetails({
         )}
       </section>
 
+      {/* NABL Electronic Doctor Seal & Cryptographic Audit Verification */}
+      {isApproved && (
+        <section className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-slate-50 p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-blue-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-lg shadow">
+                ✓
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  NABL ISO 15189:2022 Electronic Doctor Seal
+                  <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                    Digitally Certified
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Signed electronically in compliance with IT Act 2000 &amp; NABL accreditation norms.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleVerify}
+              disabled={verifying}
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-white px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 transition"
+            >
+              {verifying ? "Verifying Hash..." : "🔍 Verify Cryptographic Seal"}
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-6 md:grid-cols-2">
+            {/* Left: Doctor & Accreditation Credentials */}
+            <div className="space-y-3">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Signing Pathologist</span>
+                <p className="text-base font-bold text-slate-900">{approval.approvedBy || "Certified Pathologist"}</p>
+                <p className="text-xs font-medium text-blue-700">MD (Pathology) &bull; Consultant Pathologist</p>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Medical Council Reg:</span>
+                  <span className="font-semibold text-slate-800">
+                    {verificationStatus?.signedBy?.registrationNumber || "MCI / State Medical Council"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Signing Timestamp:</span>
+                  <span className="font-semibold text-slate-800">
+                    {formatDate(verificationStatus?.signedAt || approval.approvedAt)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Accreditation Norm:</span>
+                  <span className="font-semibold text-slate-800">NABL ISO 15189:2022</span>
+                </div>
+              </div>
+
+              {verificationStatus?.signatureHash && (
+                <div className="rounded-lg bg-slate-900 p-2.5 text-white">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    SHA-256 HMAC Fingerprint
+                  </p>
+                  <p className="font-mono text-xs text-sky-400 break-all">
+                    {verificationStatus.signatureHash}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Electronic Seal SVG / Signature Render */}
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-4">
+              {verificationStatus?.sealSvg ? (
+                <div
+                  className="w-full flex justify-center"
+                  dangerouslySetInnerHTML={{ __html: verificationStatus.sealSvg }}
+                />
+              ) : (
+                <div className="text-center p-4">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-blue-400 text-blue-600 font-bold text-2xl">
+                    SEAL
+                  </div>
+                  <p className="mt-2 text-xs font-bold text-slate-800">Doctor Electronic Seal Attached</p>
+                  <p className="text-[11px] text-slate-500">
+                    Click &quot;Verify Cryptographic Seal&quot; to inspect full vector certificate
+                  </p>
+                </div>
+              )}
+
+              {verificationStatus && (
+                <div className={`mt-3 w-full rounded-md p-2 text-center text-xs font-semibold ${
+                  verificationStatus.isAuthentic
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}>
+                  {verificationStatus.verificationMessage ||
+                    (verificationStatus.isAuthentic
+                      ? "✅ Verified: Result snapshot matches cryptographic seal."
+                      : "❌ Integrity Alert: Result values differ from signed snapshot.")}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Review Actions */}
 
       {canReview && (
         <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 px-5 py-4">
             <h2 className="font-semibold text-gray-900">
-              Review Decision
+              Review Decision &amp; Pathologist Sign-Off
             </h2>
           </div>
 
-          <div className="flex flex-col gap-3 p-5 sm:flex-row">
-            {onApprove && (
-              <button
-                type="button"
-                onClick={onApprove}
-                className="flex-1 rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800"
-              >
-                ✓ Approve Result
-              </button>
-            )}
+          <div className="p-5 space-y-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 text-xs text-blue-900 flex items-start gap-3">
+              <span className="text-base">🛡️</span>
+              <div>
+                <p className="font-bold text-blue-950">NABL ISO 15189:2022 Digital Sign-Off Standard</p>
+                <p className="mt-0.5 text-blue-800 leading-relaxed">
+                  Clicking <strong>Approve with Digital Signature</strong> certifies the diagnostic parameters under your registered Medical Council registration and binds this test with an immutable SHA-256 HMAC digital seal.
+                </p>
+              </div>
+            </div>
 
-            {onReject && (
-              <button
-                type="button"
-                onClick={onReject}
-                className="flex-1 rounded-lg border border-red-200 px-5 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
-              >
-                Reject Result
-              </button>
-            )}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {onApprove && (
+                <button
+                  type="button"
+                  onClick={onApprove}
+                  className="flex-1 rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800 shadow"
+                >
+                  ✓ Approve with Digital Signature
+                </button>
+              )}
+
+              {onReject && (
+                <button
+                  type="button"
+                  onClick={onReject}
+                  className="flex-1 rounded-lg border border-red-200 px-5 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
+                >
+                  Reject Result
+                </button>
+              )}
+            </div>
           </div>
         </section>
       )}

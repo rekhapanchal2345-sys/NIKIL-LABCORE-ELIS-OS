@@ -4609,6 +4609,17 @@ export const doctorApi = {
   getBySpecialization: async (specialization: string) => {
     return apiCall(`/api/doctors/specialization/${encodeURIComponent(specialization)}`);
   },
+
+  uploadSignature: async (id: string, data: { signatureUrl?: string; signatureData?: string; mimeType?: string }) => {
+    return apiCall(`/api/doctors/${id}/signature`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getSeal: async (id: string) => {
+    return apiCall(`/api/doctors/${id}/seal`);
+  },
 };
 
 // Users API
@@ -6392,6 +6403,24 @@ export const approvalsApi = {
       });
     } catch (error) {
       console.error('Publish API error:', error);
+      throw error;
+    }
+  },
+
+  getSignature: async (id: string) => {
+    try {
+      return await apiCall(`/api/approvals/${id}/signature`);
+    } catch (error) {
+      console.error('Get signature API error:', error);
+      throw error;
+    }
+  },
+
+  verifySignature: async (id: string) => {
+    try {
+      return await apiCall(`/api/approvals/${id}/verify-signature`);
+    } catch (error) {
+      console.error('Verify signature API error:', error);
       throw error;
     }
   },

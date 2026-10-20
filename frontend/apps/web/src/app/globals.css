@@ -2964,6 +2964,53 @@ select:focus {
   }
 }
 
+/* =======================================================
+   NIKIL-LABCORE-ELIS-OS MEDICAL ANIMATIONS & UTILITIES
+   ======================================================= */
+@keyframes ecg-sweep {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
 
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+}
 
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-ecg {
+  stroke-dasharray: 1000;
+  animation: ecg-sweep 3.5s linear infinite;
+}
+
+.animate-float {
+  animation: float-slow 4s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2.5s ease-in-out infinite;
+}
+
+.medical-grid-bg {
+  background-image: radial-gradient(rgba(2, 132, 199, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
 

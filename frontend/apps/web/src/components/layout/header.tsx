@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -13,11 +12,10 @@ import {
   ChevronDown,
   ShieldCheck,
   CheckCircle2,
-  Lock,
-  Award,
-  Sparkles,
   FileCheck,
-  ExternalLink
+  Building2,
+  Activity,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleLabel } from "@/lib/auth";
@@ -136,35 +134,45 @@ export default function Header({
   };
 
   return (
-    <header className="h-[64px] bg-[var(--surface-primary)] border-b border-[var(--border-light)] flex items-center justify-between px-6 sticky top-0 z-[100]">
-      {/* LEFT */}
-      <div className="flex items-center gap-4">
+    <header className="h-[64px] bg-white border-b border-slate-200/90 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-[100]">
+      {/* LEFT: Hospital / Branch & Title */}
+      <div className="flex items-center gap-3 lg:gap-4">
         {/* Mobile Menu */}
         <button
           type="button"
           onClick={onMenuClick}
           aria-label="Open menu"
-          className="w-10 h-10 border border-[var(--border-light)] rounded-lg bg-[var(--surface-secondary)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--background-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+          className="w-9 h-9 lg:w-10 lg:h-10 border border-slate-200 rounded-lg bg-[#F8FAFC] flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-[#0F172A] transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <div>
-          <h1 className="m-0 text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-            {title}
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
-              Enterprise LIS
+          <div className="flex items-center gap-2">
+            <h1 className="m-0 text-sm lg:text-base font-extrabold text-[#0F172A] flex items-center gap-2">
+              {title}
+            </h1>
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-[#0F766E] border border-teal-200">
+              NABL ISO 15189
             </span>
-          </h1>
+          </div>
 
-          <div className="text-xs text-[var(--text-tertiary)]">
-            Clinical Diagnostic Laboratory Information System
+          <div className="text-[11px] text-[#475569] hidden sm:block">
+            Clinical Diagnostic Laboratory Information System • Central Facility
           </div>
         </div>
       </div>
 
-      {/* RIGHT */}
-      <div className="flex items-center gap-2">
+      {/* RIGHT: Global Search, Quick Hospital Badges, Notifications & Profile */}
+      <div className="flex items-center gap-2 lg:gap-3">
+        {/* Hospital Facility / Branch Status */}
+        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-[11px] text-[#475569]">
+          <Building2 className="w-3.5 h-3.5 text-[#0F766E]" />
+          <span className="font-semibold text-[#0F172A]">Central Diagnostics Hub</span>
+          <span className="text-slate-300">•</span>
+          <span className="font-mono text-[10px] text-[#059669] font-bold">ONLINE (ASTM/HL7)</span>
+        </div>
+
         {/* Global Spotlight Search Trigger */}
         <button
           type="button"
@@ -174,12 +182,12 @@ export default function Header({
             setShowProfile(false);
           }}
           aria-label="Search Clinical System"
-          className="hidden md:flex items-center gap-2.5 px-3.5 py-2 border border-[var(--border-light)] rounded-xl bg-[var(--surface-secondary)] text-[var(--text-tertiary)] hover:bg-[var(--background-tertiary)] hover:border-indigo-300 hover:text-[var(--text-primary)] transition-all shadow-xs group cursor-pointer"
+          className="hidden md:flex items-center gap-2.5 px-3 py-1.5 border border-slate-200 rounded-lg bg-[#F8FAFC] text-slate-500 hover:bg-white hover:border-[#0F766E] hover:text-[#0F172A] transition-all shadow-2xs group cursor-pointer"
           title="Search Patients, Tests, UHID, Orders... (Ctrl+K)"
         >
-          <Search className="w-4 h-4 text-[var(--text-tertiary)] group-hover:text-indigo-600 transition-colors" />
+          <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
           <span className="text-xs font-medium pr-1">Search records, tests, UHID...</span>
-          <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded-md border border-[var(--border-light)] bg-[var(--surface-primary)] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[var(--text-tertiary)] group-hover:text-indigo-600 group-hover:border-indigo-200 shadow-xs">
+          <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-mono font-bold text-slate-500 group-hover:text-[#0F766E] group-hover:border-teal-300">
             ⌘K
           </kbd>
         </button>
@@ -193,10 +201,10 @@ export default function Header({
             setShowProfile(false);
           }}
           aria-label="Search"
-          className="md:hidden w-10 h-10 border border-[var(--border-light)] rounded-xl bg-[var(--surface-secondary)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--background-tertiary)] hover:text-[var(--text-primary)] hover:border-indigo-300 transition-colors cursor-pointer"
+          className="md:hidden w-9 h-9 border border-slate-200 rounded-lg bg-[#F8FAFC] flex items-center justify-center text-slate-600 hover:bg-white hover:text-[#0F172A] hover:border-[#0F766E] transition-colors cursor-pointer"
           title="Search (Ctrl+K)"
         >
-          <Search className="w-5 h-5" />
+          <Search className="w-4 h-4" />
         </button>
 
         {/* Notifications */}
@@ -208,17 +216,17 @@ export default function Header({
               setShowNotifications(!showNotifications);
               setShowProfile(false);
             }}
-            className={`w-10 h-10 border rounded-xl flex items-center justify-center relative transition-all duration-200 ${
+            className={`w-9 h-9 lg:w-10 lg:h-10 border rounded-lg flex items-center justify-center relative transition-all duration-200 ${
               showNotifications
-                ? "bg-sky-50 border-sky-300 text-sky-600 shadow-xs"
-                : "border-[var(--border-light)] bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--background-tertiary)] hover:text-[var(--text-primary)]"
+                ? "bg-teal-50 border-teal-300 text-[#0F766E]"
+                : "border-slate-200 bg-[#F8FAFC] text-slate-600 hover:bg-white hover:text-[#0F172A]"
             }`}
           >
-            <Bell className={`w-5 h-5 ${hasCriticalAlert && unreadCount > 0 ? "text-rose-600 animate-bounce" : ""}`} />
+            <Bell className={`w-4 h-4 lg:w-5 lg:h-5 ${hasCriticalAlert && unreadCount > 0 ? "text-[#DC2626] animate-bounce" : ""}`} />
 
             {unreadCount > 0 && (
-              <span className={`absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[9px] font-black text-white ${
-                hasCriticalAlert ? "bg-rose-600 animate-pulse shadow-xs shadow-rose-500/50" : "bg-sky-600"
+              <span className={`absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[9px] font-extrabold text-white ${
+                hasCriticalAlert ? "bg-[#DC2626] animate-pulse" : "bg-[#0284C7]"
               }`}>
                 {unreadCount}
               </span>
@@ -243,82 +251,82 @@ export default function Header({
               setShowProfile(!showProfile);
               setShowNotifications(false);
             }}
-            className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+            className={`group flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border transition-all duration-200 cursor-pointer ${
               showProfile
-                ? "bg-indigo-50 border-indigo-200 shadow-sm"
-                : "border-[var(--border-light)] bg-[var(--surface-secondary)] hover:bg-[var(--background-tertiary)] hover:border-indigo-200"
+                ? "bg-teal-50 border-[#0F766E] shadow-2xs"
+                : "border-slate-200 bg-[#F8FAFC] hover:bg-white hover:border-[#0F766E]/50"
             }`}
           >
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm overflow-hidden">
+              <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-[#0F766E] flex items-center justify-center text-xs font-bold text-white shadow-2xs overflow-hidden">
                 {userAvatar ? (
                   <img src={userAvatar} alt="Avatar" className="h-full w-full object-cover" />
                 ) : (
                   isMounted ? userInitials : 'JA'
                 )}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500">
+              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-[#059669]">
               </span>
             </div>
 
             {/* Name and Designation */}
             <div className="hidden sm:flex flex-col items-start leading-tight text-left">
               <div className="flex items-center gap-1">
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
+                <span className="text-xs font-bold text-[#0F172A]">
                   {isMounted ? userName : 'Jaya Ashapurama'}
                 </span>
                 <span title="NABL Verified Authorized Signatory" className="inline-flex shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#059669]" />
                 </span>
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="rounded bg-[var(--surface-primary)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--text-secondary)] border border-[var(--border-light)] shadow-sm">
+                <span className="rounded bg-white px-1.5 py-0.2 text-[9px] font-bold text-slate-600 border border-slate-200">
                   {isMounted ? userRole : 'ADMIN'}
                 </span>
-                <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 border border-sky-100 shadow-sm flex items-center gap-1 transition-colors group-hover:bg-sky-100">
-                  <ShieldCheck className="w-2.5 h-2.5 text-sky-600" />
+                <span className="rounded bg-teal-50 px-1.5 py-0.2 text-[9px] font-bold text-[#0F766E] border border-teal-200 flex items-center gap-0.5">
+                  <ShieldCheck className="w-2.5 h-2.5 text-[#0F766E]" />
                   Verified
                 </span>
               </div>
             </div>
 
-            <ChevronDown className={`w-4 h-4 text-[var(--text-tertiary)] transition-transform duration-200 ${showProfile ? "rotate-180 text-indigo-600" : ""}`} />
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${showProfile ? "rotate-180 text-[#0F766E]" : ""}`} />
           </button>
 
           {/* Professional Executive Popover Control Center */}
           {showProfile && (
-            <div className="absolute right-0 top-12 w-84 bg-white border border-[var(--border-light)] rounded-xl shadow-lg overflow-hidden z-[1000] animate-in zoom-in-95 duration-200">
+            <div className="absolute right-0 top-12 w-84 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-[1000] animate-in zoom-in-95 duration-150">
               {/* Executive Header Banner */}
-              <div className="bg-[var(--surface-secondary)] p-4 border-b border-[var(--border-light)]">
+              <div className="bg-[#F8FAFC] p-4 border-b border-slate-200">
                 <div className="flex items-center gap-3.5">
                   <div className="relative shrink-0">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-lg font-bold text-white shadow-sm overflow-hidden">
+                    <div className="w-11 h-11 rounded-lg bg-[#0F766E] flex items-center justify-center text-sm font-bold text-white shadow-2xs overflow-hidden">
                       {userAvatar ? (
                         <img src={userAvatar} alt="Avatar" className="h-full w-full object-cover" />
                       ) : (
                         isMounted ? userInitials : 'JA'
                       )}
                     </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500"></span>
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#059669]"></span>
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h4 className="font-bold text-sm text-[var(--text-primary)] truncate">
+                      <h4 className="font-extrabold text-sm text-[#0F172A] truncate">
                         {isMounted ? userName : 'Jaya Ashapurama'}
                       </h4>
-                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <ShieldCheck className="w-4 h-4 text-[#059669] shrink-0" />
                     </div>
-                    <p className="text-[12px] text-[var(--text-secondary)] truncate mt-0.5">
-                      Chief Administrator & Pathologist
+                    <p className="text-[11px] text-[#475569] truncate mt-0.5">
+                      Chief Administrator &amp; Pathologist
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="rounded-md bg-[var(--surface-primary)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)] border border-[var(--border-light)] shadow-sm">
+                      <span className="rounded bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-700 border border-slate-200">
                         {isMounted ? userRole : 'ADMIN'}
                       </span>
-                      <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 border border-sky-100 shadow-sm flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-sky-600" />
+                      <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-[#0F766E] border border-teal-200 flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-[#0F766E]" />
                         NABL Authorized
                       </span>
                     </div>
@@ -327,33 +335,33 @@ export default function Header({
               </div>
 
               {/* Verified Clinical Credentials & License Card */}
-              <div className="p-3 bg-slate-50/70 text-xs space-y-1.5">
-                <div className="flex items-center justify-between text-slate-600">
-                  <span className="text-slate-500 font-medium">Accreditation ID:</span>
-                  <span className="font-mono font-bold text-slate-900">MED-DIR-2026-9182</span>
+              <div className="p-3 bg-white text-xs space-y-1.5 border-b border-slate-100">
+                <div className="flex items-center justify-between text-[#475569]">
+                  <span className="font-medium text-[11px]">Accreditation ID:</span>
+                  <span className="font-mono font-bold text-[#0F172A] text-[11px]">MED-DIR-2026-9182</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-600">
-                  <span className="text-slate-500 font-medium">Digital Signature:</span>
-                  <span className="font-bold text-emerald-600 flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <div className="flex items-center justify-between text-[#475569]">
+                  <span className="font-medium text-[11px]">Digital Signature:</span>
+                  <span className="font-bold text-[#059669] text-[11px] flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#059669]" />
                     Cryptographically Bound
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-slate-600">
-                  <span className="text-slate-500 font-medium">Lab Facility:</span>
-                  <span className="font-semibold text-slate-800">Central Diagnostics Hub</span>
+                <div className="flex items-center justify-between text-[#475569]">
+                  <span className="font-medium text-[11px]">Lab Facility:</span>
+                  <span className="font-bold text-[#0F172A] text-[11px]">Central Diagnostics Hub</span>
                 </div>
               </div>
 
               {/* Quick Actions Menu */}
-              <div className="p-1.5">
+              <div className="p-1.5 space-y-0.5">
                 <button
                   type="button"
                   onClick={handleProfileClick}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors flex items-center gap-3 cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg text-left text-xs font-semibold text-[#0F172A] hover:bg-teal-50 hover:text-[#0F766E] transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
-                  <User className="w-4 h-4 text-indigo-600" />
-                  <span>Executive Profile & Credentials</span>
+                  <User className="w-4 h-4 text-[#0F766E]" />
+                  <span>Executive Profile &amp; Credentials</span>
                 </button>
 
                 <button
@@ -362,30 +370,30 @@ export default function Header({
                     setShowProfile(false);
                     router.push("/approvals");
                   }}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors flex items-center gap-3 cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg text-left text-xs font-semibold text-[#0F172A] hover:bg-teal-50 hover:text-[#0F766E] transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
-                  <FileCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Medical Sign-off & Verifications</span>
+                  <FileCheck className="w-4 h-4 text-[#059669]" />
+                  <span>Medical Sign-off &amp; Verifications</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleSettingsClick}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors flex items-center gap-3 cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg text-left text-xs font-semibold text-[#0F172A] hover:bg-slate-100 transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
                   <Settings className="w-4 h-4 text-slate-500" />
-                  <span>LIS Configurations & Security</span>
+                  <span>LIS Configurations &amp; Security</span>
                 </button>
               </div>
 
               {/* Logout Footer */}
-              <div className="p-1.5 bg-slate-50/50">
+              <div className="p-1.5 bg-[#F8FAFC] border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full px-3.5 py-2 rounded-xl text-left text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-3 cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg text-left text-xs font-bold text-[#DC2626] hover:bg-[#FEF2F2] transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4 text-rose-500" />
+                  <LogOut className="w-4 h-4 text-[#DC2626]" />
                   <span>Secure Sign Out</span>
                 </button>
               </div>
@@ -408,4 +416,3 @@ export default function Header({
     </header>
   );
 }
-

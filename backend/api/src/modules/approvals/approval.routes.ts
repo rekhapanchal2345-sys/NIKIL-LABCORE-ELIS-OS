@@ -15,6 +15,8 @@ import {
   batchApproveResults,
   saveCriticalAck,
   getHistoryTrend,
+  getSignature,
+  verifySignature,
 } from "./approval.controller";
 
 import {
@@ -160,6 +162,28 @@ router.post(
     params: approvalIdSchema,
   }),
   publishResult
+);
+
+// =======================================================
+// DIGITAL SIGNATURE & VERIFICATION
+// =======================================================
+
+router.get(
+  "/:id/signature",
+  authorize(...APPROVAL_ROLES),
+  validate({
+    params: approvalIdSchema,
+  }),
+  getSignature
+);
+
+router.get(
+  "/:id/verify-signature",
+  authorize(...APPROVAL_ROLES),
+  validate({
+    params: approvalIdSchema,
+  }),
+  verifySignature
 );
 
 export default router;

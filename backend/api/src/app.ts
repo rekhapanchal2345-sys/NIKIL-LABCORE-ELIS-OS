@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
+import fs from "fs";
 
 // =======================================================
 // ROUTES
@@ -219,6 +220,15 @@ if (process.env.NODE_ENV !== "test") {
     )
   );
 }
+
+// =======================================================
+// STATIC FILE UPLOADS (Signatures, Documents, Reports)
+// =======================================================
+const uploadsPath = path.resolve(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use("/uploads", express.static(uploadsPath));
 
 // =======================================================
 // ROOT & HEALTH CHECK

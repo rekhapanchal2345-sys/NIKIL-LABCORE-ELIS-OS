@@ -46,3 +46,35 @@ export const criticalAckSchema = z.object({
   notes: z.string().optional(),
   readBackConfirmed: z.boolean().default(true),
 });
+
+export const amendResultSchema = z.object({
+  amendmentReason: z.string().min(3, "Amendment reason is mandatory"),
+  amendmentType: z
+    .enum([
+      "CLINICAL_CORRECTION",
+      "TRANSCRIPTION_ERROR",
+      "SAMPLE_RE_ASSAYED",
+      "DILUTION_FACTOR_CORRECTED",
+      "OTHER",
+    ])
+    .default("CLINICAL_CORRECTION"),
+  updatedValues: z
+    .array(
+      z.object({
+        parameterId: z.string(),
+        value: z.string(),
+        flag: z.string().optional(),
+      })
+    )
+    .min(1, "At least one updated parameter value is required"),
+  notes: z.string().optional(),
+});
+
+export const panicReadBackSchema = z.object({
+  panicLogId: z.string(),
+  notifiedDoctorName: z.string().min(1, "Doctor name is required"),
+  doctorPhone: z.string().min(1, "Doctor phone is required"),
+  readBackConfirmed: z.boolean().default(true),
+  clinicalActionRemarks: z.string().min(1, "Clinical action remarks are required"),
+  callTimestamp: z.string().optional(),
+});

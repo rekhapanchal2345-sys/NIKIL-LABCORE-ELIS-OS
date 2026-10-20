@@ -2,6 +2,11 @@ import { UserRole } from "@prisma/client";
 import prisma from "../../../config/database";
 import { createAuditLog } from "../audit/audit.service";
 import { HttpError } from "../../utils/http-error";
+import {
+  signResultWithElectronicSeal,
+  verifyResultSignature,
+  getDoctorSealInfo,
+} from "./digital-signature.service";
 
 // =======================================================
 // GET APPROVAL METRICS
@@ -428,7 +433,8 @@ export const getApprovalById =
 export const approve =
   async (
     id: string,
-    approvedById: string
+    approvedById: string,
+    options?: { ipAddress?: string; userAgent?: string; reason?: string }
   ) => {
     const user = await prisma.user.findUnique({ where: { id: approvedById } });
     if (!user || user.status !== "ACTIVE") {
@@ -641,6 +647,22 @@ export const approve =
       }
     }
 
+    // =======================================================
+    // DIGITAL SIGNATURE & NABL ELECTRONIC DOCTOR SEAL
+    // =======================================================
+    try {
+      const signatureResult = await signResultWithElectronicSeal({
+        resultId: id,
+        userId: approvedById,
+        reason: options?.reason || "Diagnostic result certified and signed off by authorized pathologist",
+        ipAddress: options?.ipAddress,
+        userAgent: options?.userAgent,
+      });
+      (approved as any).digitalSignature = signatureResult;
+    } catch (sigErr: any) {
+      console.warn(`[Approvals] Digital signature creation warning for result ${id}:`, sigErr?.message || sigErr);
+    }
+
     return approved;
   };
 
@@ -788,7 +810,8 @@ export const publish =
 export const batchApprove = async (
   ids: string[],
   approvedById: string,
-  remarks?: string
+  remarks?: string,
+  options?: { ipAddress?: string; userAgent?: string }
 ) => {
   const user = await prisma.user.findUnique({ where: { id: approvedById } });
   if (!user || user.status !== "ACTIVE") {
@@ -941,13 +964,34 @@ export const batchApprove = async (
     console.warn("[Approvals] Batch lifecycle advance non-fatal:", batchLifecycleErr);
   }
 
-  return {
-    success: true,
-    approvedCount: approvableIds.length,
-    approvedIds: approvableIds,
-    skipped,
+  // Sign all approved results with digital signature & seal
+    const signedSignatures: Array<{ resultId: string; signatureHash: string }> = [];
+    for (const approvableId of approvableIds) {
+      try {
+        const sig = await signResultWithElectronicSeal({
+          resultId: approvableId,
+          userId: approvedById,
+          reason: remarks || "Batch certified and approved by authorized pathologist",
+          ipAddress: options?.ipAddress,
+          userAgent: options?.userAgent,
+        });
+        signedSignatures.push({
+          resultId: approvableId,
+          signatureHash: sig.signatureHash,
+        });
+      } catch (batchSigErr: any) {
+        console.warn(`[BatchApprove] Digital seal signing error for ${approvableId}:`, batchSigErr?.message || batchSigErr);
+      }
+    }
+
+    return {
+      success: true,
+      approvedCount: approvableIds.length,
+      approvedIds: approvableIds,
+      signedSignatures,
+      skipped,
+    };
   };
-};
 
 // =======================================================
 // RECORD CRITICAL / PANIC CALL ACKNOWLEDGMENT
@@ -1128,4 +1172,16 @@ export const getHistoricalTrend = async (resultId: string) => {
     testName: currentResult.test?.testName,
     parameters: parametersTrend,
   };
+};
+
+// =======================================================
+// DIGITAL SIGNATURE VERIFICATION
+// =======================================================
+
+export const getApprovalSignature = async (resultId: string) => {
+  return verifyResultSignature(resultId);
+};
+
+export const verifyApprovalSignature = async (resultId: string) => {
+  return verifyResultSignature(resultId);
 };

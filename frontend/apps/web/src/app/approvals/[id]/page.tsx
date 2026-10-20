@@ -27,6 +27,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
   const [sampleInfo, setSampleInfo] = useState<any>(null);
   const [resultParameters, setResultParameters] = useState<any[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
+  const [signatureData, setSignatureData] = useState<any>(null);
 
   useEffect(() => {
     const fetchApprovalDetails = async () => {
@@ -157,6 +158,17 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
             });
           }
           
+          if (result.status === "APPROVED" || result.status === "PUBLISHED") {
+            try {
+              const sigRes = await approvalApi.getSignature(id);
+              if (sigRes?.data) {
+                setSignatureData(sigRes.data);
+              }
+            } catch (sigErr) {
+              console.warn("Signature fetch non-fatal:", sigErr);
+            }
+          }
+
           setTimelineEvents(events);
         }
       } catch (err) {
@@ -267,6 +279,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
           orderInfo={orderInfo}
           sampleInfo={sampleInfo}
           resultParameters={resultParameters}
+          signatureData={signatureData}
           onApprove={handleApprove}
           onReject={handleReject}
           onPrint={handlePrint}

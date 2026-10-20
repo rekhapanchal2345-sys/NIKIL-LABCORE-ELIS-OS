@@ -239,4 +239,11 @@ router.post(
   controller.uploadSignature
 );
 
+router.get(
+  "/:id/seal",
+  authorize(...CAN_READ),
+  validate({ params: doctorIdSchema }),
+  controller.getSeal
+);
+
 export default router;
