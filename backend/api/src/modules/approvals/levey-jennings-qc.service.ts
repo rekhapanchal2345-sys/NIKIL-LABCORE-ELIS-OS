@@ -1,5 +1,6 @@
-import prisma from '../../config/database';
+import prisma from '../../../config/database';
 import { HttpError } from '../../utils/http-error';
+
 
 export interface LeveyJenningsDataPoint {
   runIndex: number;

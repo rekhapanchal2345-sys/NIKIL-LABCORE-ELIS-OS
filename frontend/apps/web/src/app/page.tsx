@@ -70,6 +70,8 @@ export default function HomePage() {
   const [activeLegalTab, setActiveLegalTab] = useState<"terms" | "privacy" | "sla" | "compliance">("terms");
   const [activeFeatureTab, setActiveFeatureTab] = useState<"lis" | "opd" | "billing" | "whatsapp">("lis");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [showFeatureMatrix, setShowFeatureMatrix] = useState<boolean>(true);
+  const [pricingCategory, setPricingCategory] = useState<"all" | "lab" | "hospital" | "clinic">("all");
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -1312,305 +1314,698 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 8. TRANSPARENT PRICING & RENTAL PACKAGES */}
+      {/* 8. ADVANCED CLINICAL PRICING: RENT & TURNKEY SETUP */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section id="pricing" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-4 mb-14">
-            <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-3.5 py-1 rounded-full border border-sky-200">
-              Clear & Transparent Pricing
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Predictable Monthly Rent & One-Time Setup Packages
+      <section id="pricing" className="py-24 bg-gradient-to-b from-white via-sky-50/20 to-white relative overflow-hidden">
+        {/* Subtle clinical backdrop accents */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
+          <div className="absolute top-12 left-1/4 w-96 h-96 bg-sky-100/60 rounded-full blur-3xl"></div>
+          <div className="absolute top-48 right-1/4 w-96 h-96 bg-cyan-100/50 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Header & Badges */}
+          <div className="text-center max-w-4xl mx-auto space-y-4 mb-14">
+            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white border border-sky-200 text-sky-800 text-xs font-black shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+              <span>CLINICAL SAAS RENT & HARDWARE ENGINEERING CHARTER</span>
+            </div>
+
+            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+              Transparent Medical Pricing:{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 via-cyan-600 to-teal-600">
+                Predictable Monthly Rent & Turnkey Setup
+              </span>
             </h2>
-            <p className="text-base text-slate-600">
-              No hidden costs or per-test surcharges. Enjoy unlimited software updates, automated daily backups, and 24/7 support in a predictable monthly rent.
+
+            <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto leading-relaxed">
+              Designed specifically for modern hospitals, diagnostic pathology laboratories, and healthcare polyclinics. 
+              <strong className="text-slate-900 font-bold"> 100% Patient Data Ownership</strong> • Zero Per-Test Commissions • No Vendor Lock-In • 24/7 STAT IT SLA.
             </p>
 
-            {/* Billing Switcher Toggle */}
-            <div className="inline-flex items-center p-1 rounded-2xl bg-slate-100 border border-slate-200 mt-4">
+            {/* Filter by facility category pills */}
+            <div className="pt-2 flex flex-wrap justify-center gap-2">
               <button
-                onClick={() => setBillingCycle("monthly")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                  billingCycle === "monthly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+                onClick={() => setPricingCategory("all")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  pricingCategory === "all"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
                 }`}
               >
-                Monthly Rent (Flexible)
+                All Medical Tiers
+              </button>
+              <button
+                onClick={() => setPricingCategory("clinic")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  pricingCategory === "clinic"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <Stethoscope className="w-3.5 h-3.5 text-sky-500" />
+                <span>Clinics & Collection Booths</span>
+              </button>
+              <button
+                onClick={() => setPricingCategory("lab")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  pricingCategory === "lab"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <Microscope className="w-3.5 h-3.5 text-sky-500" />
+                <span>Diagnostic Pathology Labs</span>
+              </button>
+              <button
+                onClick={() => setPricingCategory("hospital")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  pricingCategory === "hospital"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5 text-teal-500" />
+                <span>Multi-Specialty Hospitals</span>
+              </button>
+            </div>
+
+            {/* Billing Cycle Switcher Toggle */}
+            <div className="pt-2 inline-flex items-center p-1.5 rounded-2xl bg-white border border-slate-300/80 shadow-sm mt-3">
+              <button
+                onClick={() => setBillingCycle("monthly")}
+                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
+                  billingCycle === "monthly"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Monthly Clinical Rent (No Lock-In)
               </button>
               <button
                 onClick={() => setBillingCycle("yearly")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${
-                  billingCycle === "yearly" ? "bg-sky-600 text-white shadow-sm" : "text-slate-600"
+                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 ${
+                  billingCycle === "yearly"
+                    ? "bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <span>Annual Payment</span>
-                <span className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.5 rounded font-black">
-                  20% OFF
+                <span>Annual Advance License</span>
+                <span className="bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase">
+                  Save 20% + Free Setup
                 </span>
               </button>
             </div>
           </div>
 
-          {/* Pricing Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {/* Plan 1: Starter Clinic & Lab */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-7 flex flex-col justify-between hover:border-sky-300 transition-colors">
-              <div className="space-y-4">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
-                  Starter Lab & Clinic
-                </span>
-                <h3 className="text-xl font-black text-slate-900">Collection Point & Clinic</h3>
-                <p className="text-xs text-slate-600">
-                  Ideal for small single-doctor clinics, sample collection centers, and starter pathology labs.
-                </p>
-
-                <div className="pt-2">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-slate-900">
-                      {billingCycle === "yearly" ? "₹1,999" : "₹2,499"}
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/* 4 CLINICAL PLAN COLUMNS */}
+          {/* ─────────────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+            {/* Column 1: Clinic & Collection Booth */}
+            {(pricingCategory === "all" || pricingCategory === "clinic") && (
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-7 flex flex-col justify-between hover:border-sky-300 hover:shadow-md transition-all">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                      Tier 1: Clinical Starter
                     </span>
-                    <span className="text-xs font-bold text-slate-500">/ month rent</span>
+                    <Stethoscope className="w-5 h-5 text-slate-400" />
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    {billingCycle === "yearly" ? "Billed annually (₹23,988/yr)" : "No lock-in, cancel anytime"}
+
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Clinic & Collection Booth</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      For single doctor practices, sample collection booths & primary care clinics.
+                    </p>
+                  </div>
+
+                  <div className="pt-2 pb-2 border-y border-slate-100">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                        {billingCycle === "yearly" ? "₹1,999" : "₹2,499"}
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {billingCycle === "yearly" ? "Billed ₹23,988/yr (Save ₹6,000)" : "Billed monthly, cancel anytime"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs text-slate-600">
+                    <div className="flex items-center gap-2 font-bold text-slate-800">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Up to 1,500 tests / month
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      3 Staff & Doctor User Accounts
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Barcode Tube Labeling & Accessioning
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Automated WhatsApp PDF Reports
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Tamperproof QR Verification (/verify-report)
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Patient Queue & Token Counter Display
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      3-inch Thermal Receipt & GST Invoices
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Standard Support (Email & WhatsApp)
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
+                  <button
+                    onClick={() => setIsDemoModalOpen(true)}
+                    className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors"
+                  >
+                    Deploy Clinic Starter Plan
+                  </button>
+                  <p className="text-[10px] text-center text-slate-400">
+                    Recommended Setup: Cloud Rapid (₹4,999)
                   </p>
                 </div>
+              </div>
+            )}
 
-                <div className="pt-4 border-t border-slate-100 space-y-2.5 text-xs text-slate-600">
-                  <div className="flex items-center gap-2 font-bold text-slate-800">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Up to 1,500 tests / month
+            {/* Column 2: Diagnostic Pathology Lab PRO (Featured / Most Popular) */}
+            {(pricingCategory === "all" || pricingCategory === "lab") && (
+              <div className="bg-white rounded-3xl border-2 border-sky-500 shadow-xl p-6 sm:p-7 flex flex-col justify-between relative scale-102 lg:scale-105 z-20 ring-4 ring-sky-50">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-sky-600 via-cyan-600 to-sky-700 text-white font-black text-[10px] uppercase tracking-wider px-4 py-1 rounded-full shadow-md">
+                  ★ MOST POPULAR FOR PATH LABS
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-2.5 py-1 rounded-md">
+                      Tier 2: Diagnostic PRO
+                    </span>
+                    <Microscope className="w-5 h-5 text-sky-600" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    3 Staff & Doctor User Logins
+
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Diagnostic Pathology Lab PRO</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Engineered for standalone biochemistry, hematology, microbiology labs & imaging centers.
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Barcode Tube Printing & Accessioning
+
+                  <div className="pt-2 pb-2 border-y border-slate-100">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl sm:text-4xl font-black text-sky-600">
+                        {billingCycle === "yearly" ? "₹4,799" : "₹5,999"}
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {billingCycle === "yearly" ? "Billed annually (Save ₹14,400/yr)" : "Includes all software updates"}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    WhatsApp PDF Report Delivery
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Tamperproof QR Code Verification
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Standard Email & WhatsApp Support
+
+                  <div className="space-y-2.5 text-xs text-slate-700">
+                    <div className="flex items-center gap-2 font-black text-slate-900">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Up to 10,000 tests / month
+                    </div>
+                    <div className="flex items-center gap-2 font-bold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      10 Staff, Pathologist & Doctor Logins
+                    </div>
+                    <div className="flex items-center gap-2 font-black text-sky-700 bg-sky-50/80 p-1.5 rounded-lg border border-sky-200">
+                      <Cpu className="w-4 h-4 text-sky-600 shrink-0" />
+                      2 Bi-Directional Machine Interfaces Included
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Referring Doctor Commission Portal
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      ABDM National Gateway (M1, M2, M3)
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      NABL Audit Trail, Delta Checks & QC
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Reagent Stock Consumption & Expiry Alert
+                    </div>
+                    <div className="flex items-center gap-2 font-black text-slate-900">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      24/7 Priority Emergency Support (15-Min SLA)
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
-                <button
-                  onClick={() => setIsDemoModalOpen(true)}
-                  className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm transition-colors"
-                >
-                  Get Starter Lab License
-                </button>
-              </div>
-            </div>
-
-            {/* Plan 2: Professional Diagnostic Center (Featured) */}
-            <div className="bg-white rounded-3xl border-2 border-sky-600 shadow-xl p-7 flex flex-col justify-between relative scale-105 z-10">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-sky-600 to-cyan-600 text-white font-black text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-md">
-                ★ MOST POPULAR FOR PATH LABS
-              </div>
-
-              <div className="space-y-4">
-                <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-2.5 py-1 rounded-md">
-                  Diagnostic Center PRO
-                </span>
-                <h3 className="text-xl font-black text-slate-900">Full Diagnostic Laboratory</h3>
-                <p className="text-xs text-slate-600">
-                  Engineered for standalone pathology labs, ultrasound centers, and multi-doctor polyclinics.
-                </p>
-
-                <div className="pt-2">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-sky-600">
-                      {billingCycle === "yearly" ? "₹4,799" : "₹5,999"}
-                    </span>
-                    <span className="text-xs font-bold text-slate-500">/ month rent</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    {billingCycle === "yearly" ? "Save ₹14,400 with annual billing" : "Includes all software updates"}
+                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
+                  <button
+                    onClick={() => setIsDemoModalOpen(true)}
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-xs shadow-md shadow-sky-600/30 transition-all hover:scale-102"
+                  >
+                    Deploy Diagnostic Lab PRO
+                  </button>
+                  <p className="text-[10px] text-center text-sky-700 font-bold">
+                    Includes Free Setup with Annual Plan
                   </p>
                 </div>
+              </div>
+            )}
 
-                <div className="pt-4 border-t border-slate-100 space-y-2.5 text-xs text-slate-700">
-                  <div className="flex items-center gap-2 font-black text-slate-900">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Up to 10,000 tests / month
+            {/* Column 3: Multi-Specialty Hospital OS (50-300 Beds) */}
+            {(pricingCategory === "all" || pricingCategory === "hospital") && (
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-7 flex flex-col justify-between hover:border-sky-300 hover:shadow-md transition-all">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-md">
+                      Tier 3: Hospital OS
+                    </span>
+                    <Building2 className="w-5 h-5 text-teal-600" />
                   </div>
-                  <div className="flex items-center gap-2 font-bold">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    10 Staff / Pathologist / Doctor Logins
+
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Multi-Specialty Hospital OS</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Full Hospital HMIS for 50-300 bed facilities, nursing homes & surgical centers.
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2 font-black text-sky-700">
-                    <Check className="w-4 h-4 text-sky-600 shrink-0" />
-                    2 Bi-Directional Machine Interfaces Included
+
+                  <div className="pt-2 pb-2 border-y border-slate-100">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                        {billingCycle === "yearly" ? "₹11,999" : "₹14,999"}
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Multi-floor LAN license & unlimited workstations
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2 font-semibold">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Referring Doctor Commission & Portal
-                  </div>
-                  <div className="flex items-center gap-2 font-semibold">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    ABDM (M1, M2, M3) National Integration
-                  </div>
-                  <div className="flex items-center gap-2 font-semibold">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Reagent & Inventory Tracking
-                  </div>
-                  <div className="flex items-center gap-2 font-black text-slate-900">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    24/7 Priority Phone & Remote IT SLA
+
+                  <div className="space-y-2.5 text-xs text-slate-600">
+                    <div className="flex items-center gap-2 font-black text-slate-900">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      UNLIMITED Tests & Patients
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-slate-800">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      UNLIMITED Staff, Nurse & Doctor Accounts
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-teal-700">
+                      <Check className="w-4 h-4 text-teal-600 shrink-0" />
+                      ALL Analyzer Interfaces (Unlimited Machines)
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      OPD Queue + IPD Bed & Ward Allocation
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Doctor EMR & Digital Prescriptions (Rx)
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Pharmacy Billing & Cashless TPA Claims
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      DICOM PACS Viewer & Tele-Radiology
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-emerald-600">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Dedicated Medical IT Account Manager
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
-                <button
-                  onClick={() => setIsDemoModalOpen(true)}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-extrabold text-sm shadow-md shadow-sky-600/30 transition-all hover:scale-102"
-                >
-                  Deploy Diagnostic Center PRO
-                </button>
-              </div>
-            </div>
-
-            {/* Plan 3: Enterprise Hospital OS */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-7 flex flex-col justify-between hover:border-sky-300 transition-colors">
-              <div className="space-y-4">
-                <span className="text-xs font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md">
-                  Hospital Operating System
-                </span>
-                <h3 className="text-xl font-black text-slate-900">Multi-Speciality Hospital</h3>
-                <p className="text-xs text-slate-600">
-                  Full Hospital HMIS with OPD, IPD, OT, Ward Management, Pharmacy, LIS, and PACS.
-                </p>
-
-                <div className="pt-2">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-slate-900">
-                      {billingCycle === "yearly" ? "₹11,999" : "₹14,999"}
-                    </span>
-                    <span className="text-xs font-bold text-slate-500">/ month rent</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Full hospital campus license, multi-floor LAN ready
+                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
+                  <button
+                    onClick={() => setIsDemoModalOpen(true)}
+                    className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors"
+                  >
+                    Deploy Hospital OS Enterprise
+                  </button>
+                  <p className="text-[10px] text-center text-slate-400">
+                    On-Site Hardware Setup: ₹14,999
                   </p>
                 </div>
+              </div>
+            )}
 
-                <div className="pt-4 border-t border-slate-100 space-y-2.5 text-xs text-slate-600">
-                  <div className="flex items-center gap-2 font-bold text-slate-800">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    UNLIMITED Tests & Patients
+            {/* Column 4: Enterprise Diagnostic Chain & Hospital Group */}
+            {(pricingCategory === "all" || pricingCategory === "hospital" || pricingCategory === "lab") && (
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-7 flex flex-col justify-between hover:border-sky-300 hover:shadow-md transition-all">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md">
+                      Tier 4: Enterprise Network
+                    </span>
+                    <Layers className="w-5 h-5 text-indigo-600" />
                   </div>
-                  <div className="flex items-center gap-2 font-bold text-slate-800">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    UNLIMITED Staff, Nurse & Doctor Accounts
+
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Hospital Chain & Network</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Multi-branch diagnostic chains, corporate lab franchises & hospital groups.
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2 font-bold text-slate-800">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    ALL Analyzer Interfaces (Unlimited Machines)
+
+                  <div className="pt-2 pb-2 border-y border-slate-100">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                        {billingCycle === "yearly" ? "₹23,999" : "₹29,999"}
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Central data lake & multi-branch routing
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Full Ward / Bed / ICU / Nursing Station
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    NABH Compliance & Strict Audit Logs
-                  </div>
-                  <div className="flex items-center gap-2 font-bold text-emerald-600">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Dedicated Medical IT Account Manager
+
+                  <div className="space-y-2.5 text-xs text-slate-600">
+                    <div className="flex items-center gap-2 font-black text-slate-900">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Central Master Patient Index (MPI)
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Hub-and-Spoke Sample Routing & Logistics
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Multi-City Tele-Reporting Doctor Pool
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Central Warehouse Reagent Procurement
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Custom REST APIs & HL7 FHIR Gateway
+                    </div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Air-Gapped Offline Appliance Option
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-indigo-700">
+                      <Check className="w-4 h-4 text-indigo-600 shrink-0" />
+                      99.999% Guaranteed Enterprise SLA
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-slate-900">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      24/7 Technical Operations Center (TOC)
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
-                <button
-                  onClick={() => setIsDemoModalOpen(true)}
-                  className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition-colors"
-                >
-                  Schedule Hospital Architecture Audit
-                </button>
+                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
+                  <a
+                    href="https://wa.me/919876543210?text=Hello%20Nikil%2C%20I%20would%20like%20to%20discuss%20an%20Enterprise%20Multi-branch%20deployment%20of%20NIKIL-LABCORE-ELIS-OS."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <span>Consult Chief Architect Nikil</span>
+                    <ArrowUpRight className="w-4 h-4 text-sky-400" />
+                  </a>
+                  <p className="text-[10px] text-center text-slate-400">
+                    Custom Turnkey Setup Available
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* ─────────────────────────────────────────────────────────── */}
-          {/* ONE-TIME SETUP & ON-PREMISE PACKAGES */}
+          {/* ONE-TIME SETUP & HARDWARE ENGINEERING PACKAGES */}
           {/* ─────────────────────────────────────────────────────────── */}
-          <div className="mt-16 bg-slate-50 rounded-3xl border border-slate-200 p-8 shadow-sm">
-            <div className="text-center max-w-2xl mx-auto space-y-2 mb-8">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-500">
+          <div className="mt-16 bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm">
+            <div className="text-center max-w-3xl mx-auto space-y-2 mb-10">
+              <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-3 py-1 rounded-full border border-sky-200">
                 Installation & Engineering Services
               </span>
-              <h3 className="text-2xl font-black text-slate-900">
-                One-Time Onboarding, Hardware & Analyzer Calibration Setup
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
+                One-Time Onboarding, Hardware & Machine Calibration Packages
               </h3>
-              <p className="text-xs text-slate-500">
-                Choose how you want your facility launched. Handled end-to-end by certified medical systems engineers.
+              <p className="text-xs sm:text-sm text-slate-500">
+                Transparent one-time engineering fees. Handled end-to-end by certified biomedical & healthcare IT specialists.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Setup Option A */}
-              <div className="p-6 rounded-2xl border border-slate-200 bg-white space-y-3">
+              <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-sky-300 transition-all space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-black text-slate-900 text-sm">Cloud Fast-Track Setup</h4>
-                    <p className="text-[11px] text-slate-500">Remote Cloud Deployment</p>
+                    <h4 className="font-black text-slate-900 text-sm">Cloud Rapid Provisioning</h4>
+                    <p className="text-[11px] text-slate-500">24-Hour Remote Deployment</p>
                   </div>
-                  <span className="text-base font-extrabold text-slate-900">₹4,999</span>
+                  <span className="text-lg font-black text-slate-900">₹4,999</span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Ready within 24 hours. Dedicated cloud instance, lab header customization, doctor master list upload, and remote staff video training.
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Fastest way to get started. Dedicated cloud database instance, doctor & test master data import, custom letterhead branding, and 2-hour staff video training.
                 </p>
-                <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> 1-Day Turnaround
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-emerald-600 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> 24-Hour Live Turnaround
+                  </span>
+                  <span className="text-slate-400">Remote Online</span>
                 </div>
               </div>
 
               {/* Setup Option B */}
-              <div className="p-6 rounded-2xl border-2 border-sky-500 bg-sky-50/40 space-y-3">
+              <div className="p-6 rounded-2xl border-2 border-sky-500 bg-sky-50/30 hover:bg-white transition-all space-y-3 relative">
+                <div className="absolute -top-3 right-4 bg-sky-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded-full">
+                  MOST POPULAR SETUP
+                </div>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-black text-slate-900 text-sm">Full Analyzer Hardware Setup</h4>
-                    <p className="text-[11px] text-sky-700 font-bold">Recommended for Machine Sync</p>
+                    <h4 className="font-black text-slate-900 text-sm">Hardware & Analyzer Setup</h4>
+                    <p className="text-[11px] text-sky-700 font-bold">Bi-Directional Calibration</p>
                   </div>
-                  <span className="text-base font-extrabold text-sky-700">₹14,999</span>
+                  <span className="text-lg font-black text-sky-700">₹14,999</span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  On-site or deep remote engineer setup. Serial RS-232 / LAN machine cabling, ASTM/HL7 driver calibration, thermal barcode printer setup, and 3-day staff certification.
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Certified engineer on-site or remote. RS-232 serial & TCP/IP machine cabling, ASTM/HL7 driver calibration, thermal barcode printer integration, and 3-day staff certification.
                 </p>
-                <div className="text-[11px] font-bold text-sky-700 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Includes Barcode & Analyzer Testing
+                <div className="pt-2 border-t border-sky-100 flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-sky-700 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Full Machine Zero-Typo Testing
+                  </span>
+                  <span className="text-slate-500 font-semibold">Engineer On-Site/Remote</span>
                 </div>
               </div>
 
               {/* Setup Option C */}
-              <div className="p-6 rounded-2xl border border-slate-200 bg-white space-y-3">
+              <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-sky-300 transition-all space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-black text-slate-900 text-sm">Air-Gapped Offline Appliance</h4>
+                    <h4 className="font-black text-slate-900 text-sm">Turnkey Air-Gapped Appliance</h4>
                     <p className="text-[11px] text-slate-500">100% Offline Local Server</p>
                   </div>
-                  <span className="text-base font-extrabold text-slate-900">₹79,999</span>
+                  <span className="text-lg font-black text-slate-900">₹79,999</span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Complete local server appliance installation. Works 100% offline without internet inside the hospital LAN. Includes perpetual license and automated local backup NAS.
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Turnkey local hospital server appliance. Operates 100% offline inside hospital LAN with zero internet dependence. Includes perpetual local license and automated local NAS backup.
                 </p>
-                <div className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Lifetime Local On-Premise License
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-indigo-700 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Perpetual Local Hospital License
+                  </span>
+                  <span className="text-slate-400">Zero Internet Required</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/* DETAILED CLINICAL FEATURE COMPARISON MATRIX */}
+          {/* ─────────────────────────────────────────────────────────── */}
+          <div className="mt-16 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-8 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-sky-600" />
+                  Side-by-Side Clinical Feature Matrix
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Detailed comparison across clinical pathology, hospital HMIS, machine automation, and compliance capabilities.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowFeatureMatrix(!showFeatureMatrix)}
+                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 shadow-2xs flex items-center gap-1.5 transition-colors"
+              >
+                <span>{showFeatureMatrix ? "Collapse Feature Matrix" : "Expand All Clinical Rows"}</span>
+                {showFeatureMatrix ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {showFeatureMatrix && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-100/90 text-slate-800 font-black uppercase text-[10px] tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="py-3.5 px-4 sm:px-6 w-1/3">Clinical Feature / Parameter</th>
+                      <th className="py-3.5 px-3 text-center">Clinic Starter</th>
+                      <th className="py-3.5 px-3 text-center bg-sky-50 text-sky-900">Diagnostic PRO</th>
+                      <th className="py-3.5 px-3 text-center">Hospital OS</th>
+                      <th className="py-3.5 px-3 text-center">Enterprise Chain</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Monthly Diagnostic Tests Included</td>
+                      <td className="py-3 px-3 text-center">Up to 1,500</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-900">Up to 10,000</td>
+                      <td className="py-3 px-3 text-center font-bold text-emerald-600">UNLIMITED</td>
+                      <td className="py-3 px-3 text-center font-bold text-emerald-600">UNLIMITED</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Bi-Directional Analyzer Interfaces</td>
+                      <td className="py-3 px-3 text-center text-slate-400">Manual Entry</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-700">2 Machines Included</td>
+                      <td className="py-3 px-3 text-center font-bold text-teal-700">All Analyzers Included</td>
+                      <td className="py-3 px-3 text-center font-bold text-indigo-700">Multi-branch Routing</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">WhatsApp PDF Report Automation</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Tamperproof QR Code Verification</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Barcode Tube Printing & Accessioning</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Referring Doctor Commission Ledger</td>
+                      <td className="py-3 px-3 text-center text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">ABDM National Gateway (M1, M2, M3)</td>
+                      <td className="py-3 px-3 text-center text-slate-400">Optional Add-on</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Doctor OPD Consultation & E-Prescriptions</td>
+                      <td className="py-3 px-3 text-center text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full OPD Desk</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full OPD Desk</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">IPD Ward & Bed Occupancy Matrix</td>
+                      <td className="py-3 px-3 text-center text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full IPD Matrix</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full IPD Matrix</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Reagent Stock Tracking & Expiry Alarms</td>
+                      <td className="py-3 px-3 text-center text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Central Warehouse</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">DICOM PACS Viewer & Radiology Bridge</td>
+                      <td className="py-3 px-3 text-center text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Enterprise PACS</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Emergency STAT IT SLA Guarantee</td>
+                      <td className="py-3 px-3 text-center">4 Hours</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-700">15 Minutes</td>
+                      <td className="py-3 px-3 text-center font-bold text-teal-700">15 Minutes</td>
+                      <td className="py-3 px-3 text-center font-bold text-indigo-700">Dedicated TOC (Immediate)</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Encrypted Cloud Backup Frequency</td>
+                      <td className="py-3 px-3 text-center">Daily (24 Hrs)</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-700">Every 6 Hours</td>
+                      <td className="py-3 px-3 text-center font-bold text-teal-700">Every 6 Hours + Local</td>
+                      <td className="py-3 px-3 text-center font-bold text-indigo-700">Real-time Continuous Sync</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">100% Client Data Ownership & SQL Export</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Guaranteed</td>
+                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Guaranteed</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Guaranteed</td>
+                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Guaranteed</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/* MEDICAL ASSURANCE & TRUST STRIP */}
+          {/* ─────────────────────────────────────────────────────────── */}
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold text-slate-700">
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
+              <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
+              <div>
+                <strong className="block text-slate-900 font-bold">100% Patient Privacy</strong>
+                <span className="text-[11px] text-slate-500">HIPAA & DISHA compliant, zero monetization.</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
+              <Clock className="w-6 h-6 text-sky-600 shrink-0" />
+              <div>
+                <strong className="block text-slate-900 font-bold">15-Min Critical SLA</strong>
+                <span className="text-[11px] text-slate-500">Rapid triage for machine & dispatch stalls.</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
+              <Award className="w-6 h-6 text-cyan-600 shrink-0" />
+              <div>
+                <strong className="block text-slate-900 font-bold">NABL & NABH Ready</strong>
+                <span className="text-[11px] text-slate-500">Pre-built audit logs & delta checking.</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
+              <Phone className="w-6 h-6 text-indigo-600 shrink-0" />
+              <div>
+                <strong className="block text-slate-900 font-bold">24/7 Helpline & WhatsApp</strong>
+                <span className="text-[11px] text-slate-500">+91 98765 43210 / 1800-LAB-CORE</span>
               </div>
             </div>
           </div>

@@ -17,6 +17,14 @@ import {
   getHistoryTrend,
   getSignature,
   verifySignature,
+  getApprovalQcChart,
+  getTestQcChart,
+  amendResult,
+  getAmendments,
+  getTriageQueue,
+  getPanicReadBackLedger,
+  recordPanicReadBack,
+  checkOrderDispatchStatus,
 } from "./approval.controller";
 
 import {
@@ -25,6 +33,8 @@ import {
   rejectApprovalSchema,
   batchApproveSchema,
   criticalAckSchema,
+  amendResultSchema,
+  panicReadBackSchema,
 } from "./approval.validation";
 
 const router = Router();
@@ -47,6 +57,47 @@ router.get(
   "/metrics",
   authorize(...APPROVAL_ROLES),
   getMetrics
+);
+
+// =======================================================
+// PANIC TRIAGE QUEUE & AUDIT LEDGER (BEFORE /:id)
+// =======================================================
+
+router.get(
+  "/triage/queue",
+  authorize(...APPROVAL_ROLES),
+  getTriageQueue
+);
+
+router.get(
+  "/panic-triage/ledger",
+  authorize(...APPROVAL_ROLES),
+  getPanicReadBackLedger
+);
+
+router.post(
+  "/panic-triage/readback",
+  authorize(...APPROVAL_ROLES),
+  validate({
+    body: panicReadBackSchema,
+  }),
+  recordPanicReadBack
+);
+
+router.get(
+  "/panic-triage/dispatch-status/:orderId",
+  authorize(...APPROVAL_ROLES),
+  checkOrderDispatchStatus
+);
+
+// =======================================================
+// LEVEY-JENNINGS QC BY TEST CODE (BEFORE /:id)
+// =======================================================
+
+router.get(
+  "/qc-chart/:testCode",
+  authorize(...APPROVAL_ROLES),
+  getTestQcChart
 );
 
 // =======================================================
@@ -83,6 +134,7 @@ router.post(
   }),
   batchApproveResults
 );
+
 
 // =======================================================
 // APPROVAL DETAIL
@@ -186,5 +238,42 @@ router.get(
   verifySignature
 );
 
+// =======================================================
+// LEVEY-JENNINGS QC FOR APPROVAL SPECIMEN
+// =======================================================
+
+router.get(
+  "/:id/qc-chart",
+  authorize(...APPROVAL_ROLES),
+  validate({
+    params: approvalIdSchema,
+  }),
+  getApprovalQcChart
+);
+
+// =======================================================
+// RESULT AMENDMENT (NABL ISO 15189:2022)
+// =======================================================
+
+router.post(
+  "/:id/amend",
+  authorize(...APPROVAL_ROLES),
+  validate({
+    params: approvalIdSchema,
+    body: amendResultSchema,
+  }),
+  amendResult
+);
+
+router.get(
+  "/:id/amendments",
+  authorize(...APPROVAL_ROLES),
+  validate({
+    params: approvalIdSchema,
+  }),
+  getAmendments
+);
+
 export default router;
+
 

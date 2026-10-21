@@ -6424,7 +6424,101 @@ export const approvalsApi = {
       throw error;
     }
   },
+
+  getQcChart: async (id: string, parameter?: string) => {
+    try {
+      const query = parameter ? `?parameter=${encodeURIComponent(parameter)}` : '';
+      return await apiCall(`/api/approvals/${id}/qc-chart${query}`);
+    } catch (error) {
+      console.error('Get QC chart API error:', error);
+      throw error;
+    }
+  },
+
+  getTestQcChart: async (testCode: string, parameter?: string) => {
+    try {
+      const query = parameter ? `?parameter=${encodeURIComponent(parameter)}` : '';
+      return await apiCall(`/api/approvals/qc-chart/${encodeURIComponent(testCode)}${query}`);
+    } catch (error) {
+      console.error('Get test QC chart API error:', error);
+      throw error;
+    }
+  },
+
+  amendResult: async (id: string, data: {
+    amendmentReason: string;
+    amendmentType?: string;
+    updatedValues: Array<{ parameterId: string; value: string; flag?: string }>;
+    notes?: string;
+  }) => {
+    try {
+      return await apiCall(`/api/approvals/${id}/amend`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error('Amend result API error:', error);
+      throw error;
+    }
+  },
+
+  getAmendments: async (id: string) => {
+    try {
+      return await apiCall(`/api/approvals/${id}/amendments`);
+    } catch (error) {
+      console.error('Get amendments API error:', error);
+      throw error;
+    }
+  },
+
+  getTriageQueue: async () => {
+    try {
+      return await apiCall('/api/approvals/triage/queue');
+    } catch (error) {
+      console.error('Get triage queue API error:', error);
+      throw error;
+    }
+  },
+
+  getPanicReadBackLedger: async (unresolved = false) => {
+    try {
+      const query = unresolved ? '?unresolved=true' : '';
+      return await apiCall(`/api/approvals/panic-triage/ledger${query}`);
+    } catch (error) {
+      console.error('Get panic readback ledger API error:', error);
+      throw error;
+    }
+  },
+
+  recordPanicReadBack: async (data: {
+    panicLogId: string;
+    notifiedDoctorName: string;
+    doctorPhone: string;
+    readBackConfirmed: boolean;
+    clinicalActionRemarks: string;
+    callTimestamp?: string;
+  }) => {
+    try {
+      return await apiCall('/api/approvals/panic-triage/readback', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error('Record panic readback API error:', error);
+      throw error;
+    }
+  },
+
+  checkOrderDispatchStatus: async (orderId: string) => {
+    try {
+      return await apiCall(`/api/approvals/panic-triage/dispatch-status/${orderId}`);
+    } catch (error) {
+      console.error('Check dispatch status API error:', error);
+      throw error;
+    }
+  },
 };
+
 
 // Alias for compatibility
 export const resultApi = resultsApi;

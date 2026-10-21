@@ -2,8 +2,13 @@
 
 import React from "react";
 import Link from "next/link";
+
 import { approvalApi } from "@/lib/api";
 import type { Approval } from "./ApprovalTable";
+import LeveyJenningsChart from "../qc/LeveyJenningsChart";
+import ResultAmendmentModal from "./ResultAmendmentModal";
+import { Activity, FileEdit, History, ShieldCheck } from "lucide-react";
+
 
 interface ApprovalDetailsProps {
   approval: Approval;
@@ -135,6 +140,29 @@ export default function ApprovalDetails({
 }: ApprovalDetailsProps) {
   const [verifying, setVerifying] = React.useState(false);
   const [verificationStatus, setVerificationStatus] = React.useState<any>(signatureData || null);
+  const [showQcChart, setShowQcChart] = React.useState(false);
+  const [showAmendmentModal, setShowAmendmentModal] = React.useState(false);
+  const [amendments, setAmendments] = React.useState<any[]>([]);
+  const [loadingAmendments, setLoadingAmendments] = React.useState(false);
+
+  const fetchAmendments = React.useCallback(async () => {
+    if (!approval.resultId) return;
+    try {
+      setLoadingAmendments(true);
+      const res = await approvalApi.getAmendments(String(approval.resultId));
+      if (res?.success && Array.isArray(res.data)) {
+        setAmendments(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load amendments:", err);
+    } finally {
+      setLoadingAmendments(false);
+    }
+  }, [approval.resultId]);
+
+  React.useEffect(() => {
+    fetchAmendments();
+  }, [fetchAmendments]);
 
   const handleVerify = async () => {
     if (!approval.resultId) return;
@@ -161,6 +189,7 @@ export default function ApprovalDetails({
     "submitted",
     "under_review",
   ].includes(status);
+
 
   return (
     <div className="space-y-6">
@@ -764,8 +793,47 @@ export default function ApprovalDetails({
         </section>
       )}
 
-      {/* Review Actions */}
+      {/* Quality Control & Levey-Jennings Stability Section */}
+      <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-600 text-white shadow-sm">
+              <Activity className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <span>Analyzer Precision &amp; Levey-Jennings QC Inspection</span>
+                <span className="rounded-md bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-800 border border-cyan-300">
+                  NABL ISO 15189
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Inspect 25-run daily quality control drift and Westgard multi-rules before signing.
+              </p>
+            </div>
+          </div>
 
+          <button
+            type="button"
+            onClick={() => setShowQcChart((prev) => !prev)}
+            className="rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 shadow-sm transition flex items-center gap-1.5 shrink-0"
+          >
+            <span>{showQcChart ? "▲ Hide LJ Chart" : "📈 Inspect Levey-Jennings Chart"}</span>
+          </button>
+        </div>
+
+        {showQcChart && (
+          <div className="p-4 bg-slate-950">
+            <LeveyJenningsChart
+              approvalId={String(approval.resultId || approval.id)}
+              testCode={approval.testName || "K"}
+              onClose={() => setShowQcChart(false)}
+            />
+          </div>
+        )}
+      </section>
+
+      {/* Review Actions */}
       {canReview && (
         <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 px-5 py-4">
@@ -810,8 +878,101 @@ export default function ApprovalDetails({
         </section>
       )}
 
-      {/* Navigation */}
+      {/* Post-Sign-Off Amendment History & Management (NABL ISO 15189:2022) */}
+      {isApproved && (
+        <section className="rounded-xl border border-amber-200 bg-amber-50/30 shadow-sm overflow-hidden">
+          <div className="border-b border-amber-200 bg-amber-100/50 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <FileEdit className="h-5 w-5 text-amber-700" />
+              <div>
+                <h2 className="font-bold text-amber-950 text-sm flex items-center gap-2">
+                  <span>Diagnostic Report Amendment &amp; Addenda</span>
+                  <span className="rounded-md bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                    Clause 7.4.1.3
+                  </span>
+                </h2>
+                <p className="text-xs text-amber-800">
+                  Authorized pathologists can record clinical corrections with full version tracking.
+                </p>
+              </div>
+            </div>
 
+            <button
+              type="button"
+              onClick={() => setShowAmendmentModal(true)}
+              className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-amber-700 transition flex items-center gap-1.5 shrink-0"
+            >
+              <FileEdit className="h-3.5 w-3.5" />
+              <span>Amend Approved Result</span>
+            </button>
+          </div>
+
+          {/* Previous Amendments Ledger */}
+          {amendments.length > 0 ? (
+            <div className="p-5 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <History className="h-4 w-4 text-amber-600" />
+                Immutable Revision Ledger ({amendments.length} Amendment{amendments.length > 1 ? "s" : ""})
+              </h3>
+              <div className="space-y-3">
+                {amendments.map((amend: any) => (
+                  <div
+                    key={amend.id}
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-black text-amber-800 border border-amber-300">
+                          v{amend.versionNumber}.0
+                        </span>
+                        <span className="font-bold text-slate-900">
+                          {amend.amendmentType?.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <span className="text-slate-500 font-mono text-[11px]">
+                        {formatDate(amend.createdAt)}
+                      </span>
+                    </div>
+
+                    <div className="text-slate-800">
+                      <span className="font-semibold text-slate-500">Reason: </span>
+                      {amend.amendmentReason}
+                    </div>
+
+                    {amend.fieldChanges && Object.keys(amend.fieldChanges).length > 0 && (
+                      <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-200 space-y-1">
+                        <span className="text-[10px] font-bold uppercase text-slate-500">
+                          Parameter Modifications:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                          {Object.entries(amend.fieldChanges).map(([field, diff]: [string, any]) => (
+                            <div key={field} className="text-[11px] bg-white p-1.5 rounded border border-slate-200">
+                              <span className="font-bold text-slate-800">{field}: </span>
+                              <span className="line-through text-red-500 mr-1">{diff.previous}</span>
+                              <span className="font-bold text-emerald-600">→ {diff.new}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-[11px] text-slate-500 flex items-center justify-between pt-1">
+                      <span>Amended By: <strong>{amend.amendedByUser?.fullName || "Pathologist"}</strong></span>
+                      <span className="text-emerald-700 font-bold">✓ Report Re-Generated &amp; Cryptographically Re-Signed</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 text-center text-xs text-amber-800">
+              No amendments filed for this result. This is Original Version 1.0.
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Navigation */}
       <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap gap-3 p-5">
           {approval.resultId && (
@@ -840,6 +1001,41 @@ export default function ApprovalDetails({
           </Link>
         </div>
       </section>
+
+      {/* Result Amendment Modal */}
+      {showAmendmentModal && (
+        <ResultAmendmentModal
+          isOpen={showAmendmentModal}
+          onClose={() => setShowAmendmentModal(false)}
+          resultId={String(approval.resultId || approval.id)}
+          orderNumber={orderInfo?.accessionNumber || approval.orderNumber || "ORD-000"}
+          patientName={approval.patientName || "Patient"}
+          testName={approval.testName || "Biochemistry Test"}
+          currentValues={(resultParameters && resultParameters.length > 0)
+            ? resultParameters.map((p, idx) => ({
+                parameterId: (p as any).id || (p as any).parameterId || `param-${idx}`,
+                parameterName: p.parameterName,
+                value: p.result,
+                unit: p.unit,
+                flag: p.flag,
+              }))
+            : [
+                {
+                  parameterId: "param-1",
+                  parameterName: approval.testName || "Analyte",
+                  value: String(resultValue || "0"),
+                  unit: unit,
+                  flag: criticalValue ? "CRITICAL" : "NORMAL",
+                },
+              ]
+          }
+          onSuccess={(nextVer) => {
+            fetchAmendments();
+            if (handleVerify) handleVerify();
+            alert(`Diagnostic report successfully amended to Version ${nextVer}.0 and re-signed with Doctor Seal.`);
+          }}
+        />
+      )}
     </div>
   );
-}
+}

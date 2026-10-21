@@ -10,6 +10,8 @@ import ApprovalReviewModal from "@/components/approvals/ApprovalReviewModal";
 import DoctorWorkstationView from "@/components/approvals/DoctorWorkstationView";
 import ApprovalRulesModal from "@/components/approvals/ApprovalRulesModal";
 import CriticalPanicCallModal from "@/components/approvals/CriticalPanicCallModal";
+import BatchApprovalModal from "@/components/approvals/BatchApprovalModal";
+import LeveyJenningsChart from "@/components/qc/LeveyJenningsChart";
 import { approvalApi } from "@/lib/api";
 import type { Approval } from "@/components/approvals/ApprovalTable";
 
@@ -33,6 +35,10 @@ function ApprovalsContent() {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [callTargetApproval, setCallTargetApproval] = useState<Approval | null>(null);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isQcModalOpen, setIsQcModalOpen] = useState(false);
+  const [qcTargetTest, setQcTargetTest] = useState("K");
+
 
   const [metrics, setMetrics] = useState({
     pendingApproval: 0,
@@ -367,6 +373,16 @@ function ApprovalsContent() {
 
           <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={() => {
+                setQcTargetTest("K");
+                setIsQcModalOpen(true);
+              }}
+              className="rounded-xl border border-cyan-700/50 bg-cyan-950/40 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-900/60 shadow-sm transition-colors flex items-center gap-1.5"
+            >
+              <span>📈</span>
+              <span>Daily QC &amp; LJ Chart</span>
+            </button>
+            <button
               onClick={() => setIsRulesModalOpen(true)}
               className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white shadow-sm transition-colors flex items-center gap-1.5"
             >
@@ -384,6 +400,7 @@ function ApprovalsContent() {
               <span>Refresh Queue</span>
             </button>
           </div>
+
         </div>
 
         {/* Clinical KPI Metrics Bar */}
@@ -430,22 +447,14 @@ function ApprovalsContent() {
               </button>
               <button
                 type="button"
-                onClick={handleBatchApprove}
+                onClick={() => setIsBatchModalOpen(true)}
                 disabled={batchActionLoading}
                 className="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-cyan-600/20 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 transition-all flex items-center gap-2"
               >
-                {batchActionLoading ? (
-                  <>
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Authorizing...
-                  </>
-                ) : (
-                  <>
-                    <span>✓ Batch Sign Selected</span>
-                  </>
-                )}
+                <span className="text-white font-bold">✓ Batch Sign Selected</span>
               </button>
             </div>
+
           </div>
         )}
 
@@ -552,7 +561,41 @@ function ApprovalsContent() {
           }}
         />
       )}
+
+      {/* Batch Approval Modal */}
+      {isBatchModalOpen && (
+        <BatchApprovalModal
+          isOpen={isBatchModalOpen}
+          onClose={() => setIsBatchModalOpen(false)}
+          selectedApprovals={approvals.filter((a) => selectedApprovals.has(a.id))}
+          onSuccess={(approvedCount, skippedCount) => {
+            setSelectedApprovals(new Set());
+            fetchApprovals();
+            fetchMetrics();
+            alert(
+              `Successfully batch approved & certified ${approvedCount} report(s)! ${
+                skippedCount > 0
+                  ? `(${skippedCount} skipped due to unacknowledged critical/panic values)`
+                  : ""
+              }`
+            );
+          }}
+        />
+      )}
+
+      {/* Levey-Jennings QC Modal */}
+      {isQcModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <LeveyJenningsChart
+              testCode={qcTargetTest}
+              onClose={() => setIsQcModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </DashboardLayout>
+
   );
 }
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Approval } from "./ApprovalTable";
 import DeltaCheckViewer from "./DeltaCheckViewer";
 import CriticalPanicCallModal from "./CriticalPanicCallModal";
+import LeveyJenningsChart from "../qc/LeveyJenningsChart";
 import { approvalApi } from "@/lib/api";
 
 interface DoctorWorkstationViewProps {
@@ -28,9 +29,11 @@ export default function DoctorWorkstationView({
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [showQcModal, setShowQcModal] = useState(false);
   const [clinicalRemarks, setClinicalRemarks] = useState("");
   const [callLogged, setCallLogged] = useState(false);
   const [filterMode, setFilterMode] = useState<"all" | "critical" | "abnormal" | "normal">("all");
+
 
   const currentApproval = approvals[selectedIndex] || null;
 
@@ -558,6 +561,14 @@ export default function DoctorWorkstationView({
                 >
                   ✕ Reject
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQcModal(true)}
+                  className="rounded-xl border border-cyan-300 bg-cyan-50 px-4 py-2 text-xs font-bold text-cyan-800 hover:bg-cyan-100 shadow-sm transition-colors flex items-center gap-1.5"
+                >
+                  <span>📈</span>
+                  <span>QC / LJ Chart</span>
+                </button>
                 <Link
                   href={`/approvals/${currentApproval.id}`}
                   className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-100 shadow-sm transition-colors"
@@ -606,6 +617,20 @@ export default function DoctorWorkstationView({
           }}
         />
       )}
+
+      {/* Levey-Jennings QC Modal */}
+      {showQcModal && currentApproval && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <LeveyJenningsChart
+              approvalId={String(currentApproval.resultId)}
+              testCode={currentApproval.testName || "K"}
+              onClose={() => setShowQcModal(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

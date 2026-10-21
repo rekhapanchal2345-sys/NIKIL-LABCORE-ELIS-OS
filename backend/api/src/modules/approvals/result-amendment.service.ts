@@ -1,5 +1,6 @@
-import prisma from '../../config/database';
+import prisma from '../../../config/database';
 import { HttpError } from '../../utils/http-error';
+
 import { createAuditLog } from '../audit/audit.service';
 import { signResultWithElectronicSeal } from './digital-signature.service';
 
@@ -81,8 +82,8 @@ export class ResultAmendmentService {
     // 4. Capture previous snapshot
     const previousSnapshot = existingResult.values.map((v: any) => ({
       parameterId: v.parameterId,
-      parameterCode: v.parameter?.code || '',
-      parameterName: v.parameter?.name || '',
+      parameterCode: v.parameter?.shortName || v.parameter?.loincCode || '',
+      parameterName: v.parameter?.parameterName || '',
       value: v.value,
       unit: v.parameter?.unit || '',
       flag: v.flag,
@@ -95,19 +96,19 @@ export class ResultAmendmentService {
     for (const update of input.updatedValues) {
       const match = existingResult.values.find((v: any) => v.parameterId === update.parameterId);
       if (match) {
-        const paramName = match.parameter?.name || match.parameterId;
+        const paramName = match.parameter?.parameterName || match.parameterId;
         changedFields.push(paramName);
         fieldChanges[paramName] = {
           previous: match.value,
           new: update.value,
-          flag: update.flag || match.flag,
+          flag: update.flag || match.flag || undefined,
         };
 
         await prisma.resultValue.update({
           where: { id: match.id },
           data: {
             value: update.value,
-            flag: update.flag as any,
+            flag: (update.flag || match.flag) as any,
           },
         });
       }
@@ -121,12 +122,13 @@ export class ResultAmendmentService {
 
     const newSnapshot = updatedValuesList.map((v: any) => ({
       parameterId: v.parameterId,
-      parameterCode: v.parameter?.code || '',
-      parameterName: v.parameter?.name || '',
+      parameterCode: v.parameter?.shortName || v.parameter?.loincCode || '',
+      parameterName: v.parameter?.parameterName || '',
       value: v.value,
       unit: v.parameter?.unit || '',
       flag: v.flag,
     }));
+
 
     // 7. Persist ResultAmendment record
     const amendmentRecord = await (prisma as any).resultAmendment.create({
