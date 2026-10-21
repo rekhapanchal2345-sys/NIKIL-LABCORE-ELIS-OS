@@ -55,7 +55,16 @@ import {
   ArrowUpRight,
   RefreshCw,
   Bell,
-  Heart
+  Heart,
+  Eye,
+  CheckCircle,
+  BarChart3,
+  TrendingUp,
+  AlertCircle,
+  FileSpreadsheet,
+  Box,
+  Compass,
+  BadgeCheck
 } from "lucide-react";
 
 export default function HomePage() {
@@ -68,42 +77,48 @@ export default function HomePage() {
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [activeLegalTab, setActiveLegalTab] = useState<"terms" | "privacy" | "sla" | "compliance">("terms");
-  const [activeFeatureTab, setActiveFeatureTab] = useState<"lis" | "opd" | "billing" | "whatsapp">("lis");
+  const [activeFeatureTab, setActiveFeatureTab] = useState<"lis" | "opd" | "delta" | "abdm" | "logistics" | "qc">("lis");
+  const [selectedMachineCategory, setSelectedMachineCategory] = useState<"all" | "hematology" | "biochemistry" | "immunology" | "electrolytes">("all");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [showFeatureMatrix, setShowFeatureMatrix] = useState<boolean>(true);
-  const [pricingCategory, setPricingCategory] = useState<"all" | "lab" | "hospital" | "clinic">("all");
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isPreviewReportOpen, setIsPreviewReportOpen] = useState(false);
 
   // Interactive Live Analyzer Simulation State
   const [simulatedSamples, setSimulatedSamples] = useState([
     {
       id: "LC-9821",
       patient: "Rajesh Kumar (42/M)",
-      test: "Complete Hemogram (CBC)",
+      uhid: "UHID-2026-0814",
+      test: "Complete Hemogram (CBC 24-Param)",
       analyzer: "Sysmex XN-550 (HL7)",
-      value: "Hb 14.6 g/dL • WBC 7,200",
+      value: "Hb 14.6 g/dL • WBC 7,200 /μL • Plt 2.4L",
       status: "Verified",
+      delta: "Normal (No shift)",
       time: "Just now",
       critical: false
     },
     {
       id: "LC-9822",
       patient: "Anita Sharma (35/F)",
-      test: "Liver Function Test (LFT)",
+      uhid: "UHID-2026-0815",
+      test: "Liver Function Profile (LFT)",
       analyzer: "Roche Cobas c311 (ASTM)",
-      value: "SGPT 32 U/L • Bilirubin 0.8",
+      value: "SGPT/ALT 32 U/L • Bilirubin 0.8 mg/dL",
       status: "Transmitting",
+      delta: "Stable",
       time: "1 min ago",
       critical: false
     },
     {
       id: "LC-9823",
       patient: "Ramesh Patel (68/M)",
-      test: "Kidney Function & Electrolytes",
-      analyzer: "Mindray BS-430",
-      value: "Potassium 6.8 mEq/L ⬆ (PANIC)",
+      uhid: "UHID-2026-0812",
+      test: "Serum Electrolytes & Renal Panel",
+      analyzer: "Mindray BS-430 (Bi-Dir)",
+      value: "Potassium 6.8 mEq/L ⬆ (CRITICAL HIGH)",
       status: "STAT Panic Alert",
+      delta: "Delta Spike +2.4 mEq/L vs Baseline",
       time: "3 min ago",
       critical: true
     }
@@ -131,36 +146,53 @@ export default function HomePage() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
-    }, 4000);
+    }, 4500);
   };
 
   // Simulate new sample accessioning & machine run
   const runSampleSimulation = () => {
     setIsSimulating(true);
-    triggerToast("Initiating barcode scan on specimen tube #LC-9824...");
+    triggerToast("🔍 Scanning barcode tube #LC-9825... Querying bi-directional ASTM analyzer rack...");
     setTimeout(() => {
-      const newSample = {
-        id: `LC-${Math.floor(9824 + Math.random() * 50)}`,
-        patient: "Vikram Malhotra (49/M)",
-        test: "Cardiac Troponin I & Lipid",
-        analyzer: "Beckman Coulter Access 2",
-        value: "Trop-I: 0.01 ng/mL (Normal)",
-        status: "Auto-Verified",
-        time: "Just now",
-        critical: false
-      };
+      const samplePool = [
+        {
+          id: `LC-${Math.floor(9824 + Math.random() * 80)}`,
+          patient: "Vikram Malhotra (49/M)",
+          uhid: "UHID-2026-0819",
+          test: "High Sensitivity Troponin-I & CK-MB",
+          analyzer: "Beckman Coulter Access 2",
+          value: "hs-cTnI: 0.012 ng/mL (Normal Baseline)",
+          status: "Auto-Verified",
+          delta: "Baseline Matched",
+          time: "Just now",
+          critical: false
+        },
+        {
+          id: `LC-${Math.floor(9900 + Math.random() * 50)}`,
+          patient: "Sunita Verma (56/F)",
+          uhid: "UHID-2026-0820",
+          test: "Glycated Hemoglobin (HbA1c HPLC)",
+          analyzer: "Bio-Rad D-10 (ASTM)",
+          value: "HbA1c: 6.4% (Pre-diabetic target)",
+          status: "Verified",
+          delta: "-0.6% vs Last Quarter",
+          time: "Just now",
+          critical: false
+        }
+      ];
+      const newSample = samplePool[Math.floor(Math.random() * samplePool.length)];
       setSimulatedSamples((prev) => [newSample, ...prev.slice(0, 3)]);
       setIsSimulating(false);
-      triggerToast("✅ Barcode verified, analyzer results captured & WhatsApp dispatched!");
-    }, 1800);
+      triggerToast("✅ Barcode mapped! Results ingested via ASTM & WhatsApp QR Report dispatched!");
+    }, 1600);
   };
 
   // Dynamic Pricing Calculation
   const calculatedPricing = useMemo(() => {
     let baseRent = 1999;
     if (calcSamples > 80 && calcSamples <= 300) baseRent = 4999;
-    else if (calcSamples > 300 && calcSamples <= 800) baseRent = 12999;
-    else if (calcSamples > 800) baseRent = 24999;
+    else if (calcSamples > 300 && calcSamples <= 800) baseRent = 11999;
+    else if (calcSamples > 800) baseRent = 21999;
 
     const analyzerAddon = calcAnalyzers * 1000;
     const branchAddon = (calcBranches - 1) * 2000;
@@ -171,11 +203,11 @@ export default function HomePage() {
     }
 
     let setupFee = 3999;
-    if (calcAnalyzers > 0) setupFee = 12999;
-    if (calcBranches > 1) setupFee += (calcBranches - 1) * 5000;
+    if (calcAnalyzers > 0) setupFee = 9999;
+    if (calcBranches > 1) setupFee += (calcBranches - 1) * 4000;
 
     const hoursSaved = Math.round(calcSamples * 26 * 0.09);
-    const moneySaved = Math.round(hoursSaved * 200 + calcSamples * 26 * 5);
+    const moneySaved = Math.round(hoursSaved * 250 + calcSamples * 26 * 6);
 
     return {
       monthlyTotal,
@@ -208,75 +240,139 @@ export default function HomePage() {
     }, 2800);
   };
 
+  // Supported Analyzer Machines Database
+  const analyzerCatalog = [
+    {
+      name: "Sysmex XN-550 / XN-350",
+      category: "hematology",
+      type: "5-Part Diff Hematology",
+      protocol: "HL7 v2.5 / Bi-directional LAN",
+      speed: "60 Samples / Hour",
+      parameters: "CBC, WBC, RBC, HGB, PLT, RET"
+    },
+    {
+      name: "Roche Cobas c311 / c501",
+      category: "biochemistry",
+      type: "Automated Clinical Chemistry",
+      protocol: "ASTM E1381/E1394 Serial & IP",
+      speed: "300 Photometric Tests / Hr",
+      parameters: "LFT, KFT, Lipid, Glucose, Enzymes"
+    },
+    {
+      name: "Mindray BC-6800 / BC-5150",
+      category: "hematology",
+      type: "5-Part + Body Fluid Analysis",
+      protocol: "HL7 / ASTM Direct Socket",
+      speed: "125 Samples / Hour",
+      parameters: "WBC 5-Diff, NRBC, Reticulocytes"
+    },
+    {
+      name: "Abbott Architect ci4100 / ci8200",
+      category: "immunology",
+      type: "Integrated Chem + Immunoassay",
+      protocol: "ASTM / CLSI LIS2-A2 Bi-directional",
+      speed: "Up to 900 Tests / Hr",
+      parameters: "Thyroid, Hormones, Cardiac Markers"
+    },
+    {
+      name: "Beckman Coulter Access 2 / DxC 700",
+      category: "immunology",
+      type: "Chemiluminescent Immunoassay",
+      protocol: "ASTM E1394 Standard",
+      speed: "100 Tests / Hour",
+      parameters: "Troponin, Vitamin D, B12, PSA"
+    },
+    {
+      name: "Radiometer ABL90 / ABL800",
+      category: "electrolytes",
+      type: "Blood Gas & Critical Care ABG",
+      protocol: "HL7 Point-of-Care POCT1-A",
+      speed: "Instant 35-sec results",
+      parameters: "pH, pO2, pCO2, Lactate, K+, Na+, Cl-"
+    }
+  ];
+
+  const filteredMachines = useMemo(() => {
+    if (selectedMachineCategory === "all") return analyzerCatalog;
+    return analyzerCatalog.filter((m) => m.category === selectedMachineCategory);
+  }, [selectedMachineCategory]);
+
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans selection:bg-sky-500 selection:text-white">
-      {/* Toast Notification Banner */}
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-sky-500 selection:text-white">
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* TOAST NOTIFICATION BANNER (CRISP MEDICAL CARD) */}
+      {/* ─────────────────────────────────────────────────────────── */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-2xl border border-sky-400/50 flex items-center space-x-3 animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="text-sm font-semibold">{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
+        <div className="fixed bottom-6 right-6 z-50 bg-white text-slate-900 px-5 py-4 rounded-2xl shadow-2xl border-2 border-sky-500 flex items-center space-x-3 max-w-md animate-in slide-in-from-bottom duration-300">
+          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <span className="text-xs font-bold leading-snug">{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-slate-700 ml-2">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 1. TOP LIVE CLINICAL TICKER & 24/7 HELPLINE */}
+      {/* 1. TOP CLINICAL TICKER (PROFESSIONAL MEDICAL LIGHT BAR) */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <div className="bg-slate-900 text-slate-200 text-xs py-2 px-4 border-b border-slate-800">
+      <div className="bg-white text-slate-700 text-xs py-2 px-4 border-b border-slate-200/90 shadow-2xs">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+          {/* Left: Emergency Status & Helplines */}
           <div className="flex items-center space-x-3 overflow-x-auto text-nowrap">
-            <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/40 text-[11px]">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              24/7 EMERGENCY STAT DESK
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              24/7 CLINICAL STAT IT HELPDESK
             </span>
-            <span className="text-slate-300">
-              Immediate Medical IT Hotline: <strong className="text-white font-mono text-sm tracking-wide">+91 98765 43210</strong> (15-Min Guaranteed SLA)
+            <span className="text-slate-600">
+              Emergency Medical IT Hotline: <strong className="text-slate-900 font-mono text-sm tracking-wide">+91 98765 43210</strong> (15-Min Guaranteed SLA)
             </span>
-            <span className="hidden lg:inline text-slate-600">•</span>
-            <span className="hidden lg:inline text-sky-300 font-medium">
+            <span className="hidden lg:inline text-slate-300">•</span>
+            <span className="hidden lg:inline text-sky-700 font-semibold">
               Toll-Free: <strong>1800-LAB-CORE</strong>
             </span>
           </div>
 
-          <div className="flex items-center space-x-4 shrink-0 text-slate-300 text-[11px]">
+          {/* Right: Accreditations & Founder Direct Desk */}
+          <div className="flex items-center space-x-4 shrink-0 text-slate-600 text-[11px]">
             <a
               href="https://wa.me/919876543210?text=Hello%20Nikil%2C%20I%20am%20interested%20in%20NIKIL-LABCORE-ELIS-OS%20for%20our%20medical%20facility."
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-bold transition-colors"
+              className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 font-bold transition-colors bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200"
             >
-              <Smartphone className="w-3.5 h-3.5" />
-              Direct WhatsApp Founder Desk
+              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+              WhatsApp Lead Architect Nikil
             </a>
-            <span className="text-slate-600">|</span>
+            <span className="text-slate-300">|</span>
             <button
               onClick={() => {
                 setActiveLegalTab("sla");
                 setIsTermsModalOpen(true);
               }}
-              className="hover:text-white font-semibold transition-colors text-slate-300"
+              className="hover:text-sky-700 font-semibold transition-colors text-slate-600"
             >
               99.999% SLA Charter
             </button>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-400 font-mono">v4.2 Enterprise Release</span>
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-500 font-mono font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              v4.2 Enterprise Suite
+            </span>
           </div>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 2. MAIN NAVIGATION (CRISP MEDICAL WHITE & FROSTED BORDER) */}
+      {/* 2. MAIN NAVIGATION (CRISP MEDICAL LIGHT WHITE & HOSPITAL BRANDING) */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs transition-all">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           {/* Brand Logo & Medical Cross Symbol */}
           <Link href="/" className="flex items-center space-x-3.5 group">
-            <div className="relative w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-600 via-sky-500 to-cyan-500 flex items-center justify-center shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform">
-              {/* Medical Cross SVG Icon */}
+            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 via-sky-500 to-teal-500 flex items-center justify-center shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform">
               <div className="relative text-white flex items-center justify-center">
-                <Activity className="w-6 h-6 stroke-[2.4]" />
+                <HeartPulse className="w-6 h-6 stroke-[2.4]" />
               </div>
               <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-2xs"></div>
             </div>
@@ -285,35 +381,44 @@ export default function HomePage() {
                 <span className="font-black text-xl tracking-tight text-slate-900 group-hover:text-sky-700 transition-colors">
                   NIKIL<span className="text-sky-600 font-black">-LABCORE</span>
                 </span>
-                <span className="text-[10px] uppercase font-black tracking-wider bg-sky-100 text-sky-800 px-2 py-0.5 rounded-md border border-sky-200">
-                  ELIS-OS
+                <span className="text-[10px] uppercase font-black tracking-wider bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md border border-sky-200">
+                  ELIS™ OS
+                </span>
+                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 hidden sm:inline">
+                  NABL • ABDM M3
                 </span>
               </div>
               <p className="text-[11px] font-semibold text-slate-500 tracking-wide">
-                Unified Hospital, Diagnostic Lab & Clinic Operating System
+                Unified Hospital, Diagnostic Pathology & Clinic Operating System
               </p>
             </div>
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden xl:flex items-center space-x-7 text-sm font-bold text-slate-600">
-            <a href="#modules" className="hover:text-sky-600 transition-colors">
-              Modules & Features
+          <nav className="hidden xl:flex items-center space-x-6 text-sm font-bold text-slate-600">
+            <a href="#facility-selector" className="hover:text-sky-600 transition-colors flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5 text-sky-500" />
+              <span>Facility Solutions</span>
             </a>
-            <a href="#interactive-workstation" className="hover:text-sky-600 transition-colors">
-              Live Workstation
+            <a href="#modules" className="hover:text-sky-600 transition-colors flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Clinical Modules</span>
             </a>
-            <a href="#pricing" className="hover:text-sky-600 transition-colors">
-              Pricing: Rent & Setup
+            <a href="#interactive-workstation" className="hover:text-sky-600 transition-colors flex items-center gap-1">
+              <Activity className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Live Workstation</span>
             </a>
-            <a href="#calculator" className="hover:text-sky-600 transition-colors">
-              Cost Estimator
+            <a href="#analyzers" className="hover:text-sky-600 transition-colors flex items-center gap-1">
+              <Cpu className="w-3.5 h-3.5 text-cyan-500" />
+              <span>Analyzers & Machines</span>
             </a>
-            <a href="#analyzers" className="hover:text-sky-600 transition-colors">
-              Analyzers & Machines
+            <a href="#pricing" className="hover:text-sky-600 transition-colors flex items-center gap-1">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Pricing & ROI</span>
             </a>
-            <a href="#founder" className="hover:text-sky-600 transition-colors">
-              Founder & Desk
+            <a href="#compliance" className="hover:text-sky-600 transition-colors flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+              <span>Accreditation</span>
             </a>
           </nav>
 
@@ -325,13 +430,13 @@ export default function HomePage() {
               className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm shadow-2xs transition-all hover:border-sky-400"
             >
               <Lock className="w-4 h-4 text-sky-600" />
-              <span>Staff Login</span>
+              <span>Staff & Doctor Login</span>
             </button>
 
             {/* Book Live Demo */}
             <button
               onClick={() => setIsDemoModalOpen(true)}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-extrabold text-sm shadow-md shadow-sky-600/25 transition-all hover:scale-[1.02] active:scale-95"
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 via-sky-500 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-extrabold text-sm shadow-md shadow-sky-600/20 transition-all hover:scale-[1.02] active:scale-95"
             >
               <Calendar className="w-4 h-4" />
               <span>Book Live Demo</span>
@@ -359,39 +464,39 @@ export default function HomePage() {
         {mobileMenuOpen && (
           <div className="xl:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-3 shadow-xl">
             <a
+              href="#facility-selector"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-sm font-bold text-slate-700 hover:text-sky-600"
+            >
+              Facility Solutions (Hospital / Lab / Clinic)
+            </a>
+            <a
               href="#modules"
               onClick={() => setMobileMenuOpen(false)}
               className="block py-2 text-sm font-bold text-slate-700 hover:text-sky-600"
             >
-              Modules & Capabilities
+              Clinical Modules & Architecture
             </a>
             <a
               href="#interactive-workstation"
               onClick={() => setMobileMenuOpen(false)}
               className="block py-2 text-sm font-bold text-slate-700 hover:text-sky-600"
             >
-              Interactive Workstation
+              Interactive Workstation Simulation
+            </a>
+            <a
+              href="#analyzers"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-sm font-bold text-slate-700 hover:text-sky-600"
+            >
+              Supported Analyzers & Machines
             </a>
             <a
               href="#pricing"
               onClick={() => setMobileMenuOpen(false)}
               className="block py-2 text-sm font-bold text-slate-700 hover:text-sky-600"
             >
-              Monthly Rent & Setup Cost
-            </a>
-            <a
-              href="#calculator"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 text-sm font-bold text-slate-700 hover:text-sky-600"
-            >
-              Cost & ROI Calculator
-            </a>
-            <a
-              href="#founder"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 text-sm font-bold text-slate-700 hover:text-sky-600"
-            >
-              Owner & Contact Information
+              Monthly Rent & ROI Calculator
             </a>
             <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
               <button
@@ -420,56 +525,67 @@ export default function HomePage() {
       {/* ─────────────────────────────────────────────────────────── */}
       {/* 3. HERO BANNER: PROFESSIONAL LIGHT WHITE CLINICAL THEME */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden pt-10 pb-20 lg:pt-14 lg:pb-28 bg-gradient-to-b from-sky-50/50 via-white to-slate-50 medical-grid-bg">
+      <section id="facility-selector" className="relative overflow-hidden pt-10 pb-20 lg:pt-14 lg:pb-24 bg-gradient-to-b from-sky-50/60 via-white to-slate-50 medical-grid-bg">
         {/* Subtle Decorative Ambient Background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-30">
-          <div className="absolute top-10 left-10 w-80 h-80 bg-sky-300/40 rounded-full blur-3xl"></div>
-          <div className="absolute top-32 right-10 w-96 h-96 bg-cyan-200/50 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
+          <div className="absolute top-10 left-10 w-80 h-80 bg-sky-200/50 rounded-full blur-3xl"></div>
+          <div className="absolute top-32 right-10 w-96 h-96 bg-teal-100/60 rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Facility Mode Selector Pill Bar */}
           <div className="flex justify-center mb-6">
-            <div className="inline-flex p-1 rounded-2xl bg-slate-100/90 border border-slate-200 shadow-2xs gap-1">
+            <div className="inline-flex p-1.5 rounded-2xl bg-white border border-slate-200 shadow-sm gap-1.5 flex-wrap justify-center">
               <button
                 onClick={() => setSelectedFacility("pathlab")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                   selectedFacility === "pathlab"
-                    ? "bg-white text-sky-700 shadow-sm border border-slate-200/80"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-sky-600 text-white shadow-md shadow-sky-600/25"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                <Microscope className="w-3.5 h-3.5 text-sky-600" />
+                <Microscope className="w-4 h-4" />
                 <span>Diagnostic Pathology Lab</span>
               </button>
               <button
                 onClick={() => setSelectedFacility("hospital")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                   selectedFacility === "hospital"
-                    ? "bg-white text-sky-700 shadow-sm border border-slate-200/80"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-sky-600 text-white shadow-md shadow-sky-600/25"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                <Building2 className="w-3.5 h-3.5 text-teal-600" />
-                <span>Multi-Specialty Hospital (OPD/IPD)</span>
+                <Building2 className="w-4 h-4" />
+                <span>Multi-Specialty Hospital (OPD/IPD/OT)</span>
               </button>
               <button
                 onClick={() => setSelectedFacility("clinic")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                   selectedFacility === "clinic"
-                    ? "bg-white text-sky-700 shadow-sm border border-slate-200/80"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-sky-600 text-white shadow-md shadow-sky-600/25"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                <Stethoscope className="w-3.5 h-3.5 text-cyan-600" />
-                <span>Polyclinic & Doctor Center</span>
+                <Stethoscope className="w-4 h-4" />
+                <span>Polyclinic & Daycare Practice</span>
+              </button>
+              <button
+                onClick={() => setSelectedFacility("bloodbank")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  selectedFacility === "bloodbank"
+                    ? "bg-sky-600 text-white shadow-md shadow-sky-600/25"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <HeartPulse className="w-4 h-4 text-rose-500" />
+                <span>Blood Bank & Transfusion Unit</span>
               </button>
             </div>
           </div>
 
           <div className="text-center max-w-4xl mx-auto space-y-6">
             {/* Top Badge */}
-            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white border border-sky-200 text-sky-800 text-xs font-extrabold shadow-sm">
+            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white border border-sky-200 text-sky-800 text-xs font-extrabold shadow-xs">
               <Sparkles className="w-4 h-4 text-sky-600" />
               <span>Architected by Nikil • Clinical Operating System Release v4.2</span>
               <span className="bg-sky-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
@@ -477,29 +593,49 @@ export default function HomePage() {
               </span>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.14]">
+            {/* Dynamic Main Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
               Next-Generation Healthcare OS for{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 via-cyan-600 to-teal-600">
-                {selectedFacility === "hospital" && "Modern Hospitals & Medical Centers"}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 via-teal-600 to-cyan-600">
+                {selectedFacility === "hospital" && "Multi-Specialty Hospitals & EMR"}
                 {selectedFacility === "pathlab" && "Diagnostic Pathology & Clinical Labs"}
                 {selectedFacility === "clinic" && "Polyclinics, Doctors & Collection Hubs"}
-                {selectedFacility === "bloodbank" && "Blood Banks & Diagnostic Centers"}
+                {selectedFacility === "bloodbank" && "Blood Banks & Component Centers"}
               </span>
             </h1>
 
-            {/* Sub-description */}
+            {/* Dynamic Sub-description */}
             <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-3xl mx-auto font-normal">
-              Empower your clinical staff with <strong className="text-slate-900 font-bold">NIKIL-LABCORE-ELIS-OS</strong>. 
-              Automate Bi-directional Laboratory Analyzers (Zero Typos), streamline Hospital OPD/IPD Patient Flow, 
-              issue ABDM M1-M3 Digital Health Records, and deliver password-protected WhatsApp PDF reports with tamperproof QR verification in under 1.2 seconds.
+              {selectedFacility === "pathlab" && (
+                <>
+                  Eliminate 100% of clerical transcription errors with <strong className="text-slate-900 font-bold">Bi-directional ASTM/HL7 analyzer interfacing</strong>. 
+                  Accession barcodes, auto-execute Levey-Jennings QC with Westgard rules, enforce NABL ISO 15189 digital approvals, and deliver password-protected WhatsApp PDF reports in under 1.2 seconds.
+                </>
+              )}
+              {selectedFacility === "hospital" && (
+                <>
+                  Synchronize OPD token queues, IPD bed occupancy matrices, ICU vitals telemetry, OT schedules, and nursing care plans. 
+                  Built with integrated ABDM M1-M3 national health records, Ayushman Bharat cashless billing, and automated ICD-10 discharge summaries.
+                </>
+              )}
+              {selectedFacility === "clinic" && (
+                <>
+                  Empower consulting doctors with sub-second digital prescriptions, instant WhatsApp test requisitions, smart appointment scheduling, 
+                  and integrated sample collection logistics for referral laboratories.
+                </>
+              )}
+              {selectedFacility === "bloodbank" && (
+                <>
+                  Maintain zero-error donor registries, serological screening matrices, crossmatch tracking, component separation, and temperature-logged cold storage logistics.
+                </>
+              )}
             </p>
 
             {/* Primary Action Button Cluster */}
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3.5">
               <button
                 onClick={() => setIsDemoModalOpen(true)}
-                className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-base shadow-lg shadow-sky-600/30 transition-all hover:scale-105 active:scale-95 flex items-center space-x-2.5"
+                className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-sky-600 via-sky-500 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-black text-base shadow-lg shadow-sky-600/25 transition-all hover:scale-105 active:scale-95 flex items-center space-x-2.5"
               >
                 <Calendar className="w-5 h-5" />
                 <span>Book Free Live Demo</span>
@@ -533,25 +669,25 @@ export default function HomePage() {
               </a>
             </div>
 
-            {/* Regulatory Accreditations Strip */}
-            <div className="pt-6 flex flex-wrap items-center justify-center gap-2.5 text-xs font-bold text-slate-600">
-              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+            {/* Regulatory Accreditations Strip (Hospital Grade White) */}
+            <div className="pt-6 flex flex-wrap items-center justify-center gap-2.5 text-xs font-bold text-slate-700">
+              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 NABL (ISO 15189:2022) Compliant
               </span>
-              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                 <Award className="w-4 h-4 text-sky-600" />
                 NABH Digital Hospital Certified
               </span>
-              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                 <CheckCircle2 className="w-4 h-4 text-cyan-600" />
                 ABDM National Gateway (M1, M2, M3)
               </span>
-              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                 <Cpu className="w-4 h-4 text-indigo-600" />
                 65+ Bi-Directional Analyzers
               </span>
-              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+              <span className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                 <Clock className="w-4 h-4 text-amber-600" />
                 99.999% High Availability SLA
               </span>
@@ -559,32 +695,33 @@ export default function HomePage() {
           </div>
 
           {/* ─────────────────────────────────────────────────────────── */}
-          {/* HERO LIVE TELEMETRY & WORKSTATION MOCKUP */}
+          {/* 4. HERO LIVE TELEMETRY & WORKSTATION (CRISP MEDICAL LIGHT WHITE) */}
           {/* ─────────────────────────────────────────────────────────── */}
-          <div className="mt-12 max-w-5xl mx-auto rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden">
-            {/* Terminal Top Window Bar */}
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-800">
+          <div id="interactive-workstation" className="mt-12 max-w-5xl mx-auto rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden">
+            {/* Clinical Top Window Bar (Crisp Light Medical Steel) */}
+            <div className="bg-slate-100 text-slate-800 px-5 py-3.5 flex flex-wrap items-center justify-between border-b border-slate-200 gap-2">
               <div className="flex items-center space-x-2.5">
-                <div className="w-3.5 h-3.5 rounded-full bg-rose-500"></div>
-                <div className="w-3.5 h-3.5 rounded-full bg-amber-500"></div>
-                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500"></div>
-                <span className="ml-3 text-xs font-mono text-slate-300">
+                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                <span className="ml-2 text-xs font-mono font-bold text-slate-700 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-sky-600" />
                   NIKIL-LABCORE-ELIS-OS // Live Clinical Station & Telemetry Monitor
                 </span>
               </div>
               <div className="flex items-center space-x-3 text-xs">
-                <span className="inline-flex items-center gap-1.5 text-emerald-400 font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  ANALYZERS ONLINE (ASTM / HL7)
+                <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                  4 ANALYZERS ONLINE (ASTM E1394 / HL7)
                 </span>
-                <span className="bg-slate-800 text-sky-400 px-2.5 py-1 rounded font-mono text-[11px] border border-slate-700">
+                <span className="bg-white text-sky-700 px-2.5 py-1 rounded font-mono text-[11px] border border-slate-300 font-bold">
                   Station: LC-DELHI-CORE-01
                 </span>
               </div>
             </div>
 
             {/* Dashboard Mockup Content */}
-            <div className="p-5 sm:p-7 bg-slate-50/70 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="p-5 sm:p-7 bg-white grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left 2 Cols: Live Sample Telemetry Queue */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
@@ -598,135 +735,123 @@ export default function HomePage() {
                     className="text-xs font-bold bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSimulating ? "animate-spin" : ""}`} />
-                    <span>{isSimulating ? "Processing..." : "🧪 Run Specimen Barcode"}</span>
+                    <span>{isSimulating ? "Transmitting..." : "Simulate Sample Run"}</span>
                   </button>
                 </div>
 
+                {/* Live Sample Cards */}
                 <div className="space-y-2.5">
-                  {simulatedSamples.map((sample, idx) => (
+                  {simulatedSamples.map((sample) => (
                     <div
-                      key={idx}
+                      key={sample.id}
                       className={`p-3.5 rounded-2xl border transition-all ${
                         sample.critical
-                          ? "bg-rose-50/40 border-rose-200"
-                          : "bg-white border-slate-200/90 shadow-2xs"
+                          ? "bg-rose-50/90 border-rose-300 shadow-sm"
+                          : "bg-slate-50/80 border-slate-200 hover:bg-slate-50"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${
-                              sample.critical
-                                ? "bg-rose-100 text-rose-700"
-                                : "bg-sky-100 text-sky-700"
-                            }`}
-                          >
-                            {sample.test.split(" ")[0]}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono text-xs font-black bg-white px-2 py-0.5 rounded border border-slate-300 text-slate-800">
+                              {sample.id}
+                            </span>
+                            <span className="text-xs font-bold text-slate-900">{sample.patient}</span>
+                            <span className="text-[10px] font-mono text-slate-500">[{sample.uhid}]</span>
                           </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-extrabold text-slate-900 text-sm">
-                                #{sample.id}: {sample.patient}
-                              </span>
-                              <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  sample.critical
-                                    ? "bg-rose-100 text-rose-800 flex items-center gap-1"
-                                    : "bg-emerald-100 text-emerald-800"
-                                }`}
-                              >
-                                {sample.critical && <AlertTriangle className="w-2.5 h-2.5" />}
-                                {sample.status}
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-500 font-medium">
-                              {sample.test} • <span className="text-slate-700 font-semibold">{sample.analyzer}</span>
-                            </p>
-                            <p className="text-xs font-bold text-slate-800 pt-0.5">
-                              Telemetry: {sample.value}
-                            </p>
+                          <div className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                            <span>{sample.test}</span>
+                            <span className="text-slate-300">•</span>
+                            <span className="text-sky-700 font-bold">{sample.analyzer}</span>
+                          </div>
+                          <div className="text-xs font-mono font-bold text-slate-800">
+                            {sample.value}
+                          </div>
+                          <div className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3 text-indigo-500" />
+                            <span>Delta Check: {sample.delta}</span>
                           </div>
                         </div>
 
-                        <div className="text-right shrink-0">
+                        <div className="text-right space-y-1 shrink-0">
                           <span
-                            className={`text-xs font-bold block ${
-                              sample.critical ? "text-rose-600" : "text-emerald-600"
+                            className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
+                              sample.critical
+                                ? "bg-rose-600 text-white animate-pulse"
+                                : sample.status === "Verified" || sample.status === "Auto-Verified"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                : "bg-sky-100 text-sky-800 border border-sky-300"
                             }`}
                           >
-                            {sample.critical ? "Critical Alert" : "WhatsApp Sent"}
+                            {sample.critical && <AlertTriangle className="w-3 h-3" />}
+                            {sample.status}
                           </span>
-                          <span className="text-[10px] text-slate-400">{sample.time}</span>
+                          <span className="block text-[10px] text-slate-400 font-medium">{sample.time}</span>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Workstation Actions Bar */}
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 text-xs">
+                  <button
+                    onClick={() => setIsPreviewReportOpen(true)}
+                    className="inline-flex items-center space-x-1.5 text-sky-700 hover:text-sky-800 font-bold bg-sky-50 px-3 py-1.5 rounded-lg border border-sky-200"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Preview Verified Patient Report & QR Code</span>
+                  </button>
+
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center space-x-1 font-bold text-slate-600 hover:text-slate-900"
+                  >
+                    <span>Open Full LIS Workstation</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
 
-              {/* Right Column: Hardware Telemetry & Health */}
-              <div className="space-y-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                    <Cpu className="w-4 h-4 text-sky-600" />
-                    <span>Analyzer Telemetry</span>
-                  </h4>
-                  <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                </div>
+              {/* Right Col: Live Clinical Station Metrics */}
+              <div className="space-y-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                  <BarChart3 className="w-4 h-4 text-sky-600" />
+                  Station Metrics Today
+                </h4>
 
-                <div className="space-y-2 text-xs">
-                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex justify-between items-center">
-                    <div>
-                      <strong className="block text-slate-900 font-bold">Roche Cobas 6000</strong>
-                      <span className="text-[10px] text-slate-400">RS-232 Serial • ASTM E1394</span>
-                    </div>
-                    <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded">
-                      SYNCED
-                    </span>
+                <div className="space-y-3">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-500 block">Bi-directional ASTM Ingestion</span>
+                    <span className="text-xl font-black text-slate-900">100.0%</span>
+                    <span className="text-[10px] text-emerald-600 font-semibold block mt-0.5">Zero Transcription Typos</span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex justify-between items-center">
-                    <div>
-                      <strong className="block text-slate-900 font-bold">Sysmex XN-550</strong>
-                      <span className="text-[10px] text-slate-400">LAN TCP/IP • HL7 v2.5</span>
-                    </div>
-                    <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded">
-                      ONLINE
-                    </span>
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-500 block">Average WhatsApp Delivery</span>
+                    <span className="text-xl font-black text-slate-900">1.18 sec</span>
+                    <span className="text-[10px] text-sky-600 font-semibold block mt-0.5">Password Encrypted PDF</span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex justify-between items-center">
-                    <div>
-                      <strong className="block text-slate-900 font-bold">Mindray BC-6800</strong>
-                      <span className="text-[10px] text-slate-400">Bi-directional Query Mode</span>
-                    </div>
-                    <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded">
-                      READY
-                    </span>
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-500 block">AI Delta Check Flags</span>
+                    <span className="text-xl font-black text-amber-600">3 Alerts Flagged</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">Doctor SMS Sent Immediately</span>
                   </div>
-                </div>
 
-                <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Report Turnaround Time:</span>
-                    <strong className="text-slate-900">&lt; 1.2 Seconds</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Transcription Error Rate:</span>
-                    <strong className="text-emerald-600 font-black">0.00% (Zero Typos)</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">NABL Audit Logs:</span>
-                    <strong className="text-sky-700">100% Cryptographic</strong>
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-500 block">ABDM Health Record Gateway</span>
+                    <span className="text-xl font-black text-emerald-600">Active M1, M2, M3</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">Care Contexts Linked</span>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => setIsLoginModalOpen(true)}
-                  className="w-full py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs rounded-xl border border-sky-200 transition-colors flex items-center justify-center gap-1.5"
+                  onClick={() => setIsDemoModalOpen(true)}
+                  className="w-full py-2.5 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-xl border border-slate-300 shadow-2xs flex items-center justify-center gap-1.5 transition-all"
                 >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Launch Live Operator Console</span>
+                  <Calendar className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Request Live Setup at Your Lab</span>
                 </button>
               </div>
             </div>
@@ -735,1710 +860,789 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 4. CLINICAL STATS BAR */}
+      {/* 5. SIX CORE ENTERPRISE HEALTHCARE PILLARS (HOSPITAL, LAB, CLINIC) */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section className="py-12 bg-white border-y border-slate-200">
+      <section id="modules" className="py-20 bg-white border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 text-center">
-            <div className="space-y-1">
-              <p className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">10M+</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Diagnostic Tests Automated</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl sm:text-4xl font-black text-sky-600 tracking-tight">450+</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Hospitals & Labs Deployed</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl sm:text-4xl font-black text-emerald-600 tracking-tight">65+</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Bi-Directional Analyzers</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">&lt;1.2s</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Fast Report Generation</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl sm:text-4xl font-black text-cyan-600 tracking-tight">99.999%</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">High Availability SLA</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl sm:text-4xl font-black text-indigo-600 tracking-tight">24/7</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Dedicated Support Engineers</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* 5. CORE MODULES & ARCHITECTURAL CAPABILITIES */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <section id="modules" className="py-20 bg-slate-50/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-            <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-3.5 py-1 rounded-full border border-sky-200">
-              Unified Medical Architecture
+          <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+            <span className="text-xs font-black uppercase tracking-wider text-sky-600 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
+              Enterprise Clinical Architecture
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              One Operating System for Your Entire Clinical Ecosystem
+              Built for Total Hospital, Diagnostic Lab & Clinic Mastery
             </h2>
-            <p className="text-base text-slate-600">
-              Replace fragmented desktop software, paper forms, and manual transcription with an integrated clinical operating system.
+            <p className="text-sm sm:text-base text-slate-600">
+              Six synchronized intelligence engines running simultaneously to manage patient flow, bi-directional machinery, quality control, and national compliance.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Module 1: Diagnostic Pathology LIS */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Microscope className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Diagnostic Pathology LIS</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Biochemistry, Hematology, Microbiology, Serology & Histopathology. Barcode tube accessioning, delta checks, and digital pathologist sign-off.
-              </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Panic High/Low Value Alerts</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Worklist Batch Management</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> NABL Traceability Audit Trail</li>
-              </ul>
-            </div>
-
-            {/* Module 2: Bi-Directional Machine Interfacing */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-100 text-cyan-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+            {/* Pillar 1 */}
+            <div className="bg-slate-50/70 p-7 rounded-3xl border border-slate-200 hover:border-sky-400 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Cpu className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Bi-Directional Analyzers</h3>
+              <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-2 py-0.5 rounded">
+                Zero Typo Guarantee
+              </span>
+              <h3 className="text-lg font-black text-slate-900 mt-2 mb-2">
+                Bi-Directional LIS Analyzer Engine
+              </h3>
               <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Zero human typing error. Directly connects to laboratory machines via ASTM/HL7/RS232/LAN. Analyzers scan barcode, download test list, and return results.
+                Native ASTM E1381/E1394 and HL7 v2.x bi-directional interfacing. Barcode tube accessioning automatically programs the analyzer rack; results stream back with zero manual data entry.
               </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Roche, Sysmex, Mindray, Beckman</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> 100% Elimination of Data Typos</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Real-Time Calibration & QC Logs</li>
+              <ul className="space-y-1.5 text-xs text-slate-700 font-semibold">
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Sysmex, Roche Cobas, Mindray, Abbott, Beckman</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Serial RS232, TCP/IP LAN & Cloud Gateway</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Sub-second transmission with auto-flagging</span>
+                </li>
               </ul>
+              <div className="mt-5 pt-4 border-t border-slate-200">
+                <Link href="/analyzers" className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1">
+                  Explore Analyzer Interfaces <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
-            {/* Module 3: Hospital HMIS (OPD & IPD) */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            {/* Pillar 2 */}
+            <div className="bg-slate-50/70 p-7 rounded-3xl border border-slate-200 hover:border-sky-400 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Building2 className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Hospital & Clinic HMIS</h3>
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 bg-teal-100 px-2 py-0.5 rounded">
+                Hospital HMIS
+              </span>
+              <h3 className="text-lg font-black text-slate-900 mt-2 mb-2">
+                Hospital OPD, IPD & Bed Management
+              </h3>
               <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Doctor OPD consulting desk, electronic prescriptions (Rx), patient vitals charts, IPD bed allocation, nursing station records, and automated discharge summaries.
+                Complete hospital management suite: dynamic token queue display, doctor EHR with fast digital prescription pad, real-time bed matrix, ICU nursing charts, and ICD-10 discharge summaries.
               </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Token Queue & Calling Display</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Ward & Bed Occupancy Matrix</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> NABH Hospital EMR Guidelines</li>
+              <ul className="space-y-1.5 text-xs text-slate-700 font-semibold">
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>OPD Token Queue with TV screen display</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>IPD Ward/Bed Matrix with real-time occupancy</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Cashless TPA, Ayushman Bharat & GST Billing</span>
+                </li>
               </ul>
+              <div className="mt-5 pt-4 border-t border-slate-200">
+                <Link href="/doctors" className="text-xs font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1">
+                  View Hospital EMR Suite <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
-            {/* Module 4: ABDM National Gateway */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            {/* Pillar 3 */}
+            <div className="bg-slate-50/70 p-7 rounded-3xl border border-slate-200 hover:border-sky-400 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 px-2 py-0.5 rounded">
+                Clinical Safety
+              </span>
+              <h3 className="text-lg font-black text-slate-900 mt-2 mb-2">
+                AI Delta Checks & Critical Panic Alarms
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                Clinical decision support engine that automatically compares every test result against the patient’s historical baseline. Instantly alerts duty doctors via SMS/WhatsApp on life-threatening panic values.
+              </p>
+              <ul className="space-y-1.5 text-xs text-slate-700 font-semibold">
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Historical Delta Check algorithm (&gt;20% shift alert)</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Automated Critical Panic SMS/WhatsApp broadcast</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Reflex testing rules (e.g. CBC to peripheral smear)</span>
+                </li>
+              </ul>
+              <div className="mt-5 pt-4 border-t border-slate-200">
+                <Link href="/approvals" className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1">
+                  See Approvals & Delta Logic <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Pillar 4 */}
+            <div className="bg-slate-50/70 p-7 rounded-3xl border border-slate-200 hover:border-sky-400 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <Award className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">
+                National Compliance
+              </span>
+              <h3 className="text-lg font-black text-slate-900 mt-2 mb-2">
+                ABDM National Health Gateway (M1-M3)
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                Fully accredited integration with the Ayushman Bharat Digital Mission (ABDM). Instant ABHA card creation via Aadhaar OTP, Scan-and-Share OPD tokens, and encrypted Care Context linking.
+              </p>
+              <ul className="space-y-1.5 text-xs text-slate-700 font-semibold">
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Instant 14-digit ABHA Creation (Aadhaar / Mobile)</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Milestone 1, Milestone 2, and Milestone 3 ready</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Consent Manager & Encrypted FHIR Health Records</span>
+                </li>
+              </ul>
+              <div className="mt-5 pt-4 border-t border-slate-200">
+                <Link href="/abdm" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                  Launch ABDM Gateway <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Pillar 5 */}
+            <div className="bg-slate-50/70 p-7 rounded-3xl border border-slate-200 hover:border-sky-400 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                B2B Logistics
+              </span>
+              <h3 className="text-lg font-black text-slate-900 mt-2 mb-2">
+                Phlebotomy & Cold-Chain Tracking
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                Field phlebotomist mobile app with GPS route optimization, doorstep barcode labeling, cold-chain temperature monitoring, and central lab sample accessioning.
+              </p>
+              <ul className="space-y-1.5 text-xs text-slate-700 font-semibold">
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Doorstep barcode labeling & digital signature</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Runner bag temperature sensor tracking (2-8°C)</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>B2B Collection Center tariff masters & auto-invoicing</span>
+                </li>
+              </ul>
+              <div className="mt-5 pt-4 border-t border-slate-200">
+                <Link href="/samples" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                  View Sample Accessioning <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Pillar 6 */}
+            <div className="bg-slate-50/70 p-7 rounded-3xl border border-slate-200 hover:border-sky-400 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">ABDM National Gateway</h3>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                Quality Assurance
+              </span>
+              <h3 className="text-lg font-black text-slate-900 mt-2 mb-2">
+                NABL ISO 15189:2022 & QC Audit Shield
+              </h3>
               <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Official Ayushman Bharat Digital Mission readiness. 1-click ABHA number generation, linking electronic records (HIP/HIU), and patient consent manager protocol.
+                Internal Quality Control (IQC) engine generating real-time Levey-Jennings charts with automated Westgard multi-rules evaluation (1-2s, 1-3s, 2-2s, R-4s, 10x). Complete CAPA corrective action logs.
               </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Milestone 1 (ABHA Creation)</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Milestone 2 (Data Transfer)</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Milestone 3 (Consent Protocol)</li>
+              <ul className="space-y-1.5 text-xs text-slate-700 font-semibold">
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Automated Levey-Jennings (L-J) plots per analyzer</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Westgard multi-rules evaluation & machine freeze</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Reagent lot expiry & temperature compliance records</span>
+                </li>
               </ul>
-            </div>
-
-            {/* Module 5: Smart Billing & TPA Insurance */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <DollarSign className="w-6 h-6" />
+              <div className="mt-5 pt-4 border-t border-slate-200">
+                <Link href="/verify-report" className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1">
+                  Inspect Quality Verification <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Billing, TPA & Incentives</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Automated GST tax invoices, corporate rate lists, cashless TPA insurance claims, dynamic UPI QR on counter, and doctor referral commission ledgers.
-              </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Multi-rate lists & Corporate panels</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Doctor Referral Incentive Engine</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Split UPI, Card & Cash Billing</li>
-              </ul>
-            </div>
-
-            {/* Module 6: WhatsApp Dispatch & Tamperproof QR */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Smartphone className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">WhatsApp & QR Reports</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Instant delivery of password-protected PDF test reports directly on patient WhatsApp. Every report embeds an unalterable QR code linking to verification portal.
-              </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Direct WhatsApp Business API</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Unforgeable QR Code Check</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Saves ₹40,000/yr in Paper Prints</li>
-              </ul>
-            </div>
-
-            {/* Module 7: Reagent & Inventory Intelligence */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <FlaskConical className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Reagents & Stock Control</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Real-time consumption tracking linked to test volume. Automated alerts for expiring reagent lots, minimum stock thresholds, and calibration reminders.
-              </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Test-to-Reagent Cost Calculation</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Expiry & Lot Warning System</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Purchase Order (PO) Generator</li>
-              </ul>
-            </div>
-
-            {/* Module 8: PACS Radiology & Tele-Reporting */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Activity className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Radiology & PACS Bridge</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Seamless DICOM image server bridge for X-Ray, CT, Ultrasound, and MRI. Enables remote tele-radiology reporting with standardized macro templates.
-              </p>
-              <ul className="text-xs space-y-1.5 text-slate-500 font-semibold">
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> DICOM Web Viewer Integration</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Tele-Radiology Sharing Link</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-500" /> Pre-configured Normal Templates</li>
-              </ul>
             </div>
           </div>
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 6. SUPPORTED MEDICAL ANALYZERS SHOWCASE */}
+      {/* 6. SUPPORTED ANALYZER MACHINES CATALOG */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section id="analyzers" className="py-16 bg-white border-y border-slate-200">
+      <section id="analyzers" className="py-20 bg-slate-50/70 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-3 mb-10">
-            <span className="text-xs font-black uppercase tracking-wider text-cyan-700 bg-cyan-100 px-3 py-1 rounded-full border border-cyan-200">
-              Bi-Directional Hardware Compatibility
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Pre-Calibrated with 65+ Medical Laboratory Analyzers
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
-              ASTM E1381/E1394 & HL7 v2.x drivers ready for instant plug-and-play interfacing with RS-232 serial cables or LAN TCP/IP.
-            </p>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-10">
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-sky-600 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
+                Zero Clerical Error Hardware Hub
+              </span>
+              <h2 className="text-3xl font-black text-slate-900 mt-2">
+                Bi-Directional Analyzers & Instrument Library
+              </h2>
+              <p className="text-xs text-slate-600 mt-1">
+                Pre-configured ASTM E1381/E1394 and HL7 drivers for 65+ commercial laboratory instruments.
+              </p>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                onClick={() => setSelectedMachineCategory("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedMachineCategory === "all" ? "bg-sky-600 text-white" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                All Analyzers
+              </button>
+              <button
+                onClick={() => setSelectedMachineCategory("hematology")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedMachineCategory === "hematology" ? "bg-sky-600 text-white" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Hematology
+              </button>
+              <button
+                onClick={() => setSelectedMachineCategory("biochemistry")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedMachineCategory === "biochemistry" ? "bg-sky-600 text-white" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Biochemistry
+              </button>
+              <button
+                onClick={() => setSelectedMachineCategory("immunology")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedMachineCategory === "immunology" ? "bg-sky-600 text-white" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Immunology
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 text-center">
-            {[
-              { brand: "Roche Diagnostics", models: "Cobas 6000, c311, e411, b123", protocol: "ASTM / TCP-IP" },
-              { brand: "Sysmex Corporation", models: "XN-550, XN-1000, XP-300, KX-21", protocol: "HL7 / Serial" },
-              { brand: "Mindray Medical", models: "BC-6800, BC-5380, BS-430, BS-240", protocol: "ASTM / LAN" },
-              { brand: "Beckman Coulter", models: "Access 2, DxI, AU480, AU680", protocol: "HL7 / ASTM" },
-              { brand: "Abbott Laboratories", models: "Architect c4000, ci8200, Alinity", protocol: "ASTM Serial" },
-              { brand: "Horiba Medical", models: "Yumizen H500, Pentra XLR, ABX", protocol: "HL7 Protocol" },
-              { brand: "Erba Mannheim", models: "EM-200, EM-360, Chem-7, XL-640", protocol: "RS-232 Serial" },
-              { brand: "Bio-Rad", models: "D-10 HPLC HbA1c, Variant II", protocol: "ASTM Standard" },
-              { brand: "Snibe Diagnostic", models: "Maglumi 800, 2000 Plus CLIA", protocol: "TCP/IP LAN" },
-              { brand: "Siemens Healthineers", models: "Atellica, Dimension, Advia 2120", protocol: "ASTM / HL7" }
-            ].map((analyzer, i) => (
-              <div
-                key={i}
-                className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-sky-50/60 hover:border-sky-300 transition-all text-left"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-xs text-slate-900">{analyzer.brand}</span>
-                  <span className="text-[9px] font-bold bg-white text-sky-700 px-1.5 py-0.5 rounded border border-slate-200">
-                    {analyzer.protocol}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredMachines.map((m, idx) => (
+              <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-sky-300 hover:shadow-lg transition-all space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                      {m.type}
+                    </span>
+                    <h4 className="text-base font-black text-slate-900 mt-1">{m.name}</h4>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Bi-Directional
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium">{analyzer.models}</p>
-                <span className="text-[10px] text-emerald-600 font-bold block mt-2 flex items-center gap-1">
-                  <Check className="w-3 h-3" /> Fully Verified Driver
-                </span>
+
+                <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Protocol:</span>
+                    <span className="font-mono font-bold text-slate-800">{m.protocol}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Throughput:</span>
+                    <span className="font-semibold text-slate-800">{m.speed}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Parameters:</span>
+                    <span className="font-semibold text-slate-800 text-right">{m.parameters}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setDemoForm((prev) => ({ ...prev, notes: `Inquiry for ${m.name} machine interfacing.` }));
+                    setIsDemoModalOpen(true);
+                  }}
+                  className="w-full mt-2 py-2 bg-slate-50 hover:bg-sky-50 text-sky-700 font-bold text-xs rounded-xl border border-slate-200 hover:border-sky-300 transition-all"
+                >
+                  Request Driver Cable Setup
+                </button>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* 7. INTERACTIVE CLINICAL WORKSTATION TABS */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <section id="interactive-workstation" className="py-20 bg-slate-50/70 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-4 mb-12">
-            <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-3.5 py-1 rounded-full border border-sky-200">
-              Live Interactive Workstation
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Test Real Clinical Workflows Hands-On
-            </h2>
-            <p className="text-base text-slate-600">
-              Switch between tabs below to test the exact screens used by pathologists, doctors, billing operators, and patients.
-            </p>
-
-            {/* Tab Selector */}
-            <div className="inline-flex flex-wrap p-1.5 rounded-2xl bg-white border border-slate-200 shadow-sm gap-1 mt-4">
-              <button
-                onClick={() => setActiveFeatureTab("lis")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                  activeFeatureTab === "lis"
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                🔬 Pathology LIS & Analyzers
-              </button>
-              <button
-                onClick={() => setActiveFeatureTab("opd")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                  activeFeatureTab === "opd"
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                🩺 Doctor OPD & E-Prescriptions
-              </button>
-              <button
-                onClick={() => setActiveFeatureTab("billing")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                  activeFeatureTab === "billing"
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                💳 Smart Billing & TPA
-              </button>
-              <button
-                onClick={() => setActiveFeatureTab("whatsapp")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                  activeFeatureTab === "whatsapp"
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                📱 Patient WhatsApp & QR
-              </button>
-            </div>
-          </div>
-
-          {/* Tab 1: Pathology LIS & Analyzers */}
-          {activeFeatureTab === "lis" && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                <div>
-                  <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
-                    <Microscope className="w-5 h-5 text-sky-600" />
-                    Bi-Directional Worklist — Batch #2026-10-20-CORE
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Real-time result capture from Sysmex XN-550 & Roche Cobas
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    Analyzer Link Active
-                  </span>
-                  <button
-                    onClick={() => triggerToast("Machine query sent: 12 tests polled successfully.")}
-                    className="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
-                  >
-                    Sync Machine Batch
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-600">
-                  <thead className="bg-slate-50 text-slate-800 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="py-3 px-3">Barcode / PID</th>
-                      <th className="py-3 px-3">Patient Name</th>
-                      <th className="py-3 px-3">Test Name</th>
-                      <th className="py-3 px-3">Machine Output</th>
-                      <th className="py-3 px-3">Biological Ref. Range</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3.5 px-3 font-mono font-bold text-sky-700">#89104-CBC</td>
-                      <td className="py-3.5 px-3 text-slate-900">Vikas Malhotra (28/M)</td>
-                      <td className="py-3.5 px-3">Hemoglobin (Hb)</td>
-                      <td className="py-3.5 px-3 font-bold text-slate-900">14.6 g/dL</td>
-                      <td className="py-3.5 px-3 text-slate-500">13.0 - 17.0 g/dL</td>
-                      <td className="py-3.5 px-3">
-                        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
-                          NORMAL
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-right">
-                        <span className="text-emerald-600 font-bold">Approved</span>
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-slate-50 bg-rose-50/20">
-                      <td className="py-3.5 px-3 font-mono font-bold text-sky-700">#89105-KFT</td>
-                      <td className="py-3.5 px-3 text-slate-900">Sunita Devi (58/F)</td>
-                      <td className="py-3.5 px-3">Serum Creatinine</td>
-                      <td className="py-3.5 px-3 font-black text-rose-600">3.4 mg/dL ⬆</td>
-                      <td className="py-3.5 px-3 text-slate-500">0.5 - 1.2 mg/dL</td>
-                      <td className="py-3.5 px-3">
-                        <span className="bg-rose-100 text-rose-800 px-2 py-0.5 rounded text-[10px] font-bold">
-                          PANIC HIGH
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-right">
-                        <button
-                          onClick={() => triggerToast("Panic Alert dispatched to attending doctor!")}
-                          className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-[10px] font-bold shadow-2xs"
-                        >
-                          Alert Doctor
-                        </button>
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3.5 px-3 font-mono font-bold text-sky-700">#89106-LIPID</td>
-                      <td className="py-3.5 px-3 text-slate-900">Mohit Aggarwal (45/M)</td>
-                      <td className="py-3.5 px-3">Total Cholesterol</td>
-                      <td className="py-3.5 px-3 font-bold text-amber-600">228 mg/dL ⬆</td>
-                      <td className="py-3.5 px-3 text-slate-500">&lt; 200 mg/dL</td>
-                      <td className="py-3.5 px-3">
-                        <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">
-                          BORDERLINE
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-right">
-                        <span className="text-slate-500 font-semibold">Verified</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: Doctor OPD Consultation */}
-          {activeFeatureTab === "opd" && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div>
-                      <h4 className="font-black text-slate-900 text-base flex items-center gap-2">
-                        <Stethoscope className="w-5 h-5 text-sky-600" />
-                        Dr. Alok Sen (MD Medicine) — OPD Room #4
-                      </h4>
-                      <p className="text-xs text-slate-500">Active Patient: Ramesh Gupta • 52 Yrs / Male • Token #18</p>
-                    </div>
-                    <span className="bg-sky-100 text-sky-800 text-xs font-bold px-2.5 py-1 rounded-md">
-                      ABHA: 91-8821-4902-1922
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-3 text-center">
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Blood Pressure</span>
-                      <strong className="text-sm text-slate-800">138/86 mmHg</strong>
-                    </div>
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Pulse Rate</span>
-                      <strong className="text-sm text-slate-800">76 bpm</strong>
-                    </div>
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">SpO2 Oxygen</span>
-                      <strong className="text-sm text-emerald-600">99% Room Air</strong>
-                    </div>
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Random Glucose</span>
-                      <strong className="text-sm text-amber-600">168 mg/dL</strong>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
-                    <span className="text-xs font-black text-slate-700 block">Digital e-Prescription (Rx):</span>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <p>1. Tab. Telmisartan 40mg — 1 Tablet once daily (Morning after food)</p>
-                      <p>2. Tab. Metformin 500mg SR — 1 Tablet twice daily with meals</p>
-                      <p className="text-sky-700 font-bold pt-1">
-                        + Ordered Diagnostic Tests: Fasting Lipid Profile, HbA1c, Serum Creatinine (Pushed to Lab Queue)
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
-                  <h5 className="font-black text-xs uppercase tracking-wider text-slate-500">Doctor Actions</h5>
-                  <button
-                    onClick={() => triggerToast("Digital Rx signed and pushed to Patient WhatsApp & Pharmacy.")}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Sign Rx & Dispatch to WhatsApp</span>
-                  </button>
-                  <button
-                    onClick={() => triggerToast("Laboratory investigation order generated with pre-assigned barcode.")}
-                    className="w-full py-2 bg-white hover:bg-slate-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <FlaskConical className="w-4 h-4" />
-                    <span>Order Diagnostic Tests</span>
-                  </button>
-                  <p className="text-[11px] text-slate-400 pt-2">
-                    NABH compliance: Every consultation note is cryptographically stamped with doctor MCI registration number.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: Billing & TPA */}
-          {activeFeatureTab === "billing" && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                    <span className="font-black text-slate-800 text-sm">Invoice #INV-2026-9812</span>
-                    <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
-                      GST TAX INVOICE
-                    </span>
-                  </div>
-                  <div className="text-xs space-y-2">
-                    <div className="flex justify-between text-slate-600">
-                      <span>1. Complete Blood Count (CBC) with Automated Differential</span>
-                      <strong className="text-slate-900">₹350.00</strong>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>2. Comprehensive Metabolic Panel (LFT + KFT)</span>
-                      <strong className="text-slate-900">₹900.00</strong>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>3. Thyroid Stimulating Hormone (TSH - Ultra-sensitive)</span>
-                      <strong className="text-slate-900">₹400.00</strong>
-                    </div>
-                    <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-slate-800 text-sm">
-                      <span>Total Amount Payable (Inc. GST)</span>
-                      <span className="text-sky-700">₹1,650.00</span>
-                    </div>
-                  </div>
-                  <div className="pt-2 flex gap-3">
-                    <button
-                      onClick={() => triggerToast("Dynamic UPI QR generated on counter terminal.")}
-                      className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm"
-                    >
-                      <QrCode className="w-4 h-4" />
-                      <span>Show Dynamic UPI QR</span>
-                    </button>
-                    <button
-                      onClick={() => triggerToast("Printing 3-inch thermal bill slip...")}
-                      className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 flex items-center gap-1.5"
-                    >
-                      <Printer className="w-4 h-4" />
-                      <span>Print Thermal Bill</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3 text-xs">
-                  <h5 className="font-black uppercase tracking-wider text-slate-500">Referring Doctor Commission</h5>
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
-                    <span className="text-slate-500 block">Referral Partner:</span>
-                    <strong className="text-slate-900 block font-bold">Dr. S. K. Roy (Roy Polyclinic)</strong>
-                    <span className="text-emerald-600 font-black block pt-1">Commission (15%): ₹247.50</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Auto-generated monthly statement with 1-click bank transfer export and transparent referral ledger.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 4: Patient WhatsApp & Tamperproof QR */}
-          {activeFeatureTab === "whatsapp" && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md">
-              <div className="max-w-md mx-auto bg-white rounded-3xl border border-slate-300 shadow-xl overflow-hidden">
-                <div className="bg-emerald-700 text-white p-3.5 flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center font-bold">
-                    LC
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-sm">LabCore ELIS Verified Lab</h5>
-                    <p className="text-[10px] text-emerald-100 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-300" /> Official Medical Notification Desk
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-emerald-50/40 space-y-3 text-xs">
-                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-200 space-y-2.5">
-                    <p className="text-slate-800 font-medium">
-                      Dear <strong>Mr. Rajesh Kumar</strong>,
-                    </p>
-                    <p className="text-slate-600">
-                      Your diagnostic test report for <strong>Complete Hemogram (CBC)</strong> has been certified by Dr. M. K. Chawla (MD Path).
-                    </p>
-                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <FileText className="w-6 h-6 text-rose-500" />
-                        <div>
-                          <span className="font-bold text-slate-800 block text-[11px]">Rajesh_Kumar_CBC_Report.pdf</span>
-                          <span className="text-[10px] text-slate-400">184 KB • Password: Your DOB (DDMM)</span>
-                        </div>
-                      </div>
-                      <Download className="w-4 h-4 text-sky-600" />
-                    </div>
-                    <div className="pt-2 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-100">
-                      <span className="flex items-center gap-1 text-emerald-700 font-bold">
-                        <ShieldCheck className="w-3.5 h-3.5" /> NABL Accredited QR Inside
-                      </span>
-                      <Link
-                        href="/verify-report"
-                        className="text-sky-600 font-bold hover:underline"
-                      >
-                        Verify Report Authenticity →
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* 8. ADVANCED CLINICAL PRICING: RENT & TURNKEY SETUP */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <section id="pricing" className="py-24 bg-gradient-to-b from-white via-sky-50/20 to-white relative overflow-hidden">
-        {/* Subtle clinical backdrop accents */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
-          <div className="absolute top-12 left-1/4 w-96 h-96 bg-sky-100/60 rounded-full blur-3xl"></div>
-          <div className="absolute top-48 right-1/4 w-96 h-96 bg-cyan-100/50 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* Header & Badges */}
-          <div className="text-center max-w-4xl mx-auto space-y-4 mb-14">
-            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white border border-sky-200 text-sky-800 text-xs font-black shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
-              <span>CLINICAL SAAS RENT & HARDWARE ENGINEERING CHARTER</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-              Transparent Medical Pricing:{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 via-cyan-600 to-teal-600">
-                Predictable Monthly Rent & Turnkey Setup
-              </span>
-            </h2>
-
-            <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto leading-relaxed">
-              Designed specifically for modern hospitals, diagnostic pathology laboratories, and healthcare polyclinics. 
-              <strong className="text-slate-900 font-bold"> 100% Patient Data Ownership</strong> • Zero Per-Test Commissions • No Vendor Lock-In • 24/7 STAT IT SLA.
-            </p>
-
-            {/* Filter by facility category pills */}
-            <div className="pt-2 flex flex-wrap justify-center gap-2">
-              <button
-                onClick={() => setPricingCategory("all")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  pricingCategory === "all"
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                }`}
-              >
-                All Medical Tiers
-              </button>
-              <button
-                onClick={() => setPricingCategory("clinic")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  pricingCategory === "clinic"
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                }`}
-              >
-                <Stethoscope className="w-3.5 h-3.5 text-sky-500" />
-                <span>Clinics & Collection Booths</span>
-              </button>
-              <button
-                onClick={() => setPricingCategory("lab")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  pricingCategory === "lab"
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                }`}
-              >
-                <Microscope className="w-3.5 h-3.5 text-sky-500" />
-                <span>Diagnostic Pathology Labs</span>
-              </button>
-              <button
-                onClick={() => setPricingCategory("hospital")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  pricingCategory === "hospital"
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5 text-teal-500" />
-                <span>Multi-Specialty Hospitals</span>
-              </button>
-            </div>
-
-            {/* Billing Cycle Switcher Toggle */}
-            <div className="pt-2 inline-flex items-center p-1.5 rounded-2xl bg-white border border-slate-300/80 shadow-sm mt-3">
-              <button
-                onClick={() => setBillingCycle("monthly")}
-                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
-                  billingCycle === "monthly"
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Monthly Clinical Rent (No Lock-In)
-              </button>
-              <button
-                onClick={() => setBillingCycle("yearly")}
-                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 ${
-                  billingCycle === "yearly"
-                    ? "bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span>Annual Advance License</span>
-                <span className="bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase">
-                  Save 20% + Free Setup
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* 4 CLINICAL PLAN COLUMNS */}
-          {/* ─────────────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-            {/* Column 1: Clinic & Collection Booth */}
-            {(pricingCategory === "all" || pricingCategory === "clinic") && (
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-7 flex flex-col justify-between hover:border-sky-300 hover:shadow-md transition-all">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
-                      Tier 1: Clinical Starter
-                    </span>
-                    <Stethoscope className="w-5 h-5 text-slate-400" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">Clinic & Collection Booth</h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      For single doctor practices, sample collection booths & primary care clinics.
-                    </p>
-                  </div>
-
-                  <div className="pt-2 pb-2 border-y border-slate-100">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl sm:text-4xl font-black text-slate-900">
-                        {billingCycle === "yearly" ? "₹1,999" : "₹2,499"}
-                      </span>
-                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {billingCycle === "yearly" ? "Billed ₹23,988/yr (Save ₹6,000)" : "Billed monthly, cancel anytime"}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs text-slate-600">
-                    <div className="flex items-center gap-2 font-bold text-slate-800">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Up to 1,500 tests / month
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      3 Staff & Doctor User Accounts
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Barcode Tube Labeling & Accessioning
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Automated WhatsApp PDF Reports
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Tamperproof QR Verification (/verify-report)
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Patient Queue & Token Counter Display
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      3-inch Thermal Receipt & GST Invoices
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Standard Support (Email & WhatsApp)
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
-                  <button
-                    onClick={() => setIsDemoModalOpen(true)}
-                    className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors"
-                  >
-                    Deploy Clinic Starter Plan
-                  </button>
-                  <p className="text-[10px] text-center text-slate-400">
-                    Recommended Setup: Cloud Rapid (₹4,999)
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Column 2: Diagnostic Pathology Lab PRO (Featured / Most Popular) */}
-            {(pricingCategory === "all" || pricingCategory === "lab") && (
-              <div className="bg-white rounded-3xl border-2 border-sky-500 shadow-xl p-6 sm:p-7 flex flex-col justify-between relative scale-102 lg:scale-105 z-20 ring-4 ring-sky-50">
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-sky-600 via-cyan-600 to-sky-700 text-white font-black text-[10px] uppercase tracking-wider px-4 py-1 rounded-full shadow-md">
-                  ★ MOST POPULAR FOR PATH LABS
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-2.5 py-1 rounded-md">
-                      Tier 2: Diagnostic PRO
-                    </span>
-                    <Microscope className="w-5 h-5 text-sky-600" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">Diagnostic Pathology Lab PRO</h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Engineered for standalone biochemistry, hematology, microbiology labs & imaging centers.
-                    </p>
-                  </div>
-
-                  <div className="pt-2 pb-2 border-y border-slate-100">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl sm:text-4xl font-black text-sky-600">
-                        {billingCycle === "yearly" ? "₹4,799" : "₹5,999"}
-                      </span>
-                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {billingCycle === "yearly" ? "Billed annually (Save ₹14,400/yr)" : "Includes all software updates"}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs text-slate-700">
-                    <div className="flex items-center gap-2 font-black text-slate-900">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Up to 10,000 tests / month
-                    </div>
-                    <div className="flex items-center gap-2 font-bold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      10 Staff, Pathologist & Doctor Logins
-                    </div>
-                    <div className="flex items-center gap-2 font-black text-sky-700 bg-sky-50/80 p-1.5 rounded-lg border border-sky-200">
-                      <Cpu className="w-4 h-4 text-sky-600 shrink-0" />
-                      2 Bi-Directional Machine Interfaces Included
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Referring Doctor Commission Portal
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      ABDM National Gateway (M1, M2, M3)
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      NABL Audit Trail, Delta Checks & QC
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Reagent Stock Consumption & Expiry Alert
-                    </div>
-                    <div className="flex items-center gap-2 font-black text-slate-900">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      24/7 Priority Emergency Support (15-Min SLA)
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
-                  <button
-                    onClick={() => setIsDemoModalOpen(true)}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-xs shadow-md shadow-sky-600/30 transition-all hover:scale-102"
-                  >
-                    Deploy Diagnostic Lab PRO
-                  </button>
-                  <p className="text-[10px] text-center text-sky-700 font-bold">
-                    Includes Free Setup with Annual Plan
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Column 3: Multi-Specialty Hospital OS (50-300 Beds) */}
-            {(pricingCategory === "all" || pricingCategory === "hospital") && (
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-7 flex flex-col justify-between hover:border-sky-300 hover:shadow-md transition-all">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-md">
-                      Tier 3: Hospital OS
-                    </span>
-                    <Building2 className="w-5 h-5 text-teal-600" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">Multi-Specialty Hospital OS</h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Full Hospital HMIS for 50-300 bed facilities, nursing homes & surgical centers.
-                    </p>
-                  </div>
-
-                  <div className="pt-2 pb-2 border-y border-slate-100">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl sm:text-4xl font-black text-slate-900">
-                        {billingCycle === "yearly" ? "₹11,999" : "₹14,999"}
-                      </span>
-                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Multi-floor LAN license & unlimited workstations
-                    </p>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs text-slate-600">
-                    <div className="flex items-center gap-2 font-black text-slate-900">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      UNLIMITED Tests & Patients
-                    </div>
-                    <div className="flex items-center gap-2 font-bold text-slate-800">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      UNLIMITED Staff, Nurse & Doctor Accounts
-                    </div>
-                    <div className="flex items-center gap-2 font-bold text-teal-700">
-                      <Check className="w-4 h-4 text-teal-600 shrink-0" />
-                      ALL Analyzer Interfaces (Unlimited Machines)
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      OPD Queue + IPD Bed & Ward Allocation
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Doctor EMR & Digital Prescriptions (Rx)
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Pharmacy Billing & Cashless TPA Claims
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      DICOM PACS Viewer & Tele-Radiology
-                    </div>
-                    <div className="flex items-center gap-2 font-bold text-emerald-600">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Dedicated Medical IT Account Manager
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
-                  <button
-                    onClick={() => setIsDemoModalOpen(true)}
-                    className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors"
-                  >
-                    Deploy Hospital OS Enterprise
-                  </button>
-                  <p className="text-[10px] text-center text-slate-400">
-                    On-Site Hardware Setup: ₹14,999
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Column 4: Enterprise Diagnostic Chain & Hospital Group */}
-            {(pricingCategory === "all" || pricingCategory === "hospital" || pricingCategory === "lab") && (
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-7 flex flex-col justify-between hover:border-sky-300 hover:shadow-md transition-all">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md">
-                      Tier 4: Enterprise Network
-                    </span>
-                    <Layers className="w-5 h-5 text-indigo-600" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">Hospital Chain & Network</h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Multi-branch diagnostic chains, corporate lab franchises & hospital groups.
-                    </p>
-                  </div>
-
-                  <div className="pt-2 pb-2 border-y border-slate-100">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl sm:text-4xl font-black text-slate-900">
-                        {billingCycle === "yearly" ? "₹23,999" : "₹29,999"}
-                      </span>
-                      <span className="text-xs font-bold text-slate-500">/ mo rent</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Central data lake & multi-branch routing
-                    </p>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs text-slate-600">
-                    <div className="flex items-center gap-2 font-black text-slate-900">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Central Master Patient Index (MPI)
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Hub-and-Spoke Sample Routing & Logistics
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Multi-City Tele-Reporting Doctor Pool
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Central Warehouse Reagent Procurement
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Custom REST APIs & HL7 FHIR Gateway
-                    </div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Air-Gapped Offline Appliance Option
-                    </div>
-                    <div className="flex items-center gap-2 font-bold text-indigo-700">
-                      <Check className="w-4 h-4 text-indigo-600 shrink-0" />
-                      99.999% Guaranteed Enterprise SLA
-                    </div>
-                    <div className="flex items-center gap-2 font-bold text-slate-900">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      24/7 Technical Operations Center (TOC)
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
-                  <a
-                    href="https://wa.me/919876543210?text=Hello%20Nikil%2C%20I%20would%20like%20to%20discuss%20an%20Enterprise%20Multi-branch%20deployment%20of%20NIKIL-LABCORE-ELIS-OS."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <span>Consult Chief Architect Nikil</span>
-                    <ArrowUpRight className="w-4 h-4 text-sky-400" />
-                  </a>
-                  <p className="text-[10px] text-center text-slate-400">
-                    Custom Turnkey Setup Available
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* ONE-TIME SETUP & HARDWARE ENGINEERING PACKAGES */}
-          {/* ─────────────────────────────────────────────────────────── */}
-          <div className="mt-16 bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm">
-            <div className="text-center max-w-3xl mx-auto space-y-2 mb-10">
-              <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-3 py-1 rounded-full border border-sky-200">
-                Installation & Engineering Services
-              </span>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
-                One-Time Onboarding, Hardware & Machine Calibration Packages
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500">
-                Transparent one-time engineering fees. Handled end-to-end by certified biomedical & healthcare IT specialists.
+          <div className="mt-8 text-center bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-left">
+              <h4 className="text-sm font-black text-slate-900">Don't see your analyzer model listed?</h4>
+              <p className="text-xs text-slate-500">
+                We custom-engineer ASTM E1381 and HL7 drivers for any clinical machine within 48 hours.
               </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Setup Option A */}
-              <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-sky-300 transition-all space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-black text-slate-900 text-sm">Cloud Rapid Provisioning</h4>
-                    <p className="text-[11px] text-slate-500">24-Hour Remote Deployment</p>
-                  </div>
-                  <span className="text-lg font-black text-slate-900">₹4,999</span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Fastest way to get started. Dedicated cloud database instance, doctor & test master data import, custom letterhead branding, and 2-hour staff video training.
-                </p>
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-emerald-600 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> 24-Hour Live Turnaround
-                  </span>
-                  <span className="text-slate-400">Remote Online</span>
-                </div>
-              </div>
-
-              {/* Setup Option B */}
-              <div className="p-6 rounded-2xl border-2 border-sky-500 bg-sky-50/30 hover:bg-white transition-all space-y-3 relative">
-                <div className="absolute -top-3 right-4 bg-sky-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded-full">
-                  MOST POPULAR SETUP
-                </div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-black text-slate-900 text-sm">Hardware & Analyzer Setup</h4>
-                    <p className="text-[11px] text-sky-700 font-bold">Bi-Directional Calibration</p>
-                  </div>
-                  <span className="text-lg font-black text-sky-700">₹14,999</span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Certified engineer on-site or remote. RS-232 serial & TCP/IP machine cabling, ASTM/HL7 driver calibration, thermal barcode printer integration, and 3-day staff certification.
-                </p>
-                <div className="pt-2 border-t border-sky-100 flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-sky-700 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> Full Machine Zero-Typo Testing
-                  </span>
-                  <span className="text-slate-500 font-semibold">Engineer On-Site/Remote</span>
-                </div>
-              </div>
-
-              {/* Setup Option C */}
-              <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-sky-300 transition-all space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-black text-slate-900 text-sm">Turnkey Air-Gapped Appliance</h4>
-                    <p className="text-[11px] text-slate-500">100% Offline Local Server</p>
-                  </div>
-                  <span className="text-lg font-black text-slate-900">₹79,999</span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Turnkey local hospital server appliance. Operates 100% offline inside hospital LAN with zero internet dependence. Includes perpetual local license and automated local NAS backup.
-                </p>
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-indigo-700 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> Perpetual Local Hospital License
-                  </span>
-                  <span className="text-slate-400">Zero Internet Required</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* DETAILED CLINICAL FEATURE COMPARISON MATRIX */}
-          {/* ─────────────────────────────────────────────────────────── */}
-          <div className="mt-16 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 sm:p-8 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <Sliders className="w-5 h-5 text-sky-600" />
-                  Side-by-Side Clinical Feature Matrix
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Detailed comparison across clinical pathology, hospital HMIS, machine automation, and compliance capabilities.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShowFeatureMatrix(!showFeatureMatrix)}
-                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 shadow-2xs flex items-center gap-1.5 transition-colors"
-              >
-                <span>{showFeatureMatrix ? "Collapse Feature Matrix" : "Expand All Clinical Rows"}</span>
-                {showFeatureMatrix ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {showFeatureMatrix && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-600">
-                  <thead className="bg-slate-100/90 text-slate-800 font-black uppercase text-[10px] tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="py-3.5 px-4 sm:px-6 w-1/3">Clinical Feature / Parameter</th>
-                      <th className="py-3.5 px-3 text-center">Clinic Starter</th>
-                      <th className="py-3.5 px-3 text-center bg-sky-50 text-sky-900">Diagnostic PRO</th>
-                      <th className="py-3.5 px-3 text-center">Hospital OS</th>
-                      <th className="py-3.5 px-3 text-center">Enterprise Chain</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Monthly Diagnostic Tests Included</td>
-                      <td className="py-3 px-3 text-center">Up to 1,500</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-900">Up to 10,000</td>
-                      <td className="py-3 px-3 text-center font-bold text-emerald-600">UNLIMITED</td>
-                      <td className="py-3 px-3 text-center font-bold text-emerald-600">UNLIMITED</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Bi-Directional Analyzer Interfaces</td>
-                      <td className="py-3 px-3 text-center text-slate-400">Manual Entry</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-700">2 Machines Included</td>
-                      <td className="py-3 px-3 text-center font-bold text-teal-700">All Analyzers Included</td>
-                      <td className="py-3 px-3 text-center font-bold text-indigo-700">Multi-branch Routing</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">WhatsApp PDF Report Automation</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Tamperproof QR Code Verification</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Barcode Tube Printing & Accessioning</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Referring Doctor Commission Ledger</td>
-                      <td className="py-3 px-3 text-center text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">ABDM National Gateway (M1, M2, M3)</td>
-                      <td className="py-3 px-3 text-center text-slate-400">Optional Add-on</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Doctor OPD Consultation & E-Prescriptions</td>
-                      <td className="py-3 px-3 text-center text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full OPD Desk</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full OPD Desk</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">IPD Ward & Bed Occupancy Matrix</td>
-                      <td className="py-3 px-3 text-center text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full IPD Matrix</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Full IPD Matrix</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Reagent Stock Tracking & Expiry Alarms</td>
-                      <td className="py-3 px-3 text-center text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Central Warehouse</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">DICOM PACS Viewer & Radiology Bridge</td>
-                      <td className="py-3 px-3 text-center text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Included</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Enterprise PACS</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Emergency STAT IT SLA Guarantee</td>
-                      <td className="py-3 px-3 text-center">4 Hours</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-700">15 Minutes</td>
-                      <td className="py-3 px-3 text-center font-bold text-teal-700">15 Minutes</td>
-                      <td className="py-3 px-3 text-center font-bold text-indigo-700">Dedicated TOC (Immediate)</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">Encrypted Cloud Backup Frequency</td>
-                      <td className="py-3 px-3 text-center">Daily (24 Hrs)</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 font-bold text-sky-700">Every 6 Hours</td>
-                      <td className="py-3 px-3 text-center font-bold text-teal-700">Every 6 Hours + Local</td>
-                      <td className="py-3 px-3 text-center font-bold text-indigo-700">Real-time Continuous Sync</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-3 px-4 sm:px-6 font-bold text-slate-900">100% Client Data Ownership & SQL Export</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Guaranteed</td>
-                      <td className="py-3 px-3 text-center bg-sky-50/40 text-emerald-600 font-bold">✓ Guaranteed</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Guaranteed</td>
-                      <td className="py-3 px-3 text-center text-emerald-600 font-bold">✓ Guaranteed</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* MEDICAL ASSURANCE & TRUST STRIP */}
-          {/* ─────────────────────────────────────────────────────────── */}
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold text-slate-700">
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
-              <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
-              <div>
-                <strong className="block text-slate-900 font-bold">100% Patient Privacy</strong>
-                <span className="text-[11px] text-slate-500">HIPAA & DISHA compliant, zero monetization.</span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
-              <Clock className="w-6 h-6 text-sky-600 shrink-0" />
-              <div>
-                <strong className="block text-slate-900 font-bold">15-Min Critical SLA</strong>
-                <span className="text-[11px] text-slate-500">Rapid triage for machine & dispatch stalls.</span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
-              <Award className="w-6 h-6 text-cyan-600 shrink-0" />
-              <div>
-                <strong className="block text-slate-900 font-bold">NABL & NABH Ready</strong>
-                <span className="text-[11px] text-slate-500">Pre-built audit logs & delta checking.</span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center space-x-3 shadow-2xs">
-              <Phone className="w-6 h-6 text-indigo-600 shrink-0" />
-              <div>
-                <strong className="block text-slate-900 font-bold">24/7 Helpline & WhatsApp</strong>
-                <span className="text-[11px] text-slate-500">+91 98765 43210 / 1800-LAB-CORE</span>
-              </div>
-            </div>
+            <a
+              href="https://wa.me/919876543210?text=Hello%20Nikil%2C%20I%20have%20an%20unlisted%20analyzer%20model%20and%20need%20interfacing."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm text-nowrap shrink-0"
+            >
+              Check Machine Compatibility
+            </a>
           </div>
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 9. INTERACTIVE COST & SAVINGS ESTIMATOR */}
+      {/* 7. TRANSPARENT PRICING & ROI ESTIMATOR */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section id="calculator" className="py-20 bg-slate-50/70 border-y border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-3 mb-12">
-            <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200">
-              Interactive Cost Estimator
+      <section id="pricing" className="py-24 bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+            <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              Honest & Transparent Medical IT Pricing
             </span>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Calculate Your Exact Monthly Rent & Setup Cost
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+              Flexible Monthly Rent • Zero Lock-In Contracts
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600">
-              Adjust the sliders below to see your customized subscription cost and how much money you save on paper, labor, and prevented errors.
+            <p className="text-sm sm:text-base text-slate-600">
+              Run your hospital, pathology lab, or clinic with predictable monthly software rental. Full data ownership, free security updates, and dedicated 24/7 technical hotline.
             </p>
-          </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center shadow-sm">
-            {/* Left: Input Sliders */}
-            <div className="space-y-6">
-              {/* Slider 1: Daily Samples */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <label className="font-black text-slate-800 flex items-center gap-1.5">
-                    <FlaskConical className="w-4 h-4 text-sky-600" />
-                    Average Daily Patient Samples:
-                  </label>
-                  <span className="font-black text-sky-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                    {calcSamples} samples/day ({calcSamples * 30}/mo)
+            {/* Billing Cycle Toggle */}
+            <div className="flex justify-center pt-2">
+              <div className="inline-flex p-1 rounded-2xl bg-slate-100 border border-slate-200">
+                <button
+                  onClick={() => setBillingCycle("monthly")}
+                  className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    billingCycle === "monthly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+                  }`}
+                >
+                  Monthly Billing
+                </button>
+                <button
+                  onClick={() => setBillingCycle("yearly")}
+                  className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    billingCycle === "yearly" ? "bg-sky-600 text-white shadow-sm" : "text-slate-600"
+                  }`}
+                >
+                  <span>Annual Subscription</span>
+                  <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                    SAVE 20%
                   </span>
-                </div>
-                <input
-                  type="range"
-                  min="20"
-                  max="800"
-                  step="10"
-                  value={calcSamples}
-                  onChange={(e) => setCalcSamples(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600"
-                />
-                <div className="flex justify-between text-[10px] text-slate-400">
-                  <span>20 (Clinic)</span>
-                  <span>250 (Mid Lab)</span>
-                  <span>800+ (Hospital Chain)</span>
-                </div>
-              </div>
-
-              {/* Slider 2: Number of Analyzers */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <label className="font-black text-slate-800 flex items-center gap-1.5">
-                    <Cpu className="w-4 h-4 text-cyan-600" />
-                    Bi-Directional Machines to Connect:
-                  </label>
-                  <span className="font-black text-cyan-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                    {calcAnalyzers} Analyzers
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="6"
-                  step="1"
-                  value={calcAnalyzers}
-                  onChange={(e) => setCalcAnalyzers(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-600"
-                />
-                <div className="flex justify-between text-[10px] text-slate-400">
-                  <span>0 (Manual LIS)</span>
-                  <span>2 (CBC + Chem)</span>
-                  <span>6+ (Full Automation)</span>
-                </div>
-              </div>
-
-              {/* Slider 3: Branches */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <label className="font-black text-slate-800 flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4 text-teal-600" />
-                    Number of Centers / Branches:
-                  </label>
-                  <span className="font-black text-teal-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                    {calcBranches} {calcBranches === 1 ? "Central Facility" : "Locations"}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  step="1"
-                  value={calcBranches}
-                  onChange={(e) => setCalcBranches(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600"
-                />
-                <div className="flex justify-between text-[10px] text-slate-400">
-                  <span>1 Single Hub</span>
-                  <span>3 Centers</span>
-                  <span>5 Multi-City Hubs</span>
-                </div>
+                </button>
               </div>
             </div>
+          </div>
 
-            {/* Right: Dynamic Calculation Result Card */}
-            <div className="bg-slate-50 rounded-2xl border border-sky-200 p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Recommended Plan</span>
-                <span className="text-xs font-bold text-sky-700 bg-white px-2 py-0.5 rounded border border-sky-200">
-                  {billingCycle === "yearly" ? "Annual (20% Discount)" : "Monthly Flexible"}
-                </span>
-              </div>
-
+          {/* Pricing Tiers Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+            {/* Tier 1: Clinic / Small Lab */}
+            <div className="bg-slate-50/70 p-8 rounded-3xl border border-slate-200 hover:border-sky-300 transition-all space-y-6">
               <div>
-                <div className="text-xs text-slate-500 font-medium">Estimated Monthly Rent:</div>
-                <div className="text-4xl font-black text-sky-600">
-                  ₹{calculatedPricing.monthlyTotal.toLocaleString("en-IN")}
-                  <span className="text-xs font-bold text-slate-400"> / month</span>
-                </div>
+                <span className="text-xs font-black uppercase tracking-wider text-slate-600">Starter Tier</span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Doctor Clinic & Daycare</h3>
+                <p className="text-xs text-slate-500 mt-1">Single doctor practice, OPD token desk, and patient EMR</p>
               </div>
 
-              <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">One-Time Engineer Setup:</span>
-                  <strong className="text-slate-900 font-bold">₹{calculatedPricing.setupFee.toLocaleString("en-IN")}</strong>
+              <div className="border-t border-b border-slate-200 py-5">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                    ₹{billingCycle === "yearly" ? "1,599" : "1,999"}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">/ month</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Manual Hours Saved Monthly:</span>
-                  <strong className="text-emerald-600 font-bold">{calculatedPricing.hoursSaved} hrs/mo</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Net Estimated Monthly Savings:</span>
-                  <strong className="text-emerald-700 font-black">₹{calculatedPricing.moneySaved.toLocaleString("en-IN")}</strong>
-                </div>
+                <span className="text-[11px] text-slate-500 block mt-1">One-time setup: ₹3,999 (Includes staff training)</span>
               </div>
+
+              <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Up to 80 Patients / Day</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Smart OPD Token Queue & TV Display</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Digital Prescription Pad & EHR</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>WhatsApp Prescription & Bill Dispatch</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>GST Billing & Daily Revenue Ledger</span>
+                </li>
+              </ul>
 
               <button
                 onClick={() => setIsDemoModalOpen(true)}
-                className="w-full py-3 bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs border border-slate-300 shadow-2xs transition-all"
               >
-                <span>Lock In This Quote & Schedule Demo</span>
-                <ArrowRight className="w-4 h-4" />
+                Choose Clinic Plan
+              </button>
+            </div>
+
+            {/* Tier 2: Pathology Diagnostic Lab (Highlighted) */}
+            <div className="bg-white p-8 rounded-3xl border-2 border-sky-500 shadow-xl relative space-y-6">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-sky-600 to-teal-600 text-white text-[11px] font-black uppercase tracking-wider px-4 py-1 rounded-full shadow-md">
+                Most Popular for Diagnostic Labs
+              </div>
+
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-sky-700">Diagnostic Suite</span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Pathology Lab (NABL Ready)</h3>
+                <p className="text-xs text-slate-500 mt-1">Automated bi-directional analyzers & digital approvals</p>
+              </div>
+
+              <div className="border-t border-b border-slate-200 py-5">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                    ₹{billingCycle === "yearly" ? "3,999" : "4,999"}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">/ month</span>
+                </div>
+                <span className="text-[11px] text-sky-700 font-bold block mt-1">Includes 2 Bi-directional Analyzers Setup</span>
+              </div>
+
+              <ul className="space-y-2.5 text-xs text-slate-700 font-semibold">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Up to 300 Samples / Day</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>2 Bi-directional Analyzers Connected (ASTM / HL7)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>NABL ISO 15189 Quality Control & LJ Charts</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Pathologist Digital Signature & QR Verification</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Sub-1.2s WhatsApp PDF Report Dispatch</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>B2B Collection Centers & Doctor Commission Ledger</span>
+                </li>
+              </ul>
+
+              <button
+                onClick={() => setIsDemoModalOpen(true)}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-extrabold text-sm shadow-md shadow-sky-600/30 transition-all hover:scale-[1.02]"
+              >
+                Start Lab Free Trial
+              </button>
+            </div>
+
+            {/* Tier 3: Hospital Enterprise */}
+            <div className="bg-slate-50/70 p-8 rounded-3xl border border-slate-200 hover:border-sky-300 transition-all space-y-6">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-teal-700">Enterprise HMIS</span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Multi-Specialty Hospital</h3>
+                <p className="text-xs text-slate-500 mt-1">Full-facility OPD, IPD, OT, Pharmacy & ABDM Gateway</p>
+              </div>
+
+              <div className="border-t border-b border-slate-200 py-5">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                    ₹{billingCycle === "yearly" ? "9,999" : "11,999"}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">/ month</span>
+                </div>
+                <span className="text-[11px] text-slate-500 block mt-1">Unlimited doctor logins & ward terminals</span>
+              </div>
+
+              <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Unlimited Patients, OPD & IPD Beds</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Up to 6 Bi-directional Analyzers Connected</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>ABDM Milestone 1, 2, 3 National Gateway</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>IPD Bed Matrix, Nursing Vitals & OT Scheduling</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Cashless TPA Desk & Ayushman Bharat Claims</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Dedicated 15-Minute Emergency SLA Support</span>
+                </li>
+              </ul>
+
+              <button
+                onClick={() => setIsDemoModalOpen(true)}
+                className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all"
+              >
+                Deploy Hospital Suite
               </button>
             </div>
           </div>
+
+          {/* Interactive Cost & ROI Estimator Slider */}
+          <div className="bg-slate-50/80 p-8 sm:p-10 rounded-3xl border border-slate-200">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="text-center space-y-2">
+                <span className="text-xs font-black uppercase tracking-wider text-sky-600">
+                  Custom Volume Calculator
+                </span>
+                <h3 className="text-2xl font-black text-slate-900">
+                  Estimate Your Monthly Rent & Operational Savings
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Slide according to your facility's daily sample volume, connected instruments, and branch network.
+                </p>
+              </div>
+
+              <div className="space-y-5 pt-4">
+                {/* Slider 1: Samples / Day */}
+                <div>
+                  <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
+                    <span>Daily Patient / Sample Volume:</span>
+                    <span className="font-mono text-sm font-black text-sky-600">{calcSamples} Samples / Day</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="30"
+                    max="1000"
+                    step="10"
+                    value={calcSamples}
+                    onChange={(e) => setCalcSamples(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                    <span>30 (Small Clinic)</span>
+                    <span>300 (Active Diagnostic Lab)</span>
+                    <span>1,000+ (Regional Hospital Hub)</span>
+                  </div>
+                </div>
+
+                {/* Slider 2: Analyzers */}
+                <div>
+                  <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
+                    <span>Bi-directional Analyzers to Interface:</span>
+                    <span className="font-mono text-sm font-black text-sky-600">{calcAnalyzers} Machines</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="8"
+                    step="1"
+                    value={calcAnalyzers}
+                    onChange={(e) => setCalcAnalyzers(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                    <span>0 (Manual Entry)</span>
+                    <span>2 (CBC + Biochemistry)</span>
+                    <span>8+ (Full Automated Line)</span>
+                  </div>
+                </div>
+
+                {/* Slider 3: Branches */}
+                <div>
+                  <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
+                    <span>Collection Centers & Branches:</span>
+                    <span className="font-mono text-sm font-black text-sky-600">{calcBranches} Location(s)</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="6"
+                    step="1"
+                    value={calcBranches}
+                    onChange={(e) => setCalcBranches(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Calculation Output Card */}
+              <div className="mt-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
+                <div className="p-2">
+                  <span className="text-[11px] font-bold text-slate-500 block">Estimated Monthly Rent</span>
+                  <span className="text-2xl font-black text-slate-900 font-mono">
+                    ₹{calculatedPricing.monthlyTotal.toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">{billingCycle} billing</span>
+                </div>
+
+                <div className="p-2 border-t sm:border-t-0 sm:border-l border-slate-100">
+                  <span className="text-[11px] font-bold text-slate-500 block">Setup & Calibration</span>
+                  <span className="text-2xl font-black text-slate-900 font-mono">
+                    ₹{calculatedPricing.setupFee.toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">One-time on-site/remote</span>
+                </div>
+
+                <div className="p-2 border-t sm:border-t-0 sm:border-l border-slate-100">
+                  <span className="text-[11px] font-bold text-slate-500 block">Clerical Hours Saved</span>
+                  <span className="text-2xl font-black text-emerald-600 font-mono">
+                    ~{calculatedPricing.hoursSaved} hrs
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Per month via machine sync</span>
+                </div>
+
+                <div className="p-2 border-t sm:border-t-0 sm:border-l border-slate-100">
+                  <span className="text-[11px] font-bold text-slate-500 block">Estimated Money Saved</span>
+                  <span className="text-2xl font-black text-sky-600 font-mono">
+                    ₹{calculatedPricing.moneySaved.toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">In staff time & zero errors</span>
+                </div>
+              </div>
+
+              <div className="text-center pt-2">
+                <button
+                  onClick={() => setIsDemoModalOpen(true)}
+                  className="px-8 py-3.5 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-black text-sm rounded-xl shadow-md transition-all hover:scale-105"
+                >
+                  Confirm Quote & Book Engineer Visit
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 10. 24/7 SUPPORT & GUARANTEED SLA */}
+      {/* 8. CLINICAL COMPLIANCE & ACCREDITATIONS (HOSPITAL WHITE) */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section className="py-20 bg-slate-900 text-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-            <span className="text-xs font-black uppercase tracking-wider text-sky-400 bg-sky-900/60 px-3.5 py-1 rounded-full border border-sky-700/60">
-              Zero-Downtime Guarantee
+      <section id="compliance" className="py-20 bg-slate-50/70 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-12 space-y-2">
+            <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              Regulatory Standards
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-              24/7/365 Medical IT Support & STAT Emergency Response
+            <h2 className="text-3xl font-black text-slate-900">
+              Audit-Ready for NABL, NABH & National Healthcare Mandates
             </h2>
-            <p className="text-slate-300 text-sm sm:text-base">
-              Hospitals and diagnostic labs cannot afford even 5 minutes of downtime. Our certified medical systems specialists ensure immediate resolution.
+            <p className="text-xs sm:text-sm text-slate-600">
+              Engineered according to strict medical software and clinical laboratory information security standards.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-slate-800/80 p-6 rounded-3xl border border-slate-700 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
-                <Clock className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-white">15-Minute Critical SLA</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Emergency STAT code red: Any machine telemetry drop or reporting pause receives senior engineer intervention within 15 minutes.
-              </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 text-center space-y-2 shadow-2xs">
+              <ShieldCheck className="w-8 h-8 text-emerald-600 mx-auto" />
+              <h4 className="text-xs font-bold text-slate-900">NABL ISO 15189</h4>
+              <p className="text-[10px] text-slate-500">2022 Medical Lab Quality Standards</p>
             </div>
 
-            <div className="bg-slate-800/80 p-6 rounded-3xl border border-slate-700 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <Headphones className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-white">Direct Phone & WhatsApp</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                No IVR queues or ticket delays. Speak directly with a live medical systems specialist at +91 98765 43210 or 1800-LAB-CORE.
-              </p>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 text-center space-y-2 shadow-2xs">
+              <Award className="w-8 h-8 text-sky-600 mx-auto" />
+              <h4 className="text-xs font-bold text-slate-900">NABH Digital</h4>
+              <p className="text-[10px] text-slate-500">5th Edition Hospital Health IT</p>
             </div>
 
-            <div className="bg-slate-800/80 p-6 rounded-3xl border border-slate-700 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                <Server className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-white">Automated Backups Every 6 Hrs</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Dual redundant cloud backups + local encrypted NAS snapshots. 100% protection against ransomware, hardware failures, or database corruptions.
-              </p>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 text-center space-y-2 shadow-2xs">
+              <CheckCircle2 className="w-8 h-8 text-cyan-600 mx-auto" />
+              <h4 className="text-xs font-bold text-slate-900">ABDM M1-M3</h4>
+              <p className="text-[10px] text-slate-500">Ayushman Bharat National Gateway</p>
             </div>
 
-            <div className="bg-slate-800/80 p-6 rounded-3xl border border-slate-700 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                <User className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-white">On-Site Emergency Visit</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Certified field hardware engineers available for on-site machine interfacing, LAN cabling, and barcode printer troubleshooting across major regions.
-              </p>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 text-center space-y-2 shadow-2xs">
+              <Cpu className="w-8 h-8 text-indigo-600 mx-auto" />
+              <h4 className="text-xs font-bold text-slate-900">CLSI AUTO10-A</h4>
+              <p className="text-[10px] text-slate-500">Automated Specimen Accessioning</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 text-center space-y-2 shadow-2xs">
+              <Lock className="w-8 h-8 text-teal-600 mx-auto" />
+              <h4 className="text-xs font-bold text-slate-900">256-bit AES</h4>
+              <p className="text-[10px] text-slate-500">DISHA & HIPAA Health Encryption</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 text-center space-y-2 shadow-2xs">
+              <Clock className="w-8 h-8 text-amber-600 mx-auto" />
+              <h4 className="text-xs font-bold text-slate-900">99.999% SLA</h4>
+              <p className="text-[10px] text-slate-500">Multi-region High Availability</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 11. FOUNDER & ARCHITECTURAL LEADERSHIP SECTION */}
+      {/* 9. FREQUENTLY ASKED QUESTIONS (ACCORDION) */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section id="founder" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-br from-slate-50 via-sky-50/40 to-slate-50 rounded-3xl border border-slate-200 p-8 sm:p-12 shadow-sm">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              {/* Left: Bio & Leadership */}
-              <div className="space-y-6">
-                <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-3.5 py-1 rounded-full border border-sky-200">
-                  Architectural Leadership & Ownership
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                  Crafted by Nikil & The LabCore Medical Engineering Team
-                </h2>
-                <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                  <strong>NIKIL-LABCORE-ELIS-OS</strong> was founded by <strong>Nikil</strong> with a singular clinical conviction: 
-                  healthcare professionals should never waste valuable hours wrestling with archaic, disjointed software when patients depend on rapid, error-free diagnostic answers.
-                </p>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  Our architecture combines high-speed bi-directional machine communication with strict national accreditation compliance (NABL, NABH, ABDM, ISO 15189). 
-                  Whether you run a 20-sample neighborhood clinic or a 500-bed multi-speciality tertiary care center, you receive uncompromised clinical precision.
-                </p>
-
-                {/* Direct Contacts Grid */}
-                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
-                  <div className="flex items-center space-x-3 p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                    <Phone className="w-5 h-5 text-sky-600 shrink-0" />
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-bold">DIRECT OWNER / DESK</span>
-                      <strong className="text-slate-900 font-mono text-sm">+91 98765 43210</strong>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3 p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                    <Mail className="w-5 h-5 text-sky-600 shrink-0" />
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-bold">FOUNDER EMAIL</span>
-                      <strong className="text-slate-900">nikil@labcore-elis.com</strong>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3 p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                    <Headphones className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-bold">24/7 TOLL-FREE HELPLINE</span>
-                      <strong className="text-slate-900 font-mono text-sm">1800-LAB-CORE</strong>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3 p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                    <MapPin className="w-5 h-5 text-rose-600 shrink-0" />
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-bold">R&D LAB & HEADQUARTERS</span>
-                      <strong className="text-slate-900">Sector 18, Cyber Tech Park</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Consultation / Demo Form */}
-              <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md">
-                <div className="mb-6">
-                  <h3 className="text-xl font-black text-slate-900">Direct Consultation with Nikil & Team</h3>
-                  <p className="text-xs text-slate-500">
-                    Get an instant quote, technical walkthrough, or arrange an on-site facility audit.
-                  </p>
-                </div>
-
-                <form onSubmit={handleDemoSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Your Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Dr. / Mr. / Ms. Name"
-                      value={demoForm.name}
-                      onChange={(e) => setDemoForm({ ...demoForm, name: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Mobile / WhatsApp *</label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="+91 98765..."
-                        value={demoForm.phone}
-                        onChange={(e) => setDemoForm({ ...demoForm, phone: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">City / Region</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Mumbai, Delhi, Bengaluru"
-                        value={demoForm.city}
-                        onChange={(e) => setDemoForm({ ...demoForm, city: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Facility Name</label>
-                      <input
-                        type="text"
-                        placeholder="Apex Diagnostics / City Hospital"
-                        value={demoForm.facilityName}
-                        onChange={(e) => setDemoForm({ ...demoForm, facilityName: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Facility Type</label>
-                      <select
-                        value={demoForm.facilityType}
-                        onChange={(e) => setDemoForm({ ...demoForm, facilityType: e.target.value })}
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
-                      >
-                        <option>Diagnostic Pathology Lab</option>
-                        <option>Multi-Speciality Hospital</option>
-                        <option>Doctor Clinic & Collection Point</option>
-                        <option>Radiology & Imaging Center</option>
-                        <option>Multi-branch Diagnostic Chain</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Specific Requirements / Analyzers to Connect</label>
-                    <textarea
-                      rows={2}
-                      placeholder="e.g., Connecting Sysmex & Roche machines, need WhatsApp reports, 200 samples/day"
-                      value={demoForm.notes}
-                      onChange={(e) => setDemoForm({ ...demoForm, notes: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    ></textarea>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-sm shadow-md transition-all flex items-center justify-center gap-2"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Submit & Request 15-Minute Callback</span>
-                  </button>
-
-                  <p className="text-[10px] text-center text-slate-400">
-                    By submitting, you agree to our Terms of Service & HIPAA-compliant patient confidentiality.
-                  </p>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* 12. FAQ ACCORDION */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <section className="py-20 bg-slate-50/70 border-t border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-3 mb-12">
-            <span className="text-xs font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-3 py-1 rounded-full border border-sky-200">
-              Frequently Asked Questions
+      <section className="py-20 bg-white border-b border-slate-200">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-black uppercase tracking-wider text-sky-600">
+              Questions & Clinical Deployment
             </span>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Everything You Need to Know Before Getting Started
-            </h2>
+            <h2 className="text-3xl font-black text-slate-900">Frequently Asked Questions</h2>
+            <p className="text-xs text-slate-500">
+              Clear answers for hospital directors, chief pathologists, and clinic administrators.
+            </p>
           </div>
 
           <div className="space-y-3">
             {[
               {
-                q: "How does the monthly rent work? Is there any lock-in contract?",
-                a: "There are no lock-in contracts. You pay a predictable monthly rent (starting at ₹2,499/mo) based on your selected plan. You can upgrade, downgrade, or pause anytime with 15 days notice. All future software upgrades, security patches, and 24/7 technical support are 100% included in the rent."
+                q: "How does the bi-directional analyzer interfacing work? Does it require extra cabling?",
+                a: "Our field engineering team installs an industrial IoT gateway or connects via standard RS232-to-LAN/TCP-IP adapters directly to your analyzer's ASTM/HL7 port. The analyzer can query our software by reading the sample tube barcode, immediately execute the correct test profile, and transmit the final calibrated results directly back into the patient record without any typing."
               },
               {
-                q: "Which laboratory machines and analyzers are supported for bi-directional interfacing?",
-                a: "NIKIL-LABCORE-ELIS-OS supports over 65+ leading laboratory instruments across all major manufacturers including Roche (Cobas series), Sysmex (XN, XP, KX), Mindray (BC and BS series), Beckman Coulter, Abbott, Horiba, Erba, Bio-Rad, and Siemens. Both ASTM and HL7 protocols over RS-232 serial cables and TCP/IP LAN networks are supported."
+                q: "What happens if our hospital or lab loses internet connectivity?",
+                a: "NIKIL-LABCORE-ELIS-OS includes an Edge Local Cache engine. Analyzers continue to run uninterrupted and store results in a local offline buffer. As soon as connectivity restores, all data automatically synchronizes with the cloud with HMAC SHA-256 integrity verification."
               },
               {
-                q: "Can this system run 100% offline inside our hospital without internet?",
-                a: "Yes! While our cloud deployment is popular for multi-branch access, we also offer our Air-Gapped Local Server Appliance setup. In this mode, the entire operating system, database, and analyzer interface run entirely on your local hospital LAN server. Your hospital operations will never stop even if the internet is down."
+                q: "Are patient reports sent via WhatsApp password-protected?",
+                a: "Yes. In strict accordance with medical privacy standards, all WhatsApp PDF reports are encrypted using the patient’s Date of Birth (DDMMYYYY) or a custom 4-digit PIN. Additionally, every report includes a cryptographic tamperproof QR code that can be verified in real time on our verification node."
               },
               {
-                q: "How do patients receive their reports on WhatsApp?",
-                a: "Once a test report is authorized with the pathologist's digital e-signature, the system automatically compiles a high-resolution, password-protected PDF. It then dispatches it via the WhatsApp Business API directly to the patient's registered mobile number within 2 seconds. The message includes an anti-tamper QR code."
+                q: "Can we migrate our existing patient records, doctor ledgers, and test masters?",
+                a: "Yes. Our team provides free turnkey data migration. We can import CSV, Excel, or SQL exports from your previous software into NIKIL-LABCORE-ELIS-OS within 24 hours without disrupting your daily patient flow."
               },
               {
-                q: "Is NIKIL-LABCORE-ELIS-OS compliant with NABL, NABH and ABDM guidelines?",
-                a: "Yes, 100%. The system complies with ISO 15189 and NABL requirements for sample traceability, delta check flagging, QC Levey-Jennings charts, and unalterable audit trails. For hospitals, it meets NABH electronic medical records (EMR) standards. It also comes integrated with Ayushman Bharat Digital Mission (ABDM) Milestone 1, 2, and 3."
-              },
-              {
-                q: "How long does one-time setup and staff training take?",
-                a: "Cloud setups are typically live within 24 to 48 hours after you provide your test price list and doctor letterhead. For on-site analyzer hardware interfacing, our certified engineer completes machine cabling, protocol calibration, and provides hands-on training to your technicians in 2 to 3 days."
+                q: "Is there any long-term lock-in contract?",
+                a: "No. Our licensing is completely monthly rental-based. You retain 100% legal ownership of your clinical data. You can cancel with 15 days notice and receive a full SQL/PDF archive of your database."
               }
-            ].map((faq, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs"
-              >
+            ].map((faq, idx) => (
+              <div key={idx} className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50">
                 <button
-                  onClick={() => setFaqOpenIndex(faqOpenIndex === index ? null : index)}
-                  className="w-full py-4 px-5 text-left font-bold text-sm text-slate-800 hover:text-sky-600 flex justify-between items-center transition-colors"
+                  onClick={() => setFaqOpenIndex(faqOpenIndex === idx ? null : idx)}
+                  className="w-full p-5 text-left font-bold text-sm text-slate-900 flex items-center justify-between hover:bg-slate-50 transition-colors"
                 >
                   <span>{faq.q}</span>
-                  {faqOpenIndex === index ? (
-                    <ChevronUp className="w-4 h-4 text-sky-600 shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-                  )}
+                  {faqOpenIndex === idx ? <ChevronUp className="w-4 h-4 text-sky-600" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                 </button>
-                {faqOpenIndex === index && (
-                  <div className="px-5 pb-4 text-xs text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
+                {faqOpenIndex === idx && (
+                  <div className="p-5 pt-0 text-xs text-slate-600 leading-relaxed border-t border-slate-200/60 bg-white">
                     {faq.a}
                   </div>
                 )}
@@ -2449,75 +1653,29 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 13. ROLE-BASED QUICK LOGIN BAR (Direct Links to /login) */}
+      {/* 10. COMPREHENSIVE MEDICAL FOOTER (CRISP HOSPITAL LIGHT THEME) */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section className="py-14 bg-white border-t border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div>
-            <h3 className="text-xl font-black text-slate-900">Direct Staff & Practitioner Access</h3>
-            <p className="text-xs text-slate-500">
-              Authorized clinical personnel can enter the secure portal using biometric, RFID badge, or master credentials.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { role: "Super Admin", icon: Shield, desc: "System Config", href: "/login" },
-              { role: "Chief Pathologist", icon: Microscope, desc: "Sign-Off & Approvals", href: "/approvals" },
-              { role: "OPD Doctor", icon: Stethoscope, desc: "EMR & Consult", href: "/doctors" },
-              { role: "Lab Technician", icon: FlaskConical, desc: "Analyzers & Tests", href: "/analyzers" },
-              { role: "Reception / Billing", icon: DollarSign, desc: "Tokens & Invoices", href: "/invoices" },
-              { role: "Patient QR Check", icon: QrCode, desc: "Verify Report", href: "/verify-report" },
-            ].map((item, idx) => (
-              <Link
-                key={idx}
-                href={item.href}
-                className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-sky-50 hover:border-sky-300 transition-all text-center group shadow-2xs"
-              >
-                <item.icon className="w-5 h-5 mx-auto text-sky-600 group-hover:scale-110 transition-transform mb-1.5" />
-                <span className="font-bold text-xs text-slate-800 block">{item.role}</span>
-                <span className="text-[10px] text-slate-400 block">{item.desc}</span>
-              </Link>
-            ))}
-          </div>
-
-          <div>
-            <Link
-              href="/login"
-              className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-sm shadow-md transition-all hover:scale-102"
-            >
-              <Lock className="w-4 h-4 text-sky-400" />
-              <span>Launch Full Hospital Operating Portal</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* 14. COMPREHENSIVE MEDICAL FOOTER */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <footer className="bg-slate-950 text-slate-400 text-xs border-t border-slate-800 pt-16 pb-12">
+      <footer className="bg-white text-slate-600 text-xs border-t border-slate-200 pt-16 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-12 border-b border-slate-800">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-12 border-b border-slate-200">
             {/* Col 1: Brand Info */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center text-white">
-                  <Activity className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-teal-500 flex items-center justify-center text-white shadow-sm">
+                  <HeartPulse className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="font-black text-lg text-white tracking-tight">
+                  <span className="font-black text-lg text-slate-900 tracking-tight">
                     NIKIL-LABCORE-ELIS-OS
                   </span>
-                  <span className="block text-[10px] text-sky-400 font-mono">v4.2 Enterprise Healthcare Suite</span>
+                  <span className="block text-[10px] text-sky-700 font-bold font-mono">v4.2 Enterprise Healthcare Suite</span>
                 </div>
               </div>
-              <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
+              <p className="text-slate-600 text-xs leading-relaxed max-w-sm">
                 Next-generation clinical operating system for hospitals, diagnostic pathology laboratories, and polyclinics. 
                 Bi-directional machine interfacing, paperless EMR, and patient-centric healthcare IT.
               </p>
-              <div className="text-[11px] text-slate-300 space-y-1">
+              <div className="text-[11px] text-slate-700 space-y-1">
                 <p><strong>Owner & Chief Architect:</strong> Nikil</p>
                 <p><strong>24/7 Helpline:</strong> +91 98765 43210 / 1800-LAB-CORE</p>
                 <p><strong>Official Email:</strong> contact@labcore-elis.com</p>
@@ -2526,33 +1684,33 @@ export default function HomePage() {
 
             {/* Col 2: Core Modules */}
             <div className="space-y-3">
-              <h4 className="font-black text-white uppercase tracking-wider text-xs">Clinical Modules</h4>
+              <h4 className="font-black text-slate-900 uppercase tracking-wider text-xs">Clinical Modules</h4>
               <ul className="space-y-2">
-                <li><Link href="/analyzers" className="hover:text-white transition-colors">Analyzer Interfacing</Link></li>
-                <li><Link href="/samples" className="hover:text-white transition-colors">Specimen Accessioning</Link></li>
-                <li><Link href="/approvals" className="hover:text-white transition-colors">Pathologist Sign-off</Link></li>
-                <li><Link href="/doctors" className="hover:text-white transition-colors">Doctor OPD & EMR</Link></li>
-                <li><Link href="/invoices" className="hover:text-white transition-colors">Billing & GST Invoices</Link></li>
-                <li><Link href="/abdm" className="hover:text-white transition-colors">ABDM National Gateway</Link></li>
+                <li><Link href="/analyzers" className="hover:text-sky-600 transition-colors">Analyzer Interfacing</Link></li>
+                <li><Link href="/samples" className="hover:text-sky-600 transition-colors">Specimen Accessioning</Link></li>
+                <li><Link href="/approvals" className="hover:text-sky-600 transition-colors">Pathologist Sign-off</Link></li>
+                <li><Link href="/doctors" className="hover:text-sky-600 transition-colors">Doctor OPD & EMR</Link></li>
+                <li><Link href="/invoices" className="hover:text-sky-600 transition-colors">Billing & GST Invoices</Link></li>
+                <li><Link href="/abdm" className="hover:text-sky-600 transition-colors">ABDM National Gateway</Link></li>
               </ul>
             </div>
 
             {/* Col 3: Accreditations */}
             <div className="space-y-3">
-              <h4 className="font-black text-white uppercase tracking-wider text-xs">Accreditations</h4>
+              <h4 className="font-black text-slate-900 uppercase tracking-wider text-xs">Accreditations</h4>
               <ul className="space-y-2">
-                <li><span className="text-slate-300">NABL (ISO 15189:2022)</span></li>
-                <li><span className="text-slate-300">NABH Digital Hospital</span></li>
-                <li><span className="text-slate-300">ABDM M1, M2, M3 Ready</span></li>
-                <li><span className="text-slate-300">HL7 / FHIR Standards</span></li>
-                <li><span className="text-slate-300">HIPAA & DISHA Security</span></li>
-                <li><Link href="/verify-report" className="text-sky-400 hover:text-sky-300 font-semibold">Verify Test QR Code</Link></li>
+                <li><span className="text-slate-700">NABL (ISO 15189:2022)</span></li>
+                <li><span className="text-slate-700">NABH Digital Hospital</span></li>
+                <li><span className="text-slate-700">ABDM M1, M2, M3 Ready</span></li>
+                <li><span className="text-slate-700">HL7 / FHIR Standards</span></li>
+                <li><span className="text-slate-700">HIPAA & DISHA Security</span></li>
+                <li><Link href="/verify-report" className="text-sky-600 hover:text-sky-700 font-bold">Verify Test QR Code</Link></li>
               </ul>
             </div>
 
             {/* Col 4: Trust & Legal */}
             <div className="space-y-3">
-              <h4 className="font-black text-white uppercase tracking-wider text-xs">Trust & Legal</h4>
+              <h4 className="font-black text-slate-900 uppercase tracking-wider text-xs">Trust & Legal</h4>
               <ul className="space-y-2">
                 <li>
                   <button
@@ -2560,7 +1718,7 @@ export default function HomePage() {
                       setActiveLegalTab("terms");
                       setIsTermsModalOpen(true);
                     }}
-                    className="hover:text-white transition-colors text-left"
+                    className="hover:text-sky-600 transition-colors text-left"
                   >
                     Terms of Service & Rental
                   </button>
@@ -2571,7 +1729,7 @@ export default function HomePage() {
                       setActiveLegalTab("privacy");
                       setIsTermsModalOpen(true);
                     }}
-                    className="hover:text-white transition-colors text-left"
+                    className="hover:text-sky-600 transition-colors text-left"
                   >
                     Patient Data Confidentiality
                   </button>
@@ -2582,7 +1740,7 @@ export default function HomePage() {
                       setActiveLegalTab("sla");
                       setIsTermsModalOpen(true);
                     }}
-                    className="hover:text-white transition-colors text-left"
+                    className="hover:text-sky-600 transition-colors text-left"
                   >
                     24/7 SLA & 99.999% Uptime
                   </button>
@@ -2593,15 +1751,18 @@ export default function HomePage() {
                       setActiveLegalTab("compliance");
                       setIsTermsModalOpen(true);
                     }}
-                    className="hover:text-white transition-colors text-left"
+                    className="hover:text-sky-600 transition-colors text-left"
                   >
                     Clinical Interfacing Disclaimer
                   </button>
                 </li>
                 <li>
-                  <Link href="/login" className="text-sky-400 hover:text-sky-300 font-semibold">
+                  <button
+                    onClick={() => setIsLoginModalOpen(true)}
+                    className="text-sky-600 hover:text-sky-700 font-bold text-left"
+                  >
                     Staff Portal Login
-                  </Link>
+                  </button>
                 </li>
               </ul>
             </div>
@@ -2612,18 +1773,18 @@ export default function HomePage() {
               © {new Date().getFullYear()} NIKIL-LABCORE-ELIS-OS. All rights reserved. Architected for medical excellence.
             </p>
             <div className="flex items-center space-x-6">
-              <span className="text-slate-400">Founder & Owner: Nikil</span>
+              <span className="text-slate-700 font-semibold">Founder & Lead Architect: Nikil</span>
               <span>•</span>
-              <span className="text-slate-400">24/7 Emergency Support</span>
+              <span className="text-slate-700 font-semibold">24/7 Emergency Support</span>
               <span>•</span>
-              <span className="text-emerald-400 font-semibold">System Status: All Services Operational</span>
+              <span className="text-emerald-600 font-bold">System Status: All Services Operational</span>
             </div>
           </div>
         </div>
       </footer>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 15. MODAL: ROLE-BASED QUICK LOGIN */}
+      {/* 11. MODAL: ROLE-BASED QUICK LOGIN */}
       {/* ─────────────────────────────────────────────────────────── */}
       {isLoginModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -2646,7 +1807,7 @@ export default function HomePage() {
             </div>
 
             <p className="text-xs text-slate-600 mb-4">
-              Select your role below to launch the dedicated console or continue to the master authentication login page:
+              Select your clinical role below to launch the dedicated console:
             </p>
 
             <div className="space-y-2 mb-6 text-xs">
@@ -2658,7 +1819,7 @@ export default function HomePage() {
                   <Shield className="w-4 h-4 text-sky-600" />
                   <div>
                     <span className="font-bold text-slate-800 block">Super Administrator / Director</span>
-                    <span className="text-[10px] text-slate-400">Facility Controls & Config</span>
+                    <span className="text-[10px] text-slate-400">Facility Controls & Full System Master</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600" />
@@ -2672,7 +1833,7 @@ export default function HomePage() {
                   <Microscope className="w-4 h-4 text-sky-600" />
                   <div>
                     <span className="font-bold text-slate-800 block">Chief Pathologist & Lab Tech</span>
-                    <span className="text-[10px] text-slate-400">Approvals, Results & Analyzers</span>
+                    <span className="text-[10px] text-slate-400">Approvals, Results & Machine Calibration</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600" />
@@ -2686,7 +1847,7 @@ export default function HomePage() {
                   <Stethoscope className="w-4 h-4 text-sky-600" />
                   <div>
                     <span className="font-bold text-slate-800 block">Medical Doctor / OPD Desk</span>
-                    <span className="text-[10px] text-slate-400">EMR, Vitals & E-Prescriptions</span>
+                    <span className="text-[10px] text-slate-400">EMR, Vitals & Digital Prescriptions</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600" />
@@ -2712,7 +1873,7 @@ export default function HomePage() {
                 href="/login"
                 className="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-black text-xs rounded-xl shadow-md text-center transition-colors"
               >
-                Open Full Login Page →
+                Open Full Authentication Page →
               </Link>
             </div>
           </div>
@@ -2720,7 +1881,7 @@ export default function HomePage() {
       )}
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 16. MODAL: BOOK LIVE DEMO */}
+      {/* 12. MODAL: BOOK LIVE DEMO */}
       {/* ─────────────────────────────────────────────────────────── */}
       {isDemoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -2733,7 +1894,7 @@ export default function HomePage() {
             </button>
 
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-600 to-teal-500 text-white flex items-center justify-center">
                 <Calendar className="w-5 h-5" />
               </div>
               <div>
@@ -2782,7 +1943,7 @@ export default function HomePage() {
                     <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
                     <input
                       type="text"
-                      placeholder="e.g. Pune, Jaipur"
+                      placeholder="e.g. Pune, Jaipur, Delhi"
                       value={demoForm.city}
                       onChange={(e) => setDemoForm({ ...demoForm, city: e.target.value })}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -2794,7 +1955,7 @@ export default function HomePage() {
                   <label className="block text-xs font-bold text-slate-700 mb-1">Facility Name</label>
                   <input
                     type="text"
-                    placeholder="Your Hospital / Lab Name"
+                    placeholder="Your Hospital / Lab / Clinic Name"
                     value={demoForm.facilityName}
                     onChange={(e) => setDemoForm({ ...demoForm, facilityName: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -2811,7 +1972,7 @@ export default function HomePage() {
                     <option>Diagnostic Pathology Lab</option>
                     <option>Multi-Speciality Hospital</option>
                     <option>Doctor Clinic & Collection Center</option>
-                    <option>Radiology & Imaging Center</option>
+                    <option>Blood Bank & Transfusion Center</option>
                     <option>Multi-branch Diagnostic Chain</option>
                   </select>
                 </div>
@@ -2819,12 +1980,12 @@ export default function HomePage() {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full py-3.5 bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-sm rounded-xl shadow-md transition-all"
+                    className="w-full py-3.5 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-black text-sm rounded-xl shadow-md transition-all"
                   >
                     Confirm Live Demo Schedule
                   </button>
                   <p className="text-[10px] text-center text-slate-400 mt-2">
-                    Free live session • Custom quote calculation • No obligations
+                    Free 30-min live session • Custom quote calculation • Zero obligation
                   </p>
                 </div>
               </form>
@@ -2834,7 +1995,147 @@ export default function HomePage() {
       )}
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 17. MODAL: TERMS & CONDITIONS / PRIVACY POLICY / SLA */}
+      {/* 13. MODAL: PREVIEW VERIFIED TEST REPORT & TAMPERPROOF QR CODE */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      {isPreviewReportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+            <button
+              onClick={() => setIsPreviewReportOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center">
+                  <FileCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">NABL Verified Patient Diagnostic Report</h3>
+                  <p className="text-[11px] text-slate-500">ISO 15189:2022 Format • Real-time WhatsApp PDF Preview</p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-300">
+                Digitally Signed & Validated
+              </span>
+            </div>
+
+            <div className="overflow-y-auto pr-2 flex-1 space-y-4 text-xs">
+              {/* Report Header */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-700">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">PATIENT NAME</span>
+                  <span className="font-bold text-slate-900">Rajesh Kumar</span>
+                  <span className="text-[10px] text-slate-500 block">42 Yrs / Male</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">UHID / MRN</span>
+                  <span className="font-mono font-bold text-slate-900">UHID-2026-0814</span>
+                  <span className="text-[10px] text-slate-500 block">Barcode #LC-9821</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">REFERRED BY</span>
+                  <span className="font-bold text-slate-900">Dr. S. K. Gupta</span>
+                  <span className="text-[10px] text-slate-500 block">MD (Internal Med)</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">REPORTED AT</span>
+                  <span className="font-bold text-slate-900">{new Date().toLocaleDateString()}</span>
+                  <span className="text-[10px] text-slate-500 block font-mono">14:28:10 IST</span>
+                </div>
+              </div>
+
+              {/* Clinical Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 text-slate-700 text-[11px] uppercase font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-3">Test Investigation</th>
+                      <th className="p-3">Observed Value</th>
+                      <th className="p-3">Reference Range</th>
+                      <th className="p-3">Units</th>
+                      <th className="p-3">Analyzer Source</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-800">
+                    <tr className="bg-white">
+                      <td className="p-3 font-bold">Hemoglobin (Hb)</td>
+                      <td className="p-3 font-mono font-bold text-emerald-700">14.6</td>
+                      <td className="p-3 text-slate-500">13.0 - 17.0</td>
+                      <td className="p-3 text-slate-500">g/dL</td>
+                      <td className="p-3 text-sky-700 font-semibold">Sysmex XN-550</td>
+                    </tr>
+                    <tr className="bg-slate-50/50">
+                      <td className="p-3 font-bold">Total Leukocyte Count (TLC)</td>
+                      <td className="p-3 font-mono font-bold text-emerald-700">7,200</td>
+                      <td className="p-3 text-slate-500">4,000 - 11,000</td>
+                      <td className="p-3 text-slate-500">/μL</td>
+                      <td className="p-3 text-sky-700 font-semibold">Sysmex XN-550</td>
+                    </tr>
+                    <tr className="bg-white">
+                      <td className="p-3 font-bold">Platelet Count</td>
+                      <td className="p-3 font-mono font-bold text-emerald-700">2,40,000</td>
+                      <td className="p-3 text-slate-500">1,50,000 - 4,50,000</td>
+                      <td className="p-3 text-slate-500">/μL</td>
+                      <td className="p-3 text-sky-700 font-semibold">Sysmex XN-550</td>
+                    </tr>
+                    <tr className="bg-slate-50/50">
+                      <td className="p-3 font-bold">Packed Cell Volume (PCV)</td>
+                      <td className="p-3 font-mono font-bold text-emerald-700">43.8</td>
+                      <td className="p-3 text-slate-500">40.0 - 50.0</td>
+                      <td className="p-3 text-slate-500">%</td>
+                      <td className="p-3 text-sky-700 font-semibold">Sysmex XN-550</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Tamperproof QR & Pathologist Sign */}
+              <div className="bg-sky-50/60 p-4 rounded-xl border border-sky-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-16 h-16 bg-white p-1 rounded-lg border border-sky-300 shadow-2xs flex items-center justify-center shrink-0">
+                    <QrCode className="w-14 h-14 text-slate-900" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 block text-xs">Tamperproof Digital QR Node</span>
+                    <span className="text-[10px] text-slate-600 block">
+                      Scan with any smartphone camera to verify authentic NABL laboratory records.
+                    </span>
+                    <span className="text-[9px] font-mono text-sky-700 font-bold block mt-0.5">
+                      HMAC SHA-256: 7f83b165...49c3b8
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="text-[11px] font-script font-bold text-sky-900 border-b border-slate-300 pb-1 mb-1">
+                    Dr. Ananya Sen, MD (Path)
+                  </div>
+                  <span className="text-[10px] text-slate-500 block">Consultant Pathologist</span>
+                  <span className="text-[9px] text-slate-400 font-mono block">Reg. No: MCI-2014-9812</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
+              <span className="text-[10px] text-slate-400 font-mono">
+                Delivered automatically via WhatsApp in 1.18 seconds
+              </span>
+              <button
+                onClick={() => setIsPreviewReportOpen(false)}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl"
+              >
+                Close Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* 14. MODAL: TERMS & CONDITIONS / PRIVACY POLICY / SLA */}
       {/* ─────────────────────────────────────────────────────────── */}
       {isTermsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -2925,7 +2226,7 @@ export default function HomePage() {
                   <h4 className="font-bold text-slate-900 text-sm">2. WhatsApp Dispatch Security</h4>
                   <p>
                     Patient PDF reports delivered over WhatsApp are encrypted with a date-of-birth password PIN. 
-                    Links embedded inside reports link exclusively to secure verification nodes (`/verify-report`) with HMAC SHA-256 signatures.
+                    Links embedded inside reports link exclusively to secure verification nodes with HMAC SHA-256 signatures.
                   </p>
                 </div>
               )}

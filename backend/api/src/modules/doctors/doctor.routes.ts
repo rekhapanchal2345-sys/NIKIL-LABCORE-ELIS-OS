@@ -21,6 +21,9 @@ import {
 
 const router = Router();
 
+// Public / Report Renderer Seal SVG Endpoint: GET /api/doctors/:id/seal
+router.get("/:id/seal", controller.getSeal);
+
 // All doctor routes require authentication.
 router.use(authenticate);
 

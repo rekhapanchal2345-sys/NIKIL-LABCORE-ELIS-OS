@@ -3,1333 +3,1051 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LabCore ELIS - Doctors & Referral Management</title>
-  
-  <!-- Tailwind CSS & FontAwesome -->
+  <meta name="description" content="NIKIL-LABCORE ELIS-OS — Elite Enterprise Laboratory Information System for Hospitals, Diagnostic Labs & Clinics. NABL ISO 15189:2022 Compliant.">
+  <meta name="theme-color" content="#0A2342">
+  <title>NIKIL-LABCORE ELIS-OS | Enterprise Medical Operating System</title>
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Pro -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom Elite Styles -->
   <link rel="stylesheet" href="styles.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { DEFAULT: '#0A2342', mid: '#0D2E56', light: '#0F4C81' },
+            teal: { DEFAULT: '#0891B2', dark: '#0369A1', light: '#E0F7FF' },
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body class="bg-[#090D16] text-slate-100 flex min-h-screen overflow-x-hidden">
 
-  <!-- ==================== LEFT SIDEBAR ==================== -->
-  <aside class="w-64 bg-[#0C1222] border-r border-slate-800/80 flex flex-col justify-between shrink-0 hidden md:flex h-screen sticky top-0">
-    
-    <div class="flex flex-col h-full min-h-0">
-      <!-- Brand / Logo -->
-      <div class="px-5 py-4 border-b border-slate-800/60 flex items-center justify-between shrink-0">
+<body class="flex flex-col min-h-screen overflow-x-hidden" style="background:#F0F4F8; color:#0F172A;">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ENTERPRISE TICKER BAR — 24/7 System Status
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="ticker-bar" style="height:30px; flex-shrink:0;">
+    <div class="ticker-content">
+      <!-- Repeated for seamless loop -->
+      <span class="ticker-item"><i class="fa-solid fa-circle-dot fa-xs"></i> 24/7 EMERGENCY STAT DESK: <strong>+91 98765 43210</strong><span class="ticker-badge success">15-MIN SLA</span></span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-shield-check"></i> NABL ISO 15189:2022 Accredited</span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-wifi"></i> ANALYZERS ONLINE: <strong>ASTM HL7</strong><span class="ticker-badge">65+ Bi-Directional</span></span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-brands fa-whatsapp"></i> Direct WhatsApp Founder Desk: <strong>+91 98765 00000</strong></span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-server"></i> 99.999% High Availability SLA Active</span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-satellite-dish"></i> ABHA / ABDM National Gateway: M1, M2, M3</span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-phone"></i> Toll-Free: <strong>1800-LAB-123</strong><span class="ticker-badge">Free</span></span>
+      <span class="ticker-sep">|</span>
+      <!-- Duplicate for seamless loop -->
+      <span class="ticker-item"><i class="fa-solid fa-circle-dot fa-xs"></i> 24/7 EMERGENCY STAT DESK: <strong>+91 98765 43210</strong><span class="ticker-badge success">15-MIN SLA</span></span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-shield-check"></i> NABL ISO 15189:2022 Accredited</span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-wifi"></i> ANALYZERS ONLINE: <strong>ASTM HL7</strong><span class="ticker-badge">65+ Bi-Directional</span></span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-brands fa-whatsapp"></i> Direct WhatsApp Founder Desk</span>
+      <span class="ticker-sep">|</span>
+      <span class="ticker-item"><i class="fa-solid fa-server"></i> 99.999% High Availability SLA Active</span>
+      <span class="ticker-sep">|</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ENTERPRISE LAYOUT WRAPPER
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="flex flex-1 min-h-0 overflow-hidden" style="height:calc(100vh - 30px);">
+
+    <!-- ═══════════════════════════════════════════════════════
+         LEFT SIDEBAR — Elite Navigation
+    ═══════════════════════════════════════════════════════ -->
+    <aside class="w-60 flex flex-col shrink-0 hidden md:flex" style="height:calc(100vh - 30px); overflow:hidden; position:sticky; top:30px;">
+
+      <!-- ── Logo / Brand ── -->
+      <div class="sidebar-logo">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-sky-500/30">
-            <i class="fa-solid fa-plus text-sm"></i>
+          <div class="logo-mark">
+            <i class="fa-solid fa-plus" style="color:white; font-size:1rem;"></i>
           </div>
-          <div>
+          <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">
-              <span class="font-bold text-sm text-white tracking-tight">LabCore</span>
-              <span class="text-[9px] bg-sky-500/20 text-sky-400 border border-sky-500/40 px-1 py-0.2 rounded font-bold uppercase">ELIS</span>
+              <span class="logo-text-primary">NIKIL-LABCORE</span>
+              <span class="logo-badge">ELIS</span>
             </div>
-            <div class="text-[10px] text-slate-400">Enterprise LIS</div>
+            <div class="logo-text-secondary">Unified Hospital · Lab · Clinic OS</div>
           </div>
+        </div>
+        <!-- Compliance strip -->
+        <div class="flex items-center gap-1.5 mt-3 flex-wrap">
+          <span style="font-size:0.55rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; padding:2px 7px; border-radius:4px; background:rgba(5,150,105,0.2); border:1px solid rgba(5,150,105,0.4); color:#34D399;">✓ NABL</span>
+          <span style="font-size:0.55rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; padding:2px 7px; border-radius:4px; background:rgba(8,145,178,0.2); border:1px solid rgba(8,145,178,0.4); color:#38BDF8;">✓ NABH</span>
+          <span style="font-size:0.55rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; padding:2px 7px; border-radius:4px; background:rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.4); color:#C084FC;">ABDM M1-M3</span>
+          <span style="font-size:0.55rem; font-weight:600; padding:2px 7px; border-radius:4px; background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.4);">v4.2 Enterprise</span>
         </div>
       </div>
 
-      <!-- Logged-in User Card -->
-      <div class="mx-3 my-2.5 p-2.5 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between shrink-0">
+      <!-- ── User Card ── -->
+      <div class="sidebar-user-card">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-xs">
-            DR
-          </div>
-          <div>
-            <div class="text-xs font-bold text-slate-200">DR.amit shah <i class="fa-solid fa-circle-check text-sky-400 text-[10px]"></i></div>
-            <div class="flex items-center gap-1 mt-0.5">
-              <span class="text-[9px] px-1 py-0.2 bg-purple-500/20 text-purple-300 rounded font-semibold uppercase">ADMIN</span>
-              <span class="text-[9px] px-1 py-0.2 bg-teal-500/20 text-teal-300 rounded font-semibold uppercase">NABL</span>
+          <div style="width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,#0891B2,#0369A1); display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:0.7rem; flex-shrink:0;">DR</div>
+          <div class="flex-1 min-w-0">
+            <div style="font-size:0.75rem; font-weight:700; color:white; display:flex; align-items:center; gap:5px;">
+              Dr. Amit Shah <i class="fa-solid fa-circle-check" style="color:#38BDF8; font-size:0.65rem;"></i>
+            </div>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span style="font-size:0.58rem; font-weight:700; padding:1px 5px; border-radius:3px; background:rgba(124,58,237,0.25); color:#C084FC; text-transform:uppercase;">ADMIN</span>
+              <span style="font-size:0.58rem; font-weight:700; padding:1px 5px; border-radius:3px; background:rgba(5,150,105,0.25); color:#34D399; text-transform:uppercase;">NABL</span>
+              <span id="sidebarClock" style="font-size:0.65rem; color:rgba(255,255,255,0.3); font-family:monospace; margin-left:auto;"></span>
             </div>
           </div>
         </div>
-        <span class="text-[10px] text-slate-500 font-mono">10:45</span>
       </div>
 
-      <!-- Quick Jump Search -->
-      <div class="px-3 mb-2 shrink-0">
+      <!-- ── Quick Search ── -->
+      <div class="sidebar-search">
         <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
-          <input type="text" placeholder="Quick jump to menu..." class="w-full bg-slate-900/60 border border-slate-800 text-[11px] rounded-lg pl-8 pr-7 py-1.5 text-slate-300 focus:outline-none focus:border-sky-500">
-          <span class="absolute right-2.5 top-2 text-[10px] text-slate-500 font-mono">⌘K</span>
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5" style="font-size:0.65rem; color:rgba(255,255,255,0.3);"></i>
+          <input type="text" placeholder="Quick jump... (⌘K)">
         </div>
       </div>
 
-      <!-- Navigation Tree -->
-      <div class="px-3 space-y-3.5 overflow-y-auto flex-1 text-xs pb-4">
-        
-        <!-- Operations & Patients -->
+      <!-- ── Navigation Tree (scrollable) ── -->
+      <div class="flex-1 overflow-y-auto no-scrollbar px-2 pb-4 space-y-4 text-xs">
+
+        <!-- OPERATIONS & PATIENTS -->
         <div>
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2 mb-1 flex items-center justify-between">
-            <span>OPERATIONS & PATIENTS</span>
-            <span class="text-[9px] bg-slate-800 px-1 rounded text-slate-400">CORE</span>
+          <div class="nav-group-label">
+            <span>Operations &amp; Patients</span>
+            <span class="grp-badge">CORE</span>
           </div>
-          <div class="space-y-0.5">
-            <div onclick="switchMainView('dashboard')" class="nav-item">
-              <i class="fa-solid fa-chart-pie text-xs w-4"></i>
-              <span>Dashboard</span>
+          <div onclick="switchMainView('dashboard')" class="nav-item">
+            <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+          </div>
+          <div onclick="switchMainView('patients')" class="nav-item">
+            <i class="fa-solid fa-users"></i><span>Patients</span>
+            <span style="margin-left:auto; font-size:0.58rem; background:rgba(8,145,178,0.25); color:#38BDF8; padding:1px 6px; border-radius:99px; font-weight:700;">OPD</span>
+          </div>
+          <div class="nav-item active">
+            <i class="fa-solid fa-user-doctor"></i><span>Doctors &amp; Referrals</span>
+          </div>
+          <div class="pl-6 space-y-0.5 mt-1">
+            <div onclick="switchTabFilter('ALL')" class="ai-subnav-item active">
+              <span style="width:5px;height:5px;border-radius:50%;background:#38BDF8;display:inline-block;"></span> All Doctors
             </div>
-            <div onclick="switchMainView('patients')" class="nav-item">
-              <i class="fa-solid fa-users text-xs w-4"></i>
-              <span>Patients</span>
+            <div onclick="openAddDoctorModal()" class="ai-subnav-item">
+              <span style="width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.2);display:inline-block;"></span> + Register Doctor
             </div>
-            <div class="nav-item active">
-              <i class="fa-solid fa-user-doctor text-xs w-4"></i>
-              <span>Doctors</span>
-            </div>
-            <div class="pl-6 space-y-1">
-              <div onclick="switchTabFilter('ALL')" class="text-[11px] text-sky-400 font-medium py-1 px-2 rounded hover:bg-white/5 cursor-pointer flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> All Doctors
-              </div>
-              <div onclick="openAddDoctorModal()" class="text-[11px] text-slate-400 py-1 px-2 rounded hover:bg-white/5 cursor-pointer flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span> + Add Doctor
-              </div>
-            </div>
-            <div onclick="switchMainView('abha')" class="nav-item">
-              <i class="fa-solid fa-id-card-clip text-xs w-4"></i>
-              <span>ABHA / ABDM</span>
-            </div>
+          </div>
+          <div onclick="switchMainView('abha')" class="nav-item">
+            <i class="fa-solid fa-id-card-clip"></i><span>ABHA / ABDM</span>
+            <span style="margin-left:auto; font-size:0.58rem; background:rgba(124,58,237,0.25); color:#C084FC; padding:1px 5px; border-radius:3px; font-weight:700;">M3</span>
           </div>
         </div>
 
-        <!-- Diagnostic Pipeline -->
+        <!-- DIAGNOSTIC PIPELINE -->
         <div>
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2 mb-1 flex items-center justify-between">
-            <span>DIAGNOSTIC PIPELINE</span>
-            <span class="text-[9px] bg-slate-800 px-1 rounded text-slate-400">LIS</span>
+          <div class="nav-group-label">
+            <span>Diagnostic Pipeline</span>
+            <span class="grp-badge">LIS</span>
           </div>
-          <div class="space-y-0.5">
-            <div onclick="switchMainView('tests')" class="nav-item">
-              <i class="fa-solid fa-vials text-xs w-4"></i>
-              <span>Tests</span>
-            </div>
-            <div onclick="switchMainView('orders')" class="nav-item">
-              <i class="fa-solid fa-file-invoice text-xs w-4"></i>
-              <span>Orders</span>
-            </div>
-            <div onclick="switchMainView('samples')" class="nav-item">
-              <i class="fa-solid fa-box-archive text-xs w-4"></i>
-              <span>Samples</span>
-            </div>
-            <div onclick="switchMainView('analyzers')" class="nav-item">
-              <i class="fa-solid fa-microchip text-xs w-4"></i>
-              <span>Analyzers</span>
-            </div>
+          <div onclick="switchMainView('tests')" class="nav-item">
+            <i class="fa-solid fa-vials"></i><span>Tests &amp; Panels</span>
+          </div>
+          <div onclick="switchMainView('orders')" class="nav-item">
+            <i class="fa-solid fa-file-invoice"></i><span>Lab Orders</span>
+          </div>
+          <div onclick="switchMainView('samples')" class="nav-item">
+            <i class="fa-solid fa-box-archive"></i><span>Sample Tracking</span>
+          </div>
+          <div onclick="switchMainView('analyzers')" class="nav-item">
+            <i class="fa-solid fa-microchip"></i><span>Analyzers</span>
+            <span class="nav-badge"><i class="fa-solid fa-wifi fa-xs"></i> LIVE</span>
           </div>
         </div>
 
-        <!-- Clinical Validation -->
+        <!-- CLINICAL VALIDATION -->
         <div>
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2 mb-1 flex items-center justify-between">
-            <span>CLINICAL VALIDATION</span>
-            <span class="text-[9px] bg-teal-500/20 text-teal-400 px-1 rounded">QUALITY</span>
+          <div class="nav-group-label">
+            <span>Clinical Validation</span>
+            <span class="grp-badge" style="background:rgba(5,150,105,0.2); color:#34D399;">QUALITY</span>
           </div>
-          <div class="space-y-0.5">
-            <div onclick="switchMainView('results')" class="nav-item">
-              <i class="fa-solid fa-square-poll-vertical text-xs w-4"></i>
-              <span>Results</span>
-            </div>
-            <div onclick="openApprovalsStation()" class="nav-item">
-              <i class="fa-solid fa-clipboard-check text-xs w-4 text-rose-400"></i>
-              <span>Approvals</span>
-              <span class="ml-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-            </div>
-            <div onclick="switchMainView('reports')" class="nav-item" id="nav-item-reports">
-              <i class="fa-solid fa-file-waveform text-xs w-4"></i>
-              <span>Reports</span>
-            </div>
+          <div onclick="switchMainView('results')" class="nav-item">
+            <i class="fa-solid fa-square-poll-vertical"></i><span>Results &amp; Delta</span>
+          </div>
+          <div onclick="openApprovalsStation()" class="nav-item">
+            <i class="fa-solid fa-clipboard-check" style="color:#EF4444;"></i><span>Pathologist Approvals</span>
+            <span class="nav-badge">1 Critical</span>
+          </div>
+          <div onclick="switchMainView('reports')" class="nav-item" id="nav-item-reports">
+            <i class="fa-solid fa-file-waveform"></i><span>Print Studio</span>
           </div>
         </div>
 
-        <!-- AI & RESEARCH Group -->
+        <!-- AI & RESEARCH -->
         <div>
-          <div class="text-[10px] font-bold text-purple-400 uppercase tracking-wider px-2 mb-1 flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><i class="fa-solid fa-brain text-[10px]"></i> AI & RESEARCH</span>
-            <span class="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1 py-0.2 rounded font-bold uppercase">STUDIO</span>
+          <div class="nav-group-label" style="color:rgba(167,139,250,0.7);">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-brain" style="font-size:0.6rem;"></i>AI &amp; Research</span>
+            <span class="grp-badge" style="background:rgba(124,58,237,0.25); color:#C084FC; border:1px solid rgba(124,58,237,0.3);">STUDIO</span>
           </div>
-          <div class="space-y-0.5">
-            <div onclick="switchMainView('ai-studio')" class="nav-item" id="nav-item-ai-studio">
-              <i class="fa-solid fa-microchip text-xs w-4 text-purple-400"></i>
-              <span class="font-semibold text-slate-100">AI Studio</span>
-              <span class="ml-auto w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-            </div>
-            <div class="pl-5 space-y-0.5" id="aiStudioSubMenu">
-              <div onclick="switchAiTabDirect('overview')" id="subnav-ai-overview" class="ai-subnav-item active">
-                <i class="fa-solid fa-chart-pie text-[10px]"></i> AI Overview
-              </div>
-              <div onclick="switchAiTabDirect('classical-ml')" id="subnav-ai-classical-ml" class="ai-subnav-item">
-                <i class="fa-solid fa-network-wired text-[10px]"></i> Classical ML
-              </div>
-              <div onclick="switchAiTabDirect('deep-learning')" id="subnav-ai-deep-learning" class="ai-subnav-item">
-                <i class="fa-solid fa-layer-group text-[10px]"></i> Deep Learning
-              </div>
-              <div onclick="switchAiTabDirect('nlp')" id="subnav-ai-nlp" class="ai-subnav-item">
-                <i class="fa-solid fa-file-lines text-[10px]"></i> NLP / Clinical AI
-              </div>
-              <div onclick="switchAiTabDirect('anomalies')" id="subnav-ai-anomalies" class="ai-subnav-item">
-                <i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Anomaly Detection
-              </div>
-              <div onclick="switchAiTabDirect('forecasting')" id="subnav-ai-forecasting" class="ai-subnav-item">
-                <i class="fa-solid fa-arrow-trend-up text-[10px]"></i> Forecasting & Prediction
-              </div>
-              <div onclick="switchAiTabDirect('evaluation')" id="subnav-ai-evaluation" class="ai-subnav-item">
-                <i class="fa-solid fa-chart-line text-[10px]"></i> Model Evaluation
-              </div>
-              <div onclick="switchAiTabDirect('registry')" id="subnav-ai-registry" class="ai-subnav-item">
-                <i class="fa-solid fa-box-archive text-[10px]"></i> Model Registry
-              </div>
-              <div onclick="switchAiTabDirect('audit')" id="subnav-ai-audit" class="ai-subnav-item">
-                <i class="fa-solid fa-shield-halved text-[10px]"></i> AI Audit & Monitoring
-              </div>
-            </div>
+          <div onclick="switchMainView('ai-studio')" class="nav-item" id="nav-item-ai-studio">
+            <i class="fa-solid fa-microchip" style="color:#A78BFA;"></i>
+            <span style="font-weight:600; color:rgba(255,255,255,0.85);">AI Studio</span>
+            <span style="margin-left:auto; width:7px; height:7px; border-radius:50%; background:#A78BFA; animation:pulse-soft 2s infinite;"></span>
+          </div>
+          <div class="pl-5 space-y-0.5" id="aiStudioSubMenu">
+            <div onclick="switchAiTabDirect('overview')" id="subnav-ai-overview" class="ai-subnav-item active"><i class="fa-solid fa-chart-pie" style="font-size:0.65rem;"></i> AI Overview</div>
+            <div onclick="switchAiTabDirect('classical-ml')" id="subnav-ai-classical-ml" class="ai-subnav-item"><i class="fa-solid fa-network-wired" style="font-size:0.65rem;"></i> Classical ML</div>
+            <div onclick="switchAiTabDirect('deep-learning')" id="subnav-ai-deep-learning" class="ai-subnav-item"><i class="fa-solid fa-layer-group" style="font-size:0.65rem;"></i> Deep Learning</div>
+            <div onclick="switchAiTabDirect('nlp')" id="subnav-ai-nlp" class="ai-subnav-item"><i class="fa-solid fa-file-lines" style="font-size:0.65rem;"></i> NLP / Clinical AI</div>
+            <div onclick="switchAiTabDirect('anomalies')" id="subnav-ai-anomalies" class="ai-subnav-item"><i class="fa-solid fa-triangle-exclamation" style="font-size:0.65rem;"></i> Anomaly Detection</div>
+            <div onclick="switchAiTabDirect('forecasting')" id="subnav-ai-forecasting" class="ai-subnav-item"><i class="fa-solid fa-arrow-trend-up" style="font-size:0.65rem;"></i> Forecasting</div>
+            <div onclick="switchAiTabDirect('evaluation')" id="subnav-ai-evaluation" class="ai-subnav-item"><i class="fa-solid fa-chart-line" style="font-size:0.65rem;"></i> Model Evaluation</div>
+            <div onclick="switchAiTabDirect('registry')" id="subnav-ai-registry" class="ai-subnav-item"><i class="fa-solid fa-box-archive" style="font-size:0.65rem;"></i> Model Registry</div>
+            <div onclick="switchAiTabDirect('audit')" id="subnav-ai-audit" class="ai-subnav-item"><i class="fa-solid fa-shield-halved" style="font-size:0.65rem;"></i> AI Audit</div>
           </div>
         </div>
 
-        <!-- Finance & Admin -->
+        <!-- FINANCE & ADMINISTRATION -->
         <div>
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2 mb-1 flex items-center justify-between">
-            <span>FINANCE & ADMIN</span>
-            <span class="text-[9px] bg-slate-800 px-1 rounded text-slate-400">B2B</span>
+          <div class="nav-group-label">
+            <span>Finance &amp; Administration</span>
+            <span class="grp-badge">B2B</span>
           </div>
-          <div class="space-y-0.5">
-            <div onclick="switchTabFilter('PAYOUTS')" class="nav-item">
-              <i class="fa-solid fa-file-invoice-dollar text-xs w-4 text-emerald-400"></i>
-              <span>Invoices & Payouts</span>
-            </div>
-            <div onclick="switchMainView('payments')" class="nav-item">
-              <i class="fa-solid fa-credit-card text-xs w-4"></i>
-              <span>Payments</span>
-            </div>
-            <div onclick="switchMainView('communication')" class="nav-item">
-              <i class="fa-solid fa-comments text-xs w-4"></i>
-              <span>Communication</span>
-            </div>
-            <div onclick="switchMainView('settings')" class="nav-item">
-              <i class="fa-solid fa-gear text-xs w-4"></i>
-              <span>Settings</span>
-            </div>
+          <div onclick="switchTabFilter('PAYOUTS')" class="nav-item">
+            <i class="fa-solid fa-file-invoice-dollar" style="color:#059669;"></i><span>Invoices &amp; Payouts</span>
+          </div>
+          <div onclick="switchMainView('payments')" class="nav-item">
+            <i class="fa-solid fa-credit-card"></i><span>Payments</span>
+          </div>
+          <div onclick="switchMainView('communication')" class="nav-item">
+            <i class="fa-solid fa-comments"></i><span>Communication</span>
+          </div>
+          <div onclick="switchMainView('settings')" class="nav-item">
+            <i class="fa-solid fa-gear"></i><span>Settings</span>
           </div>
         </div>
 
       </div>
-    </div>
 
-    <!-- Sidebar Footer -->
-    <div class="p-3 border-t border-slate-800/80 bg-slate-950/60 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-      <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>LIS Core Online</span>
-      </div>
-      <span class="font-mono text-[9px] text-slate-500">v2.5.0</span>
-    </div>
-
-  </aside>
-
-  <!-- ==================== MAIN CONTENT AREA ==================== -->
-  <div class="flex-1 flex flex-col min-w-0">
-    
-    <!-- Top Header Navigation Bar -->
-    <header class="bg-[#0C1222]/90 backdrop-blur border-b border-slate-800/80 px-6 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <button class="text-slate-400 hover:text-white md:hidden text-lg">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-        <div class="flex items-center gap-2">
-          <h1 class="text-sm font-bold text-slate-100">Doctors & Referral Management</h1>
-          <span class="text-[10px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-bold">Enterprise LIS</span>
+      <!-- ── Sidebar Footer ── -->
+      <div class="sidebar-footer">
+        <div class="sys-status">
+          <span class="status-dot"></span>
+          <span>LIS Core Online</span>
         </div>
+        <span style="font-size:0.6rem; color:rgba(255,255,255,0.25); font-family:monospace;">v4.2.0</span>
       </div>
+    </aside>
 
-      <div class="flex items-center gap-3">
-        <div class="relative hidden sm:block w-72">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
-          <input type="text" placeholder="Search records, tests, UHID..." class="w-full bg-slate-900 border border-slate-700/60 text-xs rounded-lg pl-8 pr-7 py-1.5 text-slate-300 focus:outline-none focus:border-sky-500">
-          <span class="absolute right-2.5 top-2 text-[10px] text-slate-500 font-mono">⌘K</span>
-        </div>
-        <button class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white relative">
-          <i class="fa-regular fa-bell text-xs"></i>
-          <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-        </button>
-        <div class="flex items-center gap-2 pl-2 border-l border-slate-800">
-          <div class="w-7 h-7 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-xs">
-            US
-          </div>
-          <div class="text-left hidden lg:block">
-            <div class="text-xs font-bold text-slate-200">DR.amit shah</div>
-            <div class="text-[10px] text-emerald-400 flex items-center gap-1">
-              <i class="fa-solid fa-shield-check text-[9px]"></i> Verified
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
+    <!-- ═══════════════════════════════════════════════════════
+         MAIN CONTENT AREA
+    ═══════════════════════════════════════════════════════ -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-    <!-- Main Scrollable Body -->
-    <main class="flex-1 p-6 space-y-5 overflow-y-auto">
-
-      <!-- ==================== DOCTORS MODULE VIEW CONTAINER ==================== -->
-      <div id="doctorsModuleView" class="space-y-5">
-
-      <!-- Purple Gradient Hero Banner (Exact match to screenshot) -->
-      <div class="hero-gradient-header rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center text-white text-2xl shadow-inner shrink-0">
-            <i class="fa-solid fa-user-group"></i>
-          </div>
+      <!-- ── Top Header Bar ── -->
+      <header class="main-header shrink-0">
+        <div class="flex items-center gap-3">
+          <button class="text-gray-400 hover:text-gray-700 md:hidden">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <!-- Page Title -->
           <div>
             <div class="flex items-center gap-2.5">
-              <h2 class="text-2xl font-extrabold text-white tracking-tight">Doctors & Referral Management</h2>
-              <span class="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/30 backdrop-blur">
-                LIS B2B Portal
-              </span>
+              <h1 style="font-size:0.9rem; font-weight:700; color:#0A2342;">Doctors &amp; Referral Management</h1>
+              <span class="badge badge-enterprise" style="font-size:0.6rem;">Enterprise LIS</span>
             </div>
-            <p class="text-xs text-purple-100/90 mt-1 font-medium">
-              Clinical practitioners, referring physician commissions, and pathologist digital authorizations
-            </p>
+            <div style="font-size:0.68rem; color:#94A3B8; margin-top:1px;">
+              <span id="headerBreadcrumb">Dashboard → Doctors &amp; Referral Management</span>
+            </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-2.5 shrink-0">
-          <button onclick="exportDoctorsCSV()" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/20 transition flex items-center gap-2 backdrop-blur">
-            <i class="fa-solid fa-download"></i> Export CSV
+        <div class="flex items-center gap-2.5">
+          <!-- Global Search -->
+          <div class="header-search hidden sm:block">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400" style="font-size:0.75rem;"></i>
+            <input type="text" placeholder="Search UHID, patient, doctor, test..." style="padding-left:32px;">
+          </div>
+
+          <!-- Analyzer Status Chip -->
+          <div style="display:flex; align-items:center; gap:6px; padding:6px 12px; background:#F0FDF4; border:1.5px solid rgba(5,150,105,0.25); border-radius:8px; font-size:0.7rem; font-weight:600; color:#059669;">
+            <span class="live-dot"></span> Analyzers Live
+          </div>
+
+          <!-- Notifications -->
+          <button class="header-action-btn" title="Notifications">
+            <i class="fa-regular fa-bell"></i>
+            <span class="notif-dot"></span>
           </button>
-          <button onclick="openAddDoctorModal()" class="px-4 py-2 bg-white hover:bg-purple-50 text-purple-900 rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> Add New Doctor
+
+          <!-- Help -->
+          <button class="header-action-btn" title="Help & Documentation">
+            <i class="fa-regular fa-circle-question"></i>
           </button>
-        </div>
-      </div>
 
-      <!-- 4 Top KPI Cards (Exact match to screenshot) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        <!-- Card 1: Active Doctors -->
-        <div class="lis-stat-card p-4 flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-lg bg-sky-500/15 text-sky-400 flex items-center justify-center text-sm">
-              <i class="fa-solid fa-user-doctor"></i>
-            </div>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 font-bold border border-sky-500/20" id="badgeActiveCount">2 Active</span>
-          </div>
-          <div class="mt-3">
-            <div class="text-2xl font-extrabold text-white font-mono" id="statTotalDocCount">2</div>
-            <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
-              <span>Referring: <strong class="text-slate-200" id="statRefDocCount">2</strong></span>
-              <span>•</span>
-              <span>Pathologists: <strong class="text-slate-200" id="statPathDocCount">1</strong></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 2: Patients Referred This Month -->
-        <div class="lis-stat-card p-4 flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm">
-              <i class="fa-solid fa-arrow-trend-up"></i>
-            </div>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">This Month</span>
-          </div>
-          <div class="mt-3">
-            <div class="text-2xl font-extrabold text-white font-mono" id="statMonthPatients">2</div>
-            <div class="text-[11px] text-slate-400 mt-0.5">
-              Patients referred this month (Total: <span id="statTotalPatients">2</span>)
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 3: Paid Revenue -->
-        <div class="lis-stat-card p-4 flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-sm font-bold">
-              $
-            </div>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20">Paid Revenue</span>
-          </div>
-          <div class="mt-3">
-            <div class="text-2xl font-extrabold text-white font-mono" id="statPaidRevenue">₹672.6</div>
-            <div class="text-[11px] text-slate-400 mt-0.5">
-              Actual billing from paid orders
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 4: Unsettled Referral Incentives -->
-        <div class="lis-stat-card p-4 flex flex-col justify-between cursor-pointer hover:border-purple-500/40" onclick="switchTabFilter('PAYOUTS')">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center text-sm">
-              <i class="fa-solid fa-wallet"></i>
-            </div>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-bold border border-purple-500/20 hover:bg-purple-500/20">View Payouts</span>
-          </div>
-          <div class="mt-3">
-            <div class="text-2xl font-extrabold text-purple-400 font-mono" id="statUnsettledIncentives">₹101</div>
-            <div class="text-[11px] text-slate-400 mt-0.5">
-              Unsettled referral incentives
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Quick Action Navigation Toolbar -->
-      <div class="flex flex-wrap items-center gap-2 pt-2 border-b border-slate-800 pb-3">
-        <button id="tab-btn-ALL" onclick="switchTabFilter('ALL')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow transition flex items-center gap-2">
-          <i class="fa-solid fa-users"></i> All Practitioners (<span id="countAll">3</span>)
-        </button>
-        <button id="tab-btn-REFERRING" onclick="switchTabFilter('REFERRING')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-2">
-          <i class="fa-solid fa-stethoscope"></i> Referring Physicians (<span id="countRef">2</span>)
-        </button>
-        <button id="tab-btn-PATHOLOGIST" onclick="switchTabFilter('PATHOLOGIST')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-2">
-          <i class="fa-solid fa-microscope"></i> In-House Pathologists (<span id="countPath">1</span>)
-        </button>
-        <button id="tab-btn-PAYOUTS" onclick="switchTabFilter('PAYOUTS')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-2">
-          <i class="fa-solid fa-credit-card"></i> Pending Commission Payouts (<span id="countPayouts">₹101</span>)
-        </button>
-        <button onclick="openApprovalsStation()" class="ml-auto px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500 hover:text-white transition flex items-center gap-2">
-          <i class="fa-solid fa-triangle-exclamation animate-pulse"></i> Pathologist Review Queue (1 Critical)
-        </button>
-      </div>
-
-      <!-- Search & Filters Row -->
-      <div class="flex flex-col md:flex-row items-center justify-between gap-3">
-        <div class="relative w-full md:w-1/2">
-          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-xs text-slate-500"></i>
-          <input
-            type="text"
-            id="doctorSearchInput"
-            oninput="handleDoctorSearch(this.value)"
-            placeholder="Search doctor across entire database by name, clinic, specialization, phone, code or MCI reg..."
-            class="w-full bg-[#111A2E] border border-slate-700/60 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-          >
-        </div>
-        <div class="flex items-center gap-2.5 w-full md:w-auto">
-          <select id="specFilter" onchange="handleFilterChange()" class="bg-[#111A2E] border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none">
-            <option value="ALL">All Specializations</option>
-            <option value="Nephrology">Nephrology</option>
-            <option value="Diabetology">Diabetology</option>
-            <option value="Pathology">Pathology & Lab</option>
-            <option value="Cardiology">Cardiology</option>
-          </select>
-          <select id="statusFilter" onchange="handleFilterChange()" class="bg-[#111A2E] border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none">
-            <option value="ALL">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-          <select id="sortFilter" onchange="handleFilterChange()" class="bg-[#111A2E] border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none">
-            <option value="AZ">Name (A-Z)</option>
-            <option value="ZA">Name (Z-A)</option>
-            <option value="COMMISSION">Highest Commission</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Main Data Table Container (Matching screenshot layout) -->
-      <div class="bg-[#111A2E] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div class="px-4 py-2.5 border-b border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-          <div>Showing <span id="tableShowingCount" class="font-bold text-slate-200">2</span> doctors on Page 1 of 1 (Total: <span id="tableTotalCount" class="font-bold text-slate-200">2</span>)</div>
-          <div class="text-slate-500">Real server-side database pagination & search active</div>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="lis-table text-xs">
-            <thead>
-              <tr>
-                <th style="width: 40px;">#</th>
-                <th>DOCTOR DETAILS</th>
-                <th>TYPE & CREDENTIALS</th>
-                <th>SPECIALIZATION & CLINIC</th>
-                <th>REFERRALS & BUSINESS</th>
-                <th>COMMISSION LEDGER</th>
-                <th>STATUS</th>
-                <th class="text-right">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody id="doctorsTableBody">
-              <!-- Dynamically rendered via app.js matching the screenshot exactly -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      </div> <!-- End of #doctorsModuleView -->
-
-      <!-- ==================== AI STUDIO MASTER MODULE VIEW CONTAINER ==================== -->
-      <div id="aiStudioModuleView" class="space-y-5 hidden">
-
-        <!-- AI Hero Banner -->
-        <div class="hero-ai-gradient rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/40 backdrop-blur flex items-center justify-center text-purple-300 text-2xl shadow-inner shrink-0">
-              <i class="fa-solid fa-microchip"></i>
-            </div>
-            <div>
-              <div class="flex items-center gap-2.5 flex-wrap">
-                <h2 class="text-2xl font-extrabold text-white tracking-tight">AI Studio & Clinical Intelligence</h2>
-                <span class="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 backdrop-blur">
-                  LIS AI & Research Core
-                </span>
-                <span class="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <i class="fa-solid fa-shield-check mr-1"></i>Decision Support Only
-                </span>
+          <!-- User -->
+          <div class="flex items-center gap-2 pl-2" style="border-left:1.5px solid #E2E8F0;">
+            <div style="width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,#0891B2,#0A2342); display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:0.68rem;">AS</div>
+            <div class="hidden lg:block">
+              <div style="font-size:0.78rem; font-weight:700; color:#0F172A;">Dr. Amit Shah</div>
+              <div style="font-size:0.65rem; color:#059669; display:flex; align-items:center; gap:4px;">
+                <i class="fa-solid fa-shield-check" style="font-size:0.6rem;"></i> Verified Pathologist
               </div>
-              <p class="text-xs text-purple-200/90 mt-1 font-medium">
-                Predictive Biomarker Models, Deep Neural Networks, Clinical NLP & Automated Anomaly Detection
-              </p>
             </div>
-          </div>
-
-          <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
-            <button onclick="AiStudio.fetchOverview(); showToast('AI Studio telemetry refreshed!', 'success')" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/20 transition flex items-center gap-2 backdrop-blur">
-              <i class="fa-solid fa-rotate"></i> Refresh Telemetry
-            </button>
-            <button onclick="AiStudio.switchTab('classical-ml')" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-500/30 transition flex items-center gap-2">
-              <i class="fa-solid fa-brain"></i> Open ML Workbench
-            </button>
+            <i class="fa-solid fa-chevron-down text-xs text-gray-400 hidden lg:block"></i>
           </div>
         </div>
+      </header>
 
-        <!-- AI Sub-Module Navigation Toolbar -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-800 text-xs no-scrollbar">
-          <button id="ai-tab-btn-overview" onclick="AiStudio.switchTab('overview')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600 text-white shadow transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-chart-pie"></i> AI Overview
-          </button>
-          <button id="ai-tab-btn-classical-ml" onclick="AiStudio.switchTab('classical-ml')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-network-wired"></i> Classical ML
-          </button>
-          <button id="ai-tab-btn-deep-learning" onclick="AiStudio.switchTab('deep-learning')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-layer-group"></i> Deep Learning
-          </button>
-          <button id="ai-tab-btn-nlp" onclick="AiStudio.switchTab('nlp')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-file-lines"></i> NLP / Clinical AI
-          </button>
-          <button id="ai-tab-btn-anomalies" onclick="AiStudio.switchTab('anomalies')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-triangle-exclamation"></i> Anomaly Detection
-          </button>
-          <button id="ai-tab-btn-forecasting" onclick="AiStudio.switchTab('forecasting')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-arrow-trend-up"></i> Forecasting & Prediction
-          </button>
-          <button id="ai-tab-btn-evaluation" onclick="AiStudio.switchTab('evaluation')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-chart-line"></i> Model Evaluation
-          </button>
-          <button id="ai-tab-btn-registry" onclick="AiStudio.switchTab('registry')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-box-archive"></i> Model Registry
-          </button>
-          <button id="ai-tab-btn-audit" onclick="AiStudio.switchTab('audit')" class="ai-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0">
-            <i class="fa-solid fa-shield-halved"></i> AI Audit & Monitoring
-          </button>
-        </div>
+      <!-- ── Main Scrollable Content ── -->
+      <main class="flex-1 overflow-y-auto">
 
-        <!-- ==================== SUB-PANEL 1: AI OVERVIEW ==================== -->
-        <div id="aiTabPanel-overview" class="ai-tab-panel space-y-5">
-          <!-- 4 KPI Cards -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="lis-stat-card p-4 flex flex-col justify-between">
-              <div class="flex items-center justify-between">
-                <div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center text-sm">
-                  <i class="fa-solid fa-chart-line"></i>
+        <!-- ════════════════════════════════════════════════════
+             DOCTORS MODULE VIEW
+        ════════════════════════════════════════════════════ -->
+        <div id="doctorsModuleView" class="space-y-5">
+
+          <!-- ── HERO BANNER ── -->
+          <div class="hero-gradient-header p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-start gap-4">
+              <div style="width:50px; height:50px; border-radius:14px; background:rgba(255,255,255,0.12); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; color:white; font-size:1.4rem; flex-shrink:0; box-shadow:0 4px 16px rgba(0,0,0,0.2);">
+                <i class="fa-solid fa-user-group"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <h2 style="font-size:1.35rem; font-weight:800; color:white; letter-spacing:-0.02em;">Doctors &amp; Referral Management</h2>
+                  <span style="font-size:0.65rem; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:99px; background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.25); backdrop-filter:blur(4px);">LIS B2B Portal</span>
                 </div>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 font-bold border border-purple-500/20">ROC Performance</span>
-              </div>
-              <div class="mt-3">
-                <div class="text-2xl font-extrabold text-white font-mono" id="aiKpiAuc">98.5%</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Mean Diagnostic AUC across models</div>
-              </div>
-            </div>
-
-            <div class="lis-stat-card p-4 flex flex-col justify-between">
-              <div class="flex items-center justify-between">
-                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm">
-                  <i class="fa-solid fa-bolt"></i>
+                <p style="font-size:0.78rem; color:rgba(255,255,255,0.75); margin-top:6px;">Clinical practitioners, referring physician commissions &amp; pathologist digital authorizations</p>
+                <!-- Compliance badges -->
+                <div class="flex items-center gap-2 mt-3 flex-wrap">
+                  <span style="font-size:0.65rem; font-weight:600; padding:3px 9px; border-radius:6px; background:rgba(5,150,105,0.25); color:#6EE7B7; border:1px solid rgba(5,150,105,0.4);">✓ NABL ISO 15189:2022</span>
+                  <span style="font-size:0.65rem; font-weight:600; padding:3px 9px; border-radius:6px; background:rgba(8,145,178,0.25); color:#7DD3FC; border:1px solid rgba(8,145,178,0.4);">✓ NABH Digital Hospital</span>
+                  <span style="font-size:0.65rem; font-weight:600; padding:3px 9px; border-radius:6px; background:rgba(124,58,237,0.25); color:#C4B5FD; border:1px solid rgba(124,58,237,0.4);">✓ ABDM M1-M2-M3</span>
+                  <span style="font-size:0.65rem; font-weight:600; padding:3px 9px; border-radius:6px; background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2);">65+ Bi-Directional Analyzers</span>
                 </div>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">Decision Inferences</span>
-              </div>
-              <div class="mt-3">
-                <div class="text-2xl font-extrabold text-white font-mono" id="aiKpiInferences">4,892</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Logged Inferences (8.2ms mean latency)</div>
               </div>
             </div>
 
-            <div class="lis-stat-card p-4 flex flex-col justify-between">
-              <div class="flex items-center justify-between">
-                <div class="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-sm">
-                  <i class="fa-solid fa-microchip"></i>
-                </div>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20">Registry</span>
-              </div>
-              <div class="mt-3">
-                <div class="text-2xl font-extrabold text-white font-mono" id="aiKpiModels">12 Active</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Production & Staging Models</div>
-              </div>
-            </div>
-
-            <div class="lis-stat-card p-4 flex flex-col justify-between">
-              <div class="flex items-center justify-between">
-                <div class="w-8 h-8 rounded-lg bg-teal-500/15 text-teal-400 flex items-center justify-center text-sm">
-                  <i class="fa-solid fa-shield-check"></i>
-                </div>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 font-bold border border-teal-500/20">Guardrail Status</span>
-              </div>
-              <div class="mt-3">
-                <div class="text-2xl font-extrabold text-teal-300 font-mono" id="aiKpiCompliance">100% Validated</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">0 Autonomous sign-off violations</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Real-Time AI Alerts -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
-            <div class="flex items-center justify-between">
-              <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-bell text-purple-400"></i> Real-Time AI Clinical Alerts & Drift Watch
-              </h3>
-              <span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live Monitoring Active
-              </span>
-            </div>
-            <div id="aiRecentAlertsList" class="space-y-2"></div>
-          </div>
-
-          <!-- Active Models Overview Grid -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
-            <div class="flex items-center justify-between">
-              <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-layer-group text-purple-400"></i> Active Production & Staging AI Models
-              </h3>
-              <button onclick="AiStudio.switchTab('registry')" class="text-xs text-purple-400 hover:text-purple-300 font-semibold">
-                Open Full Model Registry &rarr;
+            <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+              <button onclick="exportDoctorsCSV()" class="btn btn-ghost btn-sm">
+                <i class="fa-solid fa-download"></i> Export CSV
+              </button>
+              <button onclick="openAddDoctorModal()" class="btn btn-sm" style="background:white; color:#0A2342; border-color:white; font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,0.2);">
+                <i class="fa-solid fa-plus"></i> Register Doctor
               </button>
             </div>
-            <div id="aiOverviewModelsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
-          </div>
-        </div>
-
-        <!-- ==================== SUB-PANEL 2: CLASSICAL ML ==================== -->
-        <div id="aiTabPanel-classical-ml" class="ai-tab-panel space-y-5 hidden">
-          <!-- Training Workbench & Dataset Selector -->
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <!-- Left: Training Form -->
-            <div class="bg-[#111A2E] border border-purple-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
-              <div class="flex items-center gap-2">
-                <i class="fa-solid fa-network-wired text-purple-400 text-lg"></i>
-                <h3 class="font-bold text-sm text-slate-100">Train Classical ML Model</h3>
-              </div>
-              <form onsubmit="AiStudio.handleTrainClassicalModel(event)" class="space-y-3 text-xs">
-                <div>
-                  <label class="block text-slate-400 mb-1">Model Name</label>
-                  <input type="text" id="cmlModelName" value="XGBoost - Cardiac Risk V2" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Algorithm</label>
-                  <select id="cmlAlgoSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                    <option value="Gradient Boosted Trees (XGBoost)">Gradient Boosted Trees (XGBoost)</option>
-                    <option value="Random Forest Classifier">Random Forest Classifier</option>
-                    <option value="L2 Logistic Regression">L2 Logistic Regression</option>
-                    <option value="Support Vector Machine (RBF)">Support Vector Machine (RBF)</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Clinical Ground-Truth Dataset</label>
-                  <select id="cmlDatasetSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200"></select>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <div>
-                    <label class="block text-slate-400 mb-1">Estimators</label>
-                    <input type="number" id="cmlEstimators" value="50" min="10" max="200" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
-                  </div>
-                  <div>
-                    <label class="block text-slate-400 mb-1">Max Depth</label>
-                    <input type="number" id="cmlMaxDepth" value="6" min="2" max="15" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
-                  </div>
-                  <div>
-                    <label class="block text-slate-400 mb-1">Learn Rate</label>
-                    <input type="number" id="cmlLearningRate" value="0.08" step="0.01" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
-                  </div>
-                </div>
-
-                <div id="cmlTrainProgress" class="hidden py-2">
-                  <div class="flex items-center justify-between text-[11px] text-purple-300 mb-1">
-                    <span>Training Decision Trees & Cross-Validating...</span>
-                    <span class="animate-pulse">80%</span>
-                  </div>
-                  <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full animate-pulse" style="width: 80%"></div>
-                  </div>
-                </div>
-
-                <button type="submit" class="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-purple-500/30">
-                  <i class="fa-solid fa-play mr-1"></i> Train Model Now
-                </button>
-              </form>
-            </div>
-
-            <!-- Right: Interactive Live Prediction Sandbox -->
-            <div id="cmlInferenceSection" class="lg:col-span-2 bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-sliders text-purple-400 text-lg"></i>
-                  <h3 class="font-bold text-sm text-slate-100">Live Clinical Decision-Support Sandbox</h3>
-                </div>
-                <span class="text-[10px] bg-purple-500/15 text-purple-300 px-2 py-0.5 rounded font-mono">Real-Time Inference</span>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div class="sm:col-span-3">
-                  <label class="block text-slate-400 mb-1">Select Active Model</label>
-                  <select id="cmlInferenceModelSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200"></select>
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">HbA1c (%)</label>
-                  <input type="number" id="cmlInputHba1c" value="8.6" step="0.1" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Fasting Glucose (mg/dL)</label>
-                  <input type="number" id="cmlInputFbs" value="182" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Serum Creatinine (mg/dL)</label>
-                  <input type="number" id="cmlInputCreatinine" value="2.3" step="0.1" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Troponin-I (ng/mL)</label>
-                  <input type="number" id="cmlInputTroponin" value="1.84" step="0.01" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Serum Potassium (mEq/L)</label>
-                  <input type="number" id="cmlInputPotassium" value="6.4" step="0.1" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Urine Microalbumin (mg/L)</label>
-                  <input type="number" id="cmlInputMicroalbumin" value="120" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-              </div>
-
-              <div class="flex justify-end">
-                <button onclick="AiStudio.handleRunClassicalInference()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 transition flex items-center gap-2">
-                  <i class="fa-solid fa-play"></i> Compute Decision-Support Prediction
-                </button>
-              </div>
-
-              <div id="cmlInferenceOutput"></div>
-            </div>
           </div>
 
-          <!-- Trained Models Table -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between text-xs">
-              <h4 class="font-bold text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-list-check text-purple-400"></i> Trained Classical Machine Learning Models
-              </h4>
+          <!-- ── 4 KPI STAT CARDS ── -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <!-- Card 1: Active Doctors -->
+            <div class="lis-stat-card p-4">
+              <div class="flex items-start justify-between">
+                <div class="stat-icon icon-teal">
+                  <i class="fa-solid fa-user-doctor"></i>
+                </div>
+                <span class="badge badge-active">Active</span>
+              </div>
+              <div class="mt-3">
+                <div class="stat-value" id="statTotalDocCount">2</div>
+                <div class="stat-label">Total Registered Doctors</div>
+                <div class="flex items-center gap-3 mt-2" style="font-size:0.7rem; color:#64748B;">
+                  <span>Referring: <strong id="statRefDocCount" style="color:#0F172A;">2</strong></span>
+                  <span style="color:#E2E8F0;">•</span>
+                  <span>Pathologists: <strong id="statPathDocCount" style="color:#0F172A;">1</strong></span>
+                </div>
+              </div>
+              <div class="progress-bar-wrap mt-3">
+                <div class="progress-bar-fill" style="width:75%;"></div>
+              </div>
             </div>
+
+            <!-- Card 2: Patients Referred -->
+            <div class="lis-stat-card p-4">
+              <div class="flex items-start justify-between">
+                <div class="stat-icon icon-green">
+                  <i class="fa-solid fa-arrow-trend-up"></i>
+                </div>
+                <span class="badge badge-active">This Month</span>
+              </div>
+              <div class="mt-3">
+                <div class="stat-value" id="statMonthPatients">2</div>
+                <div class="stat-label">Patients Referred This Month</div>
+                <div style="font-size:0.7rem; color:#64748B; margin-top:4px;">Total All-Time: <strong id="statTotalPatients" style="color:#0F172A;">2</strong></div>
+              </div>
+              <div class="progress-bar-wrap mt-3">
+                <div class="progress-bar-fill" style="width:55%; background:linear-gradient(90deg,#059669,#10B981);"></div>
+              </div>
+            </div>
+
+            <!-- Card 3: Revenue -->
+            <div class="lis-stat-card p-4">
+              <div class="flex items-start justify-between">
+                <div class="stat-icon icon-indigo">
+                  <i class="fa-solid fa-indian-rupee-sign"></i>
+                </div>
+                <span class="badge" style="background:#EEF2FF; color:#4F46E5; border-color:rgba(99,102,241,0.25);">Paid Revenue</span>
+              </div>
+              <div class="mt-3">
+                <div class="stat-value" id="statPaidRevenue">₹672</div>
+                <div class="stat-label">Actual Billing from Paid Orders</div>
+                <div style="font-size:0.7rem; color:#64748B; margin-top:4px;">Avg per order: <strong style="color:#0F172A;">₹336</strong></div>
+              </div>
+              <div class="progress-bar-wrap mt-3">
+                <div class="progress-bar-fill" style="width:62%; background:linear-gradient(90deg,#6366F1,#8B5CF6);"></div>
+              </div>
+            </div>
+
+            <!-- Card 4: Unsettled Commission -->
+            <div class="lis-stat-card p-4 cursor-pointer" onclick="switchTabFilter('PAYOUTS')" style="border-color:rgba(217,119,6,0.2);">
+              <div class="flex items-start justify-between">
+                <div class="stat-icon icon-amber">
+                  <i class="fa-solid fa-wallet"></i>
+                </div>
+                <span class="badge" style="background:#FFFBEB; color:#D97706; border-color:rgba(217,119,6,0.25);">View Payouts →</span>
+              </div>
+              <div class="mt-3">
+                <div class="stat-value" style="color:#D97706;" id="statUnsettledIncentives">₹101</div>
+                <div class="stat-label">Unsettled Referral Incentives</div>
+                <div style="font-size:0.7rem; color:#D97706; margin-top:4px;">⚠ Pending clearance</div>
+              </div>
+              <div class="progress-bar-wrap mt-3">
+                <div class="progress-bar-fill" style="width:30%; background:linear-gradient(90deg,#D97706,#F59E0B);"></div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ── FILTER / TAB TOOLBAR ── -->
+          <div class="filter-toolbar">
+            <button id="tab-btn-ALL" onclick="switchTabFilter('ALL')" class="tab-btn active">
+              <i class="fa-solid fa-users" style="font-size:0.7rem;"></i> All Practitioners (<span id="countAll">3</span>)
+            </button>
+            <button id="tab-btn-REFERRING" onclick="switchTabFilter('REFERRING')" class="tab-btn">
+              <i class="fa-solid fa-stethoscope" style="font-size:0.7rem;"></i> Referring Physicians (<span id="countRef">2</span>)
+            </button>
+            <button id="tab-btn-PATHOLOGIST" onclick="switchTabFilter('PATHOLOGIST')" class="tab-btn">
+              <i class="fa-solid fa-microscope" style="font-size:0.7rem;"></i> In-House Pathologists (<span id="countPath">1</span>)
+            </button>
+            <button id="tab-btn-PAYOUTS" onclick="switchTabFilter('PAYOUTS')" class="tab-btn">
+              <i class="fa-solid fa-credit-card" style="font-size:0.7rem;"></i> Commission Payouts (<span id="countPayouts">₹101</span>)
+            </button>
+            <button onclick="openApprovalsStation()" class="tab-btn ml-auto" style="background:#FEF2F2; color:#DC2626; border-color:rgba(220,38,38,0.3);">
+              <i class="fa-solid fa-triangle-exclamation fa-shake" style="font-size:0.7rem;"></i> Pathologist Queue (1 Critical)
+            </button>
+          </div>
+
+          <!-- ── SEARCH & FILTERS ROW ── -->
+          <div class="flex flex-col md:flex-row items-center gap-3">
+            <div class="relative w-full md:flex-1">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-2.5" style="font-size:0.75rem; color:#94A3B8;"></i>
+              <input
+                type="text"
+                id="doctorSearchInput"
+                oninput="handleDoctorSearch(this.value)"
+                placeholder="Search doctor by name, clinic, specialization, phone, code or MCI reg..."
+                class="form-input"
+                style="padding-left:36px;"
+              >
+            </div>
+            <div class="flex items-center gap-2 w-full md:w-auto">
+              <select id="specFilter" onchange="handleFilterChange()" class="form-select" style="width:auto; min-width:160px;">
+                <option value="ALL">All Specializations</option>
+                <option value="Nephrology">Nephrology</option>
+                <option value="Diabetology">Diabetology</option>
+                <option value="Pathology">Pathology &amp; Lab</option>
+                <option value="Cardiology">Cardiology</option>
+                <option value="Oncology">Oncology</option>
+                <option value="Neurology">Neurology</option>
+              </select>
+              <select id="statusFilter" onchange="handleFilterChange()" class="form-select" style="width:auto;">
+                <option value="ALL">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <select id="sortFilter" onchange="handleFilterChange()" class="form-select" style="width:auto;">
+                <option value="AZ">Name (A–Z)</option>
+                <option value="ZA">Name (Z–A)</option>
+                <option value="COMMISSION">Highest Commission</option>
+              </select>
+              <button class="btn btn-outline btn-sm" title="Advanced Filters">
+                <i class="fa-solid fa-sliders"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- ── MAIN DOCTORS TABLE ── -->
+          <div class="table-card">
+            <div class="table-header">
+              <div style="font-size:0.78rem; font-weight:600; color:#0F172A; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-table-list" style="color:#0891B2;"></i>
+                Showing <strong id="tableShowingCount">2</strong> doctors · Page 1 of 1 · Total: <strong id="tableTotalCount">2</strong>
+              </div>
+              <div style="font-size:0.7rem; color:#94A3B8; display:flex; align-items:center; gap:6px;">
+                <span class="live-dot" style="width:6px;height:6px;"></span> Real-time sync active
+              </div>
+            </div>
+
             <div class="overflow-x-auto">
-              <table class="lis-table text-xs">
+              <table class="lis-table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>MODEL & ID</th>
-                    <th>ALGORITHM</th>
-                    <th>ACCURACY</th>
-                    <th>ROC-AUC</th>
-                    <th>F1 SCORE</th>
+                    <th style="width:40px;">#</th>
+                    <th>DOCTOR DETAILS</th>
+                    <th>TYPE &amp; CREDENTIALS</th>
+                    <th>SPECIALIZATION &amp; CLINIC</th>
+                    <th>REFERRALS &amp; BUSINESS</th>
+                    <th>COMMISSION LEDGER</th>
                     <th>STATUS</th>
-                    <th class="text-right">ACTION</th>
+                    <th style="text-align:right;">ACTIONS</th>
                   </tr>
                 </thead>
-                <tbody id="cmlModelsTableBody"></tbody>
+                <tbody id="doctorsTableBody">
+                  <!-- Dynamic render via app.js -->
+                </tbody>
               </table>
             </div>
           </div>
-        </div>
 
-        <!-- ==================== SUB-PANEL 3: DEEP LEARNING ==================== -->
-        <div id="aiTabPanel-deep-learning" class="ai-tab-panel space-y-5 hidden">
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <!-- Training Form -->
-            <div class="bg-[#111A2E] border border-purple-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
-              <div class="flex items-center gap-2">
-                <i class="fa-solid fa-layer-group text-purple-400 text-lg"></i>
-                <h3 class="font-bold text-sm text-slate-100">Launch PyTorch Neural Run</h3>
+        </div><!-- /doctorsModuleView -->
+
+        <!-- ════════════════════════════════════════════════════
+             AI STUDIO MODULE VIEW
+        ════════════════════════════════════════════════════ -->
+        <div id="aiStudioModuleView" class="space-y-5 hidden">
+
+          <!-- AI Hero Banner -->
+          <div class="hero-ai-gradient p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-start gap-4">
+              <div style="width:50px; height:50px; border-radius:14px; background:rgba(167,139,250,0.2); border:1px solid rgba(167,139,250,0.4); display:flex; align-items:center; justify-content:center; color:#C4B5FD; font-size:1.4rem; flex-shrink:0;">
+                <i class="fa-solid fa-microchip"></i>
               </div>
-              <form onsubmit="AiStudio.handleLaunchDeepTraining(event)" class="space-y-3 text-xs">
-                <div>
-                  <label class="block text-slate-400 mb-1">Experiment Name</label>
-                  <input type="text" id="dlModelName" value="DeepBioNet-v4 (Multi-Organ MLP)" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+              <div>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <h2 style="font-size:1.35rem; font-weight:800; color:white; letter-spacing:-0.02em;">AI Studio &amp; Clinical Intelligence</h2>
+                  <span style="font-size:0.65rem; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:99px; background:rgba(167,139,250,0.2); color:#C4B5FD; border:1px solid rgba(167,139,250,0.35);">LIS AI &amp; Research Core</span>
+                  <span style="font-size:0.65rem; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:99px; background:rgba(5,150,105,0.2); color:#6EE7B7; border:1px solid rgba(5,150,105,0.35);"><i class="fa-solid fa-shield-check" style="font-size:0.6rem;"></i> Decision Support Only</span>
                 </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Network Architecture</label>
-                  <select id="dlArchSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                    <option value="MLP">4-Layer Residual MLP [12 -> 128 -> 64 -> 32 -> 4]</option>
-                    <option value="BiLSTM">Bidirectional LSTM Longitudinal Sequence Net</option>
-                  </select>
+                <p style="font-size:0.78rem; color:rgba(196,181,253,0.8); margin-top:6px;">Predictive Biomarker Models · Deep Neural Networks · Clinical NLP · Automated Anomaly Detection</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2.5 shrink-0">
+              <button onclick="AiStudio.fetchOverview(); showToast('AI Studio telemetry refreshed!', 'success')" class="btn btn-ghost btn-sm">
+                <i class="fa-solid fa-rotate"></i> Refresh Telemetry
+              </button>
+              <button onclick="AiStudio.switchTab('classical-ml')" class="btn btn-sm" style="background:linear-gradient(135deg,#7C3AED,#6366F1); color:white; border-color:transparent; box-shadow:0 4px 14px rgba(124,58,237,0.4);">
+                <i class="fa-solid fa-brain"></i> Open ML Workbench
+              </button>
+            </div>
+          </div>
+
+          <!-- AI Tab Navigation -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar" style="border-bottom:1.5px solid #E2E8F0;">
+            <button id="ai-tab-btn-overview" onclick="AiStudio.switchTab('overview')" class="tab-btn active" style="flex-shrink:0;">
+              <i class="fa-solid fa-chart-pie" style="font-size:0.7rem;"></i> AI Overview
+            </button>
+            <button id="ai-tab-btn-classical-ml" onclick="AiStudio.switchTab('classical-ml')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-network-wired" style="font-size:0.7rem;"></i> Classical ML
+            </button>
+            <button id="ai-tab-btn-deep-learning" onclick="AiStudio.switchTab('deep-learning')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-layer-group" style="font-size:0.7rem;"></i> Deep Learning
+            </button>
+            <button id="ai-tab-btn-nlp" onclick="AiStudio.switchTab('nlp')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-file-lines" style="font-size:0.7rem;"></i> NLP / Clinical AI
+            </button>
+            <button id="ai-tab-btn-anomalies" onclick="AiStudio.switchTab('anomalies')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-triangle-exclamation" style="font-size:0.7rem;"></i> Anomaly Detection
+            </button>
+            <button id="ai-tab-btn-forecasting" onclick="AiStudio.switchTab('forecasting')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-arrow-trend-up" style="font-size:0.7rem;"></i> Forecasting
+            </button>
+            <button id="ai-tab-btn-evaluation" onclick="AiStudio.switchTab('evaluation')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-chart-line" style="font-size:0.7rem;"></i> Model Evaluation
+            </button>
+            <button id="ai-tab-btn-registry" onclick="AiStudio.switchTab('registry')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-box-archive" style="font-size:0.7rem;"></i> Model Registry
+            </button>
+            <button id="ai-tab-btn-audit" onclick="AiStudio.switchTab('audit')" class="tab-btn" style="flex-shrink:0;">
+              <i class="fa-solid fa-shield-halved" style="font-size:0.7rem;"></i> AI Audit
+            </button>
+          </div>
+
+          <!-- ── AI Overview Sub-Panel ── -->
+          <div id="aiTabPanel-overview" class="ai-tab-panel space-y-5">
+            <!-- 4 KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="lis-stat-card p-4">
+                <div class="flex items-start justify-between">
+                  <div class="stat-icon icon-purple"><i class="fa-solid fa-chart-line"></i></div>
+                  <span class="badge" style="background:#F5F3FF; color:#7C3AED; border-color:rgba(124,58,237,0.25);">ROC Performance</span>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-slate-400 mb-1">Epochs</label>
-                    <input type="number" id="dlEpochs" value="50" min="10" max="100" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                  </div>
-                  <div>
-                    <label class="block text-slate-400 mb-1">Batch Size</label>
-                    <select id="dlBatchSize" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                      <option value="16">16</option>
-                      <option value="32" selected>32</option>
-                      <option value="64">64</option>
-                    </select>
-                  </div>
+                <div class="mt-3">
+                  <div class="stat-value" id="aiKpiAuc">98.5%</div>
+                  <div class="stat-label">Mean Diagnostic AUC across models</div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-slate-400 mb-1">Optimizer</label>
-                    <select id="dlOptimizer" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                      <option value="AdamW">AdamW</option>
-                      <option value="SGD">SGD Momentum</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-slate-400 mb-1">Learning Rate</label>
-                    <input type="number" id="dlLearningRate" value="0.001" step="0.0005" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                  </div>
+              </div>
+              <div class="lis-stat-card p-4">
+                <div class="flex items-start justify-between">
+                  <div class="stat-icon icon-green"><i class="fa-solid fa-bolt"></i></div>
+                  <span class="badge badge-active">Inferences</span>
                 </div>
-                <button type="submit" class="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-purple-500/30">
-                  <i class="fa-solid fa-play mr-1"></i> Start Training Run
-                </button>
-              </form>
+                <div class="mt-3">
+                  <div class="stat-value" id="aiKpiInferences">4,892</div>
+                  <div class="stat-label">Logged (8.2ms mean latency)</div>
+                </div>
+              </div>
+              <div class="lis-stat-card p-4">
+                <div class="flex items-start justify-between">
+                  <div class="stat-icon icon-indigo"><i class="fa-solid fa-microchip"></i></div>
+                  <span class="badge" style="background:#EEF2FF; color:#4F46E5; border-color:rgba(99,102,241,0.25);">Registry</span>
+                </div>
+                <div class="mt-3">
+                  <div class="stat-value" id="aiKpiModels">12</div>
+                  <div class="stat-label">Active Production &amp; Staging Models</div>
+                </div>
+              </div>
+              <div class="lis-stat-card p-4">
+                <div class="flex items-start justify-between">
+                  <div class="stat-icon icon-teal"><i class="fa-solid fa-shield-check"></i></div>
+                  <span class="badge badge-active">Guardrail</span>
+                </div>
+                <div class="mt-3">
+                  <div class="stat-value" style="color:#059669;" id="aiKpiCompliance">100%</div>
+                  <div class="stat-label">0 Autonomous sign-off violations</div>
+                </div>
+              </div>
             </div>
 
-            <!-- Training Telemetry Curve Chart -->
-            <div class="lg:col-span-2 bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-chart-line text-purple-400"></i> PyTorch Epoch Loss & Accuracy Telemetry
+            <!-- AI Alerts Panel -->
+            <div class="card">
+              <div class="card-header">
+                <h3 style="font-size:0.85rem; font-weight:700; color:#0F172A; display:flex; align-items:center; gap:8px;">
+                  <i class="fa-solid fa-bell" style="color:#7C3AED;"></i> Real-Time AI Clinical Alerts &amp; Drift Watch
+                </h3>
+                <div class="live-indicator" style="color:#059669;">
+                  <span class="live-dot"></span> Monitoring Active
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="aiRecentAlertsList" class="space-y-2"></div>
+              </div>
+            </div>
+
+            <!-- Active Models Grid -->
+            <div class="card">
+              <div class="card-header">
+                <h3 style="font-size:0.85rem; font-weight:700; color:#0F172A; display:flex; align-items:center; gap:8px;">
+                  <i class="fa-solid fa-layer-group" style="color:#7C3AED;"></i> Active Production &amp; Staging AI Models
+                </h3>
+                <button onclick="AiStudio.switchTab('registry')" class="btn btn-outline btn-xs">Open Registry →</button>
+              </div>
+              <div class="card-body">
+                <div id="aiOverviewModelsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Classical ML Sub-Panel ── -->
+          <div id="aiTabPanel-classical-ml" class="ai-tab-panel space-y-5 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div class="card" style="border-color:rgba(124,58,237,0.25);">
+                <div class="card-header">
+                  <h3 style="font-size:0.85rem; font-weight:700; color:#0F172A; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-network-wired" style="color:#7C3AED;"></i> Train Classical ML Model
                   </h3>
-                  <div class="text-[11px] text-slate-400 font-mono" id="dlCurrentPlotName">Loading experiment history...</div>
                 </div>
-                <div class="flex items-center gap-3 text-[11px]">
-                  <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-rose-400 rounded"></span> Train Loss</span>
-                  <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-emerald-400 rounded"></span> Val Acc</span>
-                </div>
-              </div>
-              <div class="bg-slate-950 rounded-xl p-3 border border-slate-800">
-                <canvas id="dlTrainingCanvas" width="600" height="220" class="w-full h-52"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <!-- Deep Experiments Leaderboard -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
-            <h4 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-              <i class="fa-solid fa-trophy text-amber-400"></i> PyTorch Deep Learning Experiment Runs
-            </h4>
-            <div id="dlExperimentsList" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
-          </div>
-        </div>
-
-        <!-- ==================== SUB-PANEL 4: NLP / CLINICAL AI ==================== -->
-        <div id="aiTabPanel-nlp" class="ai-tab-panel space-y-5 hidden">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <!-- Input Clinical Note -->
-            <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-              <div class="flex items-center justify-between">
-                <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <i class="fa-solid fa-file-medical text-purple-400"></i> Medical Notes & Clinical Text Input
-                </h3>
-                <div class="flex items-center gap-1">
-                  <button onclick="AiStudio.setNlpSample('cardiac')" class="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-[10px] font-semibold border border-rose-500/20">Cardiac</button>
-                  <button onclick="AiStudio.setNlpSample('diabetic')" class="px-2 py-0.5 rounded bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-[10px] font-semibold border border-purple-500/20">Diabetic</button>
-                  <button onclick="AiStudio.setNlpSample('hematology')" class="px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-[10px] font-semibold border border-sky-500/20">CBC</button>
-                </div>
-              </div>
-              <textarea id="nlpTextInput" rows="8" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-sans" placeholder="Type or paste doctor clinical prescription note, biopsy impression, or discharge summary..."></textarea>
-              <button onclick="AiStudio.handleRunNlpAnalysis()" class="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-500/30 transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Extract Named Entities & Predict ICD-10
-              </button>
-            </div>
-
-            <!-- NLP Outputs -->
-            <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-              <div class="flex items-center justify-between">
-                <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <i class="fa-solid fa-tags text-purple-400"></i> Extracted Named Entities & Urgency Triage
-                </h3>
-                <span id="nlpUrgencyBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300">ROUTINE</span>
-              </div>
-
-              <!-- Entities Cloud -->
-              <div>
-                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Clinical Named Entities (NER):</label>
-                <div id="nlpEntitiesOutput" class="flex flex-wrap gap-1.5 min-h-[48px] p-2.5 bg-slate-950 rounded-xl border border-slate-800"></div>
-              </div>
-
-              <!-- ICD-10 -->
-              <div>
-                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Automated ICD-10 Code Predictions:</label>
-                <div id="nlpIcd10Output" class="space-y-1.5"></div>
-              </div>
-
-              <!-- Pathologist Impression Summary -->
-              <div class="p-3 bg-slate-950 rounded-xl border border-purple-500/30">
-                <label class="block text-[11px] font-bold text-purple-300 uppercase tracking-wider mb-1.5">Synthesized Pathologist Impression:</label>
-                <div id="nlpSummaryText" class="text-xs text-slate-300">Click Analyze above to synthesize impression.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ==================== SUB-PANEL 5: ANOMALY DETECTION ==================== -->
-        <div id="aiTabPanel-anomalies" class="ai-tab-panel space-y-5 hidden">
-          <!-- Station 1: Patient Delta Check Sandbox -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <i class="fa-solid fa-wave-square text-rose-400 text-lg"></i>
-                <h3 class="font-bold text-sm text-slate-100">Station 1: Patient Result Delta Anomaly Calculator</h3>
-              </div>
-              <span class="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-mono font-bold">Surge Detection</span>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <label class="block text-slate-400 mb-1">Parameter Code</label>
-                <select id="anomParamCode" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                  <option value="TROP_I">Troponin-I (High Sensitivity)</option>
-                  <option value="K_PLUS">Serum Potassium (K+)</option>
-                  <option value="CREAT">Serum Creatinine</option>
-                  <option value="HBA1C">HbA1c</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-slate-400 mb-1">Current Value</label>
-                <input type="number" id="anomCurVal" value="1.84" step="0.01" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-              </div>
-              <div>
-                <label class="block text-slate-400 mb-1">Previous Baseline Value</label>
-                <input type="number" id="anomPrevVal" value="0.02" step="0.01" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-              </div>
-              <div class="flex items-end">
-                <button onclick="AiStudio.handleTestDeltaAnomaly()" class="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold transition">
-                  <i class="fa-solid fa-magnifying-glass mr-1"></i> Scan Delta Surge
-                </button>
-              </div>
-            </div>
-            <div id="anomDeltaResultOutput"></div>
-          </div>
-
-          <!-- Station 2: Analyzer QC Calibration -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-            <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-              <i class="fa-solid fa-microchip text-purple-400"></i> Station 2: Diagnostic Analyzer Westgard QC Calibration Drift
-            </h3>
-            <div id="anomAnalyzerQcList" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
-          </div>
-
-          <!-- Station 3: Operational Outliers -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
-            <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-              <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Station 3: Pre-Analytical & Transit Operational Outliers
-            </h3>
-            <div id="anomOpsList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-          </div>
-        </div>
-
-        <!-- ==================== SUB-PANEL 6: FORECASTING ==================== -->
-        <div id="aiTabPanel-forecasting" class="ai-tab-panel space-y-5 hidden">
-          <!-- Volume Forecast Canvas -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <i class="fa-solid fa-arrow-trend-up text-purple-400"></i> 7-Day & 14-Day Specimen Intake Volume Forecast
-                </h3>
-                <div class="text-[11px] text-slate-400 font-mono">Next 7 Days Projected Intake: <strong class="text-purple-300" id="fcTotal7Days">2,160</strong> specimens • Accuracy: <span class="text-emerald-400 font-bold" id="fcMapeAccuracy">94.2%</span></div>
-              </div>
-              <div class="flex items-center gap-3 text-[11px]">
-                <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-sky-400 rounded"></span> Historical Actual</span>
-                <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-purple-400 rounded border-dashed"></span> AI Projected</span>
-              </div>
-            </div>
-            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800">
-              <canvas id="fcVolumeCanvas" width="650" height="200" class="w-full h-48"></canvas>
-            </div>
-          </div>
-
-          <!-- Turnaround Time Predictor & Reagent Forecaster -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <!-- TAT Calculator -->
-            <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-              <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-stopwatch text-purple-400"></i> Turnaround Time (TAT) Predictive Calculator
-              </h3>
-              <div class="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label class="block text-slate-400 mb-1">Department</label>
-                  <select id="fcTatDept" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                    <option value="Biochemistry">Biochemistry</option>
-                    <option value="Hematology">Hematology</option>
-                    <option value="Immunoassay">Immunoassay</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Panel Complexity (1-5)</label>
-                  <input type="number" id="fcTatComp" value="3" min="1" max="5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Queue Depth (Samples)</label>
-                  <input type="number" id="fcTatQueue" value="24" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                  <label class="block text-slate-400 mb-1">Technicians on Duty</label>
-                  <input type="number" id="fcTatTechs" value="3" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
+                <div class="card-body space-y-3">
+                  <form onsubmit="AiStudio.handleTrainClassicalModel(event)" class="space-y-3">
+                    <div>
+                      <label class="form-label">Model Name</label>
+                      <input type="text" id="cmlModelName" value="XGBoost - Cardiac Risk V2" required class="form-input" style="font-size:0.78rem;">
+                    </div>
+                    <div>
+                      <label class="form-label">Algorithm</label>
+                      <select id="cmlAlgoSelect" class="form-select" style="font-size:0.78rem;">
+                        <option value="Gradient Boosted Trees (XGBoost)">Gradient Boosted Trees (XGBoost)</option>
+                        <option value="Random Forest Classifier">Random Forest Classifier</option>
+                        <option value="L2 Logistic Regression">L2 Logistic Regression</option>
+                        <option value="Support Vector Machine (RBF)">Support Vector Machine (RBF)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="form-label">Clinical Ground-Truth Dataset</label>
+                      <select id="cmlDatasetSelect" class="form-select" style="font-size:0.78rem;"></select>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                      <div>
+                        <label class="form-label">Estimators</label>
+                        <input type="number" id="cmlEstimators" value="50" min="10" max="200" class="form-input form-input-mono" style="font-size:0.78rem;">
+                      </div>
+                      <div>
+                        <label class="form-label">Max Depth</label>
+                        <input type="number" id="cmlMaxDepth" value="6" min="2" max="15" class="form-input form-input-mono" style="font-size:0.78rem;">
+                      </div>
+                      <div>
+                        <label class="form-label">Learn Rate</label>
+                        <input type="number" id="cmlLearningRate" value="0.08" step="0.01" class="form-input form-input-mono" style="font-size:0.78rem;">
+                      </div>
+                    </div>
+                    <div id="cmlTrainProgress" class="hidden">
+                      <div class="flex items-center justify-between" style="font-size:0.72rem; color:#7C3AED; margin-bottom:4px;">
+                        <span>Training &amp; Cross-Validating...</span>
+                        <span>80%</span>
+                      </div>
+                      <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" style="width:80%; background:linear-gradient(90deg,#7C3AED,#6366F1);"></div>
+                      </div>
+                    </div>
+                    <button type="submit" class="btn btn-sm w-full" style="background:linear-gradient(135deg,#7C3AED,#6366F1); color:white; border-color:transparent; justify-content:center;">
+                      <i class="fa-solid fa-play"></i> Train Model Now
+                    </button>
+                  </form>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
-                <input type="checkbox" id="fcTatStat" class="rounded bg-slate-950 border-slate-700">
-                <label for="fcTatStat" class="text-xs text-rose-300 font-semibold">Priority STAT / Emergency Specimen</label>
+
+              <div id="cmlInferenceSection" class="lg:col-span-2 card">
+                <div class="card-header">
+                  <h3 style="font-size:0.85rem; font-weight:700; color:#0F172A; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-sliders" style="color:#7C3AED;"></i> Live Clinical Decision-Support Sandbox
+                  </h3>
+                  <span class="badge" style="background:#F5F3FF; color:#7C3AED; border-color:rgba(124,58,237,0.25); font-family:monospace;">Real-Time Inference</span>
+                </div>
+                <div class="card-body space-y-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-3">
+                      <label class="form-label">Select Active Model</label>
+                      <select id="cmlInferenceModelSelect" class="form-select" style="font-size:0.78rem;"></select>
+                    </div>
+                    <div><label class="form-label">HbA1c (%)</label><input type="number" id="cmlInputHba1c" value="8.6" step="0.1" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                    <div><label class="form-label">Fasting Glucose (mg/dL)</label><input type="number" id="cmlInputFbs" value="182" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                    <div><label class="form-label">Serum Creatinine (mg/dL)</label><input type="number" id="cmlInputCreatinine" value="2.3" step="0.1" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                    <div><label class="form-label">Troponin-I (ng/mL)</label><input type="number" id="cmlInputTroponin" value="1.84" step="0.01" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                    <div><label class="form-label">Serum Potassium (mEq/L)</label><input type="number" id="cmlInputPotassium" value="6.4" step="0.1" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                    <div><label class="form-label">Urine Microalbumin (mg/L)</label><input type="number" id="cmlInputMicroalbumin" value="120" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                  </div>
+                  <div class="flex justify-end">
+                    <button onclick="AiStudio.handleRunClassicalInference()" class="btn btn-success btn-sm">
+                      <i class="fa-solid fa-play"></i> Compute Decision-Support Prediction
+                    </button>
+                  </div>
+                  <div id="cmlInferenceOutput"></div>
+                </div>
               </div>
-              <button onclick="AiStudio.handlePredictTat()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">
-                <i class="fa-solid fa-calculator mr-1"></i> Predict Turnaround Minutes
-              </button>
-              <div id="fcTatOutput"></div>
             </div>
 
-            <!-- Consumables Forecaster -->
-            <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
-              <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-boxes-stacked text-purple-400"></i> Reagent Depletion & Stockout Timeline
-              </h3>
+            <!-- Trained Models Table -->
+            <div class="table-card">
+              <div class="table-header">
+                <h4 style="font-size:0.82rem; font-weight:700; color:#0F172A; display:flex; align-items:center; gap:8px;">
+                  <i class="fa-solid fa-list-check" style="color:#7C3AED;"></i> Trained Classical ML Models
+                </h4>
+              </div>
               <div class="overflow-x-auto">
-                <table class="lis-table text-xs">
+                <table class="lis-table">
                   <thead>
                     <tr>
-                      <th>REAGENT KIT</th>
-                      <th>STOCK</th>
-                      <th>BURN RATE</th>
-                      <th>RUNOUT</th>
-                      <th>STATUS</th>
+                      <th>#</th><th>MODEL &amp; ID</th><th>ALGORITHM</th><th>ACCURACY</th><th>ROC-AUC</th><th>F1 SCORE</th><th>STATUS</th><th style="text-align:right;">ACTION</th>
                     </tr>
                   </thead>
-                  <tbody id="fcReagentsTableBody"></tbody>
+                  <tbody id="cmlModelsTableBody"></tbody>
                 </table>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- ==================== SUB-PANEL 7: MODEL EVALUATION ==================== -->
-        <div id="aiTabPanel-evaluation" class="ai-tab-panel space-y-5 hidden">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <!-- ROC-AUC Canvas -->
-            <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
-              <div class="flex items-center justify-between">
-                <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <i class="fa-solid fa-chart-area text-purple-400"></i> Receiver Operating Characteristic (ROC-AUC)
-                </h3>
-                <span class="text-xs font-mono text-emerald-400 font-bold">AUC = 0.982</span>
+          <!-- Deep Learning, NLP, Anomaly, Forecasting, Evaluation, Registry, Audit panels -->
+          <div id="aiTabPanel-deep-learning" class="ai-tab-panel space-y-5 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div class="card" style="border-color:rgba(124,58,237,0.25);">
+                <div class="card-header"><h3 style="font-size:0.85rem; font-weight:700; color:#0F172A; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-layer-group" style="color:#7C3AED;"></i> Launch PyTorch Neural Run</h3></div>
+                <div class="card-body">
+                  <form onsubmit="AiStudio.handleLaunchDeepTraining(event)" class="space-y-3">
+                    <div><label class="form-label">Experiment Name</label><input type="text" id="dlModelName" value="DeepBioNet-v4 (Multi-Organ MLP)" required class="form-input" style="font-size:0.78rem;"></div>
+                    <div><label class="form-label">Network Architecture</label>
+                      <select id="dlArchSelect" class="form-select" style="font-size:0.78rem;">
+                        <option value="MLP">4-Layer Residual MLP [12→128→64→32→4]</option>
+                        <option value="BiLSTM">Bidirectional LSTM Longitudinal Sequence Net</option>
+                      </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div><label class="form-label">Epochs</label><input type="number" id="dlEpochs" value="50" min="10" max="100" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                      <div><label class="form-label">Batch Size</label>
+                        <select id="dlBatchSize" class="form-select" style="font-size:0.78rem;"><option value="16">16</option><option value="32" selected>32</option><option value="64">64</option></select>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div><label class="form-label">Optimizer</label>
+                        <select id="dlOptimizer" class="form-select" style="font-size:0.78rem;"><option value="AdamW">AdamW</option><option value="SGD">SGD Momentum</option></select>
+                      </div>
+                      <div><label class="form-label">Learning Rate</label><input type="number" id="dlLearningRate" value="0.001" step="0.0005" class="form-input form-input-mono" style="font-size:0.78rem;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-sm w-full" style="background:linear-gradient(135deg,#7C3AED,#6366F1); color:white; border-color:transparent; justify-content:center;">
+                      <i class="fa-solid fa-play"></i> Start Training Run
+                    </button>
+                  </form>
+                </div>
               </div>
-              <div class="bg-slate-950 rounded-xl p-3 border border-slate-800">
-                <canvas id="evalRocCanvas" width="500" height="220" class="w-full h-52"></canvas>
-              </div>
-            </div>
-
-            <!-- Confusion Matrix Heatmap -->
-            <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
-              <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-table-cells text-purple-400"></i> Stratified Holdout Confusion Matrix
-              </h3>
-              <div id="evalConfusionMatrixGrid" class="pt-2"></div>
-            </div>
-          </div>
-
-          <!-- SHAP Feature Importance -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
-            <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-              <i class="fa-solid fa-diagram-project text-purple-400"></i> SHAP Feature Attribution & Global Clinical Weightings
-            </h3>
-            <div id="evalShapList" class="space-y-2"></div>
-          </div>
-        </div>
-
-        <!-- ==================== SUB-PANEL 8: MODEL REGISTRY ==================== -->
-        <div id="aiTabPanel-registry" class="ai-tab-panel space-y-5 hidden">
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <i class="fa-solid fa-box-archive text-purple-400"></i> Enterprise Model Catalog & Lifecycle Registry
-                </h3>
-                <div class="text-[11px] text-slate-400 mt-0.5">Versioned artifacts, deployment states, and cryptographic integrity hashes</div>
+              <div id="dlChartSection" class="lg:col-span-2 card">
+                <div class="card-header"><h3 style="font-size:0.85rem; font-weight:700; color:#0F172A;">Training Telemetry Curve</h3></div>
+                <div class="card-body"><div style="height:220px;"><canvas id="dlTrainingChart"></canvas></div></div>
               </div>
             </div>
-            <div class="overflow-x-auto">
-              <table class="lis-table text-xs">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>MODEL & TARGET</th>
-                    <th>VERSION</th>
-                    <th>FRAMEWORK</th>
-                    <th>VALIDATION METRIC</th>
-                    <th>STATE</th>
-                    <th class="text-right">DEPLOYMENT ACTION</th>
-                  </tr>
-                </thead>
-                <tbody id="regModelsTableBody"></tbody>
-              </table>
+            <div class="table-card">
+              <div class="table-header"><h4 style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-list-check" style="color:#7C3AED;"></i> Deep Learning Experiment Registry</h4></div>
+              <div class="overflow-x-auto"><table class="lis-table"><thead><tr><th>#</th><th>EXPERIMENT</th><th>ARCHITECTURE</th><th>BEST VAL LOSS</th><th>ACCURACY</th><th>EPOCHS</th><th>STATUS</th><th style="text-align:right;">ACTION</th></tr></thead><tbody id="dlExperimentsTableBody"></tbody></table></div>
             </div>
           </div>
-        </div>
 
-        <!-- ==================== SUB-PANEL 9: AI AUDIT & MONITORING ==================== -->
-        <div id="aiTabPanel-audit" class="ai-tab-panel space-y-5 hidden">
-          <!-- Safety Guardrail Statement -->
-          <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-purple-950/30 to-slate-900 border border-emerald-500/40 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
-              <i class="fa-solid fa-shield-halved"></i>
+          <div id="aiTabPanel-nlp" class="ai-tab-panel space-y-5 hidden">
+            <div class="card"><div class="card-header"><h3 style="font-size:0.85rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-file-lines" style="color:#7C3AED;"></i> NLP Clinical Impression Parser</h3><span class="badge badge-active">Clinical AI Active</span></div><div class="card-body space-y-3"><div><label class="form-label">Raw Clinical Narrative / Doctor Impression</label><textarea id="nlpInputText" rows="4" class="form-textarea" style="font-size:0.78rem;">Patient presents with elevated Troponin-I and severe dyspnea. History of Type-2 DM and CKD Stage 3. Recommend immediate cardiology consult and repeat troponin at 3h.</textarea></div><div class="flex justify-end"><button onclick="AiStudio.handleNlpParse()" class="btn btn-sm" style="background:linear-gradient(135deg,#7C3AED,#6366F1); color:white; border-color:transparent;"><i class="fa-solid fa-wand-magic-sparkles"></i> Parse &amp; Extract Entities</button></div><div id="nlpOutputPanel"></div></div></div>
+            <div class="table-card"><div class="table-header"><h4 style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-list-check" style="color:#7C3AED;"></i> Deployed NLP Clinical AI Models</h4></div><div class="overflow-x-auto"><table class="lis-table"><thead><tr><th>#</th><th>MODEL</th><th>TASK</th><th>F1 SCORE</th><th>PRECISION</th><th>RECALL</th><th>STATUS</th></tr></thead><tbody id="nlpModelsTableBody"></tbody></table></div></div>
+          </div>
+
+          <div id="aiTabPanel-anomalies" class="ai-tab-panel space-y-5 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div class="card" style="border-color:rgba(220,38,38,0.25);"><div class="card-header"><h3 style="font-size:0.85rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-triangle-exclamation" style="color:#DC2626;"></i> Anomaly Detection Config</h3></div><div class="card-body space-y-3"><div><label class="form-label">Algorithm</label><select id="anomalyAlgo" class="form-select" style="font-size:0.78rem;"><option>Isolation Forest</option><option>One-Class SVM</option><option>DBSCAN Clustering</option><option>AutoEncoder (VAE)</option></select></div><div><label class="form-label">Contamination Factor</label><input type="number" id="anomalyContamination" value="0.05" step="0.01" class="form-input form-input-mono" style="font-size:0.78rem;"></div><div><label class="form-label">Detection Window</label><select id="anomalyWindow" class="form-select" style="font-size:0.78rem;"><option>Last 24 Hours</option><option>Last 7 Days</option><option>Last 30 Days</option></select></div><button onclick="AiStudio.handleRunAnomalyDetection()" class="btn btn-danger btn-sm w-full" style="justify-content:center;"><i class="fa-solid fa-magnifying-glass-chart"></i> Run Anomaly Scan</button></div></div>
+              <div class="lg:col-span-2 card"><div class="card-header"><h3 style="font-size:0.85rem; font-weight:700;">Anomaly Detection Results</h3></div><div class="card-body"><div id="anomalyResultsPanel" class="text-sm text-slate-400 text-center py-8"><i class="fa-solid fa-radar fa-2x mb-2 block opacity-30"></i> Run scan to detect anomalies</div></div></div>
             </div>
-            <div>
-              <div class="font-bold text-sm text-emerald-200">Clinical Safety Guardrail Active (Decision Support Policy)</div>
-              <div class="text-xs text-slate-300 mt-0.5">
-                AI predictions are strictly advisory. LabCore ELIS prohibits autonomous sign-off or release of clinical reports without licensed human pathologist authorization.
+          </div>
+
+          <div id="aiTabPanel-forecasting" class="ai-tab-panel space-y-5 hidden">
+            <div class="card"><div class="card-header"><h3 style="font-size:0.85rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-arrow-trend-up" style="color:#059669;"></i> Forecasting &amp; Predictive Analytics</h3></div><div class="card-body space-y-3"><div class="grid grid-cols-1 sm:grid-cols-3 gap-3"><div><label class="form-label">Forecast Target</label><select id="forecastTarget" class="form-select" style="font-size:0.78rem;"><option>Daily Sample Volume</option><option>Revenue Forecast</option><option>Patient Load (OPD)</option><option>Critical Alert Rate</option></select></div><div><label class="form-label">Horizon (Days)</label><input type="number" id="forecastHorizon" value="30" min="7" max="365" class="form-input form-input-mono" style="font-size:0.78rem;"></div><div><label class="form-label">Model</label><select id="forecastModel" class="form-select" style="font-size:0.78rem;"><option>SARIMA (Seasonal)</option><option>Prophet (Meta)</option><option>LSTM Time-Series</option></select></div></div><div class="flex justify-end"><button onclick="AiStudio.handleRunForecasting()" class="btn btn-success btn-sm"><i class="fa-solid fa-chart-line"></i> Generate Forecast</button></div><div style="height:240px;"><canvas id="forecastChart"></canvas></div></div></div>
+          </div>
+
+          <div id="aiTabPanel-evaluation" class="ai-tab-panel space-y-5 hidden">
+            <div class="card"><div class="card-header"><h3 style="font-size:0.85rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-chart-line" style="color:#6366F1;"></i> Model Evaluation Suite</h3><span class="badge badge-active">NABL Compliant</span></div><div class="card-body"><div style="height:260px;"><canvas id="evalRocChart"></canvas></div><div class="overflow-x-auto mt-4"><table class="lis-table"><thead><tr><th>MODEL</th><th>ACCURACY</th><th>PRECISION</th><th>RECALL</th><th>F1</th><th>AUC-ROC</th><th>MCC</th></tr></thead><tbody id="evalMetricsTableBody"></tbody></table></div></div></div>
+          </div>
+
+          <div id="aiTabPanel-registry" class="ai-tab-panel space-y-5 hidden">
+            <div class="table-card"><div class="table-header"><h4 style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-box-archive" style="color:#7C3AED;"></i> Enterprise AI Model Registry</h4><div class="flex items-center gap-2"><button class="btn btn-outline btn-xs">Import Model</button><button class="btn btn-xs" style="background:#7C3AED; color:white; border-color:#7C3AED;">+ Register New Model</button></div></div><div class="overflow-x-auto"><table class="lis-table"><thead><tr><th>#</th><th>MODEL NAME &amp; ID</th><th>TYPE</th><th>VERSION</th><th>TRAINED ON</th><th>PERFORMANCE</th><th>ENVIRONMENT</th><th>STATUS</th><th style="text-align:right;">ACTIONS</th></tr></thead><tbody id="registryTableBody"></tbody></table></div></div>
+          </div>
+
+          <div id="aiTabPanel-audit" class="ai-tab-panel space-y-5 hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="auditKpiGrid"></div>
+            <div class="card"><div class="card-header"><h3 style="font-size:0.85rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-chart-simple" style="color:#7C3AED;"></i> Population Stability Index (PSI) &amp; Drift Telemetry</h3><span class="badge badge-active">All Distributions Stable</span></div><div class="card-body"><div id="auditDriftGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div></div></div>
+            <div class="table-card"><div class="table-header"><h4 style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-list-ol" style="color:#7C3AED;"></i> Real-Time AI Inference Audit Trail</h4><span style="font-size:0.7rem; color:#64748B; font-family:monospace;">NABL / ISO-15189 Immutable Log</span></div><div class="overflow-x-auto"><table class="lis-table"><thead><tr><th>TIME</th><th>MODEL</th><th>UHID</th><th>OUTPUT INFERENCE</th><th>CONFIDENCE</th><th>LATENCY</th><th>GOVERNANCE</th></tr></thead><tbody id="auditLogsTableBody"></tbody></table></div></div>
+          </div>
+
+        </div><!-- /aiStudioModuleView -->
+
+        <!-- ════════════════════════════════════════════════════
+             REPORTS & PRINT STUDIO MODULE
+        ════════════════════════════════════════════════════ -->
+        <div id="reportsModuleView" class="space-y-4 hidden">
+          <div class="card">
+            <div class="card-header">
+              <div class="flex items-center gap-3">
+                <div class="stat-icon icon-teal"><i class="fa-solid fa-print"></i></div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h2 style="font-size:1rem; font-weight:700; color:#0F172A;">Full A4 Master Hospital, Lab &amp; Clinic Report &amp; Print Studio</h2>
+                    <span class="badge badge-active">● 210mm × 297mm Ready</span>
+                  </div>
+                  <p style="font-size:0.72rem; color:#64748B;">9-Column Master LOINC &amp; Delta Table · 4-Zone Chain-of-Custody · High-Resolution Print Ready</p>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <!-- PSI Drift Telemetry -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
-            <div class="flex items-center justify-between">
-              <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-chart-simple text-purple-400"></i> Population Stability Index (PSI) & Data Drift Telemetry
-              </h3>
-              <span class="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">All Analyte Distributions Stable</span>
-            </div>
-            <div id="auditDriftGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-          </div>
-
-          <!-- Inference Audit Stream -->
-          <div class="bg-[#111A2E] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
-              <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-list-ol text-purple-400"></i> Real-Time AI Inference Audit Trail
-              </h3>
-              <span class="text-[11px] text-slate-400 font-mono">NABL / ISO-15189 Immutable Log</span>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="lis-table text-xs">
-                <thead>
-                  <tr>
-                    <th>TIME</th>
-                    <th>MODEL</th>
-                    <th>UHID</th>
-                    <th>OUTPUT INFERENCE</th>
-                    <th>CONFIDENCE</th>
-                    <th>LATENCY</th>
-                    <th>GOVERNANCE</th>
-                  </tr>
-                </thead>
-                <tbody id="auditLogsTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-      </div> <!-- End of #aiStudioModuleView -->
-
-      <!-- ==================== REPORTS & PRINT STUDIO MASTER MODULE VIEW CONTAINER ==================== -->
-      <div id="reportsModuleView" class="space-y-4 hidden">
-        <div class="bg-[#111A2E] border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-black text-sm shrink-0">
-              <i class="fa-solid fa-print"></i>
-            </div>
-            <div>
               <div class="flex items-center gap-2">
-                <h2 class="text-lg font-bold text-white tracking-tight">Full A4 Master Hospital, Lab &amp; Clinic Report &amp; Print Studio</h2>
-                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">● 210mm × 297mm Ready</span>
+                <button onclick="document.getElementById('reportsStudioFrame').contentWindow.print()" class="btn btn-teal btn-sm">
+                  <i class="fa-solid fa-print"></i> Print Report
+                </button>
+                <a href="/reports.html" target="_blank" class="btn btn-outline btn-sm">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Fullscreen
+                </a>
               </div>
-              <p class="text-xs text-slate-400">9-Column Master LOINC &amp; Delta Table • 4-Zone Chain-of-Custody • High-Resolution Print Ready</p>
             </div>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <button onclick="document.getElementById('reportsStudioFrame').contentWindow.print()" class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-              <i class="fa-solid fa-print"></i> Print Report (Ctrl+P)
-            </button>
-            <a href="/reports.html" target="_blank" class="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/20 transition flex items-center gap-1.5">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Fullscreen Studio
-            </a>
+          <div style="background:white; border:1.5px solid #E2E8F0; border-radius:14px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08); height:calc(100vh - 220px); min-height:700px;">
+            <iframe id="reportsStudioFrame" src="/reports.html" class="w-full h-full border-0 bg-white" title="LabCore ELIS OS Report &amp; Print Studio"></iframe>
           </div>
         </div>
 
-        <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl" style="height: calc(100vh - 210px); min-height: 800px;">
-          <iframe id="reportsStudioFrame" src="/reports.html" class="w-full h-full border-0 bg-white" title="LabCore ELIS OS Report &amp; Print Studio"></iframe>
-        </div>
-      </div> <!-- End of #reportsModuleView -->
+      </main><!-- /main -->
+    </div><!-- /main content area -->
+  </div><!-- /layout wrapper -->
 
-    </main>
-  </div>
-
-  <!-- ==================== MODAL 1: ADD NEW DOCTOR ==================== -->
-  <div id="addDoctorModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
-    <div class="bg-[#111A2E] border border-indigo-500/30 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+  <!-- ═══════════════════════════════════════════════════════════
+       MODAL 1 — REGISTER DOCTOR
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="addDoctorModal" class="modal-overlay hidden">
+    <div class="modal-box max-w-3xl w-full">
+      <div class="modal-header">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
-            <i class="fa-solid fa-user-plus"></i>
-          </div>
+          <div class="stat-icon icon-teal"><i class="fa-solid fa-user-plus"></i></div>
           <div>
-            <h3 class="font-bold text-base text-slate-100">Register New Practitioner / Referring Doctor</h3>
-            <div class="text-xs text-slate-400">Configure medical council credentials, commission rates, and digital signature</div>
+            <h3>Register New Practitioner / Referring Doctor</h3>
+            <div style="font-size:0.72rem; color:#64748B; margin-top:2px;">Configure medical council credentials, commission rates &amp; digital signature</div>
           </div>
         </div>
-        <button onclick="closeAddDoctorModal()" class="text-slate-400 hover:text-white text-lg">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <button onclick="closeAddDoctorModal()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <form onsubmit="handleSaveNewDoctor(event)" class="p-6 overflow-y-auto space-y-4 text-xs">
+      <form onsubmit="handleSaveNewDoctor(event)" class="modal-body space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-slate-400 mb-1">Doctor Title</label>
-            <select id="newDocTitle" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-              <option>Dr.</option>
-              <option>Prof. Dr.</option>
+            <label class="form-label">Doctor Title</label>
+            <select id="newDocTitle" class="form-select">
+              <option>Dr.</option><option>Prof. Dr.</option><option>Asst. Prof. Dr.</option>
             </select>
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-slate-400 mb-1">Full Name *</label>
-            <input type="text" id="newDocName" required placeholder="e.g. NIKILKUMAR" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+            <label class="form-label">Full Name <span style="color:red;">*</span></label>
+            <input type="text" id="newDocName" required placeholder="e.g. NIKILKUMAR PANCHAL" class="form-input">
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-slate-400 mb-1">Doctor Type</label>
-            <select id="newDocType" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+            <label class="form-label">Doctor Type</label>
+            <select id="newDocType" class="form-select">
               <option value="Referring Doctor">Referring Doctor</option>
               <option value="In-House Pathologist">In-House Pathologist</option>
               <option value="Consultant Specialist">Consultant Specialist</option>
+              <option value="Visiting Consultant">Visiting Consultant</option>
             </select>
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">Qualifications</label>
-            <input type="text" id="newDocQual" placeholder="MBBS, MD" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+            <label class="form-label">Qualifications</label>
+            <input type="text" id="newDocQual" placeholder="MBBS, MD, DM" class="form-input">
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">Medical Council Reg No *</label>
-            <input type="text" id="newDocReg" required placeholder="e.g. MMC72342" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
+            <label class="form-label">Medical Council Reg No <span style="color:red;">*</span></label>
+            <input type="text" id="newDocReg" required placeholder="e.g. MMC72342" class="form-input form-input-mono">
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-slate-400 mb-1">Specialization</label>
-            <input type="text" id="newDocSpec" placeholder="e.g. Nephrology" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+            <label class="form-label">Specialization</label>
+            <input type="text" id="newDocSpec" placeholder="e.g. Nephrology" class="form-input">
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-slate-400 mb-1">Clinic / Hospital Name</label>
-            <input type="text" id="newDocClinic" placeholder="e.g. APEX HOSPITAL" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+            <label class="form-label">Clinic / Hospital Name</label>
+            <input type="text" id="newDocClinic" placeholder="e.g. APEX HOSPITAL, AHMEDABAD" class="form-input">
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-slate-400 mb-1">Phone Number *</label>
-            <input type="text" id="newDocPhone" required placeholder="+91 98920 00000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+            <label class="form-label">Phone Number <span style="color:red;">*</span></label>
+            <input type="text" id="newDocPhone" required placeholder="+91 98920 00000" class="form-input">
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">Default Commission %</label>
-            <input type="number" id="newDocComm" value="15" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
+            <label class="form-label">Default Commission %</label>
+            <input type="number" id="newDocComm" value="15" class="form-input form-input-mono">
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">PAN Number (For TDS)</label>
-            <input type="text" id="newDocPan" placeholder="ABCDE1234F" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono">
+            <label class="form-label">PAN Number (For TDS)</label>
+            <input type="text" id="newDocPan" placeholder="ABCDE1234F" class="form-input form-input-mono">
           </div>
         </div>
 
-        <div class="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
-          <button type="button" onclick="closeAddDoctorModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold">
-            Cancel
-          </button>
-          <button type="submit" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30">
-            Save Practitioner
-          </button>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="form-label">Email Address</label>
+            <input type="email" id="newDocEmail" placeholder="doctor@hospital.com" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Digital Signature Upload</label>
+            <input type="file" id="newDocSignature" accept="image/*" class="form-input" style="padding:6px;">
+          </div>
         </div>
       </form>
+
+      <div class="modal-footer">
+        <button type="button" onclick="closeAddDoctorModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button type="button" onclick="document.querySelector('#addDoctorModal form').requestSubmit()" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-check"></i> Save Practitioner
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- ==================== MODAL 2: COMMISSION PAYOUT SETTLEMENT ==================== -->
-  <div id="payoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
-    <div class="bg-[#111A2E] border border-emerald-500/30 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl text-xs">
-      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-money-bill-transfer text-emerald-400 text-base"></i>
-          <h3 class="font-bold text-sm text-slate-100">Disburse & Settle Referral Commission</h3>
+  <!-- ═══════════════════════════════════════════════════════════
+       MODAL 2 — COMMISSION PAYOUT SETTLEMENT
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="payoutModal" class="modal-overlay hidden">
+    <div class="modal-box max-w-lg w-full">
+      <div class="modal-header">
+        <div class="flex items-center gap-3">
+          <div class="stat-icon icon-green"><i class="fa-solid fa-money-bill-transfer"></i></div>
+          <h3>Disburse &amp; Settle Referral Commission</h3>
         </div>
-        <button onclick="closePayoutModal()" class="text-slate-400 hover:text-white">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <button onclick="closePayoutModal()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
-
-      <div class="p-6 space-y-4">
-        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-          <div class="text-slate-400">Practitioner: <strong class="text-slate-200" id="payoutDocName">DR. SUMANBEN</strong></div>
-          <div class="text-slate-400 mt-1">Total Unsettled Payout: <strong class="text-emerald-400 text-base font-mono" id="payoutAmount">₹101</strong></div>
-          <div class="text-[11px] text-slate-500 mt-1">Calculated at 15% on bill volume of ₹672.6 (TDS 10% auto-deducted)</div>
+      <div class="modal-body space-y-4">
+        <div style="padding:14px; background:#F8FAFC; border-radius:10px; border:1.5px solid #E2E8F0;">
+          <div style="font-size:0.8rem; color:#475569;">Practitioner: <strong style="color:#0F172A;" id="payoutDocName">DR. SUMANBEN</strong></div>
+          <div style="font-size:0.8rem; color:#475569; margin-top:4px;">Total Unsettled Payout: <strong style="color:#059669; font-size:1.1rem; font-family:monospace;" id="payoutAmount">₹101</strong></div>
+          <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;">Calculated at 15% on bill volume of ₹672.6 (TDS 10% auto-deducted)</div>
         </div>
-
         <div>
-          <label class="block text-slate-400 mb-1">Bank Reference / UTR Number *</label>
-          <input type="text" id="payoutUtrInput" value="UTR-HDFC9821034" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500">
+          <label class="form-label">Bank Reference / UTR Number <span style="color:red;">*</span></label>
+          <input type="text" id="payoutUtrInput" value="UTR-HDFC9821034" class="form-input form-input-mono">
         </div>
-
         <div>
-          <label class="block text-slate-400 mb-1">Payment Mode</label>
-          <select id="payoutModeSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+          <label class="form-label">Payment Mode</label>
+          <select id="payoutModeSelect" class="form-select">
             <option>NEFT / IMPS / RTGS Direct Bank Transfer</option>
             <option>UPI / QR Instant Transfer</option>
             <option>Cheque Disbursement</option>
             <option>Cash Voucher</option>
           </select>
         </div>
-
-        <div class="pt-3 flex items-center justify-end gap-3">
-          <button type="button" onclick="closePayoutModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-          <button type="button" onclick="confirmPayoutSettlement()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-600/30">
-            Confirm & Mark as Paid
-          </button>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closePayoutModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button type="button" onclick="confirmPayoutSettlement()" class="btn btn-success btn-sm">
+          <i class="fa-solid fa-check"></i> Confirm &amp; Mark as Paid
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- ==================== MODAL 3: PATHOLOGIST REVIEW & APPROVALS QUEUE ==================== -->
-  <div id="approvalsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden">
-    <div class="bg-[#111A2E] border border-rose-500/40 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-xs">
-      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+  <!-- ═══════════════════════════════════════════════════════════
+       MODAL 3 — PATHOLOGIST REVIEW & APPROVALS QUEUE
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="approvalsModal" class="modal-overlay hidden">
+    <div class="modal-box max-w-4xl w-full">
+      <div class="modal-header" style="border-left:4px solid #DC2626;">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
-            <i class="fa-solid fa-microscope"></i>
-          </div>
+          <div class="stat-icon icon-rose"><i class="fa-solid fa-microscope"></i></div>
           <div>
-            <h3 class="font-bold text-base text-slate-100">Pathologist Diagnostic Approvals & Delta Review</h3>
-            <div class="text-xs text-rose-300">1 Critical Panic Value flagged for urgent authorization</div>
+            <h3>Pathologist Diagnostic Approvals &amp; Delta Review</h3>
+            <div style="font-size:0.72rem; color:#DC2626; margin-top:2px; display:flex; align-items:center; gap:5px;">
+              <span style="width:6px;height:6px;border-radius:50%;background:#DC2626;display:inline-block;animation:pulse-soft 1.5s infinite;"></span>
+              1 Critical Panic Value flagged for urgent authorization
+            </div>
           </div>
         </div>
-        <button onclick="closeApprovalsModal()" class="text-slate-400 hover:text-white text-lg">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <button onclick="closeApprovalsModal()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="p-6 overflow-y-auto space-y-4 flex-1">
-        <div class="p-3 bg-rose-950/30 border border-rose-500/30 rounded-xl flex items-center justify-between">
+      <div class="modal-body space-y-4">
+        <!-- Patient Alert -->
+        <div style="padding:14px; background:#FEF2F2; border:1.5px solid rgba(220,38,38,0.3); border-radius:10px; display:flex; align-items:center; justify-content:space-between;">
           <div>
-            <div class="font-bold text-rose-200">Patient: Vikram Malhotra (58y / Male) • UHID: UHID-10892</div>
-            <div class="text-slate-300 mt-0.5">Emergency Cardiac & Renal Risk Panel • Ref: Dr. NIKILKUMAR</div>
+            <div style="font-weight:700; color:#991B1B; font-size:0.85rem;">Patient: Vikram Malhotra (58y / Male) · UHID: UHID-10892</div>
+            <div style="font-size:0.78rem; color:#475569; margin-top:2px;">Emergency Cardiac &amp; Renal Risk Panel · Ref: Dr. NIKILKUMAR</div>
           </div>
-          <span class="px-2.5 py-1 rounded bg-rose-500 text-white font-bold text-[11px] animate-pulse">PANIC VALUE</span>
+          <span class="badge badge-panic" style="font-size:0.72rem; padding:5px 12px;">PANIC VALUE</span>
         </div>
 
-        <table class="lis-table border border-slate-800 rounded-xl overflow-hidden">
+        <table class="lis-table" style="border:1.5px solid #E2E8F0; border-radius:10px; overflow:hidden;">
           <thead>
             <tr>
               <th>Test Parameter</th>
@@ -1341,45 +1059,68 @@
           </thead>
           <tbody>
             <tr>
-              <td><strong>Troponin I (High Sensitivity)</strong><br><span class="text-slate-500 font-mono text-[10px]">CMIA</span></td>
-              <td class="text-rose-400 font-bold font-mono text-sm">1.84 ng/mL</td>
-              <td class="text-slate-400 font-mono">0.00 - 0.04 ng/mL</td>
-              <td class="text-rose-400 font-bold font-mono">+9100% (Prev: 0.02)</td>
-              <td><span class="badge-panic px-2 py-0.5 rounded font-bold">CRITICAL HIGH</span></td>
+              <td><strong>Troponin I (High Sensitivity)</strong><br><span style="font-size:0.68rem; color:#94A3B8; font-family:monospace;">CMIA</span></td>
+              <td style="color:#DC2626; font-weight:700; font-family:monospace;">1.84 ng/mL</td>
+              <td style="font-family:monospace; color:#64748B;">0.00 – 0.04 ng/mL</td>
+              <td style="color:#DC2626; font-weight:700; font-family:monospace;">+9100% (Prev: 0.02)</td>
+              <td><span class="badge badge-panic">CRITICAL HIGH</span></td>
             </tr>
             <tr>
-              <td><strong>Serum Potassium (K+)</strong><br><span class="text-slate-500 font-mono text-[10px]">ISE</span></td>
-              <td class="text-rose-400 font-bold font-mono text-sm">6.4 mEq/L</td>
-              <td class="text-slate-400 font-mono">3.5 - 5.1 mEq/L</td>
-              <td class="text-rose-400 font-bold font-mono">+33.3% (Prev: 4.8)</td>
-              <td><span class="badge-panic px-2 py-0.5 rounded font-bold">CRITICAL HIGH</span></td>
+              <td><strong>Serum Potassium (K+)</strong><br><span style="font-size:0.68rem; color:#94A3B8; font-family:monospace;">ISE</span></td>
+              <td style="color:#DC2626; font-weight:700; font-family:monospace;">6.4 mEq/L</td>
+              <td style="font-family:monospace; color:#64748B;">3.5 – 5.1 mEq/L</td>
+              <td style="color:#DC2626; font-weight:700; font-family:monospace;">+33.3% (Prev: 4.8)</td>
+              <td><span class="badge badge-panic">CRITICAL HIGH</span></td>
             </tr>
             <tr>
-              <td><strong>Serum Creatinine</strong><br><span class="text-slate-500 font-mono text-[10px]">Kinetic Jaffé</span></td>
-              <td class="text-amber-400 font-bold font-mono text-sm">2.3 mg/dL</td>
-              <td class="text-slate-400 font-mono">0.7 - 1.3 mg/dL</td>
-              <td class="text-amber-400 font-mono">+64.2% (Prev: 1.4)</td>
-              <td><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">HIGH</span></td>
+              <td><strong>Serum Creatinine</strong><br><span style="font-size:0.68rem; color:#94A3B8; font-family:monospace;">Kinetic Jaffé</span></td>
+              <td style="color:#D97706; font-weight:700; font-family:monospace;">2.3 mg/dL</td>
+              <td style="font-family:monospace; color:#64748B;">0.7 – 1.3 mg/dL</td>
+              <td style="color:#D97706; font-family:monospace;">+64.2% (Prev: 1.4)</td>
+              <td><span class="badge" style="background:#FFFBEB; color:#D97706; border-color:rgba(217,119,6,0.25);">HIGH</span></td>
             </tr>
           </tbody>
         </table>
 
         <div>
-          <label class="block font-semibold text-slate-300 mb-1">Pathologist Impression & Clinical Remarks:</label>
-          <textarea id="apprRemarks" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-rose-500">Severe acute elevation in Troponin-I and Hyperkalemia confirmed on repeat run. Attending physician alerted immediately.</textarea>
+          <label class="form-label">Pathologist Impression &amp; Clinical Remarks:</label>
+          <textarea id="apprRemarks" rows="3" class="form-textarea">Severe acute elevation in Troponin-I and Hyperkalemia confirmed on repeat run. Attending physician alerted immediately.</textarea>
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
-        <button onclick="orderReTest()" class="px-4 py-2 bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white rounded-xl font-bold">
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button onclick="orderReTest()" class="btn btn-danger btn-sm">
           <i class="fa-solid fa-rotate-right"></i> Order Re-Draw
         </button>
-        <button onclick="signOffPanicReport()" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg">
-          <i class="fa-solid fa-signature mr-1"></i> Authorize & Release with Digital Signature
-        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeApprovalsModal()" class="btn btn-outline btn-sm">Cancel</button>
+          <button onclick="signOffPanicReport()" class="btn btn-primary btn-sm" style="background:linear-gradient(135deg,#7C3AED,#6366F1); border-color:transparent;">
+            <i class="fa-solid fa-signature"></i> Authorize &amp; Release Digital Signature
+          </button>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TOAST NOTIFICATION CONTAINER
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="toastContainer"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LIVE CLOCK SCRIPT
+  ═══════════════════════════════════════════════════════════ -->
+  <script>
+    function updateClock() {
+      const el = document.getElementById('sidebarClock');
+      if (el) {
+        const now = new Date();
+        el.textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+  </script>
 
   <!-- Application Logic -->
   <script src="app.js"></script>

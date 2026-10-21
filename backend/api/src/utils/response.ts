@@ -37,3 +37,14 @@ export const createdResponse = <T>(
     data,
   });
 };
+
+export const sendSuccess = <T>(
+  res: Response,
+  data: T,
+  message = "Request successful",
+  statusCode = 200
+) => {
+  return successResponse(res, data, message, statusCode);
+};
+
+export const sendError = errorResponse;

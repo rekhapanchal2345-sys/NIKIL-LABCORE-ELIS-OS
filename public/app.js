@@ -180,9 +180,9 @@ function renderDoctorsTable() {
     const isPath = doc.doctorType.includes('Pathologist');
 
     return `
-      <tr class="hover:bg-slate-800/30 transition">
+      <tr style="border-bottom:1px solid #F1F5F9; transition:background 0.15s;" onmouseover="this.style.background='#F0F9FF'" onmouseout="this.style.background=''">
         <!-- 1. Row Index -->
-        <td class="text-slate-500 font-mono text-[11px]">${idx + 1}</td>
+        <td style="font-family:monospace; font-size:0.7rem; color:#94A3B8; padding:12px 14px;">${idx + 1}</td>
 
         <!-- 2. Doctor Details -->
         <td>
@@ -191,12 +191,12 @@ function renderDoctorsTable() {
               ${doc.initials || doc.fullName.substring(0, 2).toUpperCase()}
             </div>
             <div>
-              <div class="font-bold text-slate-100 flex items-center gap-1.5">
+              <div style="font-weight:700; color:#0F172A; font-size:0.82rem; display:flex; align-items:center; gap:5px;">
                 <span>${doc.fullName}</span>
               </div>
-              <div class="flex items-center gap-2 mt-0.5">
-                <span class="text-[10px] text-slate-400 font-mono font-medium">${doc.doctorCode}</span>
-                <span class="text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded font-semibold">${doc.qualifications}</span>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:3px;">
+                <span style="font-size:0.68rem; color:#64748B; font-family:monospace;">${doc.doctorCode}</span>
+                <span style="font-size:0.65rem; background:#F1F5F9; color:#475569; padding:1px 6px; border-radius:4px; font-weight:600;">${doc.qualifications}</span>
               </div>
             </div>
           </div>
@@ -205,31 +205,29 @@ function renderDoctorsTable() {
         <!-- 3. Type & Credentials -->
         <td>
           <div>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1 ${
-              isPath ? 'badge-pathologist' : 'badge-referring'
-            }">
+            <span class="badge ${isPath ? 'badge-pathologist' : 'badge-referring'}" style="font-size:0.68rem;">
               <i class="fa-solid ${isPath ? 'fa-microscope' : 'fa-stethoscope'} text-[9px]"></i>
               ${doc.doctorType}
             </span>
-            <div class="text-[11px] text-slate-400 font-mono mt-1">
-              <i class="fa-solid fa-id-card text-[10px] text-slate-500 mr-1"></i>Reg: <strong class="text-slate-300">${doc.councilRegNo}</strong>
+            <div style="font-size:0.7rem; color:#64748B; font-family:monospace; margin-top:4px;">
+              <i class="fa-solid fa-id-card" style="font-size:0.65rem; color:#94A3B8; margin-right:3px;"></i>Reg: <strong style="color:#0F172A;">${doc.councilRegNo}</strong>
             </div>
           </div>
         </td>
 
         <!-- 4. Specialization & Clinic -->
         <td>
-          <div class="font-semibold text-slate-200">${doc.specialization}</div>
-          <div class="text-[11px] text-slate-400 font-medium mt-0.5 flex items-center gap-1">
-            <i class="fa-regular fa-hospital text-[10px] text-slate-500"></i>
+          <div style="font-weight:600; color:#0F172A; font-size:0.8rem;">${doc.specialization}</div>
+          <div style="font-size:0.72rem; color:#64748B; margin-top:3px; display:flex; align-items:center; gap:4px;">
+            <i class="fa-regular fa-hospital" style="font-size:0.65rem; color:#94A3B8;"></i>
             <span>${doc.clinicName}</span>
           </div>
         </td>
 
         <!-- 5. Referrals & Business -->
         <td>
-          <div class="font-semibold text-slate-200">${doc.patientCount} Patients</div>
-          <div class="text-[11px] font-mono font-semibold ${doc.businessVolume > 0 ? 'text-emerald-400' : 'text-slate-500'} mt-0.5">
+          <div style="font-weight:700; color:#0F172A; font-size:0.82rem;">${doc.patientCount} Patients</div>
+          <div style="font-size:0.72rem; font-family:monospace; font-weight:600; color:${doc.businessVolume > 0 ? '#059669' : '#94A3B8'}; margin-top:3px;">
             ₹${doc.businessVolume.toFixed(1)} Volume
           </div>
         </td>
@@ -237,40 +235,40 @@ function renderDoctorsTable() {
         <!-- 6. Commission Ledger -->
         <td>
           <div>
-            <div class="flex items-center gap-1.5 font-mono">
-              ${doc.pendingPayout > 0 ? `<strong class="text-purple-400 font-bold text-xs">₹${doc.pendingPayout}</strong>` : ''}
-              <span class="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 font-semibold">
+            <div style="display:flex; align-items:center; gap:6px; font-family:monospace;">
+              ${doc.pendingPayout > 0 ? `<strong style="color:#D97706; font-size:0.82rem;">₹${doc.pendingPayout}</strong>` : ''}
+              <span style="font-size:0.68rem; padding:2px 7px; border-radius:4px; background:#F5F3FF; color:#7C3AED; border:1px solid rgba(124,58,237,0.2); font-weight:700;">
                 ${doc.commissionPercent}%
               </span>
             </div>
             ${doc.pendingPayout > 0 ? `
-              <button onclick="openPayoutModal('${doc.id}')" class="text-[11px] text-sky-400 hover:text-sky-300 font-semibold mt-1 flex items-center gap-1">
-                <i class="fa-solid fa-money-bill-transfer text-[10px]"></i> Settle Payout
+              <button onclick="openPayoutModal('${doc.id}')" style="font-size:0.7rem; color:#0891B2; font-weight:600; margin-top:4px; display:flex; align-items:center; gap:3px; background:none; border:none; cursor:pointer; padding:0;">
+                <i class="fa-solid fa-money-bill-transfer" style="font-size:0.65rem;"></i> Settle Payout
               </button>
             ` : `
-              <span class="text-[10px] text-slate-500 mt-1 block">No pending dues</span>
+              <span style="font-size:0.68rem; color:#94A3B8; margin-top:3px; display:block;">No pending dues</span>
             `}
           </div>
         </td>
 
         <!-- 7. Status -->
         <td>
-          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold badge-active inline-flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span class="badge badge-active" style="font-size:0.68rem;">
+            <span style="width:5px; height:5px; border-radius:50%; background:#059669; display:inline-block;"></span>
             ${doc.status}
           </span>
         </td>
 
         <!-- 8. Actions (Eye, Edit, Signature, Trash) -->
         <td class="text-right">
-          <div class="flex items-center justify-end gap-2 text-slate-400">
-            <button onclick="viewDoctorDetails('${doc.id}')" class="p-1.5 hover:text-sky-400 transition" title="View Patient List & EMR Trends">
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">
+            <button onclick="viewDoctorDetails('${doc.id}')" style="width:30px; height:30px; border-radius:7px; border:1.5px solid #E2E8F0; background:#F8FAFC; color:#475569; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.75rem; transition:all 0.15s;" title="View Details" onmouseover="this.style.borderColor='#0891B2'; this.style.color='#0891B2'; this.style.background='#E0F7FF';" onmouseout="this.style.borderColor='#E2E8F0'; this.style.color='#475569'; this.style.background='#F8FAFC';">
               <i class="fa-regular fa-eye"></i>
             </button>
-            <button onclick="editDoctor('${doc.id}')" class="p-1.5 hover:text-indigo-400 transition" title="Edit Profile & Rates">
+            <button onclick="editDoctor('${doc.id}')" style="width:30px; height:30px; border-radius:7px; border:1.5px solid #E2E8F0; background:#F8FAFC; color:#475569; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.75rem; transition:all 0.15s;" title="Edit Profile" onmouseover="this.style.borderColor='#6366F1'; this.style.color='#6366F1'; this.style.background='#EEF2FF';" onmouseout="this.style.borderColor='#E2E8F0'; this.style.color='#475569'; this.style.background='#F8FAFC';">
               <i class="fa-regular fa-pen-to-square"></i>
             </button>
-            <button onclick="deleteDoctor('${doc.id}')" class="p-1.5 hover:text-rose-400 transition" title="Delete">
+            <button onclick="deleteDoctor('${doc.id}')" style="width:30px; height:30px; border-radius:7px; border:1.5px solid #E2E8F0; background:#F8FAFC; color:#475569; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.75rem; transition:all 0.15s;" title="Remove" onmouseover="this.style.borderColor='#DC2626'; this.style.color='#DC2626'; this.style.background='#FEF2F2';" onmouseout="this.style.borderColor='#E2E8F0'; this.style.color='#475569'; this.style.background='#F8FAFC';">
               <i class="fa-regular fa-trash-can"></i>
             </button>
           </div>
@@ -289,9 +287,9 @@ function switchTabFilter(filterType) {
     const btn = document.getElementById(`tab-btn-${key}`);
     if (!btn) return;
     if (key === filterType) {
-      btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow transition flex items-center gap-2";
+      btn.classList.add('active');
     } else {
-      btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-2";
+      btn.classList.remove('active');
     }
   });
 
@@ -504,15 +502,32 @@ function switchAiTabDirect(tabName) {
 
 // Toast notification helper
 function showToast(msg, type = 'info') {
+  const iconMap = { success: 'fa-circle-check', warning: 'fa-triangle-exclamation', error: 'fa-circle-xmark', info: 'fa-circle-info' };
+  const colorMap = { success: '#059669', warning: '#D97706', error: '#DC2626', info: '#2563EB' };
+
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    Object.assign(container.style, { position:'fixed', bottom:'24px', right:'24px', zIndex:'9999', display:'flex', flexDirection:'column', gap:'8px', maxWidth:'380px' });
+    document.body.appendChild(container);
+  }
+
   const toast = document.createElement('div');
-  toast.className = `fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-bold transition-all transform duration-300 ${
-    type === 'success' ? 'bg-emerald-600 text-white' : type === 'warning' ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white'
-  }`;
-  toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-check' : 'fa-circle-info'}"></i> ${msg}`;
-  document.body.appendChild(toast);
+  toast.className = 'toast ' + type;
+  toast.innerHTML = `
+    <i class="fa-solid ${iconMap[type] || 'fa-circle-info'} toast-icon" style="color:${colorMap[type] || '#2563EB'};"></i>
+    <div style="flex:1;">
+      <div style="font-size:0.8rem; font-weight:600; color:#0F172A;">${msg}</div>
+    </div>
+    <button onclick="this.closest('.toast').remove()" style="color:#94A3B8; background:none; border:none; cursor:pointer; font-size:0.9rem; flex-shrink:0;"><i class="fa-solid fa-xmark"></i></button>
+  `;
+  container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
+    toast.style.transform = 'translateX(40px) scale(0.95)';
+    toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  }, 4000);
 }
 

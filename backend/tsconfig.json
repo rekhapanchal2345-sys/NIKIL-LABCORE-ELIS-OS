@@ -18,6 +18,7 @@
   },
   "include": [
     "api/**/*.ts",
+    "src/**/*.ts",
     "scripts/**/*.ts",
     "prisma.config.ts",
     "test-phase2-billing.ts"

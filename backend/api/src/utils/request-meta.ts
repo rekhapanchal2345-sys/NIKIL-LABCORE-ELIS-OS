@@ -32,3 +32,11 @@ export function queryParam(req: Request, name: string): string | undefined {
   if (value === undefined || value === null) return undefined;
   return Array.isArray(value) ? String(value[0]) : String(value);
 }
+
+export function getRequestMeta(req: Request): { ipAddress: string; userAgent: string } {
+  return {
+    ipAddress: getClientIp(req),
+    userAgent: String(req.headers["user-agent"] || ""),
+  };
+}
+

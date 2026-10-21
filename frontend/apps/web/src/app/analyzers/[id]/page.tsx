@@ -232,6 +232,7 @@ function Analyzer3DView({ analyzer }: { analyzer: Analyzer }) {
 import ReflexCascadeEngine from "@/components/analyzers/ReflexCascadeEngine";
 import MaintenanceComplianceLogbook from "@/components/analyzers/MaintenanceComplianceLogbook";
 import PredictiveAnomalyEngine from "@/components/analyzers/PredictiveAnomalyEngine";
+import LivePacketSnifferTerminal from "@/components/analyzers/LivePacketSnifferTerminal";
 import { REAL_WORLD_ANALYZERS } from "@/components/analyzers/realWorldDemoAnalyzers";
 import { BookOpen } from "lucide-react";
 
@@ -658,32 +659,7 @@ export default function AnalyzerDetailPage({ params }: { params: Promise<{ id: s
                 {/* TAB 5: Raw Packet Sniffer */}
                 {activeTab === "packets" && (
                   <div className="space-y-4">
-                    <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 font-mono text-xs">
-                      <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3 font-sans">
-                        <div className="flex items-center gap-2">
-                          <Terminal className="h-4 w-4 text-emerald-400" />
-                          <h3 className="font-bold text-white">ASTM E1394-97 / HL7 Raw Frame Sniffer</h3>
-                        </div>
-                        <span className="text-[11px] text-slate-400">Port {analyzer.port || 5000} · Bi-directional TCP Socket</span>
-                      </div>
-
-                      <div className="space-y-1 rounded-2xl bg-black/80 p-4 text-slate-300 max-h-72 overflow-y-auto">
-                        <div className="text-slate-500">[14:35:01.102] &lt;ENQ&gt; (Host Connection Handshake)</div>
-                        <div className="text-emerald-400">[14:35:01.120] &lt;ACK&gt; (Analyzer Acknowledged)</div>
-                        <div className="text-sky-300">[14:35:01.140] H|\^&amp;|||LIS_CORE^HOST|||||||P|1394-97|20260914143501</div>
-                        <div className="text-slate-500">[14:35:01.155] &lt;ACK&gt;</div>
-                        <div className="text-sky-300">[14:35:01.160] P|1||MRN-88021||Doe^John|||M|||||Dr. Ray</div>
-                        <div className="text-slate-500">[14:35:01.175] &lt;ACK&gt;</div>
-                        <div className="text-sky-300">[14:35:01.182] O|1|SMP-STAT-9921||^^^CBC\^^^PLT|R|20260914143000|||||A||||||||||||||F</div>
-                        <div className="text-slate-500">[14:35:01.200] &lt;ACK&gt;</div>
-                        <div className="text-amber-300">[14:35:01.210] R|1|^^^WBC|8.4|10^3/uL|4.0-11.0|N||F||tech1|20260914143501</div>
-                        <div className="text-amber-300">[14:35:01.220] R|2|^^^HGB|14.2|g/dL|13.0-17.0|N||F||tech1|20260914143501</div>
-                        <div className="text-amber-300">[14:35:01.230] R|3|^^^PLT|245|10^3/uL|150-450|N||F||tech1|20260914143501</div>
-                        <div className="text-slate-500">[14:35:01.245] &lt;ACK&gt;</div>
-                        <div className="text-sky-300">[14:35:01.250] L|1|N</div>
-                        <div className="text-emerald-400">[14:35:01.260] &lt;EOT&gt; (Frame Transmission Complete)</div>
-                      </div>
-                    </div>
+                    <LivePacketSnifferTerminal />
                   </div>
                 )}
 

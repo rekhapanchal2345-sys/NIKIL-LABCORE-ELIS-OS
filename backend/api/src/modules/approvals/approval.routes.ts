@@ -1,279 +1,55 @@
-import { Router } from "express";
-import { UserRole } from "@prisma/client";
-
-import { authenticate } from "../../../middleware/auth.middleware";
-import { authorize } from "../../../middleware/rbac.middleware";
-import { validate } from "../../../middleware/validate.middleware";
-
+import { Router } from 'express';
 import {
+  ApprovalController,
+  getMetrics,
   pending,
   getOne,
-  approveResult,
   rejectResult,
   publishResult,
-  getMetrics,
-  batchApproveResults,
   saveCriticalAck,
   getHistoryTrend,
   getSignature,
-  verifySignature,
-  getApprovalQcChart,
-  getTestQcChart,
-  amendResult,
-  getAmendments,
-  getTriageQueue,
   getPanicReadBackLedger,
-  recordPanicReadBack,
   checkOrderDispatchStatus,
-} from "./approval.controller";
-
-import {
-  approvalIdSchema,
-  approvalQuerySchema,
-  rejectApprovalSchema,
-  batchApproveSchema,
-  criticalAckSchema,
-  amendResultSchema,
-  panicReadBackSchema,
-} from "./approval.validation";
+} from './approval.controller';
 
 const router = Router();
 
-router.use(authenticate);
+// ─── PUBLIC / VERIFICATION SEAL ENDPOINTS (Accessible for external QR checks) ───
+router.get('/:id/verify-seal', ApprovalController.verifySeal);
+router.get('/:id/verify-signature', ApprovalController.verifySeal);
 
-const APPROVAL_ROLES = [
-  UserRole.SUPER_ADMIN,
-  UserRole.ADMIN,
-  UserRole.BRANCH_ADMIN,
-  UserRole.PATHOLOGIST,
-  UserRole.DOCTOR,
-];
+// ─── DAY 2: STATISTICAL QC & LEVEY-JENNINGS (CLSI C24-A4 / NABL 7.3) ───
+router.get('/qc-chart/:testCode', ApprovalController.getQcChart);
+router.post('/qc-chart/:testCode/record', ApprovalController.recordQcPoint);
 
-// =======================================================
-// APPROVAL METRICS
-// =======================================================
+// ─── DAY 2: CRITICAL PANIC TRIAGE & TELEPHONIC READ-BACK (NABL 7.4.2) ───
+router.get('/triage/queue', ApprovalController.getTriageQueue);
+router.post('/panic-triage/readback', ApprovalController.logPanicReadBack);
+router.get('/panic-triage/ledger', getPanicReadBackLedger);
+router.get('/panic-triage/dispatch-status/:orderId', checkOrderDispatchStatus);
 
-router.get(
-  "/metrics",
-  authorize(...APPROVAL_ROLES),
-  getMetrics
-);
+// ─── DAY 2: HIGH-THROUGHPUT BATCH APPROVAL ENGINE ───
+router.post('/batch-approve', ApprovalController.batchApprove);
 
-// =======================================================
-// PANIC TRIAGE QUEUE & AUDIT LEDGER (BEFORE /:id)
-// =======================================================
+// ─── DAY 2: POST-SIGN-OFF RESULT AMENDMENT WORKFLOW (NABL 7.4.3) ───
+router.post('/:id/amend', ApprovalController.amendResult);
+router.get('/:id/amendments', ApprovalController.getResultAmendments);
 
-router.get(
-  "/triage/queue",
-  authorize(...APPROVAL_ROLES),
-  getTriageQueue
-);
+// ─── DAY 1: ELECTRONIC DOCTOR SEAL & DIGITAL SIGNATURE ROUTES ───
+router.post('/:id/approve', ApprovalController.approveSingleResult);
+router.post('/:id/sign', ApprovalController.approveSingleResult);
+router.post('/doctors/:doctorId/signature', ApprovalController.uploadSignature);
 
-router.get(
-  "/panic-triage/ledger",
-  authorize(...APPROVAL_ROLES),
-  getPanicReadBackLedger
-);
-
-router.post(
-  "/panic-triage/readback",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    body: panicReadBackSchema,
-  }),
-  recordPanicReadBack
-);
-
-router.get(
-  "/panic-triage/dispatch-status/:orderId",
-  authorize(...APPROVAL_ROLES),
-  checkOrderDispatchStatus
-);
-
-// =======================================================
-// LEVEY-JENNINGS QC BY TEST CODE (BEFORE /:id)
-// =======================================================
-
-router.get(
-  "/qc-chart/:testCode",
-  authorize(...APPROVAL_ROLES),
-  getTestQcChart
-);
-
-// =======================================================
-// PENDING APPROVALS
-// =======================================================
-
-router.get(
-  "/",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    query: approvalQuerySchema,
-  }),
-  pending
-);
-
-router.get(
-  "/pending",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    query: approvalQuerySchema,
-  }),
-  pending
-);
-
-// =======================================================
-// BATCH APPROVE
-// =======================================================
-
-router.post(
-  "/batch-approve",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    body: batchApproveSchema,
-  }),
-  batchApproveResults
-);
-
-
-// =======================================================
-// APPROVAL DETAIL
-// =======================================================
-
-router.get(
-  "/:id",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  getOne
-);
-
-// =======================================================
-// HISTORICAL DELTA CHECK TREND
-// =======================================================
-
-router.get(
-  "/:id/history",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  getHistoryTrend
-);
-
-// =======================================================
-// CRITICAL VALUE CALL ACKNOWLEDGMENT
-// =======================================================
-
-router.post(
-  "/:id/critical-ack",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-    body: criticalAckSchema,
-  }),
-  saveCriticalAck
-);
-
-// =======================================================
-// APPROVE
-// =======================================================
-
-router.post(
-  "/:id/approve",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  approveResult
-);
-
-// =======================================================
-// SEND BACK FOR CORRECTION
-// =======================================================
-
-router.post(
-  "/:id/reject",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-    body: rejectApprovalSchema,
-  }),
-  rejectResult
-);
-
-// =======================================================
-// PUBLISH
-// =======================================================
-
-router.post(
-  "/:id/publish",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  publishResult
-);
-
-// =======================================================
-// DIGITAL SIGNATURE & VERIFICATION
-// =======================================================
-
-router.get(
-  "/:id/signature",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  getSignature
-);
-
-router.get(
-  "/:id/verify-signature",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  verifySignature
-);
-
-// =======================================================
-// LEVEY-JENNINGS QC FOR APPROVAL SPECIMEN
-// =======================================================
-
-router.get(
-  "/:id/qc-chart",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  getApprovalQcChart
-);
-
-// =======================================================
-// RESULT AMENDMENT (NABL ISO 15189:2022)
-// =======================================================
-
-router.post(
-  "/:id/amend",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-    body: amendResultSchema,
-  }),
-  amendResult
-);
-
-router.get(
-  "/:id/amendments",
-  authorize(...APPROVAL_ROLES),
-  validate({
-    params: approvalIdSchema,
-  }),
-  getAmendments
-);
+// ─── CORE WORKLIST & ACTIONS ───
+router.get('/metrics', getMetrics);
+router.get('/pending', pending);
+router.get('/', pending);
+router.get('/:id', getOne);
+router.post('/:id/reject', rejectResult);
+router.post('/:id/publish', publishResult);
+router.post('/:id/critical-ack', saveCriticalAck);
+router.get('/:id/history', getHistoryTrend);
+router.get('/:id/signature', getSignature);
 
 export default router;
-
-
