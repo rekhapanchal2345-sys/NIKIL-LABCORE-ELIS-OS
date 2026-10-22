@@ -3738,6 +3738,7 @@ export const aiApi = {
     nEstimators: number;
     maxDepth: number;
     learningRate: number;
+    [key: string]: any;
   }) => {
     return apiCall('/api/ai/train/classical', {
       method: 'POST',
@@ -3747,12 +3748,19 @@ export const aiApi = {
 
   trainDeepLearning: async (params: {
     architecture: string;
+    dataset?: string;
     epochs: number;
     batchSize: number;
     optimizer: string;
     learningRate: number;
     dropout?: number;
     layers?: number[];
+    precision?: string;
+    lrScheduler?: string;
+    lossFunction?: string;
+    regularizationL1?: number;
+    regularizationL2?: number;
+    earlyStoppingPatience?: number;
   }) => {
     return apiCall('/api/ai/train/deep-learning', {
       method: 'POST',

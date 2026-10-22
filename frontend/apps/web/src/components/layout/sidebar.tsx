@@ -67,7 +67,7 @@ interface SubMenuItem {
   label: string;
   href: string;
   badge?: string;
-  badgeVariant?: "red" | "blue" | "amber" | "emerald" | "purple" | "violet";
+  badgeVariant?: "red" | "blue" | "amber" | "emerald" | "purple" | "violet" | "teal";
   isDivider?: boolean;       // Visual group separator
   dividerLabel?: string;     // Label for divider
   liveKey?: "criticalPatients" | "opdQueue"; // Live count key
@@ -458,15 +458,29 @@ const menuSections: MenuSection[] = [
           activeText: "text-[#0F766E] font-bold",
         },
         children: [
+          { isDivider: true, dividerLabel: "DIAGNOSTIC & RISK ENGINES", label: "", href: "#" },
           { label: "Clinical AI Hub", href: "/ai-studio" },
-          { label: "Diagnostic Risk ML", href: "/ai-studio?tab=classical-ml" },
-          { label: "Biomarker Neural Nets", href: "/ai-studio?tab=deep-learning" },
+          { label: "Emergency Command Center", href: "/ai-studio?tab=clinical-command", badge: "LIVE", badgeVariant: "red" },
+          { label: "Diagnostic Risk ML", href: "/ai-studio?tab=classical-ml", badge: "CARDIAC", badgeVariant: "emerald" },
+          { label: "Hematology CBC AI", href: "/ai-studio?tab=cbc-analyzer", badge: "14-PARAM", badgeVariant: "teal" },
+          { label: "Sepsis Watch & SOFA", href: "/ai-studio?tab=sepsis-watch", badge: "ICU ALERT", badgeVariant: "red" },
+          { label: "Coagulation Risk AI", href: "/ai-studio?tab=coagulation-risk" },
+          { label: "Thyroid Classifier", href: "/ai-studio?tab=thyroid-classifier" },
+          { label: "12-Lead ECG AI", href: "/ai-studio?tab=ecg-interpreter" },
+
+          { isDivider: true, dividerLabel: "CLINICAL DECISION SUPPORT", label: "", href: "#" },
+          { label: "Pharmacovigilance & DDI", href: "/ai-studio?tab=drug-interactions", badge: "SAFETY", badgeVariant: "amber" },
+          { label: "AMR & Antibiogram", href: "/ai-studio?tab=amr-susceptibility", badge: "CLSI", badgeVariant: "purple" },
+          { label: "Smart Diagnostic Report", href: "/ai-studio?tab=smart-report", badge: "AUTO-SOP", badgeVariant: "teal" },
           { label: "Clinical NLP & EMR", href: "/ai-studio?tab=nlp" },
-          { label: "Critical Delta-Checks", href: "/ai-studio?tab=anomalies" },
+
+          { isDivider: true, dividerLabel: "LAB MLOPS & REGULATORY", label: "", href: "#" },
+          { label: "Critical Delta-Checks", href: "/ai-studio?tab=anomalies", badge: "WESTGARD", badgeVariant: "red" },
           { label: "Hospital TAT Forecaster", href: "/ai-studio?tab=forecasting" },
+          { label: "Biomarker Neural Nets", href: "/ai-studio?tab=deep-learning" },
           { label: "Clinical Validation", href: "/ai-studio?tab=evaluation" },
           { label: "Hospital Model Registry", href: "/ai-studio?tab=registry" },
-          { label: "Regulatory AI Audit", href: "/ai-studio?tab=audit" },
+          { label: "Regulatory AI Audit", href: "/ai-studio?tab=audit", badge: "HIPAA", badgeVariant: "emerald" },
         ],
       },
     ],
@@ -783,6 +797,11 @@ export default function Sidebar({
 
     if (hrefPath === "/analyzers") {
       return pathname === hrefPath && !searchParams.get("section") && !searchParams.get("tab");
+    }
+
+    if (hrefPath === "/ai-studio" && !hrefQuery) {
+      const tab = searchParams.get("tab");
+      return pathname === "/ai-studio" && (!tab || tab === "overview");
     }
 
     // /settings owns its tabs through ?tab=, and /settings/communications is a
@@ -1270,6 +1289,8 @@ export default function Sidebar({
                                             ? "bg-[#FFFBEB] text-[#D97706] border border-amber-200"
                                             : child.badgeVariant === "purple" || child.badgeVariant === "violet"
                                             ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                            : child.badgeVariant === "teal"
+                                            ? "bg-teal-50 text-[#0F766E] border border-teal-200"
                                             : "bg-sky-50 text-[#0284C7] border border-sky-200"
                                         }`}
                                       >

@@ -1,12 +1,18 @@
 export interface ClassicalMlTrainingParams {
   modelName: string;
-  algorithm: "XGBoost" | "RandomForest" | "LightGBM" | "LogisticRegression";
+  algorithm: string;
   dataset: string;
   nEstimators: number;
   maxDepth: number;
   learningRate: number;
   testSplitRatio?: number;
   subsample?: number;
+  kFold?: number;
+  regularizationL1?: number;
+  regularizationL2?: number;
+  lossFunction?: "FOCAL_LOSS" | "WEIGHTED_CROSS_ENTROPY" | "BRIER_CALIBRATED" | "LOG_LOSS";
+  quantization?: "FP32" | "FP16" | "INT8";
+  earlyStoppingPatience?: number;
 }
 
 export interface TrainingEpochLog {
@@ -28,6 +34,8 @@ export interface ClassicalMlTrainingResult {
   f1Score: number;
   precision: number;
   recall: number;
+  datasetSamples?: number;
+  trainingTimeMs?: number;
   epochs: TrainingEpochLog[];
   confusionMatrix: {
     truePositive: number;
@@ -36,22 +44,58 @@ export interface ClassicalMlTrainingResult {
     falseNegative: number;
   };
   featureImportances: { feature: string; weight: number; impact: string }[];
+  crossValidation?: { fold: number; trainAcc: number; valAcc: number; rocAuc: number; f1: number }[];
+  rocCurve?: { fpr: number; tpr: number }[];
+  prCurve?: { recall: number; precision: number }[];
+  calibrationData?: { bin: number; predictedProb: number; trueFraction: number }[];
+  hardwareTelemetry?: {
+    vramUsedMb: number;
+    totalVramMb: number;
+    tensorOpsTflops: number;
+    inferenceLatencyMs: number;
+    throughputSamplesSec: number;
+    batchSize: number;
+    accelerator: string;
+    temperatureC: number;
+  };
+  modelArtifact?: {
+    weightsChecksum: string;
+    format: string;
+    quantization: string;
+    nablApproved: boolean;
+    sha256: string;
+    sizeKb: number;
+  };
+  hyperparameterGrid?: { nEstimators: number; maxDepth: number; lr: number; rocAuc: number; latencyMs: number }[];
+  astmFrames?: string[];
+  leveyJenningsPoints?: { run: number; value: number; sd: number; status: "PASS" | "WARNING" | "VIOLATION" }[];
+  trainingLogs?: string[];
   trainedAt: string;
 }
 
 export interface DeepLearningTrainingParams {
-  architecture: "DeepBioNet-MLP" | "ResNet-Tabular" | "BioTransformer";
+  architecture: string;
+  dataset?: string;
   epochs: number;
   batchSize: number;
-  optimizer: "AdamW" | "SGD" | "RMSprop";
-  learningRate: number;
-  dropout: number;
-  layers: number[];
+  optimizer?: string;
+  learningRate?: number;
+  dropout?: number;
+  layers?: number[];
+  precision?: string;
+  lrScheduler?: string;
+  lossFunction?: "FOCAL_LOSS" | "WEIGHTED_CROSS_ENTROPY" | "BRIER_CALIBRATED" | "CONTRASTIVE_MULTITASK" | "LOG_LOSS";
+  regularizationL1?: number;
+  regularizationL2?: number;
+  earlyStoppingPatience?: number;
 }
 
 export interface DeepLearningResult {
   modelId: string;
   architecture: string;
+  dataset?: string;
+  datasetSamples?: number;
+  lossFunctionUsed?: string;
   totalParameters: number;
   epochsRun: number;
   finalLoss: number;
@@ -60,10 +104,55 @@ export interface DeepLearningResult {
   history: TrainingEpochLog[];
   convergenceState: "CONVERGED_OPTIMAL" | "EARLY_STOPPED" | "STABLE";
   trainedAt: string;
+  hardwareTelemetry?: {
+    gpu: string;
+    vramUsed: string;
+    tflops: number;
+    latencyMs: number;
+    powerWatts: number;
+    tempC: number;
+  };
+  metrics?: {
+    rocAuc: number;
+    f1Score: number;
+    sensitivity: number;
+    specificity: number;
+    precision: number;
+    npv: number;
+    brierScore: number;
+    auprc?: number;
+    matthewsCorrelationCoefficient?: number;
+    diagnosticOddsRatio?: number;
+    expectedCalibrationError?: number;
+  };
+  confusionMatrix?: {
+    tp: number;
+    fp: number;
+    tn: number;
+    fn: number;
+  };
+  layerTopology?: {
+    name: string;
+    type: string;
+    neurons: string;
+    activation: string;
+    gradNorm: number;
+    paramCount: string;
+  }[];
+  sha256Checksum?: string;
+  nablValidationCertificate?: string;
+  serializationFormat?: string;
+  validationCasesCount?: number;
 }
 
 export interface MultiAnalytePredictionRequest {
   panel?: string;
+  uhid?: string;
+  patientName?: string;
+  patientAge?: number;
+  age?: number;
+  patientGender?: "MALE" | "FEMALE" | "OTHER";
+  gender?: string;
   hba1c?: number;
   fbs?: number;
   creatinine?: number;
@@ -86,8 +175,39 @@ export interface MultiAnalytePredictionRequest {
   bilirubin?: number;
   alp?: number;
   albumin?: number;
-  patientAge?: number;
-  patientGender?: "MALE" | "FEMALE" | "OTHER";
+  myoglobin?: number;
+  ldh?: number;
+  cystatinC?: number;
+  uricAcid?: number;
+  directBilirubin?: number;
+  ggt?: number;
+  inr?: number;
+  pt?: number;
+  aptt?: number;
+  fibrinogen?: number;
+  amylase?: number;
+  lipase?: number;
+  calcium?: number;
+  cholesterol?: number;
+  triglycerides?: number;
+  hdl?: number;
+  ldl?: number;
+  vldl?: number;
+  map?: number;
+  temp?: number;
+  sofa?: number;
+  qsofa?: number;
+  glucose?: number;
+  ketones?: number;
+  ph?: number;
+  tsh?: number;
+  freeT4?: number;
+  freeT3?: number;
+  analyzerModel?: string;
+  barcode?: string;
+  tubeType?: string;
+  algorithm?: string;
+  [key: string]: any;
 }
 
 export interface PredictionResult {
@@ -102,6 +222,75 @@ export interface PredictionResult {
     impactPercentage: number;
     direction: "POSITIVE_RISK" | "NEGATIVE_RISK";
   }[];
+  flags?: string[];
+  differentialDiagnoses?: {
+    condition: string;
+    icd10: string;
+    probability: number;
+    urgency: "CRITICAL_PANIC" | "HIGH_RISK" | "ELEVATED" | "ROUTINE";
+    evidence: string;
+    category: string;
+  }[];
+  analyzerTelemetry?: {
+    machineModel: string;
+    serialNumber: string;
+    methodology: string;
+    lisInterface: string;
+    reagentLot: string;
+    reagentExpiry: string;
+    calibrationStatus: "VALID" | "EXPIRED" | "RECAL_NEEDED";
+    iqcWestgard: {
+      rule1_2s: "PASS" | "WARNING";
+      rule1_3s: "PASS" | "FAIL";
+      rule2_2s: "PASS" | "FAIL";
+      r_4s: "PASS" | "FAIL";
+      overallStatus: "ACCEPTED" | "REJECTED";
+      biasPercent: number;
+      leveyJenningsSD: number;
+    };
+    sampleIntegrity: {
+      hemolysisIndex: { value: number; unit: string; status: "NORMAL" | "BORDERLINE" | "INTERFERENCE"; ref: string };
+      icterusIndex: { value: number; unit: string; status: "NORMAL" | "BORDERLINE" | "INTERFERENCE"; ref: string };
+      lipemiaIndex: { value: number; unit: string; status: "NORMAL" | "BORDERLINE" | "INTERFERENCE"; ref: string };
+      clotDetected: boolean;
+      sampleVolumeAdequate: boolean;
+    };
+  };
+  counterfactualSimulations?: {
+    parameter: string;
+    originalValue: number;
+    simulatedValue: number;
+    projectedRiskScore: number;
+    deltaRisk: number;
+    clinicalEffect: string;
+  }[];
+  clinicalActionPlan?: {
+    immediateEmergencySteps: string[];
+    medicationAlerts: { drugOrClass: string; warning: string; action: "WITHHOLD" | "CAUTION" | "ADMINISTER" }[];
+    reflexTestingRecommended: { testName: string; rationale: string; stat: boolean }[];
+    guidelineCitations: string[];
+    pathologistReviewRequired: boolean;
+    panicReadbackProtocolMandatory: boolean;
+  };
+  laboratoryCertificate?: {
+    certificateId: string;
+    sampleBarcode: string;
+    hospitalName: string;
+    nablAccreditationNo: string;
+    collectionTime: string;
+    receivedTime: string;
+    reportedTime: string;
+    specimenType: string;
+    method: string;
+    pathologistName: string;
+    pathologistRegNo: string;
+    digitalSignatureHash: string;
+    qrVerificationUrl: string;
+  };
+  confidenceInterval?: { lower: number; upper: number };
+  reactionKinetics?: { timeSec: number; opticalDensity: number; deltaRate: number }[];
+  astmTransmissionFrame?: string[];
+  preAnalyticalInterference?: { hemolysis: string; icterus: string; lipemia: string; flag: string };
   evaluatedAt: string;
 }
 
