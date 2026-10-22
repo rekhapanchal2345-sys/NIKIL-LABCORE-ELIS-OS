@@ -33,6 +33,8 @@ import {
     generateOrderPdf,
     generateOrderReportHtml,
   } from "./report.pdf.service";
+  import { assertOrderClearedForReportDispatch } from "../approvals/panic-readback.service";
+  import { reportStorageService } from "./report.storage.service";
   
   // =======================================================
   // ORDER REPORT
@@ -580,7 +582,7 @@ export const sendReportToDoctorHandler =
 // RENDER & STREAM NABL ORDER REPORT PDF
 // =======================================================
 
-export const orderReportPdf = async (
+export const streamOrderReportPdf = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -596,25 +598,85 @@ export const orderReportPdf = async (
       orderId = report.orderId;
     }
 
+    // Enforce Day 2 Report Dispatch Guard so unacknowledged critical panic results cannot be dispatched
+    await assertOrderClearedForReportDispatch(orderId);
+
     const protocol = req.protocol || "http";
     const host = req.get("host") || "localhost:3001";
     const publicUrl = `${protocol}://${host}`;
 
-    const pdfBuffer = await generateOrderPdf(orderId, publicUrl);
-    const isPdf = pdfBuffer.slice(0, 5).toString() === "%PDF-";
+    const compiled = await generateOrderPdf(orderId, {
+      enforceDispatchGuard: false,
+      baseVerificationUrl: publicUrl,
+    });
 
-    if (isPdf) {
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename="LabCore_Report_${orderId}.pdf"`);
-    } else {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-    }
-
-    return res.status(200).send(pdfBuffer);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="report-${compiled.orderNumber}.pdf"`
+    );
+    res.setHeader("X-NABL-Report-Number", compiled.reportNumber);
+    res.setHeader("X-NABL-Checksum-SHA256", compiled.checksumSha256);
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    return res.status(200).send(compiled.buffer);
   } catch (error) {
     next(error);
   }
 };
+
+export const orderReportPdf = streamOrderReportPdf;
+
+// =======================================================
+// RENDER NABL ORDER REPORT HTML PREVIEW
+// =======================================================
+
+export const getOrderReportHtmlPreview = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const rawId = (req.params.orderId || req.params.id || (req as any).validated?.params?.orderId) as string;
+    let orderId = rawId;
+    const report = await prisma.report.findUnique({
+      where: { id: rawId },
+      select: { orderId: true },
+    });
+    if (report?.orderId) {
+      orderId = report.orderId;
+    }
+
+    const enforceGuard = req.query.enforceDispatchGuard === "true";
+    if (enforceGuard) {
+      await assertOrderClearedForReportDispatch(orderId);
+    }
+
+    const protocol = req.protocol || "http";
+    const host = req.get("host") || "localhost:3001";
+    const publicUrl = `${protocol}://${host}`;
+
+    const html = await generateOrderReportHtml(orderId, {
+      enforceDispatchGuard: false,
+      baseVerificationUrl: publicUrl,
+    });
+
+    if (req.query.format === "json") {
+      return res.status(200).json({
+        success: true,
+        data: { orderId, html },
+        message: "NABL A4 HTML report generated",
+      });
+    }
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    return res.status(200).send(html);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const orderReportHtml = getOrderReportHtmlPreview;
 
 // =======================================================
 // DOWNLOAD NABL ORDER REPORT PDF (ATTACHMENT)
@@ -636,22 +698,26 @@ export const downloadOrderReportPdf = async (
       orderId = report.orderId;
     }
 
+    // Enforce Day 2 Report Dispatch Guard
+    await assertOrderClearedForReportDispatch(orderId);
+
     const protocol = req.protocol || "http";
     const host = req.get("host") || "localhost:3001";
     const publicUrl = `${protocol}://${host}`;
 
-    const pdfBuffer = await generateOrderPdf(orderId, publicUrl);
-    const isPdf = pdfBuffer.slice(0, 5).toString() === "%PDF-";
+    const compiled = await generateOrderPdf(orderId, {
+      enforceDispatchGuard: false,
+      baseVerificationUrl: publicUrl,
+    });
 
-    if (isPdf) {
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="Diagnostic_Report_${orderId}.pdf"`);
-    } else {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Content-Disposition", `attachment; filename="Diagnostic_Report_${orderId}.html"`);
-    }
-
-    return res.status(200).send(pdfBuffer);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="report-${compiled.orderNumber}.pdf"`
+    );
+    res.setHeader("X-NABL-Report-Number", compiled.reportNumber);
+    res.setHeader("X-NABL-Checksum-SHA256", compiled.checksumSha256);
+    return res.status(200).send(compiled.buffer);
   } catch (error) {
     next(error);
   }
@@ -872,3 +938,168 @@ export const publicVerifyReport = async (
     next(error);
   }
 };
+
+// =======================================================
+// DAY 4: PERSISTENT MULTI-PAGE PDF GENERATION & STORAGE
+// =======================================================
+
+export const generateAndStoreReport = async (
+  req: Request,
+  res: Response,
+  next?: NextFunction
+): Promise<void> => {
+  try {
+    const { orderId, forceRegenerate = false, signatoryDoctorId } = req.body || {};
+
+    if (!orderId || typeof orderId !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Mandatory field "orderId" is required to generate NABL PDF report.',
+      });
+      return;
+    }
+
+    const authUser = (req as Request & { user?: { id?: string } }).user;
+
+    const persisted = await reportStorageService.generateAndPersistReport({
+      orderId,
+      forceRegenerate: Boolean(forceRegenerate),
+      signatoryDoctorId,
+      userId: authUser?.id,
+    });
+
+    res.status(persisted.cached ? 200 : 201).json({
+      success: true,
+      message: persisted.cached
+        ? 'Retrieved verified NABL PDF report from persistent disk cache.'
+        : 'Generated and persisted NABL ISO 15189:2022 multi-page PDF report.',
+      data: persisted,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to generate and store report.';
+    const statusCode =
+      message.includes('Dispatch Guard Blocked') || message.includes('CRITICAL SAFETY BLOCK')
+        ? 403
+        : message.includes('not found')
+        ? 404
+        : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message,
+    });
+  }
+};
+
+// =======================================================
+// DAY 4: PHYSICAL REPORT FILE STREAMING WITH ETAG & RANGE
+// =======================================================
+
+export const streamStoredOrderReportFile = async (
+  req: Request,
+  res: Response,
+  next?: NextFunction
+): Promise<void> => {
+  try {
+    const rawOrderId = req.params.orderId;
+    const orderId = Array.isArray(rawOrderId) ? rawOrderId[0] : String(rawOrderId || '');
+    const download = req.query.download === 'true';
+
+    const fileMeta = await reportStorageService.getStoredReportFileStream(orderId);
+    const etagValue = `"${fileMeta.fileHashSha256}"`;
+
+    if (req.headers['if-none-match'] === etagValue) {
+      fileMeta.stream.destroy();
+      res.status(304).end();
+      return;
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', String(fileMeta.fileSizeBytes));
+    res.setHeader(
+      'Content-Disposition',
+      `${download ? 'attachment' : 'inline'}; filename="${fileMeta.fileName}"`
+    );
+    res.setHeader('ETag', etagValue);
+    res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');
+    res.setHeader('X-NABL-Report-Number', fileMeta.reportNumber);
+    res.setHeader('X-NABL-Report-SHA256', fileMeta.fileHashSha256);
+
+    fileMeta.stream.on('error', (streamErr) => {
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: `Disk stream error: ${streamErr.message}`,
+        });
+      } else {
+        res.end();
+      }
+    });
+
+    fileMeta.stream.pipe(res);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to stream stored PDF file.';
+    const statusCode =
+      message.includes('Dispatch Guard Blocked') || message.includes('CRITICAL SAFETY BLOCK')
+        ? 403
+        : message.includes('not found')
+        ? 404
+        : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message,
+    });
+  }
+};
+
+// =======================================================
+// DAY 4: CRYPTOGRAPHIC QR TOKEN AUTHENTICITY CHECK
+// =======================================================
+
+export const verifyQrCryptographicToken = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const reportId = String(req.query.reportId || '').trim();
+    const token = String(req.query.token || '').trim();
+    const checksumPrefix = req.query.checksum ? String(req.query.checksum).trim() : undefined;
+
+    const verification = await reportStorageService.verifyReportToken({
+      reportId,
+      token,
+      checksumPrefix,
+    });
+
+    res.status(verification.valid ? 200 : 400).json({
+      success: verification.valid,
+      data: verification,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Token verification error.';
+    res.status(500).json({
+      success: false,
+      message,
+    });
+  }
+};
+
+export const getReports = publishedReports;
+export const getReportById = orderReport;
+export const generateReportForOrder = generateAndStoreReport;
+export const verifyPublicReport = publicVerifyReport;
+
+export const reportController = {
+  generateAndStoreReport,
+  streamStoredOrderReportFile,
+  verifyQrCryptographicToken,
+  streamOrderReportPdf,
+  downloadOrderReportPdf,
+  getOrderReportHtmlPreview,
+  listReports: publishedReports,
+  getReports: publishedReports,
+  getReportById: orderReport,
+  generateReportForOrder: generateAndStoreReport,
+  verifyPublicReport: publicVerifyReport,
+};

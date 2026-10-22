@@ -599,6 +599,7 @@ export async function getPrioritizedTriageQueue(options?: {
  */
 export async function assertOrderClearedForReportDispatch(orderId: string): Promise<{
   cleared: true;
+  clearedForDispatch: true;
   orderId: string;
   checkedResultsCount: number;
   verifiedPanicReadBacks: TelephonicReadBackRecord[];
@@ -649,16 +650,46 @@ export async function assertOrderClearedForReportDispatch(orderId: string): Prom
       .map((b) => `${b.testName} [${b.panicParameters.join(', ')}]`)
       .join('; ');
     throw new Error(
-      `NABL Clause 7.4.2 Dispatch Block: Order ${orderId} has critical panic results lacking mandatory telephonic read-back confirmation: ${details}`
+      `CRITICAL SAFETY BLOCK: NABL Clause 7.4.2 Dispatch Block: Order ${orderId} has critical panic results lacking mandatory telephonic read-back confirmation: ${details}`
     );
   }
 
   return {
     cleared: true,
+    clearedForDispatch: true,
     orderId,
     checkedResultsCount: results.length,
     verifiedPanicReadBacks,
   };
+}
+
+/**
+ * Convenience helper for recording panic read-back in empirical tests and workflow endpoints
+ */
+export async function recordPanicReadback(
+  resultId: string,
+  data: {
+    notifiedClinicianName?: string;
+    notifiedClinicianRole?: string;
+    notificationChannel?: string;
+    contactPhoneOrExtension?: string;
+    readBackConfirmed?: boolean;
+    readBackText?: string;
+    clinicalActionTaken?: string;
+  },
+  userId?: string
+): Promise<any> {
+  return recordTelephonicReadBack({
+    resultId,
+    recipientDoctorName: data.notifiedClinicianName || 'Attending Physician',
+    recipientDesignation: data.notifiedClinicianRole || 'Consultant',
+    wardOrDepartment: 'ICU / STAT',
+    contactNumber: data.contactPhoneOrExtension || '+91-9876543210',
+    readBackVerified: data.readBackConfirmed ?? true,
+    communicatedValuesSummary: data.readBackText,
+    clinicalNotes: data.clinicalActionTaken,
+    communicatedByUserId: userId,
+  });
 }
 
 /**

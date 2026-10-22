@@ -522,7 +522,7 @@ const menuSections: MenuSection[] = [
         ],
       },
       {
-        label: "Communication",
+        label: "Clinical Communication",
         href: "/communication",
         icon: MessageSquare,
         accent: {
@@ -533,10 +533,15 @@ const menuSections: MenuSection[] = [
           activeText: "text-[#0F766E] font-bold",
         },
         children: [
-          { label: "Communication Hub", href: "/communication" },
-          { label: "WhatsApp Console", href: "/whatsapp" },
-          { label: "SMS Campaigns", href: "/communication?tab=campaigns" },
-          { label: "Provider Settings", href: "/settings/communications" },
+          { label: "📡 Omnichannel Command Hub", href: "/communication", badge: "KPIs", badgeVariant: "emerald" },
+          { label: "🩺 Doctor Consultation Desk", href: "/communication?tab=consultation", badge: "STAT", badgeVariant: "purple" },
+          { label: "🚨 Critical / Panic Escalations", href: "/communication?tab=panic", badge: "NABL", badgeVariant: "red" },
+          { label: "📥 2-Way Patient Inbox", href: "/communication?tab=inbox", badge: "Live", badgeVariant: "blue" },
+          { label: "📢 Hospital Emergency Paging", href: "/communication?tab=broadcast", badge: "Code Blue", badgeVariant: "red" },
+          { label: "🤝 Shift Handover Huddle", href: "/communication?tab=handover", badge: "Custody", badgeVariant: "amber" },
+          { label: "📄 Report & Sample Dispatch", href: "/communication?tab=dispatch", badge: "SHA-256", badgeVariant: "emerald" },
+          { label: "🎯 Health Packages & Campaigns", href: "/communication?tab=campaign", badge: "Re-call", badgeVariant: "purple" },
+          { label: "⚙️ Gateway & DLT Compliance", href: "/settings/communications", badge: "TRAI DLT", badgeVariant: "amber" },
         ],
       },
       {
@@ -743,6 +748,8 @@ export default function Sidebar({
     Invoices: pathname.startsWith("/invoices"),
     Settings: pathname.startsWith("/settings"),
     Analyzers: pathname.startsWith("/analyzers"),
+    "Clinical Communication": pathname.startsWith("/communication"),
+    Communication: pathname.startsWith("/communication"),
     "Hematology Analyzers": pathname.includes("section=hematology"),
   });
 
@@ -768,6 +775,10 @@ export default function Sidebar({
 
     if (hrefPath === "/invoices" && !hrefQuery) {
       return pathname === "/invoices" && !searchParams.get("tab");
+    }
+
+    if (hrefPath === "/communication" && !hrefQuery) {
+      return pathname === "/communication" && !searchParams.get("tab");
     }
 
     if (hrefPath === "/analyzers") {

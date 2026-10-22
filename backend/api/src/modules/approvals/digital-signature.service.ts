@@ -1205,3 +1205,23 @@ export async function uploadDoctorDigitalSignature(params: {
   });
 }
 
+export function generateNablSealSvg(params: {
+  doctorName?: string;
+  registrationNumber?: string;
+  specialization?: string;
+  signedAtIso?: string;
+  sealHash?: string;
+  nablCertificateNo?: string;
+  [key: string]: any;
+}): string {
+  return generateDoctorSealSvg({
+    doctorName: params.doctorName || 'Authorized Pathologist',
+    qualification: params.specialization || 'MD (Pathology)',
+    designation: params.specialization || 'Consultant Pathologist',
+    registrationNumber: params.registrationNumber || 'MCI-REG',
+    signedAtIso: params.signedAtIso || new Date().toISOString(),
+    signatureHash: params.sealHash,
+    nablCertificateNumber: params.nablCertificateNo,
+  });
+}
+

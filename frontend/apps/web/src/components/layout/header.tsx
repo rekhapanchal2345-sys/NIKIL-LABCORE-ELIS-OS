@@ -16,12 +16,14 @@ import {
   Building2,
   Activity,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleLabel } from "@/lib/auth";
 import NotificationCenter from "./NotificationCenter";
 import GlobalSearchModal from "./GlobalSearchModal";
 import LogoutModal from "@/components/auth/LogoutModal";
+import QuickCommunicationSlideover from "@/components/communication/QuickCommunicationSlideover";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -46,12 +48,18 @@ export default function Header({
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Global Ctrl+K / Cmd+K Search Shortcut
+  const [showQuickComms, setShowQuickComms] = useState(false);
+
+  // Global Ctrl+K (Search) & Ctrl+M (Quick Comms) Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setShowSearchModal((prev) => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        setShowQuickComms((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -165,6 +173,21 @@ export default function Header({
 
       {/* RIGHT: Global Search, Quick Hospital Badges, Notifications & Profile */}
       <div className="flex items-center gap-2 lg:gap-3">
+        {/* Live NABL Critical Panic Alert Ticker */}
+        <div
+          onClick={() => setShowQuickComms(true)}
+          className="hidden 2xl:flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-bold cursor-pointer hover:bg-rose-100 transition-colors shadow-2xs select-none"
+          title="Click to view & verbally confirm NABL Critical Panic Values (Ctrl+M)"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+          </span>
+          <span className="text-rose-900 font-extrabold uppercase tracking-tight">🚨 Critical Panic SLA:</span>
+          <span>Serum K+ = 6.8 mmol/L (UHID: 88399)</span>
+          <span className="rounded bg-rose-200/90 px-1.5 py-0.2 text-[9px] font-mono font-extrabold text-rose-950">6m SLA</span>
+        </div>
+
         {/* Hospital Facility / Branch Status */}
         <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-[11px] text-[#475569]">
           <Building2 className="w-3.5 h-3.5 text-[#0F766E]" />
@@ -205,6 +228,28 @@ export default function Header({
           title="Search (Ctrl+K)"
         >
           <Search className="w-4 h-4" />
+        </button>
+
+        {/* Quick Communication Desk Trigger */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowQuickComms(true);
+            setShowNotifications(false);
+            setShowProfile(false);
+          }}
+          aria-label="Quick Clinical Communication Desk"
+          className={`w-9 h-9 lg:w-10 lg:h-10 border rounded-lg flex items-center justify-center relative transition-all duration-200 ${
+            showQuickComms
+              ? "bg-teal-50 border-teal-300 text-[#0F766E]"
+              : "border-slate-200 bg-[#F8FAFC] text-slate-600 hover:bg-white hover:text-[#0F766E] hover:border-teal-300"
+          }`}
+          title="Quick Clinical Communication & Panic Desk (Ctrl+M)"
+        >
+          <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[9px] font-extrabold text-white bg-[#0F766E] shadow-2xs">
+            2
+          </span>
         </button>
 
         {/* Notifications */}
@@ -412,6 +457,12 @@ export default function Header({
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirmLogout={executeLogout}
+      />
+
+      {/* Universal Quick Clinical Communication Slide-over Desk */}
+      <QuickCommunicationSlideover
+        isOpen={showQuickComms}
+        onClose={() => setShowQuickComms(false)}
       />
     </header>
   );

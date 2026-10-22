@@ -24,6 +24,7 @@ import {
   amendReportHandler,
   sendReportToDoctorHandler,
   orderReportPdf,
+  getOrderReportHtmlPreview,
   downloadOrderReportPdf,
   publicVerifyReport,
   generateReportHandler,
@@ -31,6 +32,10 @@ import {
   sendReportEmailHandler,
   printReportHandler,
   bulkDispatchHandler,
+  generateAndStoreReport,
+  streamStoredOrderReportFile,
+  verifyQrCryptographicToken,
+  reportController,
 } from "./report.controller";
 
 import {
@@ -55,10 +60,13 @@ const router = Router();
 
 router.get("/public/verify/:reportId", publicVerifyReport);
 router.get("/verify/:reportId", publicVerifyReport);
+router.get("/verify-token", verifyQrCryptographicToken);
 
 router.use(
   authenticate
 );
+
+router.get("/order/:orderId/file", streamStoredOrderReportFile);
 
 // =======================================================
 // GENERATE & BULK DISPATCH
@@ -172,7 +180,7 @@ router.get(
   orderReport
 );
 
-// Stream Server-side NABL PDF / HTML
+// Stream Server-side NABL PDF
 router.get(
   "/order/:orderId/pdf",
   authorize(
@@ -184,6 +192,20 @@ router.get(
     UserRole.DOCTOR
   ),
   orderReportPdf
+);
+
+// Preview Server-side NABL HTML
+router.get(
+  "/order/:orderId/html",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST,
+    UserRole.DOCTOR
+  ),
+  getOrderReportHtmlPreview
 );
 
 // Download Server-side NABL PDF / HTML
