@@ -72,6 +72,9 @@ export const reportQuerySchema = z.object({
 
 export const addendumSchema = z.object({
   content: z.string().min(1).max(5000),
+  reason: z.string().optional(),
+  authorId: z.string().optional(),
+  authorName: z.string().optional(),
   isPrivate: z.boolean().optional(),
 });
 

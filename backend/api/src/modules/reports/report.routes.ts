@@ -31,10 +31,12 @@ import {
   sendReportWhatsAppHandler,
   sendReportEmailHandler,
   printReportHandler,
-  bulkDispatchHandler,
   generateAndStoreReport,
   streamStoredOrderReportFile,
   verifyQrCryptographicToken,
+  batchPrintReports,
+  getAddendums,
+  bulkDispatchHandler,
   reportController,
 } from "./report.controller";
 
@@ -66,7 +68,9 @@ router.use(
   authenticate
 );
 
+router.post("/batch-print", batchPrintReports);
 router.get("/order/:orderId/file", streamStoredOrderReportFile);
+router.post("/order/:orderId/generate", generateAndStoreReport);
 
 // =======================================================
 // GENERATE & BULK DISPATCH
@@ -261,6 +265,20 @@ router.post(
     body: addendumSchema,
   }),
   createAddendum
+);
+
+// Get Report Addendums
+router.get(
+  "/:id/addendums",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.LAB_TECH,
+    UserRole.PATHOLOGIST,
+    UserRole.DOCTOR
+  ),
+  getAddendums
 );
 
 // Apply Digital Signature

@@ -1,32 +1,39 @@
+// File: frontend/apps/web/src/components/reports/ReportPdfPreviewModal.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Maximize2,
   Printer,
   Download,
   Copy,
   Check,
-  ShieldCheck,
   FileText,
-  Eye,
-  ZoomIn,
-  ZoomOut,
-  RefreshCw,
-  AlertTriangle,
-  Award,
-  QrCode,
+  Code2,
+  ShieldCheck,
+  FilePlus2,
   ExternalLink,
+  RefreshCw,
+  AlertCircle,
+  History,
 } from 'lucide-react';
 
 export interface ReportPdfPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   orderId: string;
-  orderNumber: string;
+  orderNumber?: string;
   reportId?: string;
+  reportNumber?: string;
   patientName?: string;
+  uhid?: string;
   patientUhid?: string;
+  shortChecksum?: string;
+  verificationUrl?: string;
   signingPathologist?: {
     fullName: string;
     registrationNumber?: string;
@@ -35,9 +42,10 @@ export interface ReportPdfPreviewModalProps {
   };
   nablCertificateNumber?: string;
   apiBaseUrl?: string;
+  onAddendumCreated?: () => void;
 }
 
-type PreviewMode = 'html' | 'pdf';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const ReportPdfPreviewModal: React.FC<ReportPdfPreviewModalProps> = ({
   isOpen,
@@ -45,457 +53,519 @@ export const ReportPdfPreviewModal: React.FC<ReportPdfPreviewModalProps> = ({
   orderId,
   orderNumber,
   reportId,
-  patientName = 'Clinical Patient',
-  patientUhid = 'UHID-PENDING',
-  signingPathologist = {
-    fullName: 'Dr. Arundhati Deshmukh, MD (Pathology)',
-    registrationNumber: 'MCI/TSMC-48921',
-    specialization: 'Consultant Pathologist & NABL Quality Director',
-  },
-  nablCertificateNumber = 'MC-4892',
-  apiBaseUrl,
+  reportNumber,
+  patientName,
+  uhid,
+  patientUhid,
+  shortChecksum: initialChecksum,
+  verificationUrl: initialVerificationUrl,
+  onAddendumCreated,
 }) => {
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('html');
+  const effectiveUhid = uhid || patientUhid;
+  const effectiveReportNumber = reportNumber || (orderNumber ? `Order #${orderNumber}` : undefined);
+
+  const [viewMode, setViewMode] = useState<'PDF_STREAM' | 'INTERACTIVE_HTML'>('PDF_STREAM');
+  const [zoom, setZoom] = useState<number>(100);
   const [htmlContent, setHtmlContent] = useState<string>('');
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [downloading, setDownloading] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [zoomPercent, setZoomPercent] = useState<number>(100);
-  const [copiedLink, setCopiedLink] = useState<boolean>(false);
-  const [checksumSha256, setChecksumSha256] = useState<string>('VERIFYING...');
+  const [loadingHtml, setLoadingHtml] = useState<boolean>(false);
+  const [regenerating, setRegenerating] = useState<boolean>(false);
+  const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
+  const [resolvedReportId, setResolvedReportId] = useState<string>(reportId || '');
+  const [shortChecksum, setShortChecksum] = useState<string>(initialChecksum || '');
+  const [verificationUrl, setVerificationUrl] = useState<string>(initialVerificationUrl || '');
+  const [versionLabel, setVersionLabel] = useState<string>('v1.0');
+  const [cacheBuster, setCacheBuster] = useState<number>(Date.now());
 
-  const htmlIframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Inline NABL ISO 15189:2022 Addendum Drawer State
+  const [showAddendumDrawer, setShowAddendumDrawer] = useState<boolean>(false);
+  const [addendumReason, setAddendumReason] = useState<string>(
+    'Post-Analytical Clinical Correlation / Pathologist Comment'
+  );
+  const [addendumContent, setAddendumContent] = useState<string>('');
+  const [submittingAddendum, setSubmittingAddendum] = useState<boolean>(false);
+  const [addendumError, setAddendumError] = useState<string | null>(null);
+  const [addendumSuccess, setAddendumSuccess] = useState<string | null>(null);
 
-  const resolvedApiBase =
-    apiBaseUrl ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    'http://localhost:5000/api';
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  const getAuthHeaders = useCallback((): HeadersInit => {
-    if (typeof window === 'undefined') return {};
-    const token =
-      localStorage.getItem('token') ||
-      localStorage.getItem('accessToken') ||
-      sessionStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }, []);
+  const pdfFileUrl = `${API_BASE_URL}/api/reports/order/${encodeURIComponent(
+    orderId
+  )}/file?t=${cacheBuster}#zoom=${zoom}`;
+  const pdfDownloadUrl = `${API_BASE_URL}/api/reports/order/${encodeURIComponent(
+    orderId
+  )}/file?download=1`;
 
-  const verificationPortalUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/verify-report/${encodeURIComponent(reportId || orderId)}`
-      : `/verify-report/${encodeURIComponent(reportId || orderId)}`;
-
-  const loadReportPreview = useCallback(async () => {
-    if (!orderId || !isOpen) return;
-    setLoading(true);
-    setErrorMessage(null);
-
+  // Fetch report metadata to populate reportId, checksum, verificationUrl & version
+  const fetchReportMetadata = useCallback(async () => {
+    if (!orderId) return;
     try {
-      if (previewMode === 'html') {
-        const res = await fetch(
-          `${resolvedApiBase}/reports/order/${encodeURIComponent(orderId)}/html`,
-          {
-            method: 'GET',
-            headers: {
-              ...getAuthHeaders(),
-              Accept: 'text/html',
-            },
-          }
-        );
-
-        if (!res.ok) {
-          const errPayload = await res.json().catch(() => null);
-          throw new Error(
-            errPayload?.message ||
-              `Failed to load NABL A4 HTML preview (HTTP ${res.status})`
-          );
-        }
-
-        const renderedHtml = await res.text();
-        setHtmlContent(renderedHtml);
-
-        const match = renderedHtml.match(/SHA-256 Checksum:\s*([a-f0-9]+)/i);
-        if (match?.[1]) {
-          setChecksumSha256(match[1]);
-        }
-      } else {
-        const res = await fetch(
-          `${resolvedApiBase}/reports/order/${encodeURIComponent(orderId)}/pdf`,
-          {
-            method: 'GET',
-            headers: {
-              ...getAuthHeaders(),
-              Accept: 'application/pdf',
-            },
-          }
-        );
-
-        if (!res.ok) {
-          const errPayload = await res.json().catch(() => null);
-          throw new Error(
-            errPayload?.message ||
-              `Report Dispatch Guard blocked PDF stream (HTTP ${res.status})`
-          );
-        }
-
-        const headerChecksum = res.headers.get('X-NABL-Checksum-SHA256');
-        if (headerChecksum) {
-          setChecksumSha256(headerChecksum);
-        }
-
-        const pdfBlob = await res.blob();
-        const objectUrl = URL.createObjectURL(pdfBlob);
-        setPdfBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return objectUrl;
-        });
-      }
-    } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Unable to load NABL diagnostic report preview.'
+      const res = await fetch(
+        `${API_BASE_URL}/api/reports/order/${encodeURIComponent(orderId)}`,
+        { cache: 'no-store' }
       );
-    } finally {
-      setLoading(false);
+      if (!res.ok) return;
+      const json = await res.json();
+      const rep = json?.data;
+      if (rep) {
+        if (rep.id && !String(rep.id).startsWith('DRAFT-')) {
+          setResolvedReportId(rep.id);
+        }
+        const rData = rep.reportData || {};
+        if (rData.shortChecksum) setShortChecksum(rData.shortChecksum);
+        if (rData.verificationUrl) setVerificationUrl(rData.verificationUrl);
+        if (Array.isArray(rep.addendums) && rep.addendums.length > 0) {
+          setVersionLabel(`v1.${rep.addendums.length}`);
+        } else if (rData.version) {
+          setVersionLabel(rData.version);
+        }
+      }
+    } catch {
+      // Non-fatal metadata fetch
     }
-  }, [orderId, isOpen, previewMode, resolvedApiBase, getAuthHeaders]);
+  }, [orderId]);
+
+  const fetchInteractiveHtml = useCallback(async () => {
+    if (!orderId) return;
+    setLoadingHtml(true);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/reports/order/${encodeURIComponent(orderId)}/pdf?format=html&t=${cacheBuster}`
+      );
+      const text = await res.text();
+      setHtmlContent(text);
+    } catch {
+      setHtmlContent('<div style="padding:24px;color:#ef4444;">Failed to load HTML preview.</div>');
+    } finally {
+      setLoadingHtml(false);
+    }
+  }, [orderId, cacheBuster]);
 
   useEffect(() => {
     if (isOpen) {
-      void loadReportPreview();
-    }
-  }, [isOpen, loadReportPreview]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
+      fetchReportMetadata();
+      if (viewMode === 'INTERACTIVE_HTML') {
+        fetchInteractiveHtml();
       }
+    }
+  }, [isOpen, viewMode, fetchReportMetadata, fetchInteractiveHtml]);
+
+  // Keyboard Escape listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
     };
-  }, [pdfBlobUrl]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const handlePrintReport = () => {
-    if (previewMode === 'html' && htmlIframeRef.current?.contentWindow) {
-      htmlIframeRef.current.contentWindow.focus();
-      htmlIframeRef.current.contentWindow.print();
-      return;
-    }
-    if (pdfBlobUrl) {
-      const printWin = window.open(pdfBlobUrl, '_blank');
-      printWin?.focus();
+  const handleZoomIn = () => setZoom((z) => Math.min(200, z + 25));
+  const handleZoomOut = () => setZoom((z) => Math.max(50, z - 25));
+  const handleZoomReset = () => setZoom(100);
+  const handleFitWidth = () => setZoom(125);
+
+  const handleSilentPrint = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.focus();
+      iframeRef.current.contentWindow.print();
+    } else {
+      window.open(pdfFileUrl, '_blank');
     }
   };
 
-  const handleDownloadPdf = async () => {
-    setDownloading(true);
-    setErrorMessage(null);
+  const handleForceRegenerate = async () => {
+    setRegenerating(true);
     try {
-      const res = await fetch(
-        `${resolvedApiBase}/reports/order/${encodeURIComponent(orderId)}/download`,
+      await fetch(
+        `${API_BASE_URL}/api/reports/order/${encodeURIComponent(orderId)}/generate`,
         {
-          method: 'GET',
-          headers: {
-            ...getAuthHeaders(),
-            Accept: 'application/pdf',
-          },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ forceRegenerate: true }),
+        }
+      );
+      setCacheBuster(Date.now());
+      await fetchReportMetadata();
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const handleCopyVerificationUrl = () => {
+    const targetUrl =
+      verificationUrl ||
+      `${window.location.origin}/verify-report/${resolvedReportId || orderId}${
+        shortChecksum ? `?checksum=${shortChecksum}` : ''
+      }`;
+    navigator.clipboard.writeText(targetUrl);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
+  const handleCreateAddendum = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddendumError(null);
+    setAddendumSuccess(null);
+    setSubmittingAddendum(true);
+
+    try {
+      const targetId = resolvedReportId || orderId;
+      const response = await fetch(
+        `${API_BASE_URL}/api/reports/${encodeURIComponent(targetId)}/addendum`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reason: addendumReason,
+            content: addendumContent,
+            authorId: 'PATHOLOGIST-SIGNATORY',
+            authorName: 'Dr. Chief Consultant Pathologist, MD',
+          }),
         }
       );
 
-      if (!res.ok) {
-        const errPayload = await res.json().catch(() => null);
-        throw new Error(
-          errPayload?.message ||
-            `Failed to download NABL PDF (HTTP ${res.status})`
-        );
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || 'Failed to record clinical addendum.');
       }
 
-      const blob = await res.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = downloadUrl;
-      anchor.download = `report-${orderNumber || orderId}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(downloadUrl);
-    } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Failed to download certified PDF report.'
+      setAddendumSuccess(
+        `Addendum ${json.data?.addendum?.versionLabel || ''} recorded & PDF regenerated!`
       );
+      setAddendumContent('');
+      setCacheBuster(Date.now());
+      await fetchReportMetadata();
+      if (onAddendumCreated) onAddendumCreated();
+      setTimeout(() => {
+        setShowAddendumDrawer(false);
+        setAddendumSuccess(null);
+      }, 1400);
+    } catch (err: any) {
+      setAddendumError(err?.message || 'Error recording clinical addendum');
     } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handleCopyVerificationLink = async () => {
-    try {
-      await navigator.clipboard.writeText(verificationPortalUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-    } catch {
-      // Fallback copy input
-      const tempInput = document.createElement('input');
-      tempInput.value = verificationPortalUrl;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
+      setSubmittingAddendum(false);
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="nabl-report-preview-title"
-    >
-      <div className="relative flex flex-col w-full max-w-6xl h-[92vh] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden">
-        {/* 1. TOP NABL ISO 15189:2022 VERIFICATION & SIGNING PATHOLOGIST BANNER */}
-        <div className="bg-gradient-to-r from-emerald-950/90 via-slate-900 to-sky-950/90 border-b border-emerald-500/30 px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-3 sm:p-6">
+      <div className="relative w-full max-w-7xl h-[92vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Top Workstation Toolbar */}
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          {/* Left: Report Title & Cryptographic Fingerprint */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300">
-              <ShieldCheck className="h-6 w-6" />
+            <div className="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-teal-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2
-                  id="nabl-report-preview-title"
-                  className="text-sm sm:text-base font-bold text-white tracking-tight"
-                >
-                  NABL ISO 15189:2022 Certified Diagnostic Report
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-white">
+                  {effectiveReportNumber || `Order #${orderId.slice(0, 8)}`}
                 </h2>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  <Award className="h-3 w-3" />
-                  Cert: {nablCertificateNumber}
+                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                  {versionLabel}
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                  CLSI C28-A3 Dynamic Ranges
-                </span>
+                {shortChecksum && (
+                  <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-300 border border-slate-700">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    SHA-256: {shortChecksum}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Patient: <strong className="text-white">{patientName}</strong> ({patientUhid}) • Order:{' '}
-                <strong className="font-mono text-sky-300">{orderNumber}</strong> • SHA-256:{' '}
-                <span className="font-mono text-emerald-300">
-                  {checksumSha256.slice(0, 16)}...
-                </span>
+              <p className="text-xs text-slate-400">
+                {patientName ? `${patientName} (${effectiveUhid || 'UHID'})` : 'NABL ISO 15189:2022 Certified A4 Diagnostic Report'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex flex-col text-right border-r border-slate-700 pr-4">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-emerald-400">
-                Electronically Signed By
-              </span>
-              <span className="text-xs font-bold text-white">
-                {signingPathologist.fullName}
-              </span>
-              <span className="text-[11px] font-mono text-slate-400">
-                Reg. No: {signingPathologist.registrationNumber || 'MCI-VERIFIED'}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              aria-label="Close Report Preview Modal"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* 2. ACTION TOOLBAR (MODE SWITCHER, ZOOM, PRINT, DOWNLOAD, COPY QR LINK) */}
-        <div className="bg-slate-900/95 border-b border-slate-800 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3">
-          {/* Left: View Mode Toggle & Zoom */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex rounded-lg bg-slate-800 p-1 border border-slate-700">
+          {/* Center: Dual-Mode Switcher & Zoom Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800">
               <button
                 type="button"
-                onClick={() => setPreviewMode('html')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  previewMode === 'html'
-                    ? 'bg-sky-600 text-white shadow'
-                    : 'text-slate-300 hover:text-white'
+                onClick={() => setViewMode('PDF_STREAM')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                  viewMode === 'PDF_STREAM'
+                    ? 'bg-teal-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Eye className="h-3.5 w-3.5" />
-                A4 Workstation HTML
+                <FileText className="w-3.5 h-3.5" />
+                Certified PDF
               </button>
               <button
                 type="button"
-                onClick={() => setPreviewMode('pdf')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  previewMode === 'pdf'
-                    ? 'bg-sky-600 text-white shadow'
-                    : 'text-slate-300 hover:text-white'
+                onClick={() => setViewMode('INTERACTIVE_HTML')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                  viewMode === 'INTERACTIVE_HTML'
+                    ? 'bg-teal-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <FileText className="h-3.5 w-3.5" />
-                Compiled PDF Stream
+                <Code2 className="w-3.5 h-3.5" />
+                Interactive NABL HTML
               </button>
             </div>
 
-            {previewMode === 'html' && (
-              <div className="inline-flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1">
-                <button
-                  type="button"
-                  onClick={() => setZoomPercent((z) => Math.max(70, z - 10))}
-                  className="p-1 text-slate-300 hover:text-white"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="h-3.5 w-3.5" />
-                </button>
-                <span className="text-xs font-mono font-semibold text-slate-200 min-w-[42px] text-center">
-                  {zoomPercent}%
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setZoomPercent((z) => Math.min(140, z + 10))}
-                  className="p-1 text-slate-300 hover:text-white"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => void loadReportPreview()}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-              title="Refresh Report"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+            {/* Zoom Bar */}
+            <div className="inline-flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl px-2 py-1">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="p-1 rounded hover:bg-slate-800 text-slate-300"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-mono font-semibold text-slate-200 px-2 min-w-[48px] text-center">
+                {zoom}%
+              </span>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="p-1 rounded hover:bg-slate-800 text-slate-300"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleFitWidth}
+                className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                title="Fit Width (125%)"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomReset}
+                className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                title="Reset Zoom (100%)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* Right: Primary Workstation Actions */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Right: Clinical Actions */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => void handleCopyVerificationLink()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+              onClick={() => setShowAddendumDrawer((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition"
+              title="Add NABL ISO 15189:2022 Clause 7.4.1.7 Clinical Addendum"
             >
-              {copiedLink ? (
+              <FilePlus2 className="w-3.5 h-3.5" />
+              Add Addendum
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyVerificationUrl}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition"
+            >
+              {copiedUrl ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-emerald-300">QR Verify Link Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  Copied QR Link
                 </>
               ) : (
                 <>
-                  <QrCode className="h-3.5 w-3.5 text-sky-400" />
-                  <span>Copy Verification Link</span>
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy Verify URL
                 </>
               )}
             </button>
 
             <button
               type="button"
-              onClick={handlePrintReport}
-              disabled={loading || !!errorMessage}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white shadow transition-colors"
+              onClick={handleForceRegenerate}
+              disabled={regenerating}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+              title="Re-Compile Persistent PDF"
             >
-              <Printer className="h-3.5 w-3.5" />
-              Print Report
+              <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin text-teal-400' : ''}`} />
             </button>
 
             <button
               type="button"
-              onClick={() => void handleDownloadPdf()}
-              disabled={downloading}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white shadow transition-colors"
+              onClick={handleSilentPrint}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700 transition"
             >
-              <Download className="h-3.5 w-3.5" />
-              {downloading ? 'Compiling PDF...' : 'Download PDF'}
+              <Printer className="w-3.5 h-3.5 text-teal-400" />
+              Print
+            </button>
+
+            <a
+              href={pdfDownloadUrl}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold shadow-lg shadow-teal-600/20 transition"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download PDF
+            </a>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* 3. EMBEDDED A4 REPORT VIEWPORT */}
-        <div className="flex-1 bg-slate-950 overflow-auto p-4 sm:p-6 flex justify-center items-start">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-300 gap-3">
-              <RefreshCw className="h-8 w-8 animate-spin text-sky-400" />
-              <p className="text-sm font-semibold">
-                Rendering NABL ISO 15189:2022 A4 Diagnostic Report...
-              </p>
-              <p className="text-xs text-slate-400">
-                Evaluating CLSI C28-A3 dynamic reference intervals, Code 128B vector barcode &amp; QR seal
-              </p>
-            </div>
-          ) : errorMessage ? (
-            <div className="max-w-lg my-auto bg-rose-950/60 border border-rose-500/50 rounded-xl p-6 text-center">
-              <AlertTriangle className="h-10 w-10 text-rose-400 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-white mb-1">
-                Report Dispatch Guard / Generation Alert
-              </h3>
-              <p className="text-xs text-rose-200 leading-relaxed mb-4">
-                {errorMessage}
-              </p>
-              <button
-                type="button"
-                onClick={() => void loadReportPreview()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Retry Report Compilation
-              </button>
-            </div>
-          ) : previewMode === 'html' ? (
-            <div
-              className="bg-white shadow-2xl rounded-sm transition-transform origin-top"
-              style={{
-                width: '210mm',
-                minHeight: '297mm',
-                transform: `scale(${zoomPercent / 100})`,
-              }}
-            >
+        {/* Main Viewport & Optional Addendum Drawer */}
+        <div className="flex-1 flex overflow-hidden bg-slate-950 relative">
+          {/* Viewport */}
+          <div className="flex-1 h-full overflow-auto flex justify-center p-4">
+            {viewMode === 'PDF_STREAM' ? (
               <iframe
-                ref={htmlIframeRef}
-                title={`NABL A4 Diagnostic Report ${orderNumber}`}
-                srcDoc={htmlContent}
-                className="w-full h-[297mm] border-0 bg-white"
+                ref={iframeRef}
+                key={`${pdfFileUrl}-${zoom}`}
+                src={pdfFileUrl}
+                title="Certified NABL A4 PDF Report"
+                className="w-full h-full rounded-xl border border-slate-800 bg-white shadow-2xl"
               />
-            </div>
-          ) : pdfBlobUrl ? (
-            <iframe
-              title={`Compiled PDF Stream ${orderNumber}`}
-              src={pdfBlobUrl}
-              className="w-full h-full rounded-lg border border-slate-700 bg-white"
-            />
-          ) : null}
-        </div>
-
-        {/* 4. FOOTER STATUS BAR */}
-        <div className="bg-slate-900 border-t border-slate-800 px-5 py-2 flex flex-wrap items-center justify-between text-[11px] text-slate-400">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
-            <span>
-              NABL Clause 7.4.1 Verified • Vector Code 128B (Mod-103) • ISO/IEC 18004 QR Active
-            </span>
+            ) : loadingHtml ? (
+              <div className="flex flex-col items-center justify-center text-slate-400 gap-3">
+                <RefreshCw className="w-7 h-7 animate-spin text-teal-400" />
+                <span className="text-xs">Rendering Interactive NABL ISO 15189:2022 Sheet...</span>
+              </div>
+            ) : (
+              <div
+                style={{
+                  transform: `scale(${zoom / 100})`,
+                  transformOrigin: 'top center',
+                  transition: 'transform 150ms ease',
+                }}
+                className="w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-lg overflow-hidden"
+              >
+                <iframe
+                  ref={iframeRef}
+                  srcDoc={htmlContent}
+                  title="Interactive NABL HTML Report"
+                  className="w-full h-[1120px] border-0"
+                />
+              </div>
+            )}
           </div>
-          <a
-            href={verificationPortalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 font-medium"
-          >
-            <Copy className="h-3 w-3" />
-            <span>Public Verification Portal: {verificationPortalUrl}</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
+
+          {/* Slide-Over NABL ISO 15189:2022 Clause 7.4.1.7 Addendum Drawer */}
+          {showAddendumDrawer && (
+            <div className="w-full max-w-md bg-slate-900 border-l border-slate-800 p-6 flex flex-col justify-between overflow-y-auto shadow-2xl z-20">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <History className="w-5 h-5 text-amber-400" />
+                    <div>
+                      <h3 className="text-sm font-bold text-white">
+                        Issue Clinical Addendum (ISO 15189)
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Clause 7.4.1.7 — Immutable Versioned Amendment
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddendumDrawer(false)}
+                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-400"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200/90 leading-relaxed">
+                  Under <strong>NABL ISO 15189:2022 Clause 7.4.1.7</strong>, released reports cannot
+                  be silently overwritten. Submitting this form appends a timestamped clinical
+                  addendum, increments the report version, and recalculates the SHA-256 PDF digest.
+                </div>
+
+                <form onSubmit={handleCreateAddendum} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                      Amendment / Addendum Reason *
+                    </label>
+                    <select
+                      value={addendumReason}
+                      onChange={(e) => setAddendumReason(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-amber-400"
+                    >
+                      <option value="Post-Analytical Clinical Correlation / Pathologist Comment">
+                        Post-Analytical Clinical Correlation / Pathologist Comment
+                      </option>
+                      <option value="Dilution / Repeat Assay Confirmation Note">
+                        Dilution / Repeat Assay Confirmation Note
+                      </option>
+                      <option value="Clinician Requested Supplementary Interpretation">
+                        Clinician Requested Supplementary Interpretation
+                      </option>
+                      <option value="Reference Interval Stratification Clarification">
+                        Reference Interval Stratification Clarification
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                      Clinical Addendum Statement *
+                    </label>
+                    <textarea
+                      rows={5}
+                      required
+                      value={addendumContent}
+                      onChange={(e) => setAddendumContent(e.target.value)}
+                      placeholder="Enter formal pathologist addendum note to be permanently attached to the report..."
+                      className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  {addendumError && (
+                    <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-xs text-rose-300 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{addendumError}</span>
+                    </div>
+                  )}
+
+                  {addendumSuccess && (
+                    <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2">
+                      <Check className="w-4 h-4 shrink-0" />
+                      <span>{addendumSuccess}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submittingAddendum}
+                    className="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition"
+                  >
+                    <FilePlus2 className="w-4 h-4" />
+                    {submittingAddendum
+                      ? 'Signing & Regenerating PDF...'
+                      : 'Sign & Publish Official Addendum'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>Audit Action: REPORT_ADDENDUM_ADDED</span>
+                {resolvedReportId && (
+                  <a
+                    href={`/verify-report/${resolvedReportId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-400 hover:underline inline-flex items-center gap-1"
+                  >
+                    Open Public Portal
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

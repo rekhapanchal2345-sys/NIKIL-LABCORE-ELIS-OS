@@ -40,6 +40,7 @@ export interface PersistReportOptions extends GeneratePdfOptions {
   orderId: string;
   forceRegenerate?: boolean;
   userId?: string;
+  publishedById?: string;
 }
 
 export interface PersistedReportResult {
@@ -53,11 +54,16 @@ export interface PersistedReportResult {
   fileUrl: string;
   relativeDiskPath: string;
   absoluteDiskPath: string;
+  absoluteFilePath: string;
   fileSizeBytes: number;
   checksumSha256: string;
   fileHashSha256: string;
+  reportHashSha256: string;
+  shortChecksum: string;
   qrVerificationToken: string;
+  hmacToken: string;
   qrVerificationUrl: string;
+  verificationUrl: string;
   totalPanels: number;
   totalParameters: number;
   estimatedPages: number;
@@ -353,7 +359,8 @@ export class ReportStorageService {
   public async generateAndPersistReport(
     options: PersistReportOptions
   ): Promise<PersistedReportResult> {
-    const { orderId, forceRegenerate = false, userId } = options;
+    const { orderId, forceRegenerate = false, userId, publishedById } = options;
+    const effectiveUserId = userId || publishedById;
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -407,11 +414,16 @@ export class ReportStorageService {
               fileUrl: existingReport.fileUrl || canonicalFileUrl,
               relativeDiskPath: snapshot.relativeDiskPath,
               absoluteDiskPath: candidateAbsPath,
+              absoluteFilePath: candidateAbsPath,
               fileSizeBytes: diskBuffer.byteLength,
               checksumSha256: snapshot.checksumSha256,
               fileHashSha256: diskSha256,
+              reportHashSha256: diskSha256,
+              shortChecksum: snapshot.checksumSha256.slice(0, 16).toUpperCase(),
               qrVerificationToken: snapshot.qrVerificationToken,
+              hmacToken: snapshot.qrVerificationToken,
               qrVerificationUrl: snapshot.qrVerificationUrl,
+              verificationUrl: snapshot.qrVerificationUrl,
               totalPanels: snapshot.totalPanels,
               totalParameters: snapshot.totalParameters,
               estimatedPages: snapshot.estimatedPages,
@@ -517,7 +529,7 @@ export class ReportStorageService {
         recordId: updatedReport.id,
         module: 'REPORTS',
         action: forceRegenerate ? 'REPORT_PDF_REGENERATED' : 'REPORT_PDF_GENERATED',
-        userId: userId || order.createdById || null,
+        userId: effectiveUserId || order.createdById || null,
         newData: {
           reportId: updatedReport.id,
           reportNumber: updatedReport.reportNumber,
@@ -547,11 +559,16 @@ export class ReportStorageService {
       fileUrl: updatedReport.fileUrl || canonicalFileUrl,
       relativeDiskPath: storagePaths.relativeDiskPath,
       absoluteDiskPath: storagePaths.absoluteFilePath,
+      absoluteFilePath: storagePaths.absoluteFilePath,
       fileSizeBytes: writtenDiskBuffer.byteLength,
       checksumSha256: generatedPdf.checksumSha256,
       fileHashSha256: writtenDiskHashSha256,
+      reportHashSha256: writtenDiskHashSha256,
+      shortChecksum: generatedPdf.checksumSha256.slice(0, 16).toUpperCase(),
       qrVerificationToken: generatedPdf.qrVerificationToken,
+      hmacToken: generatedPdf.qrVerificationToken,
       qrVerificationUrl: generatedPdf.qrVerificationUrl,
+      verificationUrl: generatedPdf.qrVerificationUrl,
       totalPanels: generatedPdf.totalPanels,
       totalParameters: generatedPdf.totalParameters,
       estimatedPages: generatedPdf.estimatedPages,
@@ -586,6 +603,129 @@ export class ReportStorageService {
       fileHashSha256: persisted.fileHashSha256,
       generatedAt: persisted.generatedAt,
       stream,
+    };
+  }
+
+  /**
+   * Returns metadata and stream info for a persisted report PDF (Phase 5.3).
+   */
+  public async getReportFileStreamInfo(orderId: string) {
+    const meta = await this.getStoredReportFileStream(orderId);
+    return {
+      ...meta,
+      reportHashSha256: meta.fileHashSha256,
+      shortChecksum: meta.fileHashSha256.slice(0, 16).toUpperCase(),
+    };
+  }
+
+  /**
+   * Cryptographic report authenticity verifier for Phase 5.2 public verification portal.
+   */
+  public async verifyReportAuthenticity(
+    reportId: string,
+    token?: string,
+    checksum?: string
+  ): Promise<{
+    valid: boolean;
+    reason: string;
+    reportHashSha256: string | null;
+    shortChecksum: string | null;
+    diskFileExists: boolean;
+  }> {
+    if (!reportId) {
+      return {
+        valid: false,
+        reason: 'Report identifier is required for public verification.',
+        reportHashSha256: null,
+        shortChecksum: null,
+        diskFileExists: false,
+      };
+    }
+
+    const report = await prisma.report.findFirst({
+      where: {
+        OR: [{ id: reportId }, { reportNumber: reportId }, { orderId: reportId }],
+      },
+      include: { patient: true, order: true },
+    });
+
+    if (!report) {
+      return {
+        valid: false,
+        reason: `Report "${reportId}" not found in NABL registry.`,
+        reportHashSha256: null,
+        shortChecksum: null,
+        diskFileExists: false,
+      };
+    }
+
+    if (report.status === ReportStatus.CANCELLED) {
+      return {
+        valid: false,
+        reason: 'Report has been cancelled or revoked by clinical authority.',
+        reportHashSha256: null,
+        shortChecksum: null,
+        diskFileExists: false,
+      };
+    }
+
+    const snapshot = (report.reportData as unknown as StoredReportDataSnapshot | null) || null;
+    const storedSha = snapshot?.checksumSha256 || null;
+    const storedFileSha = snapshot?.fileHashSha256 || null;
+    const expectedToken =
+      snapshot?.qrVerificationToken ||
+      (storedSha
+        ? this.generateQrVerificationToken({
+            reportId: report.id,
+            orderNumber: report.order.orderNumber,
+            patientUhid: report.patient.uhid,
+            checksumSha256: storedSha,
+          })
+        : null);
+
+    let diskFileExists = false;
+    if (snapshot?.relativeDiskPath) {
+      const abs = path.resolve(process.cwd(), snapshot.relativeDiskPath);
+      diskFileExists = fs.existsSync(abs);
+    }
+
+    if (token && expectedToken) {
+      const candidateBuffer = Buffer.from(token.trim().toLowerCase(), 'utf8');
+      const expectedBuffer = Buffer.from(expectedToken.trim().toLowerCase(), 'utf8');
+      const tokenMatch =
+        candidateBuffer.length === expectedBuffer.length &&
+        crypto.timingSafeEqual(candidateBuffer, expectedBuffer);
+
+      if (!tokenMatch) {
+        return {
+          valid: false,
+          reason: 'Cryptographic HMAC-SHA256 signature verification failed. Tampering detected.',
+          reportHashSha256: storedFileSha,
+          shortChecksum: storedSha ? storedSha.slice(0, 16).toUpperCase() : null,
+          diskFileExists,
+        };
+      }
+    }
+
+    if (checksum && storedSha) {
+      const cleanCheck = checksum.trim().toLowerCase();
+      if (!storedSha.toLowerCase().startsWith(cleanCheck)) {
+        return {
+          valid: false,
+          reason: 'Checksum prefix mismatch against sealed clinical digest.',
+          reportHashSha256: storedFileSha,
+          shortChecksum: storedSha.slice(0, 16).toUpperCase(),
+          diskFileExists,
+        };
+      }
+    }
+
+    return {
+      valid: true,
+      reason: 'Report verified authentic against NABL ISO 15189:2022 registry.',
+      reportHashSha256: storedFileSha,
+      shortChecksum: storedSha ? storedSha.slice(0, 16).toUpperCase() : null,
+      diskFileExists,
     };
   }
 }

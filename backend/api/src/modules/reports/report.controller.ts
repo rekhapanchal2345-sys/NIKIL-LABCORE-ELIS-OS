@@ -28,6 +28,7 @@ import {
     recordPrintReport,
     bulkDispatchReports,
     generateReportDirect,
+    reportService,
   } from "./report.service";
   import {
     generateOrderPdf,
@@ -178,7 +179,7 @@ import {
     };
 
 // =======================================================
-// CREATE REPORT ADDENDUM
+// CREATE REPORT ADDENDUM (NABL ISO 15189:2022 CLAUSE 7.4.1.7)
 // =======================================================
 
 export const createAddendum =
@@ -188,28 +189,21 @@ export const createAddendum =
     next: NextFunction
   ) => {
     try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized",
-        });
-      }
-
+      const userId = (req as any).user?.id || req.body?.authorId;
       const id = pathParam(req, "id");
-      const { content, isPrivate } = req.body;
+      const { content, reason, authorName } = req.body;
 
-      const addendum = await createReportAddendum(
-        id,
-        content,
-        userId,
-        isPrivate
-      );
+      const result = await reportService.createReportAddendum(id, {
+        content: content || req.body.clinicalNotes || '',
+        reason: reason || 'Post-Analytical Clinical Correlation / Addendum',
+        authorId: userId || 'SYSTEM-PATHOLOGIST',
+        authorName,
+      });
 
       res.status(201).json({
         success: true,
-        message: "Report addendum created successfully",
-        data: addendum,
+        message: "Report addendum recorded under NABL ISO 15189:2022 Clause 7.4.1.7 and PDF regenerated.",
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -825,16 +819,17 @@ export const bulkDispatchHandler = async (
 };
 
 // =======================================================
-// PUBLIC UN-AUTHENTICATED REPORT VERIFICATION (FOR QR SCAN)
+// PUBLIC UN-AUTHENTICATED REPORT VERIFICATION (PHASE 5.2 FOR QR SCAN)
 // =======================================================
 
 export const publicVerifyReport = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next?: NextFunction
 ) => {
   try {
-    const reportId = String(req.params.reportId || "").trim();
+    const rawId = req.params.reportId || req.params.id;
+    const reportId = Array.isArray(rawId) ? rawId[0] : String(rawId || "").trim();
     if (!reportId) {
       return res.status(400).json({
         success: false,
@@ -842,100 +837,35 @@ export const publicVerifyReport = async (
       });
     }
 
-    const order = await prisma.order.findFirst({
-      where: {
-        OR: [
-          { id: reportId },
-          { reportId },
-          { orderNumber: reportId },
-          { barcode: reportId },
-        ],
-      },
-      include: {
-        patient: {
-          select: {
-            firstName: true,
-            lastName: true,
-            uhid: true,
-            gender: true,
-          },
-        },
-        doctor: {
-          select: {
-            fullName: true,
-            specialization: true,
-          },
-        },
-        items: {
-          include: {
-            test: {
-              select: {
-                testName: true,
-                testCode: true,
-              },
-            },
-          },
-        },
-        results: {
-          where: {
-            status: { in: ["APPROVED", "PUBLISHED"] },
-          },
-          include: {
-            approvedBy: {
-              select: {
-                fullName: true,
-                employeeCode: true,
-                designation: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const token = req.query.token as string | undefined;
+    const checksum = req.query.checksum as string | undefined;
 
-    if (!order) {
-      return res.status(404).json({
+    const verification = await reportService.getPublicReportVerification(
+      reportId,
+      token,
+      checksum
+    );
+
+    const statusCode =
+      verification.verificationStatus === 'NOT_FOUND'
+        ? 404
+        : verification.valid
+        ? 200
+        : 422;
+
+    res.status(statusCode).json({
+      success: verification.valid,
+      data: verification,
+    });
+  } catch (error: any) {
+    if (next) {
+      next(error);
+    } else {
+      res.status(500).json({
         success: false,
-        message: "No authentic diagnostic report matches this reference or QR code.",
+        message: error?.message || 'Verification portal encountered an error',
       });
     }
-
-    const testNames = order.items.map((i) => i.test?.testName).filter(Boolean);
-    const approvedResults = order.results.filter((r) => r.approvedBy);
-    const primaryApprover = approvedResults[0]?.approvedBy;
-
-    // Mask patient name for DPDP privacy (e.g. "R**** S****")
-    const maskWord = (name: string) => {
-      if (!name || name.length <= 2) return name;
-      return name[0] + "*".repeat(name.length - 2) + name[name.length - 1];
-    };
-    const maskedName = `${maskWord(order.patient.firstName)} ${maskWord(order.patient.lastName)}`;
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        verified: true,
-        reportReferenceId: order.reportId || `REP-${order.orderNumber}`,
-        orderNumber: order.orderNumber,
-        patientName: maskedName,
-        patientUhid: order.patient.uhid,
-        gender: order.patient.gender,
-        testNames,
-        sampleCollectedAt: order.collectedAt || order.createdAt,
-        reportedAt: order.reportedAt || order.updatedAt,
-        status: order.orderStatus === "COMPLETED" ? "AUTHENTIC & VERIFIED" : order.orderStatus,
-        isNablAccredited: true,
-        nablCertificateNumber: "MC-4892",
-        accreditationStandard: "ISO 15189:2022",
-        labName: "LabCore Advanced Diagnostics",
-        labAddress: "Plot 14-B, Medical Enclave, Health City, New Delhi - 110029",
-        approvedBy: primaryApprover?.fullName || "Dr. Rajesh Sharma, MD (Pathology)",
-        doctorRegistrationNumber: "MCI / NABL Reg: 48921-DEL",
-        securityVerifiedAt: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    next(error);
   }
 };
 
@@ -1085,6 +1015,58 @@ export const verifyQrCryptographicToken = async (
   }
 };
 
+export const getAddendums = async (
+  req: Request,
+  res: Response,
+  next?: NextFunction
+): Promise<void> => {
+  try {
+    const id = pathParam(req, "id");
+    const addendums = await reportService.getReportAddendums(id);
+    res.status(200).json({
+      success: true,
+      data: addendums,
+    });
+  } catch (error: any) {
+    if (next) {
+      next(error);
+    } else {
+      res.status(404).json({
+        success: false,
+        message: error?.message || 'Failed to retrieve report addendums',
+      });
+    }
+  }
+};
+
+export const batchPrintReports = async (
+  req: Request,
+  res: Response,
+  next?: NextFunction
+): Promise<void> => {
+  try {
+    const requestedById = (req as any).user?.id || req.body?.requestedById;
+    const manifest = await reportService.prepareBatchPrintManifest({
+      ...req.body,
+      requestedById,
+    });
+    res.status(200).json({
+      success: true,
+      message: `Spooled ${manifest.summary.readyCount} of ${manifest.summary.totalRequested} reports for batch dispatch printing.`,
+      data: manifest,
+    });
+  } catch (error: any) {
+    if (next) {
+      next(error);
+    } else {
+      res.status(400).json({
+        success: false,
+        message: error?.message || 'Failed to spool batch print manifest',
+      });
+    }
+  }
+};
+
 export const getReports = publishedReports;
 export const getReportById = orderReport;
 export const generateReportForOrder = generateAndStoreReport;
@@ -1092,14 +1074,24 @@ export const verifyPublicReport = publicVerifyReport;
 
 export const reportController = {
   generateAndStoreReport,
+  generateAndPersistOrderReport: generateAndStoreReport,
   streamStoredOrderReportFile,
+  streamOrderReportFile: streamStoredOrderReportFile,
   verifyQrCryptographicToken,
+  verifyReportByQueryToken: verifyQrCryptographicToken,
   streamOrderReportPdf,
   downloadOrderReportPdf,
+  renderOrderReportPdfOrHtml: streamOrderReportPdf,
   getOrderReportHtmlPreview,
   listReports: publishedReports,
   getReports: publishedReports,
   getReportById: orderReport,
+  getReportByOrderId: orderReport,
   generateReportForOrder: generateAndStoreReport,
   verifyPublicReport: publicVerifyReport,
-};
+  publicVerifyReport,
+  createAddendum,
+  getAddendums,
+  batchPrintReports,
+};
+export default reportController;

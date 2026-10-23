@@ -11,5 +11,6 @@
   "tailwindCSS.experimental.classRegex": [
     ["class=\"([^\"]*)\"", 1],
     ["className=\"([^\"]*)\"", 1]
-  ]
+  ],
+  "CodeGPT.apiKey": "CodeGPT Plus Beta"
 }
