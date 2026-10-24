@@ -382,6 +382,13 @@ function ApprovalsContent() {
               <span>📈</span>
               <span>Daily QC &amp; LJ Chart</span>
             </button>
+            <a
+              href="/microbiology"
+              className="rounded-xl border border-purple-700/50 bg-purple-950/40 px-3 py-1.5 text-xs font-bold text-purple-300 hover:bg-purple-900/60 shadow-sm transition-colors flex items-center gap-1.5"
+            >
+              <span>🧫</span>
+              <span>Microbiology &amp; AMR</span>
+            </a>
             <button
               onClick={() => setIsRulesModalOpen(true)}
               className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white shadow-sm transition-colors flex items-center gap-1.5"

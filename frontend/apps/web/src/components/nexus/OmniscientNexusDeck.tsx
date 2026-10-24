@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import {
     Activity,
     AlertOctagon,
@@ -826,6 +827,16 @@ function OmniscientNexusDeckInner() {
                             <FileCheck2 className="w-3.5 h-3.5" />
                             <span>Audit Dossier</span>
                         </button>
+
+                        {/* Virtual Hardware Twin Simulator Direct Link */}
+                        <Link
+                            href="/analyzers/simulator"
+                            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 flex items-center gap-1.5 transition-all"
+                            title="Open Virtual Laboratory Analyzer & Hardware Digital Twin Simulator"
+                        >
+                            <Cpu className="w-3.5 h-3.5" />
+                            <span>Hardware Twin</span>
+                        </Link>
 
                         {/* Role Switcher */}
                         <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-lg p-1 text-xs">

@@ -1,7 +1,7 @@
 import { Analyzer } from "@/types";
 
 export interface RealWorldAnalyzerSpec extends Analyzer {
-  departmentCode: "HEM" | "BIO" | "IMM" | "HBA1C" | "MOL" | "URI";
+  departmentCode: "HEM" | "BIO" | "IMM" | "HBA1C" | "MOL" | "URI" | "MIC";
   throughputPerHour: number;
   sampleTubeTypes: string[];
   supportedTests: string[];
@@ -420,6 +420,104 @@ export const REAL_WORLD_ANALYZERS: RealWorldAnalyzerSpec[] = [
       maintenances: 2,
       jobs: 320,
       alerts: 0
+    }
+  },
+  {
+    id: "ana-biomerieux-bactalert",
+    name: "BioMérieux BacT/ALERT 3D Automated Blood Culture System",
+    analyzerId: "BM-BACT3D-01",
+    manufacturer: "bioMérieux S.A. (France)",
+    model: "BacT/ALERT 3D 240-Cell Flagship",
+    serialNumber: "SN-BMA-3D-449102",
+    analyzerType: "Continuous Colorimetric Carbon Dioxide Monitoring Blood Culture System",
+    department: "Microbiology",
+    laboratorySection: "Bacteriology & Blood Culture Suite",
+    location: "Microbiology Core Floor 2, Bench M1",
+    installationDate: "2024-02-10",
+    connectionType: "NETWORK",
+    protocol: "ASTM",
+    host: "192.168.10.110",
+    port: 5200,
+    deviceIdentifier: "BACTALERT-3D-LIS",
+    connectionString: "tcp://192.168.10.110:5200 (ASTM E1381/E1394 Real-time Bottle Telemetry)",
+    status: "ONLINE",
+    lastCommunicationAt: new Date().toISOString(),
+    lastSuccessfulHeartbeat: new Date().toISOString(),
+    connectionLatency: 11,
+    isActive: true,
+    isArchived: false,
+    departmentCode: "MIC",
+    throughputPerHour: 48,
+    sampleTubeTypes: ["BacT/ALERT FA Plus Aerobic", "BacT/ALERT FN Plus Anaerobic", "BacT/ALERT PF Plus Pediatric"],
+    supportedTests: ["Aerobic Blood Culture", "Anaerobic Blood Culture", "Pediatric Blood Culture", "Sterile Body Fluid Culture"],
+    reagentSlots: 240,
+    activeReagentsLoaded: 164,
+    temperatureTarget: "Continuous Inoculation Chamber: 36.5°C ± 0.5°C",
+    currentTemperature: "36.8°C (Optimal Incubation)",
+    pressureKPa: 101,
+    tcpIpSettings: {
+      ip: "192.168.10.110",
+      port: 5200,
+      mode: "Server"
+    },
+    qcStatus: "PASSED",
+    lastCalibrationDate: "2026-03-10",
+    nextMaintenanceDue: "2026-04-10",
+    notes: "Continuous non-invasive reflectance colorimetric sensor. Instantaneous Time-to-Positivity (TTP) telemetry dispatch.",
+    _count: {
+      calibrations: 12,
+      maintenances: 1,
+      jobs: 640,
+      alerts: 3
+    }
+  },
+  {
+    id: "ana-biomerieux-vitek2",
+    name: "BioMérieux VITEK-2 XL Automated ID & AST System",
+    analyzerId: "BM-VITEK2-XL01",
+    manufacturer: "bioMérieux S.A. (France)",
+    model: "VITEK-2 120-Card XL",
+    serialNumber: "SN-BMV-XL-908123",
+    analyzerType: "Automated Microbial Identification & Antimicrobial Susceptibility Testing",
+    department: "Microbiology",
+    laboratorySection: "Automated AST & AMR Surveillance Suite",
+    location: "Microbiology Core Floor 2, Bench M2",
+    installationDate: "2024-02-12",
+    connectionType: "NETWORK",
+    protocol: "HL7",
+    host: "192.168.10.112",
+    port: 6200,
+    deviceIdentifier: "VITEK2-XL-LIS",
+    connectionString: "tcp://192.168.10.112:6200 (HL7 v2.5.1 / CLSI M100 Ed. 34 Live Breakpoints)",
+    status: "ONLINE",
+    lastCommunicationAt: new Date().toISOString(),
+    lastSuccessfulHeartbeat: new Date().toISOString(),
+    connectionLatency: 15,
+    isActive: true,
+    isArchived: false,
+    departmentCode: "MIC",
+    throughputPerHour: 30,
+    sampleTubeTypes: ["0.45% Saline Suspension 0.5-0.63 McFarland"],
+    supportedTests: ["Gram-Negative ID (GN)", "Gram-Positive ID (GP)", "AST-N405 (Gram-Negative AST)", "AST-P628 (Staph/Enterococcus AST)", "Yeast ID (YST)"],
+    reagentSlots: 120,
+    activeReagentsLoaded: 92,
+    temperatureTarget: "Optical Carousel Incubator: 35.5°C ± 1.0°C",
+    currentTemperature: "35.6°C (Optical Transmittance Active)",
+    pressureKPa: 101,
+    tcpIpSettings: {
+      ip: "192.168.10.112",
+      port: 6200,
+      mode: "Server"
+    },
+    qcStatus: "PASSED",
+    lastCalibrationDate: "2026-03-12",
+    nextMaintenanceDue: "2026-04-12",
+    notes: "Advanced Expert System (AES) validation active with automated CLSI M100 Ed. 34 and EUCAST v14.0 phenotypic rule validation.",
+    _count: {
+      calibrations: 8,
+      maintenances: 2,
+      jobs: 512,
+      alerts: 1
     }
   }
 ];

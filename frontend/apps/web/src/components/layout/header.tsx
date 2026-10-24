@@ -142,7 +142,8 @@ export default function Header({
   };
 
   return (
-    <header className="h-[64px] bg-white border-b border-slate-200/90 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-[100]">
+    <>
+      <header className="h-[64px] bg-white border-b border-slate-200/90 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
       {/* LEFT: Hospital / Branch & Title */}
       <div className="flex items-center gap-3 lg:gap-4">
         {/* Mobile Menu */}
@@ -446,24 +447,25 @@ export default function Header({
           )}
         </div>
       </div>
-
-      {/* Global Clinical Spotlight Command Palette */}
-      <GlobalSearchModal
-        isOpen={showSearchModal}
-        onClose={() => setShowSearchModal(false)}
-      />
-
-      <LogoutModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        onConfirmLogout={executeLogout}
-      />
-
-      {/* Universal Quick Clinical Communication Slide-over Desk */}
-      <QuickCommunicationSlideover
-        isOpen={showQuickComms}
-        onClose={() => setShowQuickComms(false)}
-      />
     </header>
+
+    {/* Global Clinical Spotlight Command Palette */}
+    <GlobalSearchModal
+      isOpen={showSearchModal}
+      onClose={() => setShowSearchModal(false)}
+    />
+
+    <LogoutModal
+      isOpen={isLogoutModalOpen}
+      onClose={() => setIsLogoutModalOpen(false)}
+      onConfirmLogout={executeLogout}
+    />
+
+    {/* Universal Quick Clinical Communication Slide-over Desk */}
+    <QuickCommunicationSlideover
+      isOpen={showQuickComms}
+      onClose={() => setShowQuickComms(false)}
+    />
+    </>
   );
 }

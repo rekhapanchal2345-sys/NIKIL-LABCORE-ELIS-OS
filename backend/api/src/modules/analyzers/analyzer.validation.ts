@@ -5,7 +5,7 @@ import { z } from "zod";
 // =======================================================
 
 export const analyzerIdSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().min(1).max(100),
 });
 
 export const paginationSchema = z.object({
@@ -504,4 +504,30 @@ export const updateWorklistEntrySchema = z.object({
   resultReceivedAt: z.string().optional(),
   errorMessage: z.string().max(2000).optional(),
   retryCount: z.coerce.number().int().min(0).optional(),
+});
+
+// =======================================================
+// VIRTUAL MACHINE SIMULATOR VALIDATION SCHEMA
+// =======================================================
+
+export const simulatorEventSchema = z.object({
+  analyzerId: z.string().min(1).max(100),
+  eventType: z.enum([
+    "HEARTBEAT",
+    "ONLINE",
+    "OFFLINE",
+    "RECONNECTED",
+    "ERROR",
+    "RESULT_FRAME",
+    "MALFORMED_FRAME",
+  ]),
+  isSimulation: z.boolean(),
+  simulationMode: z.literal("SIMULATION_MODE"),
+  timestamp: z.string().optional(),
+  latencyMs: z.coerce.number().nonnegative().optional(),
+  payload: z.any().optional(),
+  idempotencyKey: z.string().optional(),
+  errorCode: z.string().optional(),
+  errorMessage: z.string().optional(),
+  organizationId: z.string().optional(),
 });

@@ -1,182 +1,491 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/dashboardlayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import LogisticsHeaderBanner from '@/components/logistics/LogisticsHeaderBanner';
+import LiveFleetRadarView from '@/components/logistics/LiveFleetRadarView';
+import WardStatDispatchView from '@/components/logistics/WardStatDispatchView';
+import HubSpokeManifestView from '@/components/logistics/HubSpokeManifestView';
+import HomePhlebotomyView from '@/components/logistics/HomePhlebotomyView';
+import ColdChainIoTView from '@/components/logistics/ColdChainIoTView';
+import FleetRosterView from '@/components/logistics/FleetRosterView';
+import ChainOfCustodyPrintModal from '@/components/logistics/ChainOfCustodyPrintModal';
+import DispatchTripModal from '@/components/logistics/DispatchTripModal';
+import ColdChainAlertModal from '@/components/logistics/ColdChainAlertModal';
 import {
-  Truck, MapPin, Package, Clock, CheckCircle2,
-  AlertTriangle, RefreshCw, Search, Navigation,
-  BarChart3, Users, ArrowRight, Zap,
+  INITIAL_SHIPMENTS,
+  MOCK_COLD_CHAIN_SENSORS,
+  MOCK_PNEUMATIC_STATIONS,
+} from '@/components/logistics/mockLogisticsData';
+import { ShipmentTrip, TripStatus, PneumaticTubeStation, ColdChainSensor } from '@/components/logistics/logistics.types';
+import {
+  Truck,
+  Radio,
+  Zap,
+  Package,
+  Home,
+  ThermometerSnowflake,
+  FileText,
+  Users,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 
-interface Shipment {
-  id: string;
-  trackingId: string;
-  type: 'SAMPLE_PICKUP' | 'SUPPLY_DELIVERY' | 'REPORT_COURIER' | 'INTER_LAB';
-  description: string;
-  origin: string;
-  destination: string;
-  driver: string;
-  vehicle: string;
-  status: 'DISPATCHED' | 'IN_TRANSIT' | 'DELIVERED' | 'DELAYED' | 'PENDING';
-  priority: 'STAT' | 'ROUTINE' | 'URGENT';
-  eta: string;
-  dispatchedAt: string;
-  samples?: number;
-}
+function LogisticsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-const MOCK_SHIPMENTS: Shipment[] = [
-  { id: 'log-001', trackingId: 'TRK-2026-8841', type: 'SAMPLE_PICKUP', description: '4 STAT blood culture bottles + 2 urine samples from ICU', origin: 'ICU Ward 3B', destination: 'Main Laboratory', driver: 'Ramesh Yadav', vehicle: 'Bike RJ-14-BG-2211', status: 'IN_TRANSIT', priority: 'STAT', eta: new Date(Date.now() + 12*60000).toISOString(), dispatchedAt: new Date(Date.now() - 8*60000).toISOString(), samples: 6 },
-  { id: 'log-002', trackingId: 'TRK-2026-8840', type: 'REPORT_COURIER', description: 'Signed PDF Reports — Batch of 12 patient reports', origin: 'Main Laboratory', destination: 'Cardiology OPD / Home Delivery', driver: 'Sunil Kumar', vehicle: 'Car GJ-01-AB-9012', status: 'DISPATCHED', priority: 'ROUTINE', eta: new Date(Date.now() + 45*60000).toISOString(), dispatchedAt: new Date(Date.now() - 5*60000).toISOString() },
-  { id: 'log-003', trackingId: 'TRK-2026-8832', type: 'SUPPLY_DELIVERY', description: 'Sysmex XN-1000 Reagent Pack — 20 units (cold chain)', origin: 'LabCorp Supply Depot, Ahmedabad', destination: 'Lab Cold Storage', driver: 'Mahendra Singh', vehicle: 'Refrigerated Van MH-12-AQ-5511', status: 'DELAYED', priority: 'URGENT', eta: new Date(Date.now() + 90*60000).toISOString(), dispatchedAt: new Date(Date.now() - 120*60000).toISOString() },
-  { id: 'log-004', trackingId: 'TRK-2026-8820', type: 'INTER_LAB', description: 'Referral samples — Molecular diagnostics (NGS panel)', origin: 'Main Laboratory', destination: 'Reference Lab, Mumbai', driver: 'BlueDart Express', vehicle: 'Air Courier', status: 'DELIVERED', priority: 'ROUTINE', eta: new Date(Date.now() - 30*60000).toISOString(), dispatchedAt: new Date(Date.now() - 4*3600000).toISOString(), samples: 3 },
-  { id: 'log-005', trackingId: 'TRK-2026-8850', type: 'SAMPLE_PICKUP', description: 'Home collection — 3 patients booked for morning pickup', origin: 'Patient Homes (Zone B)', destination: 'Main Laboratory', driver: 'Anil Sharma', vehicle: 'Bike GJ-06-CD-7741', status: 'PENDING', priority: 'ROUTINE', eta: new Date(Date.now() + 60*60000).toISOString(), dispatchedAt: new Date(Date.now() + 15*60000).toISOString(), samples: 8 },
-];
+  // URL state synchronization
+  const tabParam = searchParams.get('tab') || 'radar';
+  const typeParam = searchParams.get('type');
 
-const STAT_CARDS = [
-  { label: 'Active Trips', value: '8', sub: 'Currently in transit', color: 'text-blue-600', bg: 'bg-blue-50', Icon: Truck },
-  { label: 'STAT Pickups', value: '2', sub: 'Priority sample runs', color: 'text-red-600', bg: 'bg-red-50', Icon: Zap },
-  { label: 'Today Deliveries', value: '24', sub: 'Reports + samples', color: 'text-emerald-600', bg: 'bg-emerald-50', Icon: CheckCircle2 },
-  { label: 'Delayed Runs', value: '1', sub: 'Beyond ETA — action needed', color: 'text-orange-600', bg: 'bg-orange-50', Icon: AlertTriangle },
-  { label: 'Fleet Available', value: '6', sub: 'Bikes + vehicles ready', color: 'text-teal-600', bg: 'bg-teal-50', Icon: Navigation },
-  { label: 'Pending Dispatch', value: '3', sub: 'Awaiting assignment', color: 'text-purple-600', bg: 'bg-purple-50', Icon: Clock },
-];
+  const [activeTab, setActiveTab] = useState<string>(tabParam);
+  const [activeCenter, setActiveCenter] = useState<string>('ALL');
+  const [shipments, setShipments] = useState<ShipmentTrip[]>(INITIAL_SHIPMENTS);
+  const [stations, setStations] = useState<PneumaticTubeStation[]>(MOCK_PNEUMATIC_STATIONS);
+  const [sensors, setSensors] = useState<ColdChainSensor[]>(MOCK_COLD_CHAIN_SENSORS);
 
-export default function LogisticsPage() {
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [filterType, setFilterType] = useState('ALL');
+  // Modals state
+  const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+  const [selectedShipmentForPrint, setSelectedShipmentForPrint] = useState<ShipmentTrip | null>(null);
+  const [coldChainAlertBoxId, setColdChainAlertBoxId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const filtered = MOCK_SHIPMENTS.filter(s => {
-    const q = search.toLowerCase();
-    const m = !q || s.trackingId.toLowerCase().includes(q) || s.driver.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
-    const st = filterStatus === 'ALL' || s.status === filterStatus;
-    const ty = filterType === 'ALL' || s.type === filterType;
-    return m && st && ty;
-  });
+  // Sync tab with URL
+  useEffect(() => {
+    if (tabParam) {
+      if (tabParam === 'fleet') {
+        setActiveTab('fleet');
+      } else if (tabParam === 'ward-stat') {
+        setActiveTab('ward-stat');
+      } else if (tabParam === 'manifests') {
+        setActiveTab('manifests');
+      } else if (tabParam === 'home-phlebo') {
+        setActiveTab('home-phlebo');
+      } else if (tabParam === 'coldchain') {
+        setActiveTab('coldchain');
+      } else if (tabParam === 'coc') {
+        setActiveTab('coc');
+      } else {
+        setActiveTab('radar');
+      }
+    } else if (typeParam) {
+      if (typeParam === 'HOME') {
+        setActiveTab('home-phlebo');
+      } else if (typeParam === 'SAMPLE_PICKUP') {
+        setActiveTab('manifests');
+      } else {
+        setActiveTab('radar');
+      }
+    }
+  }, [tabParam, typeParam]);
 
-  const statusBadge = (status: Shipment['status']) => {
-    const map: Record<string, { label: string; cls: string; dot: string }> = {
-      DISPATCHED:  { label: 'Dispatched', cls: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-      IN_TRANSIT:  { label: 'In Transit', cls: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500 animate-pulse' },
-      DELIVERED:   { label: 'Delivered', cls: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' },
-      DELAYED:     { label: 'Delayed', cls: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500 animate-pulse' },
-      PENDING:     { label: 'Pending', cls: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    router.push(`/logistics?tab=${tabId}`, { scroll: false });
+  };
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
+  // State handlers
+  const handleUpdateStatus = (id: string, newStatus: TripStatus) => {
+    setShipments(prev =>
+      prev.map(s => {
+        if (s.id === id) {
+          const progress =
+            newStatus === 'DELIVERED'
+              ? 100
+              : newStatus === 'PICKED_UP'
+              ? 50
+              : newStatus === 'ARRIVED_ORIGIN'
+              ? 25
+              : s.progressPercent;
+          return {
+            ...s,
+            status: newStatus,
+            progressPercent: progress,
+            etaMinutes: newStatus === 'DELIVERED' ? 0 : s.etaMinutes,
+          };
+        }
+        return s;
+      })
+    );
+    showToast(`Trip ${id} status updated to ${newStatus}`);
+  };
+
+  const handleCreateDispatch = (newTrip: any) => {
+    const created: ShipmentTrip = {
+      ...newTrip,
+      id: `log-${Date.now().toString().slice(-4)}`,
+      trackingId: `TRK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      dispatchedAt: new Date().toISOString(),
+      progressPercent: 15,
     };
-    const { label, cls, dot } = map[status] || { label: status, cls: '', dot: '' };
-    return <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}><span className={`w-1.5 h-1.5 rounded-full ${dot}`}/>{label}</span>;
+    setShipments(prev => [created, ...prev]);
+    showToast(`Consignment ${created.trackingId} dispatched successfully!`);
   };
 
-  const priorityBadge = (p: Shipment['priority']) => {
-    const map = { STAT: 'bg-red-600 text-white', URGENT: 'bg-orange-500 text-white', ROUTINE: 'bg-slate-100 text-slate-600' };
-    return <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${map[p] || ''}`}>{p}</span>;
-  };
-
-  const typeBadge = (t: Shipment['type']) => {
-    const map: Record<string, { label: string; icon: string }> = {
-      SAMPLE_PICKUP:    { label: 'Sample Pickup', icon: '??' },
-      SUPPLY_DELIVERY:  { label: 'Supply Delivery', icon: '??' },
-      REPORT_COURIER:   { label: 'Report Courier', icon: '??' },
-      INTER_LAB:        { label: 'Inter-Lab Referral', icon: '??' },
+  const handleQuickWardDispatch = (wardName: string, bedNumber: string, reason: string) => {
+    const trip: ShipmentTrip = {
+      id: `stat-${Date.now().toString().slice(-4)}`,
+      trackingId: `STAT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      type: 'WARD_STAT',
+      title: `${wardName} (${bedNumber}) Emergency STAT Run`,
+      description: reason,
+      origin: `${wardName} (${bedNumber})`,
+      originType: 'ICU_WARD',
+      destination: 'Central Lab - Core Accessioning Bay 1',
+      driver: 'Ramesh Yadav (Hospital Porter #04)',
+      driverPhone: '+91 98250 11442',
+      vehicle: 'Hospital Electric Cart #02',
+      vehiclePlate: 'CART-ICU-02',
+      vehicleType: 'HOSPITAL_PORTER',
+      status: 'IN_TRANSIT',
+      priority: 'STAT',
+      etaMinutes: 10,
+      etaTimestamp: new Date(Date.now() + 10 * 60000).toISOString(),
+      dispatchedAt: new Date().toISOString(),
+      samplesCount: 4,
+      currentTempCelsius: 4.4,
+      tempRequirement: '2_TO_8_C',
+      tamperSealNumber: `SEAL-${Math.floor(10000 + Math.random() * 90000)}`,
+      progressPercent: 30,
+      wardInfo: {
+        wardName,
+        bedNumber,
+        orderingDoctor: 'Duty Critical Care Specialist',
+        statReason: reason,
+        targetTatMinutes: 15,
+        elapsedMinutes: 2,
+      },
+      tubes: [
+        {
+          id: `t-w-${Date.now()}-1`,
+          barcode: `STAT-${Math.floor(1000 + Math.random() * 9000)}`,
+          uhid: 'UH-2026-CRIT',
+          patientName: 'Emergency Inpatient',
+          ageGender: '62Y / M',
+          vacutainerType: 'EDTA_LAVENDER',
+          colorHex: '#8B5CF6',
+          testName: 'STAT Emergency CBC & Biomarkers',
+          department: 'Hematology',
+          conditionStatus: 'INTACT',
+          isScannedAtDock: false,
+        },
+      ],
+      chainOfCustody: {
+        releasedBy: `Staff Nurse (${wardName})`,
+        releaseTime: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        courierRunnerName: 'Ramesh Yadav',
+      },
     };
-    const { label, icon } = map[t] || { label: t, icon: '??' };
-    return <span className="text-xs text-slate-600">{icon} {label}</span>;
+    setShipments(prev => [trip, ...prev]);
+    showToast(`STAT Porter Runner dispatched to ${wardName} (${bedNumber})`);
   };
 
-  const etaDisplay = (eta: string, status: Shipment['status']) => {
-    if (status === 'DELIVERED') return <span className="text-emerald-600 font-medium text-xs">? Delivered</span>;
-    const diff = Math.round((new Date(eta).getTime() - Date.now()) / 60000);
-    if (diff < 0) return <span className="text-red-600 font-bold text-xs">ETA Breached ({Math.abs(diff)}m ago)</span>;
-    return <span className={`text-xs font-medium ${diff < 15 ? 'text-amber-600' : 'text-slate-600'}`}>~{diff}m remaining</span>;
+  const handlePneumaticSend = (stationCode: string) => {
+    setStations(prev =>
+      prev.map(st => {
+        if (st.stationCode === stationCode) {
+          return { ...st, status: 'SENDING', capsuleEtaSeconds: 35 };
+        }
+        if (st.stationCode === 'STN-LAB-01') {
+          return { ...st, status: 'RECEIVING', capsuleEtaSeconds: 35 };
+        }
+        return st;
+      })
+    );
+    showToast(`Pneumatic capsule launched from ${stationCode} to Central Lab`);
   };
+
+  const handleBookHomeVisit = (pName: string, pAddress: string, pSlot: string, pTest: string) => {
+    const trip: ShipmentTrip = {
+      id: `home-${Date.now().toString().slice(-4)}`,
+      trackingId: `HOME-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      type: 'HOME_COLLECTION',
+      title: `Home Phlebotomy: ${pName}`,
+      description: pTest,
+      origin: pAddress,
+      originType: 'PATIENT_HOME',
+      destination: 'Central Processing Lab - Phlebotomy Intake',
+      driver: 'Anil Sharma (Senior Phlebotomist)',
+      driverPhone: '+91 97234 55890',
+      vehicle: 'Electric Bike with Cryo-Box (GJ-01-EE-4192)',
+      vehiclePlate: 'GJ-01-EE-4192',
+      vehicleType: 'BIKE_COLD_BOX',
+      status: 'DISPATCHED',
+      priority: 'ROUTINE',
+      etaMinutes: 45,
+      etaTimestamp: new Date(Date.now() + 45 * 60000).toISOString(),
+      dispatchedAt: new Date().toISOString(),
+      samplesCount: 3,
+      currentTempCelsius: 4.1,
+      tempRequirement: '2_TO_8_C',
+      tamperSealNumber: `HOME-SEAL-${Math.floor(1000 + Math.random() * 9000)}`,
+      progressPercent: 20,
+      homeInfo: {
+        patientAddress: pAddress,
+        appointmentSlot: pSlot,
+        phlebotomistName: 'Anil Sharma',
+        otpCode: `${Math.floor(1000 + Math.random() * 9000)}`,
+        kitVerified: true,
+        geofenceStatus: 'APPROACHING',
+      },
+      tubes: [
+        {
+          id: `th-${Date.now()}`,
+          barcode: `BC-HOME-${Math.floor(1000 + Math.random() * 9000)}`,
+          uhid: `UH-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+          patientName: pName,
+          ageGender: 'Adult',
+          vacutainerType: 'SST_GOLD',
+          colorHex: '#EAB308',
+          testName: pTest,
+          department: 'Biochemistry',
+          conditionStatus: 'INTACT',
+          isScannedAtDock: false,
+        },
+      ],
+      chainOfCustody: {
+        releasedBy: `Patient ${pName}`,
+        releaseTime: 'Pending Home Arrival',
+        courierRunnerName: 'Anil Sharma',
+      },
+    };
+    setShipments(prev => [trip, ...prev]);
+    showToast(`Home phlebotomy visit scheduled for ${pName}`);
+  };
+
+  const handleExcursionTrigger = (boxId: string) => {
+    setColdChainAlertBoxId(boxId);
+  };
+
+  const handleExcursionAction = (actionDesc: string) => {
+    setColdChainAlertBoxId(null);
+    showToast(`NABL CAPA Action executed: ${actionDesc}`);
+  };
+
+  const statCount = shipments.filter(s => s.priority === 'STAT' && s.status !== 'DELIVERED').length;
 
   return (
     <ProtectedRoute>
       <DashboardLayout title="Sample Logistics & Fleet Management">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><Truck className="w-6 h-6 text-blue-600" />Sample Logistics &amp; Fleet</h1>
-              <p className="text-sm text-slate-500 mt-0.5">Sample pickups · Report delivery · Supply chain · Inter-lab referrals · Cold chain tracking</p>
+          {/* TOAST NOTIFICATION */}
+          {toastMessage && (
+            <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{toastMessage}</span>
             </div>
+          )}
+
+          {/* MASTER LOGISTICS HEADER & COMMAND BANNER */}
+          <LogisticsHeaderBanner
+            activeCenter={activeCenter}
+            onCenterChange={setActiveCenter}
+            onOpenDispatch={() => setIsDispatchModalOpen(true)}
+            onOpenPrintManifest={() => setSelectedShipmentForPrint(shipments[0])}
+            onOpenDockScanner={() => handleTabChange('manifests')}
+            onSimulateExcursion={() => handleExcursionTrigger('Cold-Box #CB-04')}
+            activeStatCount={statCount}
+          />
+
+          {/* ENTERPRISE WORKFLOW TABS */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-2 shadow-2xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => handleTabChange('radar')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === 'radar'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                }`}
+              >
+                <Radio className="w-4 h-4" />
+                Live Fleet Radar
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  activeTab === 'radar' ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {shipments.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('ward-stat')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === 'ward-stat'
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                Hospital Ward STAT Runs
+                {statCount > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse ${
+                    activeTab === 'ward-stat' ? 'bg-red-700 text-white' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {statCount} STAT
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => handleTabChange('manifests')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === 'manifests'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                Hub-Spoke Consignments &amp; Dock Scan
+              </button>
+
+              <button
+                onClick={() => handleTabChange('home-phlebo')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === 'home-phlebo'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                }`}
+              >
+                <Home className="w-4 h-4" />
+                Home Phlebotomy Fleet
+              </button>
+
+              <button
+                onClick={() => handleTabChange('coldchain')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === 'coldchain'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                }`}
+              >
+                <ThermometerSnowflake className="w-4 h-4" />
+                Cold-Chain IoT (2°C–8°C)
+              </button>
+
+              <button
+                onClick={() => handleTabChange('fleet')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === 'fleet'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                Fleet &amp; Courier Roster
+              </button>
+
+              <button
+                onClick={() => setSelectedShipmentForPrint(shipments[0])}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap text-slate-600 hover:text-blue-700 hover:bg-blue-50/70 transition-all cursor-pointer ml-auto"
+              >
+                <FileText className="w-4 h-4 text-blue-600" />
+                Print Manifest Slip
+              </button>
+            </div>
+          </div>
+
+          {/* ACTIVE TAB VIEW CONTENT */}
+          <div>
+            {activeTab === 'radar' && (
+              <LiveFleetRadarView
+                shipments={shipments}
+                onUpdateStatus={handleUpdateStatus}
+                onSelectForManifest={(shipment) => setSelectedShipmentForPrint(shipment)}
+                onOpenDispatch={() => setIsDispatchModalOpen(true)}
+                onTriggerExcursion={(id) => handleExcursionTrigger(id)}
+              />
+            )}
+
+            {activeTab === 'ward-stat' && (
+              <WardStatDispatchView
+                shipments={shipments}
+                stations={stations}
+                onQuickWardDispatch={handleQuickWardDispatch}
+                onSendPneumaticCapsule={handlePneumaticSend}
+              />
+            )}
+
+            {activeTab === 'manifests' && (
+              <HubSpokeManifestView
+                onOpenPrintSlip={() => setSelectedShipmentForPrint(shipments[0])}
+              />
+            )}
+
+            {activeTab === 'home-phlebo' && (
+              <HomePhlebotomyView
+                shipments={shipments}
+                onVerifyOtp={(tripId, otp) => showToast(`OTP ${otp} authenticated for trip ${tripId}`)}
+                onBookHomeVisit={handleBookHomeVisit}
+              />
+            )}
+
+            {activeTab === 'coldchain' && (
+              <ColdChainIoTView
+                sensors={sensors}
+                onSimulateExcursionAlert={handleExcursionTrigger}
+                onResolveExcursion={(id) => showToast(`Excursion resolved for sensor ${id}`)}
+              />
+            )}
+
+            {activeTab === 'fleet' && (
+              <FleetRosterView
+                onAssignTrip={(driverName) => {
+                  setIsDispatchModalOpen(true);
+                  showToast(`Selected ${driverName} for new trip dispatch`);
+                }}
+              />
+            )}
+          </div>
+
+          {/* NABL COMPLIANCE PROTOCOL BAR */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-2">
-              <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium hover:bg-slate-50 transition-colors"><RefreshCw className="w-4 h-4" />Refresh</button>
-              <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"><Truck className="w-4 h-4" />Dispatch Trip</button>
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                <strong>NABL ISO 15189:2022 Certified Pre-analytical Logistics:</strong> All biological specimens transported in compliant triple-packaging with continuous thermal logging.
+              </span>
             </div>
+            <span className="font-mono text-slate-400 shrink-0">ISO 15189:2022 §5.4.4</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {STAT_CARDS.map(s => (
-              <div key={s.label} className={`${s.bg} rounded-xl border border-slate-200 p-4`}>
-                <s.Icon className={`w-5 h-5 ${s.color}`} />
-                <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-                <p className="text-xs font-semibold text-slate-700 leading-tight mt-0.5">{s.label}</p>
-                <p className="text-xs text-slate-400">{s.sub}</p>
-              </div>
-            ))}
-          </div>
+          {/* MODALS */}
+          <DispatchTripModal
+            isOpen={isDispatchModalOpen}
+            onClose={() => setIsDispatchModalOpen(false)}
+            onDispatch={handleCreateDispatch}
+          />
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2"><Navigation className="w-4 h-4 text-blue-600" />Live Trip Tracker</h2>
-              <div className="flex items-center gap-2 ml-auto w-full sm:w-auto flex-wrap">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                  <input type="text" placeholder="Tracking ID, Driver…" value={search} onChange={e => setSearch(e.target.value)} className="pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg w-44 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <select value={filterType} onChange={e => setFilterType(e.target.value)} className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="ALL">All Types</option>
-                  <option value="SAMPLE_PICKUP">Sample Pickup</option>
-                  <option value="SUPPLY_DELIVERY">Supply Delivery</option>
-                  <option value="REPORT_COURIER">Report Courier</option>
-                  <option value="INTER_LAB">Inter-Lab</option>
-                </select>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="ALL">All Status</option>
-                  <option value="IN_TRANSIT">In Transit</option>
-                  <option value="DISPATCHED">Dispatched</option>
-                  <option value="DELAYED">Delayed</option>
-                  <option value="PENDING">Pending</option>
-                </select>
-              </div>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {filtered.map(s => (
-                <div key={s.id} className={`px-5 py-4 hover:bg-slate-50 transition-colors ${s.status === 'DELAYED' ? 'border-l-2 border-red-500' : s.status === 'IN_TRANSIT' && s.priority === 'STAT' ? 'border-l-2 border-red-400' : ''}`}>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-slate-500">{s.trackingId}</span>
-                        {priorityBadge(s.priority)}
-                        {statusBadge(s.status)}
-                        {typeBadge(s.type)}
-                      </div>
-                      <p className="text-sm text-slate-700 mt-1 font-medium truncate">{s.description}</p>
-                      <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
-                        <MapPin className="w-3 h-3" />{s.origin}
-                        <ArrowRight className="w-3 h-3" />
-                        <MapPin className="w-3 h-3" />{s.destination}
-                      </div>
-                    </div>
-                    <div className="text-right min-w-max space-y-1">
-                      <div className="text-xs font-medium text-slate-700">{s.driver}</div>
-                      <div className="text-xs text-slate-400">{s.vehicle}</div>
-                      {s.samples && <div className="text-xs text-blue-600 font-medium">{s.samples} samples</div>}
-                      {etaDisplay(s.eta, s.status)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {filtered.length === 0 && <div className="py-10 text-center text-slate-400 text-sm">No trips match your filter</div>}
-            </div>
-          </div>
+          <ChainOfCustodyPrintModal
+            shipment={selectedShipmentForPrint}
+            onClose={() => setSelectedShipmentForPrint(null)}
+          />
 
-          <div className="flex items-center gap-2 text-xs text-slate-400 pb-2">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span>GPS-tracked fleet · Cold chain monitoring (2-8°C samples) · NABL sample integrity protocol · TAT compliance monitored</span>
-          </div>
+          <ColdChainAlertModal
+            isOpen={!!coldChainAlertBoxId}
+            boxId={coldChainAlertBoxId || 'Cold-Box #CB-04'}
+            onClose={() => setColdChainAlertBoxId(null)}
+            onActionTaken={handleExcursionAction}
+          />
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+export default function LogisticsPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center text-xs text-slate-400">Loading Enterprise Sample Logistics...</div>}>
+      <LogisticsContent />
+    </Suspense>
   );
 }

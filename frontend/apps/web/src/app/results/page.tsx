@@ -660,6 +660,17 @@ export default function ResultsPage() {
                   ISO 15189
                 </span>
               </button>
+
+              <a
+                href="/microbiology"
+                className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all text-purple-300 hover:bg-purple-950/60 border border-purple-500/40 bg-purple-950/20 shadow-xs"
+              >
+                <Microscope className="h-4 w-4 text-purple-400" />
+                <span>Microbiology &amp; AST Suite</span>
+                <span className="ml-1 rounded-full bg-purple-900 px-1.5 py-0.5 text-[9px] font-bold text-purple-200">
+                  Live Bench
+                </span>
+              </a>
             </div>
 
             {/* Group 2: Quality & Middleware Intelligence */}

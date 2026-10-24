@@ -1,4 +1,5 @@
-import prisma from "../../../config/database";
+import crypto from "crypto";
+import prisma, { pool } from "../../../config/database";
 
 // =======================================================
 // ANALYZER MANAGEMENT SERVICE
@@ -273,13 +274,49 @@ export const deleteAnalyzer = async (id: string) => {
 };
 
 // =======================================================
-// ANALYZER STATUS MANAGEMENT
+// ANALYZER STATUS MANAGEMENT & VIRTUAL SIMULATOR ENGINE
 // =======================================================
 
-export const updateAnalyzerStatus = async (id: string, status: string, metadata?: any) => {
-  const analyzer = await prisma.analyzer.findUnique({
-    where: { id },
+export const findAnalyzerByIdOrCode = async (identifier: string) => {
+  if (!identifier) return null;
+  const clean = identifier.trim();
+  return prisma.analyzer.findFirst({
+    where: {
+      OR: [
+        { id: clean },
+        { analyzerId: clean },
+        { serialNumber: clean },
+      ],
+      isArchived: false,
+    },
   });
+};
+
+export const ensureSimulatorAnalyzer = async (identifier: string, name?: string) => {
+  let analyzer = await findAnalyzerByIdOrCode(identifier);
+  if (!analyzer) {
+    const cleanId = identifier.trim();
+    analyzer = await prisma.analyzer.create({
+      data: {
+        name: name || `Virtual Laboratory Simulator (${cleanId})`,
+        analyzerId: cleanId,
+        serialNumber: `SN-VIRTUAL-${cleanId}`,
+        manufacturer: "Virtual Hardware Twin Systems",
+        model: "Digital Twin LIS Bridge",
+        analyzerType: "SIMULATOR",
+        department: "BIOCHEMISTRY",
+        connectionType: "NETWORK",
+        protocol: "ASTM",
+        status: "ONLINE",
+        notes: "Automated Virtual Machine Simulator for LabCore ELIS & Omniscient Nexus verification",
+      },
+    });
+  }
+  return analyzer;
+};
+
+export const updateAnalyzerStatus = async (id: string, status: string, metadata?: any) => {
+  const analyzer = await findAnalyzerByIdOrCode(id);
 
   if (!analyzer) {
     throw new Error("Analyzer not found");
@@ -295,14 +332,14 @@ export const updateAnalyzerStatus = async (id: string, status: string, metadata?
   }
 
   const updatedAnalyzer = await prisma.analyzer.update({
-    where: { id },
+    where: { id: analyzer.id },
     data: updateData,
   });
 
   // Create communication log
   await prisma.analyzerCommunicationLog.create({
     data: {
-      analyzerId: id,
+      analyzerId: analyzer.id,
       direction: "INCOMING",
       messageType: "STATUS_UPDATE",
       protocol: analyzer.protocol,
@@ -315,9 +352,7 @@ export const updateAnalyzerStatus = async (id: string, status: string, metadata?
 };
 
 export const recordHeartbeat = async (id: string, latency?: number) => {
-  const analyzer = await prisma.analyzer.findUnique({
-    where: { id },
-  });
+  const analyzer = await findAnalyzerByIdOrCode(id);
 
   if (!analyzer) {
     throw new Error("Analyzer not found");
@@ -329,29 +364,341 @@ export const recordHeartbeat = async (id: string, latency?: number) => {
     status: "ONLINE",
   };
 
-  if (latency) {
+  if (latency !== undefined && latency !== null) {
     updateData.connectionLatency = latency;
   }
 
   await prisma.analyzer.update({
-    where: { id },
+    where: { id: analyzer.id },
     data: updateData,
   });
 
   // Create heartbeat log
   await prisma.analyzerCommunicationLog.create({
     data: {
-      analyzerId: id,
+      analyzerId: analyzer.id,
       direction: "INCOMING",
       messageType: "HEARTBEAT",
       protocol: analyzer.protocol,
       payload: JSON.stringify({ timestamp: new Date().toISOString(), latency }),
       status: "SUCCESS",
       responseTime: latency,
+      connectionLatency: latency,
     },
   });
 
-  return { success: true, timestamp: new Date() };
+  return { success: true, timestamp: new Date(), analyzerId: analyzer.analyzerId };
+};
+
+export interface SimulatorEventInput {
+  analyzerId: string;
+  eventType: "HEARTBEAT" | "ONLINE" | "OFFLINE" | "RECONNECTED" | "ERROR" | "RESULT_FRAME" | "MALFORMED_FRAME";
+  isSimulation: boolean;
+  simulationMode: "SIMULATION_MODE";
+  timestamp?: string;
+  latencyMs?: number;
+  payload?: any;
+  idempotencyKey?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  organizationId?: string;
+}
+
+export const handleSimulatorEvent = async (data: SimulatorEventInput) => {
+  // 1. SAFETY INVARIANT ENFORCEMENT
+  // Strictly enforce that synthetic telemetry must have explicit simulation markers
+  if (!data.isSimulation || data.simulationMode !== "SIMULATION_MODE") {
+    throw new Error("SECURITY_SAFETY_VIOLATION: Unflagged synthetic telemetry cannot enter Integration Engine");
+  }
+
+  const organizationId = data.organizationId || "DEFAULT_ORG";
+  const eventTimestamp = data.timestamp ? new Date(data.timestamp) : new Date();
+  const latency = typeof data.latencyMs === "number" ? data.latencyMs : 12;
+
+  // 2. Machine Identifier Resolution & Virtual Analyzer Provisioning
+  const analyzer = await ensureSimulatorAnalyzer(data.analyzerId);
+
+  // 3. Deduplication Key Generation & Journal Check
+  const rawPayloadStr = typeof data.payload === "string" ? data.payload : JSON.stringify(data.payload || {});
+  const rawPayloadHash = crypto.createHash("sha256").update(rawPayloadStr, "utf8").digest("hex");
+
+  const idempotencyHash = data.idempotencyKey
+    ? crypto.createHash("sha256").update(`${organizationId}|${analyzer.analyzerId}|${data.idempotencyKey}`, "utf8").digest("hex")
+    : crypto.createHash("sha256").update(`${organizationId}|${analyzer.analyzerId}|${data.eventType}|${rawPayloadHash}|${data.timestamp || ""}`, "utf8").digest("hex");
+
+  // Check if idempotency hash already exists in instrument_message_journal
+  try {
+    const existing = await pool.query(
+      `SELECT id, processing_status, received_at FROM instrument_message_journal WHERE idempotency_hash = $1 LIMIT 1`,
+      [idempotencyHash]
+    );
+
+    if (existing.rows.length > 0) {
+      // Duplicate message detected!
+      const journalEntry = existing.rows[0];
+      const dupLogId = `LOG-DUP-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+      await pool.query(
+        `INSERT INTO instrument_message_journal (
+          id, organization_id, analyzer_id, correlation_id, idempotency_hash, protocol,
+          raw_payload_hash, specimen_barcode, processing_status, error_code, error_diagnostic,
+          retry_count, received_at, processed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        ON CONFLICT (idempotency_hash) DO UPDATE SET retry_count = instrument_message_journal.retry_count + 1`,
+        [
+          dupLogId,
+          organizationId,
+          analyzer.analyzerId,
+          data.idempotencyKey || dupLogId,
+          idempotencyHash + `_dup_${Date.now()}`,
+          "SIMULATOR",
+          rawPayloadHash,
+          data.payload?.barcode || null,
+          "DUPLICATE_IGNORED",
+          "ERR_DUPLICATE_SUPPRESSED",
+          `Duplicate event ${data.eventType} ignored to protect clinical state machine integrity. Original received at ${journalEntry.received_at}`,
+          1,
+        ]
+      ).catch(() => null);
+
+      await prisma.analyzerCommunicationLog.create({
+        data: {
+          analyzerId: analyzer.id,
+          direction: "INCOMING",
+          messageType: `${data.eventType}_DUPLICATE_IGNORED`,
+          protocol: analyzer.protocol,
+          payload: JSON.stringify({ isSimulation: true, idempotencyHash, deduplicated: true }),
+          status: "SUCCESS",
+          responseTime: latency,
+        },
+      }).catch(() => null);
+
+      return {
+        success: true,
+        status: "DUPLICATE_IGNORED",
+        deduplicated: true,
+        analyzerId: analyzer.analyzerId,
+        message: "Duplicate machine event received and safely suppressed without side-effects.",
+        idempotencyHash,
+      };
+    }
+  } catch (err: any) {
+    console.warn("[Simulator Integration Engine] Journal deduplication check warning:", err?.message);
+  }
+
+  // 4. Handle Malformed Payload / Dead-Letter Queue (DLQ)
+  if (data.eventType === "MALFORMED_FRAME" || data.errorCode === "MALFORMED_PAYLOAD") {
+    const deadLetterId = `DLQ-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const errorDiagnostic = data.errorMessage || "Malformed simulator frame: checksum mismatch or invalid delimiters";
+
+    try {
+      await pool.query(
+        `INSERT INTO instrument_message_journal (
+          id, organization_id, analyzer_id, correlation_id, idempotency_hash, protocol,
+          raw_payload_hash, specimen_barcode, processing_status, error_code, error_diagnostic,
+          retry_count, received_at, processed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        ON CONFLICT (idempotency_hash) DO NOTHING`,
+        [
+          deadLetterId,
+          organizationId,
+          analyzer.analyzerId,
+          deadLetterId,
+          idempotencyHash,
+          "SIMULATOR",
+          rawPayloadHash,
+          data.payload?.barcode || null,
+          "DEAD_LETTER",
+          data.errorCode || "ERR_MALFORMED_PAYLOAD",
+          errorDiagnostic,
+          0,
+        ]
+      );
+    } catch (err: any) {
+      console.warn("[Simulator Integration Engine] DLQ journal write warning:", err?.message);
+    }
+
+    // Create an alert in analyzer_alerts
+    await prisma.analyzerAlert.create({
+      data: {
+        analyzerId: analyzer.id,
+        alertType: "INTEGRATION_MALFORMED_FRAME",
+        severity: "WARNING",
+        title: `Virtual Analyzer [${analyzer.analyzerId}]: Malformed Frame Rejected`,
+        message: errorDiagnostic,
+        metadata: {
+          isSimulation: true,
+          simulationMode: "SIMULATION_MODE",
+          errorCode: data.errorCode || "ERR_MALFORMED_PAYLOAD",
+          rawPayload: rawPayloadStr.slice(0, 500),
+        },
+      },
+    }).catch(() => null);
+
+    await prisma.analyzerCommunicationLog.create({
+      data: {
+        analyzerId: analyzer.id,
+        direction: "INCOMING",
+        messageType: "MALFORMED_FRAME",
+        protocol: analyzer.protocol,
+        payload: rawPayloadStr.slice(0, 2000),
+        status: "FAILED",
+        errorMessage: errorDiagnostic,
+        responseTime: latency,
+      },
+    }).catch(() => null);
+
+    return {
+      success: false,
+      status: "DEAD_LETTER",
+      analyzerId: analyzer.analyzerId,
+      error: errorDiagnostic,
+      dlqId: deadLetterId,
+    };
+  }
+
+  // 5. State Machine Processing & Transitions
+  let newStatus: any = analyzer.status;
+
+  if (data.eventType === "HEARTBEAT" || data.eventType === "ONLINE" || data.eventType === "RECONNECTED") {
+    newStatus = "ONLINE";
+
+    await prisma.analyzer.update({
+      where: { id: analyzer.id },
+      data: {
+        status: "ONLINE",
+        lastCommunicationAt: eventTimestamp,
+        lastSuccessfulHeartbeat: eventTimestamp,
+        connectionLatency: latency,
+      },
+    });
+
+    // If reconnected, resolve all previous active OFFLINE alerts for this machine
+    if (data.eventType === "RECONNECTED" || (data.eventType === "ONLINE" && analyzer.status === "OFFLINE")) {
+      await prisma.analyzerAlert.updateMany({
+        where: {
+          analyzerId: analyzer.id,
+          alertType: { in: ["OFFLINE_DISCONNECTED", "HEARTBEAT_TIMEOUT"] },
+          isResolved: false,
+        },
+        data: {
+          isResolved: true,
+          resolvedAt: new Date(),
+          resolutionNotes: `Virtual machine reconnected successfully at ${new Date().toISOString()}`,
+        },
+      }).catch(() => null);
+    }
+  } else if (data.eventType === "OFFLINE") {
+    newStatus = "OFFLINE";
+
+    await prisma.analyzer.update({
+      where: { id: analyzer.id },
+      data: {
+        status: "OFFLINE",
+        lastCommunicationAt: eventTimestamp,
+      },
+    });
+
+    // Create an alert in analyzer_alerts
+    await prisma.analyzerAlert.create({
+      data: {
+        analyzerId: analyzer.id,
+        alertType: "OFFLINE_DISCONNECTED",
+        severity: "WARNING",
+        title: `Virtual Analyzer [${analyzer.analyzerId}] Offline`,
+        message: data.errorMessage || `Virtual machine simulator disconnected by operator. Telemetry suspended.`,
+        metadata: {
+          isSimulation: true,
+          simulationMode: "SIMULATION_MODE",
+          disconnectedAt: eventTimestamp.toISOString(),
+        },
+      },
+    }).catch(() => null);
+  } else if (data.eventType === "ERROR") {
+    newStatus = "ERROR";
+
+    await prisma.analyzer.update({
+      where: { id: analyzer.id },
+      data: {
+        status: "ERROR",
+        lastCommunicationAt: eventTimestamp,
+      },
+    });
+
+    await prisma.analyzerAlert.create({
+      data: {
+        analyzerId: analyzer.id,
+        alertType: "HARDWARE_SIMULATION_ERROR",
+        severity: "ERROR",
+        title: `Virtual Analyzer [${analyzer.analyzerId}] Hardware Error`,
+        message: data.errorMessage || `Synthetic hardware fault triggered: ${data.errorCode || "UNKNOWN_ERROR"}`,
+        metadata: {
+          isSimulation: true,
+          simulationMode: "SIMULATION_MODE",
+          errorCode: data.errorCode || "ERR_GENERIC_SIMULATOR",
+          details: data.payload,
+        },
+      },
+    }).catch(() => null);
+  }
+
+  // 6. Record Journal Entry as PROCESSED
+  const journalId = `JRN-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  try {
+    await pool.query(
+      `INSERT INTO instrument_message_journal (
+        id, organization_id, analyzer_id, correlation_id, idempotency_hash, protocol,
+        raw_payload_hash, specimen_barcode, processing_status, retry_count, received_at, processed_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+      ON CONFLICT (idempotency_hash) DO NOTHING`,
+      [
+        journalId,
+        organizationId,
+        analyzer.analyzerId,
+        journalId,
+        idempotencyHash,
+        "SIMULATOR",
+        rawPayloadHash,
+        data.payload?.barcode || null,
+        "PROCESSED",
+        0,
+      ]
+    );
+  } catch (err: any) {
+    console.warn("[Simulator Integration Engine] Journal insert warning:", err?.message);
+  }
+
+  // 7. Record Communication Log
+  await prisma.analyzerCommunicationLog.create({
+    data: {
+      analyzerId: analyzer.id,
+      direction: "INCOMING",
+      messageType: data.eventType,
+      protocol: analyzer.protocol,
+      payload: JSON.stringify({
+        isSimulation: true,
+        simulationMode: "SIMULATION_MODE",
+        eventType: data.eventType,
+        latencyMs: latency,
+        status: newStatus,
+        metadata: data.payload,
+      }),
+      status: "SUCCESS",
+      responseTime: latency,
+      connectionLatency: latency,
+    },
+  }).catch(() => null);
+
+  return {
+    success: true,
+    status: "PROCESSED",
+    eventType: data.eventType,
+    machineStatus: newStatus,
+    analyzerId: analyzer.analyzerId,
+    idempotencyHash,
+    journalId,
+    timestamp: new Date().toISOString(),
+  };
 };
 
 // =======================================================

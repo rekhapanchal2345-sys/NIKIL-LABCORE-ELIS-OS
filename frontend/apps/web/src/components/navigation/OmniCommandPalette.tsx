@@ -635,7 +635,7 @@ export const OmniCommandPalette: React.FC<OmniCommandPaletteProps> = ({
       {/* OMNI-COMMAND CLINICAL PALETTE MODAL OVERLAY                         */}
       {/* =================================================================== */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-slate-950/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-16 px-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
             {/* Search Input Header */}
             <div className="flex items-center px-4 py-3.5 border-b border-slate-800 bg-slate-950/60">

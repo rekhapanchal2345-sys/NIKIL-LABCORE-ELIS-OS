@@ -23,6 +23,7 @@ import StatSpecimenLane from "@/components/analyzers/StatSpecimenLane";
 import RealWorldReagentTracker from "@/components/analyzers/RealWorldReagentTracker";
 import ShiftQCGate from "@/components/analyzers/ShiftQCGate";
 import VirtualAnalyzerSimulator from "@/components/analyzers/VirtualAnalyzerSimulator";
+import VirtualAnalyzerMasterDeck from "@/components/analyzers/VirtualAnalyzerMasterDeck";
 import ReflexCascadeEngine from "@/components/analyzers/ReflexCascadeEngine";
 import SmartWorkloadBalancer from "@/components/analyzers/SmartWorkloadBalancer";
 import MaintenanceComplianceLogbook from "@/components/analyzers/MaintenanceComplianceLogbook";
@@ -1718,9 +1719,11 @@ export default function AnalyzersPage() {
             <MiddlewareDriverHub analyzers={analyzers} />
           )}
 
-          {/* HUB 1: VIRTUAL TEST BENCH SIMULATOR */}
+          {/* HUB 1: VIRTUAL TEST BENCH & HARDWARE DIGITAL TWIN */}
           {activeTab === "simulator" && (
-            <VirtualAnalyzerSimulator analyzers={analyzers} />
+            <div className="space-y-4">
+              <VirtualAnalyzerMasterDeck />
+            </div>
           )}
 
           {/* HUB 1: DIAGNOSTICS & COMMUNICATION LOGS */}

@@ -676,7 +676,7 @@ export type NexusStoreContextValue = NexusState &
         actions: NexusStoreActions;
     };
 
-const NexusStoreContext = createContext<NexusStoreContextValue | null>(null);
+export const NexusStoreContext = createContext<NexusStoreContextValue | null>(null);
 
 export const NexusStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // Navigation & Global Controls
@@ -1194,6 +1194,10 @@ export const useNexusStore = () => {
         throw new Error('useNexusStore must be used within a NexusStoreProvider');
     }
     return context;
+};
+
+export const useOptionalNexusStore = (): NexusStoreContextValue | null => {
+    return useContext(NexusStoreContext);
 };
 
 export default useNexusStore;
