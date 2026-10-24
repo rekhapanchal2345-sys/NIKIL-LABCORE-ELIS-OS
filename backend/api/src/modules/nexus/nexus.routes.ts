@@ -5,48 +5,55 @@
  * and controlled autonomy workflows.
  */
 
-import { Router, RequestHandler } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { nexusController } from './nexus.controller';
 import { nexusAdvancedController } from './nexus-advanced.controller';
-import { authenticate } from '../../../middleware/auth';
-import { extractBearerToken } from '../../lib/auth';
+import { authenticate, requireRoles, AuthenticatedRequest } from '../../../middleware/auth';
+import { nexusOperatingModeService } from './nexus-operating-mode.service';
 
 const router = Router();
 
-/**
- * Authentication middleware with development bypass support.
- */
-const nexusAuth: RequestHandler = async (req, res, next) => {
-    const token = extractBearerToken(req.headers.authorization) || (req as any).cookies?.accessToken;
-    if (token) {
-        return authenticate(req, res, (err?: any) => {
-            if (err) return next(err);
-            if (req.headers['x-user-role'] && process.env.NODE_ENV !== 'production') {
-                (req as any).user.role = req.headers['x-user-role'];
-            }
-            next();
-        });
-    }
-
-    if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEV_DIGITAL_TWIN === 'true') {
-        const role = (req.headers['x-user-role'] as string) || 'LAB_DIRECTOR';
-        const userId = (req.headers['x-user-id'] as string) || 'USR-DIRECTOR-01';
-        (req as any).user = {
-            id: userId,
-            employeeCode: 'EMP-NEXUS-01',
-            email: 'director@labcore.hospital',
-            fullName: 'Chief Laboratory Director (Omniscient Nexus)',
-            role: role,
-            status: 'ACTIVE',
-        };
-        return next();
-    }
-
-    return authenticate(req, res, next);
-};
-
 // Require authenticated session for all Nexus routes
-router.use(nexusAuth);
+router.use(authenticate);
+
+// =========================================================================
+// 0. OPERATING MODE & SAFETY INTERLOCKS (DEMO / SHADOW / CONTROLLED_PROD)
+// =========================================================================
+router.get('/mode', (req: AuthenticatedRequest, res: Response) => {
+    const orgId = (req.query.organizationId as string) || (req.user as any)?.organizationId || 'DEFAULT_ORG';
+    const mode = nexusOperatingModeService.getOperatingMode(orgId);
+    res.json({ success: true, data: mode });
+});
+
+router.post('/mode', requireRoles('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+        const { targetMode, reason, enabledCapabilities, signingSecret } = req.body;
+        const orgId = req.body.organizationId || (req.user as any)?.organizationId || 'DEFAULT_ORG';
+        const actorRole = req.user?.role || 'TECHNOLOGIST';
+        const updated = nexusOperatingModeService.transitionMode({
+            organizationId: orgId,
+            targetMode,
+            actorUserId: req.user?.id || 'ANONYMOUS',
+            actorRole,
+            reason: reason || 'Operating mode transitioned via authenticated API',
+            enabledCapabilities: enabledCapabilities || [],
+            signingSecret: signingSecret || process.env.JWT_SECRET || 'nexus-default-secret',
+        });
+        res.json({ success: true, message: `Operating mode transitioned to ${targetMode}`, data: updated });
+    } catch (err: any) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/emergency-stop', requireRoles('SUPER_ADMIN', 'ADMIN', 'PATHOLOGIST'), (req: AuthenticatedRequest, res: Response) => {
+    const orgId = req.body.organizationId || (req.user as any)?.organizationId || 'DEFAULT_ORG';
+    const halted = nexusOperatingModeService.triggerEmergencyStop({
+        organizationId: orgId,
+        actorUserId: req.user?.id || 'ANONYMOUS',
+        reason: req.body.reason || 'Immediate Emergency Stop triggered via authenticated API',
+    });
+    res.json({ success: true, message: 'Emergency Stop active: platform downgraded to read-only SHADOW_MODE', data: halted });
+});
 
 // =========================================================================
 // 1. NEXUS EXECUTIVE COMMAND CENTER
@@ -71,10 +78,10 @@ router.post('/math/hil-interference', nexusController.evaluateHil);
 router.post('/math/delta-check', nexusController.evaluateDeltaCheck);
 
 // =========================================================================
-// 3. CONTROLLED AUTONOMY ADJUDICATION
+// 3. CONTROLLED AUTONOMY ADJUDICATION (Strict Pathologist & Director Gate)
 // =========================================================================
-router.post('/proposals/:id/review', nexusController.reviewProposal);
-router.post('/proposals/:id/decision', nexusController.reviewProposal);
+router.post('/proposals/:id/review', requireRoles('SUPER_ADMIN', 'ADMIN', 'PATHOLOGIST'), nexusController.reviewProposal);
+router.post('/proposals/:id/decision', requireRoles('SUPER_ADMIN', 'ADMIN', 'PATHOLOGIST'), nexusController.reviewProposal);
 
 // =========================================================================
 // 4. HIGH-ORDER CLINICAL MATHEMATICS & OPERATIONS RESEARCH (CLINICAL INTELLIGENCE)

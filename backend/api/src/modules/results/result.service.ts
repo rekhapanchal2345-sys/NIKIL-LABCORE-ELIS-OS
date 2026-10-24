@@ -1,5 +1,6 @@
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
+import { WebSocketService } from "../../lib/websocket";
 
 // =======================================================
 // GET RESULT TREND DATA
@@ -461,6 +462,45 @@ export const createResult = async (
         },
       },
     });
+
+  // ── Real-time WebSocket Broadcasts ──────────────────────────
+  const patient = result.order.patient as any;
+  const patientName = `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+
+  // Broadcast result_entered to all clinical staff
+  WebSocketService.broadcastResultEntered({
+    orderId:      result.orderId,
+    orderNumber:  result.order.orderNumber,
+    patientName,
+    resultId:     result.id,
+    testName:     result.test.testName,
+    status:       result.status,
+    hasAbnormal:  result.values.some(v => ['HIGH', 'LOW', 'CRITICAL'].includes(v.flag as string)),
+    hasPanic:     result.values.some(v => ['CRITICAL', 'CRITICAL_HIGH', 'CRITICAL_LOW'].includes(v.flag as string)),
+  });
+
+  // Fire panic alert for each critical value (HH / LL)
+  for (const v of result.values) {
+    const isCritical = ['CRITICAL', 'CRITICAL_HIGH', 'CRITICAL_LOW'].includes(v.flag as string);
+    if (isCritical) {
+      const param = (v as any).parameter;
+      WebSocketService.broadcastPanicAlert({
+        resultId:      result.id,
+        orderId:       result.orderId,
+        orderNumber:   result.order.orderNumber,
+        patientName,
+        patientUhid:   patient?.uhid || '',
+        testName:      result.test.testName,
+        parameterName: param?.parameterName || 'Unknown Parameter',
+        value:         v.value,
+        unit:          param?.unit || '',
+        flag:          (v.flag as string).includes('HIGH') ? 'HH' : 'LL',
+        criticalLow:   null,
+        criticalHigh:  null,
+        timestamp:     new Date().toISOString(),
+      });
+    }
+  }
 
   return result;
 };

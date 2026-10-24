@@ -270,6 +270,120 @@ export class WebSocketService {
   }
 
   /**
+   * Broadcast panic alert to ALL connected clinical staff (Pathologists, Lab Techs)
+   * Called when a result is flagged as HH or LL (critical)
+   */
+  static broadcastPanicAlert(alert: {
+    resultId: string;
+    orderId: string;
+    orderNumber: string;
+    patientName: string;
+    patientUhid: string;
+    testName: string;
+    parameterName: string;
+    value: string;
+    unit: string;
+    flag: 'HH' | 'LL';
+    criticalLow?: number | null;
+    criticalHigh?: number | null;
+    timestamp: string;
+  }) {
+    if (!this.io) return;
+    console.log('[WebSocket] PANIC ALERT broadcast:', alert.orderNumber, alert.parameterName, alert.flag);
+    // Broadcast to ALL connected users (all clinical staff must see panic)
+    this.io.emit('panic_alert_new', alert);
+  }
+
+  /**
+   * Broadcast result entry event (lab tech entered results)
+   */
+  static broadcastResultEntered(data: {
+    orderId: string;
+    orderNumber: string;
+    patientName: string;
+    resultId: string;
+    testName: string;
+    status: string;
+    hasAbnormal: boolean;
+    hasPanic: boolean;
+  }) {
+    if (!this.io) return;
+    this.io.emit('result_entered', data);
+  }
+
+  /**
+   * Broadcast sample state change (7-stage state machine)
+   */
+  static broadcastSampleStateChange(data: {
+    sampleId: string;
+    sampleBarcode: string;
+    orderId: string;
+    patientName: string;
+    previousStatus: string;
+    newStatus: string;
+    timestamp: string;
+  }) {
+    if (!this.io) return;
+    this.io.emit('sample_status_changed', data);
+  }
+
+  /**
+   * Broadcast report ready event (PDF generated, ready for dispatch)
+   */
+  static broadcastReportReady(data: {
+    reportId: string;
+    orderId: string;
+    orderNumber: string;
+    patientName: string;
+    patientUhid: string;
+    patientPhone?: string;
+    reportUrl: string;
+    pathologistName: string;
+    generatedAt: string;
+  }) {
+    if (!this.io) return;
+    this.io.emit('report_ready', data);
+  }
+
+  /**
+   * Broadcast approval/sign-off event
+   */
+  static broadcastApprovalSignOff(data: {
+    approvalId: string;
+    orderId: string;
+    orderNumber: string;
+    patientName: string;
+    doctorName: string;
+    status: 'APPROVED' | 'REJECTED' | 'AMENDED';
+    timestamp: string;
+  }) {
+    if (!this.io) return;
+    this.io.emit('approval_signoff', data);
+  }
+
+  /**
+   * Broadcast live dashboard KPI update
+   */
+  static broadcastDashboardKpiUpdate(kpi: {
+    todayPatients?: number;
+    pendingApprovals?: number;
+    criticalAlerts?: number;
+    reportsGenerated?: number;
+    todayRevenue?: number;
+  }) {
+    if (!this.io) return;
+    this.io.emit('dashboard_kpi_update', kpi);
+  }
+
+  /**
+   * Broadcast to role-based room (e.g., only pathologists)
+   */
+  static broadcastToRole(role: string, event: string, data: any) {
+    if (!this.io) return;
+    this.io.to(`role:${role}`).emit(event, data);
+  }
+
+  /**
    * Get socket instance
    */
   static getIO(): SocketIOServer {

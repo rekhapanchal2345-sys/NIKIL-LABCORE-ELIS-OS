@@ -1,6 +1,7 @@
-﻿import prisma from "../../../config/database";
+import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { generateSampleBarcode } from "../barcode/barcode.service";
+import { WebSocketService } from "../../lib/websocket";
 
 export const createSample = async (
   data: any
@@ -392,9 +393,23 @@ export const receiveSample =
         },
       });
 
+      // WS broadcast — RECEIVED
+      try {
+        WebSocketService.broadcastSampleStateChange({
+          sampleId:       id,
+          sampleBarcode:  sample.barcode || sample.sampleNumber,
+          orderId:        sample.orderId,
+          patientName:    '',
+          previousStatus: 'COLLECTED',
+          newStatus:      'RECEIVED',
+          timestamp:      new Date().toISOString(),
+        });
+      } catch { /* non-critical */ }
+
       return updatedSample;
     });
   };
+
 
 export const startProcessing =
   async (id: string, userId?: string, location?: string) => {
@@ -439,6 +454,19 @@ export const startProcessing =
           performedById: userId,
         },
       });
+
+      // WS broadcast — PROCESSING
+      try {
+        WebSocketService.broadcastSampleStateChange({
+          sampleId:       id,
+          sampleBarcode:  sample.barcode || sample.sampleNumber,
+          orderId:        sample.orderId,
+          patientName:    '',
+          previousStatus: 'RECEIVED',
+          newStatus:      'PROCESSING',
+          timestamp:      new Date().toISOString(),
+        });
+      } catch { /* non-critical */ }
 
       return updatedSample;
     });

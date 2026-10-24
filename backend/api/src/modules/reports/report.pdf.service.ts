@@ -6,6 +6,7 @@ import prisma from '../../lib/prisma';
 import { HttpError } from '../../utils/http-error';
 import { assertOrderClearedForReportDispatch } from '../approvals/panic-readback.service';
 import { generateNablSealSvg } from '../approvals/digital-signature.service';
+import { WebSocketService } from '../../lib/websocket';
 
 // ============================================================================
 // TYPES & INTERFACES (STRICT NABL ISO 15189:2022 & CLSI C28-A3)
@@ -2546,7 +2547,7 @@ export class ReportPdfService {
 
     const actualPages = this.countPdfPagesFromBuffer(compiledBuffer);
 
-    return {
+    const result = {
       pdfBuffer: compiledBuffer,
       reportId,
       reportNumber,
@@ -2572,6 +2573,28 @@ export class ReportPdfService {
       parameterSnapshot,
       generatedAt: signedAtDate,
     };
+
+    // ── Real-time WebSocket: Report Ready Broadcast ────────────────────────
+    try {
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:3001';
+      WebSocketService.broadcastReportReady({
+        reportId,
+        orderId:         order.id,
+        orderNumber:     order.orderNumber,
+        patientName:     patientFullName,
+        patientUhid:     order.patient.uhid,
+        patientPhone:    (order.patient as any).phone || undefined,
+        reportUrl:       `${clientUrl}/verify-report/${reportId}`,
+        pathologistName: effectiveDoctor.fullName,
+        generatedAt:     signedAtDate.toISOString(),
+      });
+      // Also update dashboard KPI
+      WebSocketService.broadcastDashboardKpiUpdate({ reportsGenerated: 1 });
+    } catch (wsErr) {
+      console.warn('[PDF Service] WS broadcast non-fatal:', wsErr);
+    }
+
+    return result;
   }
 }
 

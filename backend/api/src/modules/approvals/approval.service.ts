@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import prisma from "../../../config/database";
 import { createAuditLog } from "../audit/audit.service";
 import { HttpError } from "../../utils/http-error";
+import { WebSocketService } from "../../lib/websocket";
 import {
   signResultWithElectronicSeal,
   verifyResultSignature,
@@ -661,6 +662,26 @@ export const approve =
       (approved as any).digitalSignature = signatureResult;
     } catch (sigErr: any) {
       console.warn(`[Approvals] Digital signature creation warning for result ${id}:`, sigErr?.message || sigErr);
+    }
+
+    // ── Real-time WebSocket: Approval Sign-Off Broadcast ────────────
+    try {
+      const pat = (approved as any).order?.patient;
+      const doc = (approved as any).approvedBy;
+      WebSocketService.broadcastApprovalSignOff({
+        approvalId:  approved.id,
+        orderId:     approved.orderId,
+        orderNumber: (approved as any).order?.orderNumber || '',
+        patientName: pat ? `${pat.firstName} ${pat.lastName}`.trim() : '',
+        doctorName:  doc?.fullName || user.fullName || 'Pathologist',
+        status:      'APPROVED',
+        timestamp:   new Date().toISOString(),
+      });
+      // Trigger dashboard KPI update
+      WebSocketService.broadcastDashboardKpiUpdate({ pendingApprovals: -1 });
+    } catch (wsErr) {
+      // WebSocket broadcast is non-critical — never block the approval
+      console.warn('[Approvals] WS broadcast non-fatal:', wsErr);
     }
 
     return approved;

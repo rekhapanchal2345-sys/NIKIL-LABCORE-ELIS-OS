@@ -218,6 +218,112 @@ export default function NotificationCenter({
     loadNotifications();
   }, [loadNotifications]);
 
+  // ── Real-time WebSocket Subscriptions ────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let socket: any = null;
+
+    const connectWs = async () => {
+      try {
+        const { io } = await import('socket.io-client');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('labcore_access_token') ||
+                      sessionStorage.getItem('labcore_access_token') || '';
+
+        socket = io(apiUrl, {
+          transports: ['websocket', 'polling'],
+          auth: { token },
+          reconnection: true,
+          reconnectionDelay: 3000,
+          reconnectionAttempts: 8,
+        });
+
+        // 🚨 PANIC ALERT — Highest priority
+        socket.on('panic_alert_new', (data: any) => {
+          const notifId = `ws-panic-${data.resultId}-${Date.now()}`;
+          const newNotif = {
+            id: notifId,
+            category: 'critical' as const,
+            title: `🚨 PANIC VALUE — ${data.flag === 'HH' ? 'CRITICAL HIGH' : 'CRITICAL LOW'}`,
+            message: `${data.parameterName}: ${data.value} ${data.unit} [${data.flag}] — ${data.patientName} (${data.patientUhid}) — Order ${data.orderNumber}`,
+            timestamp: data.timestamp || new Date().toISOString(),
+            read: false,
+            actionUrl: `/approvals?filter=critical`,
+            actionLabel: 'Open Triage Desk',
+            priority: 'URGENT' as const,
+            verified: true,
+          };
+          setNotifications(prev => [newNotif, ...prev]);
+          playChime('critical');
+        });
+
+        // ✅ APPROVAL SIGN-OFF
+        socket.on('approval_signoff', (data: any) => {
+          const notifId = `ws-signoff-${data.approvalId}-${Date.now()}`;
+          setNotifications(prev => [{
+            id: notifId,
+            category: 'approval' as const,
+            title: `✅ Result ${data.status} — ${data.doctorName}`,
+            message: `${data.patientName} — Order ${data.orderNumber} signed off at ${new Date(data.timestamp).toLocaleTimeString('en-IN')}`,
+            timestamp: data.timestamp,
+            read: false,
+            actionUrl: `/reports`,
+            actionLabel: 'View Report',
+            priority: 'HIGH' as const,
+            verified: true,
+          }, ...prev]);
+          playChime('normal');
+        });
+
+        // 📄 REPORT READY
+        socket.on('report_ready', (data: any) => {
+          const notifId = `ws-report-${data.reportId}-${Date.now()}`;
+          setNotifications(prev => [{
+            id: notifId,
+            category: 'order' as const,
+            title: '📄 NABL Report Generated',
+            message: `PDF report ready for ${data.patientName} — Order ${data.orderNumber}. Signed by ${data.pathologistName}.`,
+            timestamp: data.generatedAt,
+            read: false,
+            actionUrl: `/reports`,
+            actionLabel: 'Download PDF',
+            priority: 'NORMAL' as const,
+            verified: true,
+          }, ...prev]);
+        });
+
+        // 🧫 RESULT ENTERED
+        socket.on('result_entered', (data: any) => {
+          if (!data.hasPanic) return; // Only show abnormal/panic entries
+          const notifId = `ws-result-${data.resultId}-${Date.now()}`;
+          setNotifications(prev => [{
+            id: notifId,
+            category: 'approval' as const,
+            title: data.hasPanic ? '⚠️ Abnormal Result — Pathologist Review Needed' : 'Results Entered',
+            message: `${data.testName} results entered for ${data.patientName} — Order ${data.orderNumber}`,
+            timestamp: new Date().toISOString(),
+            read: false,
+            actionUrl: `/approvals`,
+            actionLabel: 'Review & Sign',
+            priority: data.hasPanic ? 'HIGH' as const : 'NORMAL' as const,
+            verified: true,
+          }, ...prev]);
+          if (data.hasPanic) playChime('normal');
+        });
+
+      } catch (err) {
+        console.warn('[NotificationCenter] WebSocket connection skipped:', err);
+      }
+    };
+
+    connectWs();
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [playChime]);
+
   // Update parent unread counts
   useEffect(() => {
     const unreadItems = notifications.filter((n) => !n.read);

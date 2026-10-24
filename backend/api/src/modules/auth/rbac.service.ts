@@ -375,8 +375,9 @@ export async function revokeRoleOverride(opts: {
   adminId: string;
   overrideId: string;
   ipAddress?: string;
+  reason?: string;
 }): Promise<void> {
-  const { adminId, overrideId, ipAddress } = opts;
+  const { adminId, overrideId, ipAddress, reason } = opts;
 
   const override = await db.userRoleOverride.findUnique({
     where: { id: overrideId },
@@ -394,7 +395,7 @@ export async function revokeRoleOverride(opts: {
     userId: adminId,
     action: "RBAC_ROLE_OVERRIDE_REVOKE",
     recordId: override.userId as string,
-    oldData: { overrideId, overrideRole: override.overrideRole },
+    oldData: { overrideId, overrideRole: override.overrideRole, reason },
     ipAddress,
   });
 }

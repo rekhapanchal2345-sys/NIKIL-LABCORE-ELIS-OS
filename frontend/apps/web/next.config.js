@@ -9,6 +9,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname),
+  devIndicators: false, // Prevents floating Next.js dev badge from overlapping sidebar settings button
 
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],

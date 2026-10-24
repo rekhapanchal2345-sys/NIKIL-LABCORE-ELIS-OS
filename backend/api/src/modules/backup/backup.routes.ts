@@ -20,7 +20,7 @@ router.use(authorize(UserRole.SUPER_ADMIN));
  * @route   POST /api/backups
  * @desc    Create a new database backup
  * @access  SUPER_ADMIN, ADMIN
- * ISS-002: Router-level RBAC — controller-only checks are insufficient and
+ * ISS-002: Router-level RBAC â€” controller-only checks are insufficient and
  *          previously locked SUPER_ADMIN out of backup operations.
  */
 router.post('/', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), createBackupController);
