@@ -32,7 +32,14 @@ import {
   FileText,
   CreditCard,
   Building2,
+  Sparkles,
 } from "lucide-react";
+import {
+  INDIAN_STATES,
+  findLocationByCity,
+  findLocationByPincode,
+  searchLocations,
+} from "@/lib/indiaLocations";
 
 export default function EditPatientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -73,6 +80,52 @@ export default function EditPatientPage({ params }: { params: Promise<{ id: stri
     chronicDiseases: "",
     notes: "",
   });
+
+  const handleEditCityChange = (cityName: string) => {
+    const loc = findLocationByCity(cityName, formData.state);
+    if (loc) {
+      setFormData((prev) => ({
+        ...prev,
+        city: loc.city,
+        state: loc.state,
+        postalCode: loc.defaultPincode,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, city: cityName }));
+    }
+  };
+
+  const handleEditStateChange = (stateName: string) => {
+    if (formData.city) {
+      const loc = findLocationByCity(formData.city, stateName);
+      if (loc) {
+        setFormData((prev) => ({
+          ...prev,
+          state: stateName,
+          postalCode: loc.defaultPincode,
+        }));
+        return;
+      }
+    }
+    setFormData((prev) => ({ ...prev, state: stateName }));
+  };
+
+  const handleEditPostalChange = (pin: string) => {
+    const clean = pin.replace(/\D/g, '').slice(0, 6);
+    if (clean.length === 6) {
+      const loc = findLocationByPincode(clean);
+      if (loc) {
+        setFormData((prev) => ({
+          ...prev,
+          postalCode: clean,
+          city: loc.city,
+          state: loc.state,
+        }));
+        return;
+      }
+    }
+    setFormData((prev) => ({ ...prev, postalCode: clean }));
+  };
 
   const fetchPatient = useCallback(async () => {
     try {
@@ -485,16 +538,27 @@ export default function EditPatientPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  City
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>City</span>
+                  <span className="text-[10px] text-indigo-600 font-normal flex items-center gap-0.5">
+                    <Sparkles className="w-2.5 h-2.5" /> Auto-syncs PIN & State
+                  </span>
                 </label>
                 <input
+                  list="edit-city-datalist"
                   type="text"
                   value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  onChange={(e) => handleEditCityChange(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                  placeholder="e.g. Ahmedabad"
+                  placeholder="e.g. Ahmedabad or Palanpur"
                 />
+                <datalist id="edit-city-datalist">
+                  {searchLocations(formData.city || '', formData.state, 10).map((loc) => (
+                    <option key={`${loc.city}-${loc.defaultPincode}`} value={loc.city}>
+                      {loc.city}, {loc.state} — PIN: {loc.defaultPincode}
+                    </option>
+                  ))}
+                </datalist>
               </div>
 
               <div>
@@ -503,18 +567,26 @@ export default function EditPatientPage({ params }: { params: Promise<{ id: stri
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <input
+                    list="edit-state-datalist"
                     type="text"
                     value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    onChange={(e) => handleEditStateChange(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                     placeholder="Gujarat"
                   />
+                  <datalist id="edit-state-datalist">
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st} value={st} />
+                    ))}
+                  </datalist>
                   <input
                     type="text"
                     value={formData.postalCode}
-                    onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                    onChange={(e) => handleEditPostalChange(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none font-mono"
                     placeholder="380015"
+                    maxLength={6}
+                    inputMode="numeric"
                   />
                 </div>
               </div>

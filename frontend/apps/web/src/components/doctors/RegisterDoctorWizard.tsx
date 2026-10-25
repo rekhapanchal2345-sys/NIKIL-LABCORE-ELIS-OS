@@ -22,10 +22,17 @@ import {
   Upload,
   User,
   X,
+  Sparkles,
 } from 'lucide-react';
 
 import { doctorApi, ApiError } from '@/lib/api';
 import { showSuccess, showError } from '@/lib/notifications';
+import {
+  INDIAN_STATES,
+  findLocationByCity,
+  findLocationByPincode,
+  searchLocations,
+} from '@/lib/indiaLocations';
 
 import {
   COMMISSION_TYPE_LABEL,
@@ -608,6 +615,40 @@ export default function RegisterDoctorWizard({
     []
   );
 
+  const handleDoctorCityChange = (cityName: string) => {
+    set('city', cityName);
+    const loc = findLocationByCity(cityName, values.state);
+    if (loc) {
+      setValues((prev) => ({
+        ...prev,
+        city: loc.city,
+        state: loc.state,
+        pincode: loc.defaultPincode,
+      }));
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.pincode;
+        return next;
+      });
+    }
+  };
+
+  const handleDoctorPincodeChange = (raw: string) => {
+    const clean = raw.replace(/\D/g, '').slice(0, 6);
+    set('pincode', clean);
+    if (clean.length === 6) {
+      const loc = findLocationByPincode(clean);
+      if (loc) {
+        setValues((prev) => ({
+          ...prev,
+          pincode: clean,
+          city: loc.city,
+          state: loc.state,
+        }));
+      }
+    }
+  };
+
   const requestClose = () => {
     if (dirty && !isEditing) {
       const ok = window.confirm(
@@ -1177,32 +1218,44 @@ export default function RegisterDoctorWizard({
                   placeholder="House / street / landmark"
                 />
               </Field>
-              <Field label="City" className="dr-col-3">
+              <Field label="City (Auto-Syncs PIN & State)" className="dr-col-3">
                 <input
+                  list="doctor-city-datalist"
                   className="dr-input"
                   value={values.city}
-                  onChange={(e) => set('city', e.target.value)}
+                  onChange={(e) => handleDoctorCityChange(e.target.value)}
                   placeholder="Palanpur"
                 />
+                <datalist id="doctor-city-datalist">
+                  {searchLocations(values.city || '', values.state, 10).map((loc) => (
+                    <option key={`${loc.city}-${loc.defaultPincode}`} value={loc.city}>
+                      {loc.city}, {loc.state} — PIN: {loc.defaultPincode}
+                    </option>
+                  ))}
+                </datalist>
               </Field>
               <Field label="State" className="dr-col-3">
                 <input
+                  list="doctor-state-datalist"
                   className="dr-input"
                   value={values.state}
                   onChange={(e) => set('state', e.target.value)}
                   placeholder="Gujarat"
                 />
+                <datalist id="doctor-state-datalist">
+                  {INDIAN_STATES.map((st) => (
+                    <option key={st} value={st} />
+                  ))}
+                </datalist>
               </Field>
-              <Field label="PIN Code" error={errors.pincode} className="dr-col-3">
+              <Field label="PIN Code (Auto-Sync)" error={errors.pincode} className="dr-col-3">
                 <input
                   inputMode="numeric"
                   maxLength={6}
                   className={inputClass(errors.pincode)}
                   value={values.pincode}
-                  onChange={(e) =>
-                    set('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))
-                  }
-                  placeholder="385135"
+                  onChange={(e) => handleDoctorPincodeChange(e.target.value)}
+                  placeholder="385001"
                 />
               </Field>
             </div>

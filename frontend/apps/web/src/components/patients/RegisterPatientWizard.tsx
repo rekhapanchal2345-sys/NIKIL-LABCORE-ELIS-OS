@@ -11,7 +11,7 @@
  * - Footer: Distinct #f8fafc footer bar with Clear Draft, Cancel, Previous, and Next > / Complete buttons
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
@@ -39,6 +39,16 @@ import {
 
 import { patientApi, ApiError } from '@/lib/api';
 import { showSuccess, showError } from '@/lib/notifications';
+import {
+  INDIAN_STATES,
+  findLocationByCity,
+  findLocationByPincode,
+  searchLocations,
+  getCitiesForState,
+  fetchOnlinePincodeByCity,
+  fetchOnlineCityByPincode,
+  type IndiaLocation,
+} from '@/lib/indiaLocations';
 
 export type PatientFormValues = {
   // 1 Personal
@@ -369,32 +379,192 @@ export default function RegisterPatientWizard({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Pincode API auto-lookup state
+  // Pincode & City/State 2-way auto-sync state
   const [lookingUpPincode, setLookingUpPincode] = useState(false);
+  const [lookingUpCity, setLookingUpCity] = useState(false);
   const [pincodeSuccess, setPincodeSuccess] = useState<string | null>(null);
+  const [availablePincodes, setAvailablePincodes] = useState<string[]>([]);
+  const [isAutoFilledPin, setIsAutoFilledPin] = useState(false);
+  const cityLookupTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // Popular cities for currently selected state
+  const popularStateCities = useMemo(() => {
+    const st = values.state || 'Gujarat';
+    return getCitiesForState(st).slice(0, 8);
+  }, [values.state]);
+
+  // Autocomplete city options
+  const citySuggestions = useMemo(() => {
+    return searchLocations(values.city || '', values.state, 12);
+  }, [values.city, values.state]);
+
+  // Smart detect city if user types a known city into street address
+  const detectedAddressCity = useMemo(() => {
+    if (!values.address || values.address.trim().length < 3) return null;
+    const tokens = values.address.trim().split(/[\s,.-]+/);
+    for (const tok of tokens) {
+      if (tok.length >= 3) {
+        const loc = findLocationByCity(tok);
+        if (loc && loc.city.toLowerCase() !== (values.city || '').toLowerCase()) {
+          return loc;
+        }
+      }
+    }
+    return null;
+  }, [values.address, values.city]);
+
+  // Clean up timer
+  useEffect(() => {
+    return () => {
+      if (cityLookupTimer.current) clearTimeout(cityLookupTimer.current);
+    };
+  }, []);
+
+  // Reverse Lookup: PIN Code -> City & State
   const handlePincodeLookup = async (code: string) => {
     const clean = cleanPostalCode(code);
     if (clean.length !== 6) return;
     setLookingUpPincode(true);
     setPincodeSuccess(null);
+
+    // 1. Instant 0ms offline database lookup
+    const local = findLocationByPincode(clean);
+    if (local) {
+      setValues((prev) => ({
+        ...prev,
+        city: local.city,
+        state: local.state,
+        country: 'India',
+      }));
+      setAvailablePincodes(local.pincodes || [clean]);
+      setPincodeSuccess(`${local.city}, ${local.state}`);
+      setIsAutoFilledPin(false);
+      setLookingUpPincode(false);
+      return;
+    }
+
+    // 2. Online postal API fallback
     try {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${clean}`);
-      const data = await res.json();
-      if (Array.isArray(data) && data[0]?.Status === 'Success' && data[0]?.PostOffice?.length > 0) {
-        const po = data[0].PostOffice[0];
+      const online = await fetchOnlineCityByPincode(clean);
+      if (online) {
         setValues((prev) => ({
           ...prev,
-          city: po.District || po.Block || prev.city,
-          state: po.State || prev.state,
+          city: online.city || prev.city,
+          state: online.state || prev.state,
           country: 'India',
         }));
-        setPincodeSuccess(`${po.District || po.Block}, ${po.State}`);
+        setPincodeSuccess(`${online.city}, ${online.state}`);
       }
     } catch {
       // ignore
     } finally {
       setLookingUpPincode(false);
+    }
+  };
+
+  // Forward Lookup: City -> Auto-fills PIN Code & State
+  const handleCityChange = (val: string) => {
+    setDirty(true);
+    setValues((prev) => ({ ...prev, city: val }));
+    if (errors.city) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.city;
+        return next;
+      });
+    }
+
+    const trimmed = val.trim();
+    if (!trimmed) {
+      setAvailablePincodes([]);
+      setPincodeSuccess(null);
+      setIsAutoFilledPin(false);
+      return;
+    }
+
+    // 1. Instant 0ms offline match
+    const match = findLocationByCity(trimmed, values.state);
+    if (match) {
+      setValues((prev) => ({
+        ...prev,
+        city: match.city,
+        state: match.state,
+        postalCode: match.defaultPincode,
+        country: 'India',
+      }));
+      if (errors.postalCode) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.postalCode;
+          return next;
+        });
+      }
+      setAvailablePincodes(match.pincodes || [match.defaultPincode]);
+      setPincodeSuccess(`Auto-filled PIN ${match.defaultPincode} (${match.city}, ${match.state})`);
+      setIsAutoFilledPin(true);
+      return;
+    }
+
+    // 2. Debounced online lookup for cities not in offline DB
+    if (trimmed.length >= 3) {
+      if (cityLookupTimer.current) clearTimeout(cityLookupTimer.current);
+      cityLookupTimer.current = setTimeout(async () => {
+        setLookingUpCity(true);
+        try {
+          const res = await fetchOnlinePincodeByCity(trimmed);
+          if (res && res.pincode) {
+            setValues((prev) => ({
+              ...prev,
+              state: res.state || prev.state,
+              postalCode: res.pincode,
+              country: 'India',
+            }));
+            setAvailablePincodes([res.pincode]);
+            setPincodeSuccess(`Auto-filled PIN ${res.pincode} (${res.city}, ${res.state})`);
+            setIsAutoFilledPin(true);
+            if (errors.postalCode) {
+              setErrors((prev) => {
+                const next = { ...prev };
+                delete next.postalCode;
+                return next;
+              });
+            }
+          }
+        } catch {
+          // ignore
+        } finally {
+          setLookingUpCity(false);
+        }
+      }, 500);
+    }
+  };
+
+  // State Change -> Re-evaluates City & Pincode
+  const handleStateChange = (val: string) => {
+    setDirty(true);
+    setValues((prev) => ({ ...prev, state: val }));
+    if (errors.state) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.state;
+        return next;
+      });
+    }
+
+    const trimmed = val.trim();
+    if (trimmed && values.city) {
+      const match = findLocationByCity(values.city, trimmed);
+      if (match) {
+        setValues((prev) => ({
+          ...prev,
+          city: match.city,
+          state: match.state,
+          postalCode: match.defaultPincode,
+        }));
+        setAvailablePincodes(match.pincodes || [match.defaultPincode]);
+        setPincodeSuccess(`Auto-filled PIN ${match.defaultPincode} (${match.city}, ${match.state})`);
+        setIsAutoFilledPin(true);
+      }
     }
   };
 
@@ -1152,34 +1322,100 @@ export default function RegisterPatientWizard({
                   onChange={(e) => set('address', e.target.value)}
                   placeholder="House / Flat No, Street, Landmark"
                 />
-              </Field>
-
-              <Field label="City" className="dr-col-4">
-                <input
-                  className="dr-input"
-                  value={values.city}
-                  onChange={(e) => set('city', e.target.value)}
-                  placeholder="Ahmedabad"
-                />
-              </Field>
-
-              <Field label="State" className="dr-col-4">
-                <input
-                  className="dr-input"
-                  value={values.state}
-                  onChange={(e) => set('state', e.target.value)}
-                  placeholder="Gujarat"
-                />
+                {detectedAddressCity && values.city?.toLowerCase() !== detectedAddressCity.city.toLowerCase() && (
+                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-sky-800 bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1.5">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Sparkles className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                      Detected <strong>"{detectedAddressCity.city}"</strong> in address.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValues((prev) => ({
+                          ...prev,
+                          city: detectedAddressCity.city,
+                          state: detectedAddressCity.state,
+                          postalCode: detectedAddressCity.defaultPincode,
+                        }));
+                        setAvailablePincodes(detectedAddressCity.pincodes || [detectedAddressCity.defaultPincode]);
+                        setPincodeSuccess(`Auto-filled PIN ${detectedAddressCity.defaultPincode} (${detectedAddressCity.city}, ${detectedAddressCity.state})`);
+                        setIsAutoFilledPin(true);
+                        if (errors.postalCode) {
+                          setErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.postalCode;
+                            return next;
+                          });
+                        }
+                      }}
+                      className="text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 px-2.5 py-1 rounded shadow-2xs transition"
+                    >
+                      Auto-fill City, State & PIN ({detectedAddressCity.defaultPincode})
+                    </button>
+                  </div>
+                )}
               </Field>
 
               <Field
-                label="PIN Code (Auto-Fill City & State)"
+                label="City (Auto-Fills PIN Code & State)"
+                error={errors.city}
+                className="dr-col-4"
+                hint={
+                  values.city ? (
+                    <span className="text-[10px] text-sky-600 font-medium flex items-center gap-1">
+                      <Sparkles className="w-2.5 h-2.5" /> Auto-syncs PIN code & state
+                    </span>
+                  ) : undefined
+                }
+              >
+                <div className="relative">
+                  <input
+                    list="wizard-city-datalist"
+                    className={inputClass(errors.city)}
+                    value={values.city}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    placeholder="e.g. Ahmedabad, Palanpur, Surat"
+                  />
+                  <datalist id="wizard-city-datalist">
+                    {citySuggestions.map((loc) => (
+                      <option key={`${loc.city}-${loc.defaultPincode}`} value={loc.city}>
+                        {loc.city}, {loc.state} — PIN: {loc.defaultPincode}
+                      </option>
+                    ))}
+                  </datalist>
+                  {lookingUpCity && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sky-600">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    </span>
+                  )}
+                </div>
+              </Field>
+
+              <Field label="State" error={errors.state} className="dr-col-4">
+                <div className="relative">
+                  <input
+                    list="wizard-state-datalist"
+                    className={inputClass(errors.state)}
+                    value={values.state}
+                    onChange={(e) => handleStateChange(e.target.value)}
+                    placeholder="Gujarat"
+                  />
+                  <datalist id="wizard-state-datalist">
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st} value={st} />
+                    ))}
+                  </datalist>
+                </div>
+              </Field>
+
+              <Field
+                label="PIN Code (Auto-Sync with City & State)"
                 error={errors.postalCode}
                 className="dr-col-4"
                 hint={
                   pincodeSuccess ? (
                     <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <Check className="w-3 h-3 text-emerald-600" /> {pincodeSuccess}
+                      <Check className="w-3 h-3 text-emerald-600 shrink-0" /> {pincodeSuccess}
                     </span>
                   ) : undefined
                 }
@@ -1189,21 +1425,26 @@ export default function RegisterPatientWizard({
                     className={inputClass(errors.postalCode)}
                     value={values.postalCode}
                     onChange={(e) => {
-                      const val = e.target.value;
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                       set('postalCode', val);
-                      const clean = cleanPostalCode(val);
-                      if (clean.length === 6) {
-                        handlePincodeLookup(clean);
+                      setIsAutoFilledPin(false);
+                      if (val.length === 6) {
+                        handlePincodeLookup(val);
                       }
                     }}
                     placeholder="e.g. 380001"
                     maxLength={6}
+                    inputMode="numeric"
                   />
                   {lookingUpPincode ? (
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sky-600">
                       <Loader2 className="w-4 h-4 animate-spin" />
                     </span>
-                  ) : cleanPostalCode(values.postalCode).length === 6 && (
+                  ) : isAutoFilledPin ? (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-0.5">
+                      <Sparkles className="w-2.5 h-2.5 text-emerald-600" /> Auto-filled
+                    </span>
+                  ) : cleanPostalCode(values.postalCode).length === 6 ? (
                     <button
                       type="button"
                       onClick={() => handlePincodeLookup(values.postalCode)}
@@ -1212,9 +1453,60 @@ export default function RegisterPatientWizard({
                     >
                       Lookup
                     </button>
-                  )}
+                  ) : null}
                 </div>
+
+                {/* Multiple Pincode Chips / Zones if available */}
+                {availablePincodes.length > 1 && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                    <span className="text-[10px] text-slate-500 font-medium">Zones:</span>
+                    {availablePincodes.slice(0, 6).map((pin) => (
+                      <button
+                        key={pin}
+                        type="button"
+                        onClick={() => {
+                          set('postalCode', pin);
+                          setIsAutoFilledPin(true);
+                          setPincodeSuccess(`Selected PIN ${pin} for ${values.city}`);
+                          if (errors.postalCode) {
+                            setErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.postalCode;
+                              return next;
+                            });
+                          }
+                        }}
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium transition ${
+                          values.postalCode === pin
+                            ? 'bg-sky-600 text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-sky-50 hover:text-sky-700 border border-slate-200'
+                        }`}
+                      >
+                        {pin}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </Field>
+
+              {/* Quick Popular City Picker for Selected State */}
+              {popularStateCities.length > 0 && !values.city && (
+                <div className="dr-col-12 -mt-2 mb-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-600 bg-slate-50/80 p-2 rounded-lg border border-slate-200">
+                  <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-sky-600" /> Popular in {values.state || 'Gujarat'}:
+                  </span>
+                  {popularStateCities.map((c) => (
+                    <button
+                      key={c.city}
+                      type="button"
+                      onClick={() => handleCityChange(c.city)}
+                      className="text-[11px] font-medium text-sky-700 hover:text-sky-900 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-300 px-2 py-0.5 rounded-md transition shadow-2xs"
+                    >
+                      {c.city} ({c.defaultPincode})
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : null}
 

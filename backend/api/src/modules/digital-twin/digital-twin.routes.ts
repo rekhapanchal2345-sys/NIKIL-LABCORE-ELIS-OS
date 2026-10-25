@@ -1,5 +1,6 @@
 import { Router, RequestHandler } from 'express';
 import { digitalTwinController } from './digital-twin.controller';
+import { lndtXController } from './lndt-x.controller';
 import { authenticate } from '../../../middleware/auth';
 import { extractBearerToken } from '../../lib/auth';
 
@@ -146,5 +147,15 @@ router.post('/chaos-inject', digitalTwinController.injectChaosScenario);
 
 router.post('/orchestrator/execute-remediation', digitalTwinController.executeAutonomousRemediation);
 router.post('/execute-remediation', digitalTwinController.executeAutonomousRemediation);
+
+// =========================================================================
+// LNDT-X OPERATIONAL DIGITAL TWIN API ENDPOINTS
+// =========================================================================
+router.get('/lndt-x/state', lndtXController.getOperationalState);
+router.post('/lndt-x/forecast', lndtXController.predictTat);
+router.post('/lndt-x/simulate', lndtXController.runSimulation);
+router.get('/lndt-x/recommendations', lndtXController.listRecommendations);
+router.post('/lndt-x/recommendations/:id/review', lndtXController.reviewRecommendation);
+router.post('/lndt-x/feature-flag', lndtXController.toggleFeatureFlag);
 
 export default router;
