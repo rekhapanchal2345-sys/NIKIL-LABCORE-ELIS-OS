@@ -71,7 +71,14 @@ export default function ReagentCptInventoryPage() {
     text: string;
   } | null>(null);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  const resolveApiBase = (): string => {
+    const raw = (process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
+    if (!raw) return '/api/v1';
+    if (raw.endsWith('/api/v1')) return raw;
+    if (raw.endsWith('/api')) return `${raw}/v1`;
+    return `${raw}/api/v1`;
+  };
+  const apiBase = resolveApiBase();
 
   const loadInventory = useCallback(async () => {
     try {

@@ -571,8 +571,10 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     try {
       setLoadingTracking(true);
       const token = getAccessToken() || "";
+      const rawBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "");
+      const apiPrefix = rawBase.endsWith("/api") ? rawBase : `${rawBase}/api`;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/samples/tracking/patient/${patientId}`,
+        `${apiPrefix}/samples/tracking/patient/${patientId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

@@ -17,7 +17,15 @@ import AbhaLinkModal from "@/components/abdm/AbhaLinkModal";
 import AbhaCardModal from "@/components/abdm/AbhaCardModal";
 import { getAccessToken } from "@/lib/auth-storage";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+const resolveApiBase = (): string => {
+  const raw = (process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
+  if (!raw) return '/api';
+  if (raw.endsWith('/api')) return raw;
+  if (raw.endsWith('/api/v1')) return raw.replace(/\/v1$/, '');
+  return `${raw}/api`;
+};
+
+const API_BASE = resolveApiBase();
 
 function getAuthToken(): string {
   return getAccessToken() ?? "";

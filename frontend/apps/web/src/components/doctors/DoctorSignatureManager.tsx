@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Upload,
   PenTool,
@@ -44,9 +44,17 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
   designation = 'Consultant Pathologist',
   registrationNumber = 'KMC-REG-VERIFIED',
   initialSignatureUrl = null,
-  apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  apiBaseUrl,
   onSignatureUpdated,
 }) => {
+  const normalizedApiBase = useMemo(() => {
+    const raw = (apiBaseUrl || process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
+    if (!raw) return '/api';
+    if (raw.endsWith('/api')) return raw;
+    if (raw.endsWith('/api/v1')) return raw.replace(/\/v1$/, '');
+    return `${raw}/api`;
+  }, [apiBaseUrl]);
+
   const [mode, setMode] = useState<InputMode>('upload');
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(initialSignatureUrl);
@@ -77,7 +85,7 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
     try {
       const token =
         typeof window !== 'undefined' ? localStorage.getItem('accessToken') || '' : '';
-      const response = await fetch(`${apiBaseUrl}/doctors/${doctorId}/seal?format=json`, {
+      const response = await fetch(`${normalizedApiBase}/doctors/${doctorId}/seal?format=json`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (response.ok) {
@@ -90,7 +98,7 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
     } finally {
       setIsLoadingSeal(false);
     }
-  }, [apiBaseUrl, doctorId]);
+  }, [normalizedApiBase, doctorId]);
 
   useEffect(() => {
     fetchDoctorSealPreview();
@@ -253,7 +261,7 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
       const token =
         typeof window !== 'undefined' ? localStorage.getItem('accessToken') || '' : '';
 
-      const response = await fetch(`${apiBaseUrl}/doctors/${doctorId}/signature`, {
+      const response = await fetch(`${normalizedApiBase}/doctors/${doctorId}/signature`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

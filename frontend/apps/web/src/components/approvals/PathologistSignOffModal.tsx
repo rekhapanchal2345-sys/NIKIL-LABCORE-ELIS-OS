@@ -71,9 +71,17 @@ export const PathologistSignOffModal: React.FC<PathologistSignOffModalProps> = (
   initialRemarks = '',
   parameters,
   doctorId,
-  apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  apiBaseUrl,
   onSignOffSuccess,
 }) => {
+  const normalizedApiBase = useMemo(() => {
+    const raw = (apiBaseUrl || process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
+    if (!raw) return '/api';
+    if (raw.endsWith('/api')) return raw;
+    if (raw.endsWith('/api/v1')) return raw.replace(/\/v1$/, '');
+    return `${raw}/api`;
+  }, [apiBaseUrl]);
+
   const [interpretation, setInterpretation] = useState<string>(initialInterpretation);
   const [remarks, setRemarks] = useState<string>(initialRemarks);
   const [certifiedCheckbox, setCertifiedCheckbox] = useState<boolean>(false);
@@ -116,7 +124,7 @@ export const PathologistSignOffModal: React.FC<PathologistSignOffModalProps> = (
     if (!resultId) return;
     setIsVerifying(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/approvals/${resultId}/verify-signature`);
+      const response = await fetch(`${normalizedApiBase}/approvals/${resultId}/verify-signature`);
       if (response.ok) {
         const payload = await response.json();
         const data = payload?.data;
@@ -138,7 +146,7 @@ export const PathologistSignOffModal: React.FC<PathologistSignOffModalProps> = (
     } finally {
       setIsVerifying(false);
     }
-  }, [apiBaseUrl, resultId]);
+  }, [normalizedApiBase, resultId]);
 
   useEffect(() => {
     if (isOpen && resultId) {
@@ -166,7 +174,7 @@ export const PathologistSignOffModal: React.FC<PathologistSignOffModalProps> = (
       const token =
         typeof window !== 'undefined' ? localStorage.getItem('accessToken') || '' : '';
 
-      const response = await fetch(`${apiBaseUrl}/approvals/${resultId}/sign`, {
+      const response = await fetch(`${normalizedApiBase}/approvals/${resultId}/sign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
