@@ -1,22 +1,21 @@
 import prisma from "../../../config/database";
+import { HttpError } from "../../utils/http-error";
 
-export const createCategory = async (
-  data: any
-) => {
-  const existing =
-    await prisma.testCategory.findFirst({
-      where: {
-        OR: [
-          { code: data.code },
-          { name: data.name },
-        ],
-      },
-    });
+const toNumeric = (val: unknown): number => {
+  if (val === null || val === undefined) return 0;
+  const num = Number(val);
+  return Number.isFinite(num) ? num : 0;
+};
+
+export const createCategory = async (data: any) => {
+  const existing = await prisma.testCategory.findFirst({
+    where: {
+      OR: [{ code: data.code }, { name: data.name }],
+    },
+  });
 
   if (existing) {
-    throw new Error(
-      "Test category already exists"
-    );
+    throw new Error("Test category already exists");
   }
 
   return prisma.testCategory.create({
@@ -38,68 +37,61 @@ export const getCategories = async () => {
           id: true,
           testCode: true,
           testName: true,
+          shortName: true,
           price: true,
+          offerPrice: true,
+          b2bRate: true,
           sampleType: true,
+          tatHours: true,
         },
       },
     },
-    orderBy: {
-      name: "asc",
-    },
+    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
   });
 };
 
-export const getCategoryById =
-  async (id: string) => {
-    const category =
-      await prisma.testCategory.findUnique({
-        where: { id },
+export const getCategoryById = async (id: string) => {
+  const category = await prisma.testCategory.findUnique({
+    where: { id },
+    include: {
+      tests: {
         include: {
-          tests: {
+          parameters: {
             include: {
-              parameters: {
-                include: {
-                  referenceRanges: true,
-                },
-                orderBy: {
-                  displayOrder: "asc",
-                },
+              referenceRanges: {
+                orderBy: { displayOrder: "asc" },
               },
+            },
+            orderBy: {
+              displayOrder: "asc",
             },
           },
         },
-      });
+      },
+    },
+  });
 
-    if (!category) {
-      throw new Error(
-        "Test category not found"
-      );
-    }
+  if (!category) {
+    throw new Error("Test category not found");
+  }
 
-    return category;
-  };
+  return category;
+};
 
-export const updateCategory =
-  async (
-    id: string,
-    data: any
-  ) => {
-    const category =
-      await prisma.testCategory.findUnique({
-        where: { id },
-      });
+export const updateCategory = async (id: string, data: any) => {
+  const category = await prisma.testCategory.findUnique({
+    where: { id },
+  });
 
-    if (!category) {
-      throw new Error(
-        "Test category not found"
-      );
-    }
+  if (!category) {
+    throw new Error("Test category not found");
+  }
 
-    return prisma.testCategory.update({
-      where: { id },
-      data,
-    });
-  };
+  return prisma.testCategory.update({
+    where: { id },
+    data,
+  });
+};
 
 export const deleteCategory = async (id: string) => {
   const category = await prisma.testCategory.findUnique({
@@ -113,7 +105,6 @@ export const deleteCategory = async (id: string) => {
     throw new Error("Test category not found");
   }
 
-  // Check if category has tests
   if (category.tests.length > 0) {
     throw new Error("Cannot delete category that has tests. Deactivate instead.");
   }
@@ -125,10 +116,7 @@ export const deleteCategory = async (id: string) => {
   return { id, deleted: true };
 };
 
-export const createTest = async (
-  data: any
-) => {
-  // Clean up empty strings and null values
+export const createTest = async (data: any) => {
   const cleanedData = Object.keys(data).reduce((acc: any, key) => {
     const value = data[key];
     if (value !== "" && value !== null && value !== undefined) {
@@ -137,47 +125,36 @@ export const createTest = async (
     return acc;
   }, {});
 
-  // Only check category if categoryId is provided and valid
   if (cleanedData.categoryId && cleanedData.categoryId.length > 0) {
-    const category =
-      await prisma.testCategory.findUnique({
-        where: {
-          id: cleanedData.categoryId,
-        },
-      });
-
-    if (!category) {
-      throw new Error(
-        "Test category not found"
-      );
-    }
-  } else {
-    // Remove categoryId if it's empty or invalid
-    delete cleanedData.categoryId;
-  }
-
-  const existing =
-    await prisma.test.findUnique({
+    const category = await prisma.testCategory.findUnique({
       where: {
-        testCode: cleanedData.testCode,
+        id: cleanedData.categoryId,
       },
     });
 
+    if (!category) {
+      throw new Error("Test category not found");
+    }
+  } else {
+    delete cleanedData.categoryId;
+  }
+
+  const existing = await prisma.test.findUnique({
+    where: {
+      testCode: cleanedData.testCode,
+    },
+  });
+
   if (existing) {
-    throw new Error(
-      "Test code already exists"
-    );
+    throw new Error("Test code already exists");
   }
 
   return prisma.test.create({
     data: {
       ...cleanedData,
-      gstPercentage:
-        cleanedData.gstPercentage ?? 0,
-      tatHours:
-        cleanedData.tatHours ?? 24,
-      isActive:
-        cleanedData.isActive ?? true,
+      gstPercentage: cleanedData.gstPercentage ?? 0,
+      tatHours: cleanedData.tatHours ?? 24,
+      isActive: cleanedData.isActive ?? true,
     },
     include: {
       category: true,
@@ -185,6 +162,95 @@ export const createTest = async (
     },
   });
 };
+
+/**
+ * Builds the Prisma `where` clause for diagnostic test & catalog queries.
+ * Supports multi-field text search (testName, testCode, shortName, parameterName, loincCode),
+ * department filtering (processingDepartment or category code/name/department),
+ * sampleType, categoryId, categoryCode, and price range filtering.
+ */
+function buildTestCatalogWhereClause(opts: {
+  search?: string;
+  categoryId?: string;
+  categoryCode?: string;
+  isActive?: boolean;
+  sampleType?: string;
+  department?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}): any {
+  const andConditions: any[] = [];
+
+  if (opts.search && opts.search.trim().length > 0) {
+    const term = opts.search.trim();
+    andConditions.push({
+      OR: [
+        { testName: { contains: term, mode: "insensitive" as const } },
+        { testCode: { contains: term, mode: "insensitive" as const } },
+        { shortName: { contains: term, mode: "insensitive" as const } },
+        { processingDepartment: { contains: term, mode: "insensitive" as const } },
+        {
+          parameters: {
+            some: {
+              OR: [
+                { parameterName: { contains: term, mode: "insensitive" as const } },
+                { shortName: { contains: term, mode: "insensitive" as const } },
+                { loincCode: { equals: term, mode: "insensitive" as const } },
+              ],
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  if (opts.categoryId) {
+    andConditions.push({ categoryId: opts.categoryId });
+  }
+
+  if (opts.categoryCode) {
+    andConditions.push({
+      category: {
+        code: { equals: opts.categoryCode, mode: "insensitive" as const },
+      },
+    });
+  }
+
+  if (opts.isActive !== undefined) {
+    andConditions.push({ isActive: opts.isActive });
+  }
+
+  if (opts.sampleType && opts.sampleType !== "") {
+    andConditions.push({ sampleType: opts.sampleType });
+  }
+
+  if (opts.department && opts.department.trim() !== "") {
+    const dept = opts.department.trim();
+    andConditions.push({
+      OR: [
+        { processingDepartment: { contains: dept, mode: "insensitive" as const } },
+        {
+          category: {
+            OR: [
+              { department: { contains: dept, mode: "insensitive" as const } },
+              { code: { contains: dept, mode: "insensitive" as const } },
+              { name: { contains: dept, mode: "insensitive" as const } },
+            ],
+          },
+        },
+      ],
+    });
+  }
+
+  if (opts.minPrice !== undefined || opts.maxPrice !== undefined) {
+    const priceCond: any = {};
+    if (opts.minPrice !== undefined) priceCond.gte = opts.minPrice;
+    if (opts.maxPrice !== undefined) priceCond.lte = opts.maxPrice;
+    andConditions.push({ price: priceCond });
+  }
+
+  return andConditions.length > 0 ? { AND: andConditions } : {};
+}
 
 export const getTests = async (
   search?: string,
@@ -196,167 +262,288 @@ export const getTests = async (
   limit = 20
 ) => {
   const skip = (page - 1) * limit;
+  const where = buildTestCatalogWhereClause({
+    search,
+    categoryId,
+    isActive,
+    sampleType,
+    department,
+  });
 
-  const where: any = {};
-
-  // Only add search condition if search term is provided
-  if (search) {
-    where.OR = [
-      {
-        testName: {
-          contains: search,
-          mode: "insensitive" as const,
-        },
-      },
-      {
-        testCode: {
-          contains: search,
-          mode: "insensitive" as const,
-        },
-      },
-      {
-        shortName: {
-          contains: search,
-          mode: "insensitive" as const,
-        },
-      },
-    ];
-  }
-
-  // Only add categoryId if provided
-  if (categoryId) {
-    where.categoryId = categoryId;
-  }
-
-  // Only add isActive if explicitly set
-  if (isActive !== undefined) {
-    where.isActive = isActive;
-  }
-
-  // Only add sampleType if provided and valid
-  if (sampleType && sampleType !== "") {
-    where.sampleType = sampleType;
-  }
-
-  // Only add department filter if provided
-  if (department && department !== "") {
-    where.category = {
-      department: {
-        contains: department,
-        mode: "insensitive" as const,
-      },
-    };
-  }
-
-  try {
-    const [tests, total] =
-      await Promise.all([
-        prisma.test.findMany({
-          where,
-          skip,
-          take: limit,
+  const [tests, total] = await Promise.all([
+    prisma.test.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        category: true,
+        parameters: {
+          where: {
+            isActive: true,
+          },
           include: {
-            category: true,
-            parameters: {
+            referenceRanges: {
               where: {
                 isActive: true,
-              },
-              include: {
-                referenceRanges: {
-                  where: {
-                    isActive: true,
-                  },
-                },
               },
               orderBy: {
                 displayOrder: "asc",
               },
             },
           },
-          orderBy: [
-            { displayOrder: "asc" },
-            { testName: "asc" },
-          ],
-        }),
-
-        prisma.test.count({
-          where,
-        }),
-      ]);
-
-    return {
-      tests,
-
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(
-          total / limit
-        ),
-        hasNextPage:
-          page * limit < total,
-        hasPreviousPage:
-          page > 1,
-      },
-    };
-  } catch (error) {
-    console.error('Error in getTests:', error);
-    throw error;
-  }
-};
-
-export const getTestById =
-  async (id: string) => {
-    const test =
-      await prisma.test.findUnique({
-        where: { id },
-        include: {
-          category: true,
-
-          parameters: {
-            include: {
-              referenceRanges: true,
-            },
-            orderBy: {
-              displayOrder: "asc",
-            },
+          orderBy: {
+            displayOrder: "asc",
           },
         },
-      });
+      },
+      orderBy: [{ displayOrder: "asc" }, { testName: "asc" }],
+    }),
+    prisma.test.count({ where }),
+  ]);
 
-    if (!test) {
-      throw new Error("Test not found");
-    }
-
-    return test;
+  return {
+    tests,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page * limit < total,
+      hasPreviousPage: page > 1,
+    },
   };
+};
 
-export const updateTest = async (
-  id: string,
-  data: any
-) => {
-  const test =
-    await prisma.test.findUnique({
-      where: { id },
-    });
+/**
+ * Day 6 Fast API Endpoint Service: `GET /api/tests/catalog`
+ * Paginated, searchable diagnostic test directory with department filtering,
+ * parameter & LOINC inclusions, CLSI C28-A3 reference ranges, and GST/price metadata.
+ */
+export const getCatalogDirectory = async (opts: {
+  search?: string;
+  department?: string;
+  categoryId?: string;
+  categoryCode?: string;
+  sampleType?: string;
+  isActive?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  page?: number;
+  limit?: number;
+}) => {
+  const startTime = performance.now();
+  const page = Math.max(1, Number(opts.page) || 1);
+  const limit = Math.min(250, Math.max(1, Number(opts.limit) || 25));
+  const skip = (page - 1) * limit;
+
+  const where = buildTestCatalogWhereClause({
+    search: opts.search,
+    department: opts.department,
+    categoryId: opts.categoryId,
+    categoryCode: opts.categoryCode,
+    sampleType: opts.sampleType,
+    isActive: opts.isActive ?? true,
+    minPrice: opts.minPrice,
+    maxPrice: opts.maxPrice,
+  });
+
+  const [rawTests, total] = await Promise.all([
+    prisma.test.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        category: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            department: true,
+            color: true,
+            icon: true,
+          },
+        },
+        parameters: {
+          where: { isActive: true },
+          include: {
+            referenceRanges: {
+              where: { isActive: true },
+              orderBy: { displayOrder: "asc" },
+            },
+          },
+          orderBy: { displayOrder: "asc" },
+        },
+      },
+      orderBy: [{ displayOrder: "asc" }, { testName: "asc" }],
+    }),
+    prisma.test.count({ where }),
+  ]);
+
+  const enrichedTests = rawTests.map((test) => {
+    const mrpPrice = toNumeric(test.price);
+    const offerPrice = test.offerPrice !== null ? toNumeric(test.offerPrice) : mrpPrice;
+    const b2bRate = test.b2bRate !== null ? toNumeric(test.b2bRate) : null;
+    const gstPercentage = toNumeric(test.gstPercentage);
+    const savingsAmount = Math.max(0, Number((mrpPrice - offerPrice).toFixed(2)));
+    const discountPercentage =
+      mrpPrice > 0 ? Number(((savingsAmount / mrpPrice) * 100).toFixed(2)) : 0;
+
+    return {
+      ...test,
+      parameterCount: test.parameters.length,
+      priceMetadata: {
+        mrpPrice,
+        offerPrice,
+        b2bRate,
+        gstPercentage,
+        gstSacCode: "999316",
+        gstExemptHealthcare: gstPercentage === 0,
+        savingsAmount,
+        discountPercentage,
+        currency: "INR",
+      },
+    };
+  });
+
+  const queryTimeMs = Number((performance.now() - startTime).toFixed(2));
+
+  return {
+    tests: enrichedTests,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page * limit < total,
+      hasPreviousPage: page > 1,
+    },
+    telemetry: {
+      queryTimeMs,
+      returnedCount: enrichedTests.length,
+      filters: {
+        search: opts.search ?? null,
+        department: opts.department ?? null,
+        categoryId: opts.categoryId ?? null,
+        categoryCode: opts.categoryCode ?? null,
+        sampleType: opts.sampleType ?? null,
+        isActive: opts.isActive ?? true,
+      },
+    },
+  };
+};
+
+/**
+ * Day 6 Fast API Endpoint Service: `GET /api/tests/loinc/:code`
+ * Resolves test parameter metadata, parent diagnostic test(s), and CLSI C28-A3
+ * stratified reference ranges by international LOINC® identifier.
+ */
+export const getParametersByLoincCode = async (loincCode: string) => {
+  const normalizedCode = loincCode.trim();
+  const startTime = performance.now();
+
+  const parameters = await prisma.testParameter.findMany({
+    where: {
+      loincCode: {
+        equals: normalizedCode,
+        mode: "insensitive",
+      },
+      isActive: true,
+    },
+    include: {
+      test: {
+        include: {
+          category: true,
+        },
+      },
+      referenceRanges: {
+        where: { isActive: true },
+        orderBy: { displayOrder: "asc" },
+      },
+    },
+    orderBy: [{ displayOrder: "asc" }, { parameterName: "asc" }],
+  });
+
+  if (parameters.length === 0) {
+    throw new HttpError(
+      `No test parameter found for LOINC code '${normalizedCode}'`,
+      404,
+      "LOINC_CODE_NOT_FOUND"
+    );
+  }
+
+  const queryTimeMs = Number((performance.now() - startTime).toFixed(2));
+
+  return {
+    loincCode: parameters[0].loincCode ?? normalizedCode,
+    matchCount: parameters.length,
+    primaryParameter: parameters[0],
+    parameters,
+    associatedTests: parameters.map((p) => ({
+      testId: p.test.id,
+      testCode: p.test.testCode,
+      testName: p.test.testName,
+      shortName: p.test.shortName,
+      sampleType: p.test.sampleType,
+      sampleContainer: p.test.sampleContainer,
+      processingDepartment: p.test.processingDepartment,
+      categoryName: p.test.category?.name ?? null,
+      price: toNumeric(p.test.price),
+      offerPrice: p.test.offerPrice !== null ? toNumeric(p.test.offerPrice) : toNumeric(p.test.price),
+      parameterId: p.id,
+      parameterName: p.parameterName,
+      unit: p.unit,
+      dataType: p.dataType,
+      referenceRangesCount: p.referenceRanges.length,
+    })),
+    telemetry: {
+      queryTimeMs,
+    },
+  };
+};
+
+export const getTestById = async (id: string) => {
+  const test = await prisma.test.findUnique({
+    where: { id },
+    include: {
+      category: true,
+      parameters: {
+        include: {
+          referenceRanges: {
+            orderBy: { displayOrder: "asc" },
+          },
+        },
+        orderBy: {
+          displayOrder: "asc",
+        },
+      },
+    },
+  });
+
+  if (!test) {
+    throw new Error("Test not found");
+  }
+
+  return test;
+};
+
+export const updateTest = async (id: string, data: any) => {
+  const test = await prisma.test.findUnique({
+    where: { id },
+  });
 
   if (!test) {
     throw new Error("Test not found");
   }
 
   if (data.categoryId) {
-    const category =
-      await prisma.testCategory.findUnique({
-        where: {
-          id: data.categoryId,
-        },
-      });
+    const category = await prisma.testCategory.findUnique({
+      where: {
+        id: data.categoryId,
+      },
+    });
 
     if (!category) {
-      throw new Error(
-        "Test category not found"
-      );
+      throw new Error("Test category not found");
     }
   }
 
@@ -370,14 +557,10 @@ export const updateTest = async (
   });
 };
 
-export const addParameter = async (
-  testId: string,
-  data: any
-) => {
-  const test =
-    await prisma.test.findUnique({
-      where: { id: testId },
-    });
+export const addParameter = async (testId: string, data: any) => {
+  const test = await prisma.test.findUnique({
+    where: { id: testId },
+  });
 
   if (!test) {
     throw new Error("Test not found");
@@ -386,40 +569,36 @@ export const addParameter = async (
   return prisma.testParameter.create({
     data: {
       testId,
-      parameterName:
-        data.parameterName,
+      parameterName: data.parameterName,
+      shortName: data.shortName,
+      loincCode: data.loincCode,
       unit: data.unit,
-      dataType:
-        data.dataType,
-      displayOrder:
-        data.displayOrder ?? 1,
-      isRequired:
-        data.isRequired ?? true,
+      dataType: data.dataType,
+      measurementMethod: data.measurementMethod,
+      dropdownOptions: data.dropdownOptions,
+      allowRichText: data.allowRichText ?? false,
+      decimalPrecision: data.decimalPrecision,
+      displayOrder: data.displayOrder ?? 1,
+      isRequired: data.isRequired ?? true,
+      isActive: data.isActive ?? true,
     },
   });
 };
 
-export const updateParameter =
-  async (
-    id: string,
-    data: any
-  ) => {
-    const parameter =
-      await prisma.testParameter.findUnique({
-        where: { id },
-      });
+export const updateParameter = async (id: string, data: any) => {
+  const parameter = await prisma.testParameter.findUnique({
+    where: { id },
+  });
 
-    if (!parameter) {
-      throw new Error(
-        "Parameter not found"
-      );
-    }
+  if (!parameter) {
+    throw new Error("Parameter not found");
+  }
 
-    return prisma.testParameter.update({
-      where: { id },
-      data,
-    });
-  };
+  return prisma.testParameter.update({
+    where: { id },
+    data,
+  });
+};
 
 export const listParameters = async (testId?: string, search?: string) => {
   const where: any = {};
@@ -427,12 +606,16 @@ export const listParameters = async (testId?: string, search?: string) => {
   if (search) {
     where.OR = [
       { parameterName: { contains: search, mode: "insensitive" } },
+      { shortName: { contains: search, mode: "insensitive" } },
+      { loincCode: { contains: search, mode: "insensitive" } },
     ];
   }
   return prisma.testParameter.findMany({
     where,
     include: {
-      referenceRanges: true,
+      referenceRanges: {
+        orderBy: { displayOrder: "asc" },
+      },
       test: {
         select: {
           id: true,
@@ -445,51 +628,37 @@ export const listParameters = async (testId?: string, search?: string) => {
   });
 };
 
-export const addReferenceRange =
-  async (
-    parameterId: string,
-    data: any
-  ) => {
-    const parameter =
-      await prisma.testParameter.findUnique({
-        where: { id: parameterId },
-      });
+export const addReferenceRange = async (parameterId: string, data: any) => {
+  const parameter = await prisma.testParameter.findUnique({
+    where: { id: parameterId },
+  });
 
-    if (!parameter) {
-      throw new Error(
-        "Parameter not found"
-      );
-    }
+  if (!parameter) {
+    throw new Error("Parameter not found");
+  }
 
-    return prisma.referenceRange.create({
-      data: {
-        parameterId,
-        ...data,
-      },
-    });
-  };
+  return prisma.referenceRange.create({
+    data: {
+      parameterId,
+      ...data,
+    },
+  });
+};
 
-export const updateReferenceRange =
-  async (
-    id: string,
-    data: any
-  ) => {
-    const range =
-      await prisma.referenceRange.findUnique({
-        where: { id },
-      });
+export const updateReferenceRange = async (id: string, data: any) => {
+  const range = await prisma.referenceRange.findUnique({
+    where: { id },
+  });
 
-    if (!range) {
-      throw new Error(
-        "Reference range not found"
-      );
-    }
+  if (!range) {
+    throw new Error("Reference range not found");
+  }
 
-    return prisma.referenceRange.update({
-      where: { id },
-      data,
-    });
-  };
+  return prisma.referenceRange.update({
+    where: { id },
+    data,
+  });
+};
 
 export const deleteTest = async (id: string) => {
   const test = await prisma.test.findUnique({
@@ -505,7 +674,6 @@ export const deleteTest = async (id: string) => {
     throw new Error("Test not found");
   }
 
-  // Check if test is used in orders
   if (test.orderItems.length > 0 || test.results.length > 0 || test.samples.length > 0) {
     throw new Error("Cannot delete test that is used in orders, results, or samples. Deactivate instead.");
   }
@@ -529,7 +697,6 @@ export const deleteParameter = async (id: string) => {
     throw new Error("Parameter not found");
   }
 
-  // Check if parameter has result values
   if (parameter.resultValues.length > 0) {
     throw new Error("Cannot delete parameter that has result values. Deactivate instead.");
   }
@@ -558,16 +725,13 @@ export const deleteReferenceRange = async (id: string) => {
 };
 
 // =======================================================
-// TEST PACKAGES
+// TEST PACKAGES (WITH BUNDLED TEST COUNTS & SAVINGS METADATA)
 // =======================================================
 
 export const createPackage = async (data: any) => {
   const existing = await prisma.testPackage.findFirst({
     where: {
-      OR: [
-        { packageCode: data.packageCode },
-        { packageName: data.packageName },
-      ],
+      OR: [{ packageCode: data.packageCode }, { packageName: data.packageName }],
     },
   });
 
@@ -608,20 +772,20 @@ export const getPackages = async (
                 mode: "insensitive" as const,
               },
             },
+            {
+              description: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
           ],
         }
       : {}),
-
-    ...(isActive !== undefined
-      ? { isActive }
-      : {}),
-
-    ...(isPopular !== undefined
-      ? { isPopular }
-      : {}),
+    ...(isActive !== undefined ? { isActive } : {}),
+    ...(isPopular !== undefined ? { isPopular } : {}),
   };
 
-  const [packages, total] = await Promise.all([
+  const [rawPackages, total] = await Promise.all([
     prisma.testPackage.findMany({
       where,
       skip,
@@ -632,6 +796,17 @@ export const getPackages = async (
             test: {
               include: {
                 category: true,
+                parameters: {
+                  where: { isActive: true },
+                  select: {
+                    id: true,
+                    parameterName: true,
+                    shortName: true,
+                    loincCode: true,
+                    unit: true,
+                  },
+                  orderBy: { displayOrder: "asc" },
+                },
               },
             },
           },
@@ -640,16 +815,46 @@ export const getPackages = async (
           },
         },
       },
-      orderBy: [
-        { displayOrder: "asc" },
-        { packageName: "asc" },
-      ],
+      orderBy: [{ displayOrder: "asc" }, { packageName: "asc" }],
     }),
-
-    prisma.testPackage.count({
-      where,
-    }),
+    prisma.testPackage.count({ where }),
   ]);
+
+  const packages = rawPackages.map((pkg) => {
+    const sumOfTestPrices = pkg.items.reduce(
+      (sum, item) => sum + toNumeric(item.testPrice ?? item.test?.price),
+      0
+    );
+    const totalPrice = toNumeric(pkg.totalPrice) || sumOfTestPrices;
+    const offerPrice = pkg.offerPrice !== null ? toNumeric(pkg.offerPrice) : totalPrice;
+    const totalSavings = Math.max(0, Number((totalPrice - offerPrice).toFixed(2)));
+    const savingsPercentage =
+      totalPrice > 0
+        ? Number(((totalSavings / totalPrice) * 100).toFixed(2))
+        : toNumeric(pkg.discountPercentage);
+    const bundledTestsCount = pkg.items.length || pkg.includesTestsCount;
+    const totalParametersCount = pkg.items.reduce(
+      (acc, item) => acc + (item.test?.parameters?.length ?? 0),
+      0
+    );
+
+    return {
+      ...pkg,
+      bundledTestsCount,
+      totalParametersCount,
+      totalSavings,
+      savingsPercentage,
+      pricingSummary: {
+        sumOfIndividualTests: Number(sumOfTestPrices.toFixed(2)),
+        totalPrice: Number(totalPrice.toFixed(2)),
+        offerPrice: Number(offerPrice.toFixed(2)),
+        totalSavings,
+        savingsPercentage,
+        gstPercentage: toNumeric(pkg.gstPercentage),
+        currency: "INR",
+      },
+    };
+  });
 
   return {
     packages,
@@ -673,7 +878,12 @@ export const getPackageById = async (id: string) => {
           test: {
             include: {
               category: true,
-              parameters: true,
+              parameters: {
+                include: {
+                  referenceRanges: true,
+                },
+                orderBy: { displayOrder: "asc" },
+              },
             },
           },
         },
@@ -770,7 +980,6 @@ export const addPackageItem = async (packageId: string, data: any) => {
     },
   });
 
-  // Update testPackage test count
   await prisma.testPackage.update({
     where: { id: packageId },
     data: {
@@ -799,7 +1008,6 @@ export const removePackageItem = async (packageId: string, testId: string) => {
     where: { id: item.id },
   });
 
-  // Update testPackage test count
   await prisma.testPackage.update({
     where: { id: packageId },
     data: {
@@ -839,7 +1047,7 @@ export const exportCatalog = async () => {
   const [categories, tests, parameters, referenceRanges, packages] = await Promise.all([
     prisma.testCategory.findMany({
       where: { isActive: true },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     }),
     prisma.test.findMany({
       where: { isActive: true },
@@ -854,7 +1062,7 @@ export const exportCatalog = async () => {
           },
         },
       },
-      orderBy: { testName: 'asc' },
+      orderBy: { testName: "asc" },
     }),
     prisma.testParameter.findMany({
       where: { isActive: true },
@@ -884,7 +1092,7 @@ export const exportCatalog = async () => {
           },
         },
       },
-      orderBy: { packageName: 'asc' },
+      orderBy: { packageName: "asc" },
     }),
   ]);
 
@@ -895,7 +1103,7 @@ export const exportCatalog = async () => {
     referenceRanges,
     packages,
     exportedAt: new Date().toISOString(),
-    version: '1.0',
+    version: "1.0",
   };
 };
 
@@ -910,7 +1118,6 @@ export const importCatalog = async (data: any) => {
     packages: { created: 0, errors: [] as string[] },
   };
 
-  // Import Categories
   if (categories && Array.isArray(categories)) {
     for (const category of categories) {
       try {
@@ -933,11 +1140,9 @@ export const importCatalog = async (data: any) => {
     }
   }
 
-  // Import Tests
   if (tests && Array.isArray(tests)) {
     for (const test of tests) {
       try {
-        // Find or create category
         let categoryId = null;
         if (test.category) {
           const category = await prisma.testCategory.findFirst({
@@ -979,7 +1184,6 @@ export const importCatalog = async (data: any) => {
     }
   }
 
-  // Import Parameters
   if (parameters && Array.isArray(parameters)) {
     for (const param of parameters) {
       try {
@@ -988,7 +1192,7 @@ export const importCatalog = async (data: any) => {
         });
 
         if (!test) {
-          throw new Error('Test not found');
+          throw new Error("Test not found");
         }
 
         await prisma.testParameter.create({
@@ -996,6 +1200,7 @@ export const importCatalog = async (data: any) => {
             testId: test.id,
             parameterName: param.parameterName,
             shortName: param.shortName,
+            loincCode: param.loincCode,
             unit: param.unit,
             dataType: param.dataType,
             measurementMethod: param.measurementMethod,
@@ -1014,7 +1219,6 @@ export const importCatalog = async (data: any) => {
     }
   }
 
-  // Import Reference Ranges
   if (referenceRanges && Array.isArray(referenceRanges)) {
     for (const range of referenceRanges) {
       try {
@@ -1028,7 +1232,7 @@ export const importCatalog = async (data: any) => {
         });
 
         if (!parameter) {
-          throw new Error('Parameter not found');
+          throw new Error("Parameter not found");
         }
 
         await prisma.referenceRange.create({
@@ -1057,7 +1261,6 @@ export const importCatalog = async (data: any) => {
     }
   }
 
-  // Import Packages
   if (packages && Array.isArray(packages)) {
     for (const pkg of packages) {
       try {
@@ -1082,7 +1285,6 @@ export const importCatalog = async (data: any) => {
           },
         });
 
-        // Import package items
         if (pkg.items && Array.isArray(pkg.items)) {
           for (const item of pkg.items) {
             try {
@@ -1102,7 +1304,7 @@ export const importCatalog = async (data: any) => {
                 });
               }
             } catch (error: any) {
-              console.error('Error importing package item:', error);
+              console.error("Error importing package item:", error);
             }
           }
         }

@@ -15,6 +15,8 @@ import {
 
   createTestController,
   listTests,
+  listCatalogController,
+  getLoincParameterController,
   getTest,
   updateTestController,
   deleteTestController,
@@ -54,7 +56,6 @@ import {
 
 import {
   createCategorySchema,
-  updateCategorySchema,
   updateCategoryEnhancedSchema,
   categoryIdSchema,
 
@@ -62,6 +63,8 @@ import {
   updateTestSchema,
   testIdSchema,
   testQuerySchema,
+  catalogQuerySchema,
+  loincCodeParamsSchema,
 
   createParameterSchema,
   updateParameterSchema,
@@ -94,6 +97,18 @@ import {
 
 const router = Router();
 
+const ALL_CLINICAL_ROLES = [
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.FRONT_DESK,
+  UserRole.LAB_TECH,
+  UserRole.PATHOLOGIST,
+  UserRole.DOCTOR,
+  UserRole.BRANCH_ADMIN,
+  UserRole.ACCOUNTANT,
+  UserRole.AUDITOR,
+] as const;
+
 // All test routes require authentication
 router.use(authenticate);
 
@@ -112,27 +127,13 @@ router.post(
 
 router.get(
   "/categories",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   listCategories
 );
 
 router.get(
   "/categories/:id",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   validate({
     params: categoryIdSchema,
   }),
@@ -159,6 +160,44 @@ router.delete(
 );
 
 // =======================================================
+// DAY 6: DIAGNOSTIC CATALOG DIRECTORY & LOINC LOOKUP
+// (Registered BEFORE /:id wildcard)
+// =======================================================
+
+router.get(
+  "/catalog",
+  authorize(...ALL_CLINICAL_ROLES),
+  validate({
+    query: catalogQuerySchema,
+  }),
+  listCatalogController
+);
+
+router.get(
+  "/catalog/export",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  exportCatalogController
+);
+
+router.post(
+  "/catalog/import",
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validate({
+    body: importCatalogSchema,
+  }),
+  importCatalogController
+);
+
+router.get(
+  "/loinc/:code",
+  authorize(...ALL_CLINICAL_ROLES),
+  validate({
+    params: loincCodeParamsSchema,
+  }),
+  getLoincParameterController
+);
+
+// =======================================================
 // TEST PACKAGES (MUST BE REGISTERED BEFORE /:id WILDCARD!)
 // =======================================================
 
@@ -173,14 +212,7 @@ router.post(
 
 router.get(
   "/packages",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   validate({
     query: packageQuerySchema,
   }),
@@ -189,14 +221,7 @@ router.get(
 
 router.get(
   "/packages/:id",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   validate({
     params: packageIdSchema,
   }),
@@ -247,14 +272,7 @@ router.delete(
 
 router.get(
   "/parameters",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   listParametersController
 );
 
@@ -314,25 +332,6 @@ router.delete(
     params: referenceRangeIdSchema,
   }),
   deleteReferenceRangeController
-);
-
-// =======================================================
-// EXPORT/IMPORT CATALOG (BEFORE /:id WILDCARD)
-// =======================================================
-
-router.get(
-  "/catalog/export",
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  exportCatalogController
-);
-
-router.post(
-  "/catalog/import",
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  validate({
-    body: importCatalogSchema,
-  }),
-  importCatalogController
 );
 
 // =======================================================
@@ -416,14 +415,7 @@ router.post(
 
 router.get(
   "/",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   validate({
     query: testQuerySchema,
   }),
@@ -432,14 +424,7 @@ router.get(
 
 router.get(
   "/count",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   listTests
 );
 
@@ -459,14 +444,7 @@ router.post(
 
 router.get(
   "/:id",
-  authorize(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.FRONT_DESK,
-    UserRole.LAB_TECH,
-    UserRole.PATHOLOGIST,
-    UserRole.DOCTOR
-  ),
+  authorize(...ALL_CLINICAL_ROLES),
   validate({
     params: testIdSchema,
   }),

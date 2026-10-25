@@ -481,6 +481,7 @@ app.use("/api/receipt", receiptRoutes);
 // =======================================================
 
 app.use("/api/abdm", abdmRoutes);
+app.use("/abdm", abdmRoutes);
 
 // ABDM Gateway Webhooks (open endpoint — ABDM Gateway posts here)
 app.use("/v0.5", abdmWebhookRouter);
@@ -495,11 +496,13 @@ app.use("/api/v1/ai-studio", aiRoutes);
 app.use("/api/abdm/v0.5", abdmWebhookRouter);
 
 // =======================================================
+// =======================================================
 // DIGITAL TWIN & SIMULATION ENGINE
 // =======================================================
 
 app.use("/api/v1/digital-twin", digitalTwinRoutes);
 app.use("/api/digital-twin", digitalTwinRoutes);
+app.use("/digital-twin", digitalTwinRoutes);
 
 // =======================================================
 // LABCORE OMNISCIENT NEXUS — ENTERPRISE OPERATIONS INTELLIGENCE
@@ -507,6 +510,7 @@ app.use("/api/digital-twin", digitalTwinRoutes);
 
 app.use("/api/v1/nexus", nexusRoutes);
 app.use("/api/nexus", nexusRoutes);
+app.use("/nexus", nexusRoutes);
 
 // =======================================================
 // ENTERPRISE CLINICAL WORKFLOWS (TIER 1)
@@ -516,6 +520,7 @@ app.use("/api/nexus", nexusRoutes);
 app.use("/api/enterprise", enterpriseWorkflowsRoutes);
 app.use("/api/v1/enterprise", enterpriseWorkflowsRoutes);
 app.use("/api/enterprise-workflows", enterpriseWorkflowsRoutes);
+app.use("/enterprise", enterpriseWorkflowsRoutes);
 
 // =======================================================
 // ENTERPRISE CLINICAL WORKFLOWS (TIER 2)
@@ -524,6 +529,7 @@ app.use("/api/enterprise-workflows", enterpriseWorkflowsRoutes);
 
 app.use("/api/enterprise-tier2", enterpriseTier2Routes);
 app.use("/api/v1/enterprise-tier2", enterpriseTier2Routes);
+app.use("/enterprise-tier2", enterpriseTier2Routes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)
