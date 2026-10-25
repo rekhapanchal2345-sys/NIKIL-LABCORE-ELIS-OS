@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { authenticate } from '../../../middleware/auth.middleware';
 import { enterpriseWorkflowsController } from './enterprise-workflows.controller';
 
 const router = Router();
+
+// Require valid authentication token for all enterprise workflow operations
+router.use(authenticate);
 
 // Module 1: Primary Vacutainer Tube Consolidation & Secondary Aliquots
 router.post('/tubes/consolidate', (req, res, next) =>

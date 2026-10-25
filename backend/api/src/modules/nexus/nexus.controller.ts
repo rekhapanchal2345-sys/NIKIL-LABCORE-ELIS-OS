@@ -61,6 +61,30 @@ export class NexusController {
     };
 
     /**
+     * GET /api/v1/nexus/fleet-status
+     * Returns live status of all enterprise & simulated analyzers, heartbeats, staleness, and dead letters.
+     */
+    public getFleetStatus = async (req: AuthenticatedRequest, res: Response) => {
+        try {
+            const threshold = req.query.staleThresholdSeconds
+                ? parseInt(req.query.staleThresholdSeconds as string, 10)
+                : 30;
+            const fleetStatus = await this.service.getFleetStatus(Number.isNaN(threshold) ? 30 : threshold);
+            res.json({
+                success: true,
+                data: fleetStatus,
+            });
+        } catch (error: any) {
+            console.error('[NexusController] getFleetStatus error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to retrieve fleet status and telemetry',
+                error: error.message,
+            });
+        }
+    };
+
+    /**
      * POST /api/v1/nexus/math/descriptive-stats
      * Computes mean, median, IQR, MAD, quantiles, and outlier count on input array.
      */

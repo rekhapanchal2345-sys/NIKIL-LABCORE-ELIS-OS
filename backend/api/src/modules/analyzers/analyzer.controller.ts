@@ -23,6 +23,7 @@ import {
   // Status Management
   updateAnalyzerStatus,
   recordHeartbeat,
+  handleSimulatorEvent,
   // Calibration
   createCalibration,
   getCalibrations,
@@ -274,6 +275,36 @@ export const heartbeat = async (
       res,
       result,
       "Heartbeat recorded successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleSimulatorEventRecord = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const body = (req as any).validated?.body || req.body;
+    const organizationId = (req.user as any)?.organizationId || "DEFAULT_ORG";
+
+    const result = await handleSimulatorEvent({
+      ...body,
+      organizationId,
+    });
+
+    const statusCode = result.status === "DEAD_LETTER" ? 200 : 200;
+    return successResponse(
+      res,
+      result,
+      result.status === "DUPLICATE_IGNORED"
+        ? "Simulator event recognized as duplicate and safely ignored"
+        : result.status === "DEAD_LETTER"
+        ? "Simulator event flagged as malformed and routed to dead-letter queue"
+        : "Simulator event processed successfully by Integration Engine",
+      statusCode
     );
   } catch (error) {
     next(error);

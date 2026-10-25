@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { authenticate } from '../../../middleware/auth.middleware';
 import { enterpriseTier2Controller } from './enterprise-tier2.controller';
 
 const router = Router();
+
+// Require valid authentication token for all microbiology, inventory & telemetry operations
+router.use(authenticate);
 
 // ============================================================================
 // 1. CLINICAL MICROBIOLOGY, CULTURE & AST + HICC ANTIBIOGRAM ROUTES
@@ -42,6 +46,9 @@ router.get('/inventory/cpt-profitability', (req, res, next) =>
 // 3. B2B HUB-AND-SPOKE LOGISTICS & FRANCHISEE WALLET LEDGER ROUTES
 // ============================================================================
 router.get('/logistics/dashboard', (req, res, next) =>
+  enterpriseTier2Controller.getLogisticsDashboard(req, res, next)
+);
+router.get('/logistics/telemetry', (req, res, next) =>
   enterpriseTier2Controller.getLogisticsDashboard(req, res, next)
 );
 router.post('/logistics/b2b-requisition', (req, res, next) =>

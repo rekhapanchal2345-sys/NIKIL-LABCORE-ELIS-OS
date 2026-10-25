@@ -31,8 +31,16 @@ import {
   Zap,
   Compass,
   ExternalLink,
+  Power,
+  Wifi,
+  WifiOff,
+  Copy,
+  FileX2,
+  AlertCircle,
+  Server,
 } from 'lucide-react';
 import Link from 'next/link';
+import { analyzersApi } from '@/lib/api';
 import { useOptionalNexusStore } from '@/components/nexus/useNexusStore';
 import {
   AnalyzerId,
@@ -198,6 +206,152 @@ export const VirtualAnalyzerMasterDeck: React.FC = () => {
   const [wireProtocolMode, setWireProtocolMode] = useState<'ASTM_E1394' | 'HL7_MLLP'>('ASTM_E1394');
   const [evaluatedResults, setEvaluatedResults] = useState<EvaluatedResultItem[]>([]);
   const [runCounter, setRunCounter] = useState<number>(1);
+
+  // Virtual Machine Connection & Simulation Bridge State
+  const [simConnectionState, setSimConnectionState] = useState<'ONLINE' | 'OFFLINE' | 'RECONNECTED' | 'ERROR'>('ONLINE');
+  const [isHeartbeatRunning, setIsHeartbeatRunning] = useState<boolean>(true);
+  const [lastHeartbeatTime, setLastHeartbeatTime] = useState<string | null>(null);
+  const [heartbeatCount, setHeartbeatCount] = useState<number>(0);
+  const [lastPingLatencyMs, setLastPingLatencyMs] = useState<number>(12);
+  const [integrationStatus, setIntegrationStatus] = useState<string>('INTEGRATION_SYNCED');
+  const [integrationMessage, setIntegrationMessage] = useState<string>('Connected to LabCore ELIS Integration Engine');
+  const [integrationErrorDetail, setIntegrationErrorDetail] = useState<string | null>(null);
+
+  // Send Synthetic Event Helper
+  const transmitSyntheticEvent = useCallback(
+    async (
+      eventType: 'ONLINE' | 'OFFLINE' | 'RECONNECTED' | 'ERROR' | 'HEARTBEAT' | 'MALFORMED_FRAME',
+      options: {
+        idempotencyKey?: string;
+        errorCode?: string;
+        errorMessage?: string;
+        customPayload?: Record<string, any>;
+      } = {}
+    ) => {
+      const startTime = performance.now();
+      try {
+        const payload: Record<string, any> = {
+          analyzerName: activeAnalyzer.name,
+          modelCode: activeAnalyzer.modelCode,
+          serialNumber: activeAnalyzer.serialNumber,
+          department: activeAnalyzer.department,
+          peltierTempC: compartmentTempC,
+          aspirationPressureKpa,
+          pipetteCyclesExecuted,
+          activeWavelengthNm,
+          ...options.customPayload,
+        };
+
+        const res = await analyzersApi.sendSimulatorEvent({
+          analyzerId: activeAnalyzer.serialNumber,
+          eventType,
+          isSimulation: true,
+          simulationMode: 'SIMULATION_MODE',
+          timestamp: new Date().toISOString(),
+          latencyMs: Math.round(performance.now() - startTime),
+          idempotencyKey: options.idempotencyKey,
+          errorCode: options.errorCode,
+          errorMessage: options.errorMessage,
+          payload,
+        });
+
+        const elapsed = Math.round(performance.now() - startTime);
+        setLastPingLatencyMs(elapsed > 0 ? elapsed : 8);
+
+        if (res?.success) {
+          const status = res.data?.status || 'PROCESSED';
+          setIntegrationStatus(status);
+          if (status === 'DUPLICATE_IGNORED') {
+            setIntegrationMessage('Duplicate message detected by SHA-256 idempotency hash — suppressed');
+          } else if (status === 'DEAD_LETTER') {
+            setIntegrationMessage('Malformed payload rejected and routed to Dead-Letter Queue');
+            setIntegrationErrorDetail(res.data?.diagnostic || 'Malformed packet format');
+          } else {
+            setIntegrationMessage(`Event [${eventType}] successfully recorded in journal`);
+            setIntegrationErrorDetail(null);
+          }
+        } else {
+          setIntegrationStatus('REJECTED');
+          setIntegrationMessage(res?.message || 'Integration engine rejected transmission');
+        }
+        return res;
+      } catch (err: any) {
+        setIntegrationStatus('OFFLINE_ERROR');
+        setIntegrationMessage(err?.message || 'Network connection failed');
+        return null;
+      }
+    },
+    [activeAnalyzer, compartmentTempC, aspirationPressureKpa, pipetteCyclesExecuted, activeWavelengthNm]
+  );
+
+  // Periodic 10-second Heartbeat
+  useEffect(() => {
+    if (!isHeartbeatRunning || simConnectionState === 'OFFLINE') return;
+
+    // Send initial pulse
+    const sendPulse = () => {
+      void transmitSyntheticEvent('HEARTBEAT');
+      setLastHeartbeatTime(new Date().toLocaleTimeString());
+      setHeartbeatCount((c) => c + 1);
+    };
+
+    sendPulse();
+    const interval = setInterval(sendPulse, 10000);
+    return () => clearInterval(interval);
+  }, [isHeartbeatRunning, simConnectionState, transmitSyntheticEvent]);
+
+  // UI Handlers for Simulator Controls:
+  const handleStartConnectSimulator = useCallback(async () => {
+    setSimConnectionState('ONLINE');
+    setIsHeartbeatRunning(true);
+    await transmitSyntheticEvent('ONLINE');
+    setLastHeartbeatTime(new Date().toLocaleTimeString());
+  }, [transmitSyntheticEvent]);
+
+  const handleDisconnectSimulator = useCallback(async () => {
+    setSimConnectionState('OFFLINE');
+    setIsHeartbeatRunning(false);
+    await transmitSyntheticEvent('OFFLINE', {
+      errorMessage: 'Virtual Analyzer manually disconnected by operator',
+    });
+  }, [transmitSyntheticEvent]);
+
+  const handleReconnectSimulator = useCallback(async () => {
+    setSimConnectionState('RECONNECTED');
+    setIsHeartbeatRunning(true);
+    await transmitSyntheticEvent('RECONNECTED');
+    setLastHeartbeatTime(new Date().toLocaleTimeString());
+    setTimeout(() => setSimConnectionState('ONLINE'), 3000);
+  }, [transmitSyntheticEvent]);
+
+  const handleInjectSimulatorError = useCallback(async () => {
+    setSimConnectionState('ERROR');
+    await transmitSyntheticEvent('ERROR', {
+      errorCode: 'ERR_PROBE_STEPPER_Z_DRIFT',
+      errorMessage: 'Fluidic aspiration stepper motor lost quadrature synchronization (ΔZ > 1.2mm)',
+    });
+    if (!audioMuted) soundEngineRef.current?.playClotAlarmBeep();
+  }, [transmitSyntheticEvent, audioMuted]);
+
+  const handleSendDuplicateTestEvent = useCallback(async () => {
+    const duplicateKey = `IDEMPOTENT-TEST-${Date.now()}`;
+    await transmitSyntheticEvent('HEARTBEAT', {
+      idempotencyKey: duplicateKey,
+      customPayload: { testMode: 'DUPLICATE_IDEMPOTENCY_VERIFICATION', burst: 1 },
+    });
+    await transmitSyntheticEvent('HEARTBEAT', {
+      idempotencyKey: duplicateKey,
+      customPayload: { testMode: 'DUPLICATE_IDEMPOTENCY_VERIFICATION', burst: 2 },
+    });
+  }, [transmitSyntheticEvent]);
+
+  const handleSendMalformedFrameTest = useCallback(async () => {
+    await transmitSyntheticEvent('MALFORMED_FRAME', {
+      errorCode: 'ERR_CORRUPT_FRAME_CHECKSUM',
+      errorMessage: 'Raw bytes failed ASCII control character framing (Missing ETX/CRLF)',
+      customPayload: { corruptBytes: [0xff, 0x00, 0xde, 0xad], badChecksum: '99' },
+    });
+  }, [transmitSyntheticEvent]);
 
   // Westgard Multi-Rule QC History (Z-score / raw value history for primary analyte)
   const [qcRawHistory, setQcRawHistory] = useState<number[]>([
@@ -445,6 +599,22 @@ export const VirtualAnalyzerMasterDeck: React.FC = () => {
                 )
               );
             }
+            // Transmit synthetic run result to LabCore Integration Engine
+            void transmitSyntheticEvent('ONLINE', {
+              customPayload: {
+                cycleType: chaosOverride,
+                orderBarcode: effectiveOrder.barcode,
+                patientMrn: effectiveOrder.mrn,
+                testResults: results.map((r) => ({
+                  code: r.code,
+                  name: r.name,
+                  value: r.value,
+                  units: r.units,
+                  flag: r.flag,
+                  gatedRejected: r.gatedRejected,
+                })),
+              },
+            });
           }
         }, index * 190);
       });
@@ -457,6 +627,7 @@ export const VirtualAnalyzerMasterDeck: React.FC = () => {
       isRunningCycle,
       runCounter,
       selectedAnalyzerId,
+      transmitSyntheticEvent,
       westgardEvaluation.isLocked,
       wireProtocolMode,
     ]
@@ -804,6 +975,193 @@ export const VirtualAnalyzerMasterDeck: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* VIRTUAL MACHINE CONNECTION & SIMULATION MODE CONTROL DECK */}
+      <section className="backdrop-blur-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-slate-950/90 border border-cyan-500/40 shadow-2xl rounded-2xl p-4 mb-5 relative overflow-hidden">
+        {/* Glow ambient accent */}
+        <div className="absolute top-0 right-0 w-96 h-32 bg-cyan-500/5 blur-3xl pointer-events-none" />
+
+        {/* Top Simulation Mode Banner */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div className="flex items-center gap-3">
+            <div
+              className={`p-2.5 rounded-xl border flex items-center justify-center transition-all ${
+                simConnectionState === 'ONLINE'
+                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                  : simConnectionState === 'RECONNECTED'
+                  ? 'bg-sky-500/10 border-sky-500/40 text-sky-400'
+                  : simConnectionState === 'ERROR'
+                  ? 'bg-rose-500/10 border-rose-500/40 text-rose-400 animate-pulse'
+                  : 'bg-slate-800/50 border-slate-700 text-slate-400'
+              }`}
+            >
+              {simConnectionState === 'ONLINE' ? (
+                <Wifi className="w-5 h-5 text-emerald-400 animate-pulse" />
+              ) : simConnectionState === 'OFFLINE' ? (
+                <WifiOff className="w-5 h-5 text-slate-400" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-rose-400" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm">
+                  SIMULATION MODE ACTIVE — SYNTHETIC DATA ONLY
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 hidden sm:inline">
+                  (CLSI AUTO10-A // Isolated from Real Clinical Records)
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                LabCore Integration Engine Bridge: <strong className="text-white">{activeAnalyzer.name}</strong> ({activeAnalyzer.serialNumber})
+              </p>
+            </div>
+          </div>
+
+          {/* Real-time Status Badges */}
+          <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <div
+              className={`px-2.5 py-1 rounded-lg border font-bold flex items-center gap-1.5 transition-colors ${
+                simConnectionState === 'ONLINE'
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                  : simConnectionState === 'RECONNECTED'
+                  ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+                  : simConnectionState === 'ERROR'
+                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 animate-pulse'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-400'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  simConnectionState === 'ONLINE'
+                    ? 'bg-emerald-400 animate-ping'
+                    : simConnectionState === 'ERROR'
+                    ? 'bg-rose-400'
+                    : 'bg-slate-500'
+                }`}
+              />
+              STATUS: {simConnectionState}
+            </div>
+
+            <div
+              className="px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300 flex items-center gap-1.5"
+              title="Heartbeat Interval: 10 seconds"
+            >
+              <HeartPulse
+                className={`w-3.5 h-3.5 ${
+                  isHeartbeatRunning ? 'text-rose-400 animate-pulse' : 'text-slate-500'
+                }`}
+              />
+              <span>
+                HB: {isHeartbeatRunning ? '10s PULSE' : 'STOPPED'} (#{heartbeatCount})
+              </span>
+            </div>
+
+            <div
+              className="px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300"
+              title="Round-trip latency to Integration Engine"
+            >
+              LATENCY: <strong className="text-cyan-400">{lastPingLatencyMs}ms</strong>
+            </div>
+
+            <div className="px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300" title="Journal Status">
+              JOURNAL:{' '}
+              <strong
+                className={
+                  integrationStatus === 'DUPLICATE_IGNORED'
+                    ? 'text-amber-400'
+                    : integrationStatus === 'DEAD_LETTER'
+                    ? 'text-rose-400'
+                    : 'text-emerald-400'
+                }
+              >
+                {integrationStatus}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls & Integration Action Bar */}
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 pt-3">
+          <div className="text-xs text-slate-400 flex items-center gap-2">
+            <Server className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span className="truncate max-w-xl text-slate-300 font-mono">
+              {integrationMessage} {integrationErrorDetail && `— [${integrationErrorDetail}]`}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Start / Connect Button */}
+            <button
+              type="button"
+              onClick={handleStartConnectSimulator}
+              disabled={simConnectionState === 'ONLINE' && isHeartbeatRunning}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 disabled:opacity-40 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+              title="Emit ONLINE event and start 10s heartbeats"
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>Start / Connect</span>
+            </button>
+
+            {/* Disconnect Button */}
+            <button
+              type="button"
+              onClick={handleDisconnectSimulator}
+              disabled={simConnectionState === 'OFFLINE'}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/50 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 disabled:opacity-40 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all"
+              title="Emit OFFLINE event and halt heartbeats"
+            >
+              <WifiOff className="w-3.5 h-3.5" />
+              <span>Disconnect</span>
+            </button>
+
+            {/* Reconnect Button */}
+            <button
+              type="button"
+              onClick={handleReconnectSimulator}
+              disabled={simConnectionState === 'ONLINE' && isHeartbeatRunning}
+              className="px-3 py-1.5 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/40 disabled:opacity-40 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+              title="Emit RECONNECTED event and resume 10s heartbeats"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Reconnect</span>
+            </button>
+
+            {/* Inject Hardware Error */}
+            <button
+              type="button"
+              onClick={handleInjectSimulatorError}
+              className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all"
+              title="Emit ERROR event to Integration Engine"
+            >
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>Inject Error</span>
+            </button>
+
+            {/* Test Duplicate Suppression */}
+            <button
+              type="button"
+              onClick={handleSendDuplicateTestEvent}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono flex items-center gap-1.5 transition-all"
+              title="Send duplicate packet to verify SHA-256 idempotency deduplication"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Test Duplicate</span>
+            </button>
+
+            {/* Test Malformed Frame DLQ */}
+            <button
+              type="button"
+              onClick={handleSendMalformedFrameTest}
+              className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-mono flex items-center gap-1.5 transition-all"
+              title="Send corrupted payload to verify Dead-Letter Queue routing"
+            >
+              <FileX2 className="w-3.5 h-3.5" />
+              <span>Test Malformed Frame</span>
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* CLINICAL CHAOS & STRESS TESTING CONTROLS DECK */}
       <section className="backdrop-blur-2xl bg-slate-900/60 border border-slate-800/80 shadow-2xl rounded-2xl p-4 mb-5">

@@ -16,6 +16,7 @@ import {
   // Status Management
   updateStatus,
   heartbeat,
+  handleSimulatorEventRecord,
   // Calibration
   createCalibrationRecord,
   listCalibrations,
@@ -112,6 +113,7 @@ import {
   parseHL7Schema,
   generateASTMSchema,
   generateHL7Schema,
+  simulatorEventSchema,
 } from "./analyzer.validation";
 
 const router = Router();
@@ -185,6 +187,25 @@ router.post(
   "/:id/heartbeat",
   validate({ params: analyzerIdSchema, body: heartbeatSchema }),
   heartbeat
+);
+
+// Virtual Machine Simulator Event Ingestion - Integration Engine
+router.post(
+  "/simulator/event",
+  validate({ body: simulatorEventSchema }),
+  handleSimulatorEventRecord
+);
+
+router.post(
+  "/simulator-event",
+  validate({ body: simulatorEventSchema }),
+  handleSimulatorEventRecord
+);
+
+router.post(
+  "/:id/simulator-event",
+  validate({ body: simulatorEventSchema }),
+  handleSimulatorEventRecord
 );
 
 // =======================================================

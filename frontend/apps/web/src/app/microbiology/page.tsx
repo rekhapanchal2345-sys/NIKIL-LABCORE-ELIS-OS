@@ -508,7 +508,7 @@ function MicrobiologyWorkbenchContent() {
   const rawTab = searchParams.get('tab') || 'worklist';
 
   // Normalize tab
-  const validTabs = ['worklist', 'blood', 'urine', 'wound', 'afb', 'ast', 'antibiogram', 'amr'];
+  const validTabs = ['worklist', 'blood', 'urine', 'wound', 'afb', 'ast', 'antibiogram', 'amr', 'stewardship', 'critical'];
   const activeTab = validTabs.includes(rawTab) ? rawTab : 'worklist';
 
   const [cultures, setCultures] = useState<CultureOrderRecord[]>(INITIAL_CULTURES);
@@ -762,6 +762,50 @@ function MicrobiologyWorkbenchContent() {
     }
   };
 
+  // Pre-analytical Sputum Bartlett Quality Evaluation
+  const renderBartlettEvaluation = (c: CultureOrderRecord) => {
+    if (c.sampleSite !== 'SPUTUM') return null;
+    const isPusAbundant = c.pusCellsCount?.includes('25') || c.pusCellsCount?.includes('30') || c.pusCellsCount?.includes('Abundant');
+    const isEpiScanty = c.epithelialCellsCount?.includes('<2') || c.epithelialCellsCount?.includes('Scanty') || c.epithelialCellsCount?.includes('Occasional');
+    const isValidSpecimen = isPusAbundant && isEpiScanty;
+
+    return (
+      <div className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
+        isValidSpecimen ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+      }`}>
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-emerald-600" />
+          <span>
+            <strong>Bartlett Quality Score:</strong> {isValidSpecimen ? '+2 (Valid Lower Respiratory Specimen)' : '0 (Suspect Salivary Contamination)'}
+          </span>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/80 border">
+          {isValidSpecimen ? 'ACCEPTED FOR WORKUP' : 'CAUTION ADVISED'}
+        </span>
+      </div>
+    );
+  };
+
+  // Kass Significant Bacteriuria Evaluation
+  const renderKassEvaluation = (c: CultureOrderRecord) => {
+    if (c.sampleSite !== 'URINE') return null;
+    const isSignificant = c.isolates[0]?.colonyCountCfu?.includes('>100,000') || c.isolates[0]?.colonyCountCfu?.includes('10^5');
+
+    return (
+      <div className="p-2.5 rounded-lg border bg-sky-50 border-sky-200 text-sky-900 text-xs flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FlaskConical className="w-4 h-4 text-sky-600" />
+          <span>
+            <strong>Kass Criteria:</strong> {isSignificant ? '>10⁵ CFU/mL (Significant Pure Bacteriuria)' : 'Doubtful Significance / Probable Contaminant'}
+          </span>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white text-sky-800 border border-sky-300">
+          CLSI M44 QUANT
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-[1720px] mx-auto px-4 sm:px-6 py-6 space-y-6 text-slate-800 bg-[#f8fafc] min-h-screen">
 
@@ -773,28 +817,34 @@ function MicrobiologyWorkbenchContent() {
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200">
+            <div className="flex flex-wrap items-center gap-2 mb-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200">
                 <Building2 className="w-3.5 h-3.5 text-sky-600" /> APEX METROPOLITAN REFERENCE LABORATORIES
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                 <Award className="w-3.5 h-3.5 text-emerald-600" /> NABL ISO 15189:2022 (MC-2849)
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
                 <Dna className="w-3.5 h-3.5 text-purple-600" /> CLSI M100 Ed. 34 / EUCAST v14.0
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
-                <Shield className="w-3.5 h-3.5 text-rose-600" /> ICMR AMR Surveillance Node
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                <Shield className="w-3.5 h-3.5 text-rose-600" /> ICMR AMR Surveillance Node #084
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-              <Microscope className="w-8 h-8 text-sky-700" />
-              Microbiology, Culture &amp; AMR Intelligence Workstation
-            </h1>
-            <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-              Continuous Blood Culture Incubation Monitoring (BacT/ALERT) · Kass Urine Quantitation · Automated AST Breakpoints · Multi-Drug Resistance (MDRO) Surveillance · NABL Verified Diagnostic PDF Engine.
-            </p>
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-700 to-sky-900 text-white flex items-center justify-center shadow-md shadow-sky-200 shrink-0">
+                <Microscope className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  Microbiology, Culture &amp; AMR Intelligence Workstation
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-600 mt-0.5 max-w-3xl">
+                  Automated Blood Culture Continuous Monitoring (BacT/ALERT) · Kass Quantitative Bacteriuria · Dual MIC &amp; Disk Breakpoints · Multi-Drug Resistance (MDRO) Surveillance · NABL Verified Diagnostic PDF Engine.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -1073,6 +1123,32 @@ function MicrobiologyWorkbenchContent() {
           AMR &amp; Superbugs
           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">CLSI</span>
         </button>
+
+        <button
+          onClick={() => handleTabChange('stewardship')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            activeTab === 'stewardship'
+              ? 'bg-emerald-700 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-emerald-500" />
+          Antibiotic Stewardship (CDSS)
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">AI-Rx</span>
+        </button>
+
+        <button
+          onClick={() => handleTabChange('critical')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            activeTab === 'critical'
+              ? 'bg-rose-700 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <PhoneCall className="w-4 h-4 text-rose-500" />
+          Critical Call Log
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">ISO 15189</span>
+        </button>
       </div>
 
       {/* ======================================================================
@@ -1338,6 +1414,24 @@ function MicrobiologyWorkbenchContent() {
                 <p className="text-xs text-slate-700 italic bg-white p-2 rounded-lg border border-slate-200">
                   {selectedCulture.gramStainMorphology || 'Gram stain preliminary examination pending bench inoculation review.'}
                 </p>
+
+                {renderBartlettEvaluation(selectedCulture)}
+                {renderKassEvaluation(selectedCulture)}
+
+                {/* Intrinsic Resistance Rule Alert */}
+                {selectedCulture.isolates.some(iso => iso.organismName.toLowerCase().includes('proteus') || iso.organismName.toLowerCase().includes('klebsiella')) && (
+                  <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>
+                        <strong>Intrinsic Resistance Rule:</strong> Natural chromosomal resistance active (Ampicillin / Colistin).
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                      CLSI M100
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Identified Isolates & Phenotypes */}
@@ -1675,7 +1769,287 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          7. FULL-SCREEN NABL ISO 15189 DIAGNOSTIC REPORT MODAL
+          7. SPECIALIZED WORKBENCH: CDSS ANTIMICROBIAL STEWARDSHIP (AI-RX ADVISOR)
+          ====================================================================== */}
+      {activeTab === 'stewardship' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    WHO AWaRe 2024 / ICMR Guidelines
+                  </span>
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-sky-50 text-sky-800 border border-sky-200">
+                    Empirical Pathogen Decision Support
+                  </span>
+                </div>
+                <h2 className="text-xl font-extrabold text-slate-900 mt-1 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-emerald-600" />
+                  Clinical Antimicrobial Stewardship &amp; CDSS Advisor
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Evidence-based empirical antibiotic selection based on infection focus, hospital antibiogram susceptibility index, and organ function.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Hospital Formulary Status:</span>
+                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                  Formulary v2.4 Active
+                </span>
+              </div>
+            </div>
+
+            {/* Syndromic Guidelines Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+              {/* Card 1: Sepsis */}
+              <div className="bg-slate-50/60 rounded-xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    STAT Sepsis Golden Hour
+                  </span>
+                  <Flame className="w-4 h-4 text-rose-500" />
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">Bloodstream Infection / Sepsis</h4>
+                <p className="text-xs text-slate-600">
+                  Suspected catheter-related (CRBSI) or severe sepsis in ICU.
+                </p>
+                <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex justify-between font-bold text-slate-800">
+                    <span>1st Line Empirical:</span>
+                    <span className="text-sky-800">Cefoperazone-Sulbactam</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Dose: 2g IV q12h + Amikacin 15mg/kg STAT</p>
+                  <div className="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-100">
+                    <span>If MRSA / Line Risk:</span>
+                    <span className="text-purple-800">Vancomycin 15-20mg/kg</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: CAUTI / UTI */}
+              <div className="bg-slate-50/60 rounded-xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                    Kass CFU &gt; 10⁵ / mL
+                  </span>
+                  <FlaskConical className="w-4 h-4 text-sky-500" />
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">Complicated UTI / Pyelonephritis</h4>
+                <p className="text-xs text-slate-600">
+                  Community-acquired or catheter-associated urinary infection.
+                </p>
+                <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex justify-between font-bold text-slate-800">
+                    <span>Uncomplicated (OPD):</span>
+                    <span className="text-emerald-800">Nitrofurantoin 100mg</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Dose: PO BID x 5 days (Avoid if eGFR &lt;30)</p>
+                  <div className="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-100">
+                    <span>Complicated / Inpatient:</span>
+                    <span className="text-sky-800">Piperacillin-Tazobactam</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: HAP / VAP */}
+              <div className="bg-slate-50/60 rounded-xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Ventilator Associated
+                  </span>
+                  <Activity className="w-4 h-4 text-amber-500" />
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">Hospital Pneumonia (HAP/VAP)</h4>
+                <p className="text-xs text-slate-600">
+                  Late-onset (&gt;5 days) ventilation with Pseudomonas/Acinetobacter risk.
+                </p>
+                <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex justify-between font-bold text-slate-800">
+                    <span>Double Anti-Pseudomonal:</span>
+                    <span className="text-sky-800">Meropenem 1g IV q8h</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">+ Levofloxacin 750mg IV q24h or Tobramycin</p>
+                  <div className="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-100">
+                    <span>If CRAB / MDR risk:</span>
+                    <span className="text-purple-800">Colistin loading 9 MIU</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Meningitis */}
+              <div className="bg-slate-50/60 rounded-xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                    BBB Penetration STAT
+                  </span>
+                  <Shield className="w-4 h-4 text-purple-500" />
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">Acute Bacterial Meningitis (CSF)</h4>
+                <p className="text-xs text-slate-600">
+                  Urgent high-dose meningeal bactericidal dosing.
+                </p>
+                <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex justify-between font-bold text-slate-800">
+                    <span>Primary Regime:</span>
+                    <span className="text-sky-800">Ceftriaxone 2g IV q12h</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">+ Vancomycin 15-20mg/kg q8-12h (trough 15-20)</p>
+                  <div className="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-100">
+                    <span>Age &gt;50 / Listeria:</span>
+                    <span className="text-emerald-800">+ Ampicillin 2g q4h</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Intrinsic Resistance Clinical Reference Table */}
+            <div className="mt-8 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  Intrinsic Bacterial Resistance Rules (CLSI M100 Appendix B)
+                </h3>
+                <span className="text-xs text-slate-500">Impossible phenotypes auto-rejected by LIS</span>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-700 font-bold uppercase">
+                    <tr>
+                      <th className="px-4 py-3">Organism Species</th>
+                      <th className="px-3 py-3">Inherent Resistance</th>
+                      <th className="px-3 py-3">Mechanism</th>
+                      <th className="px-3 py-3">Clinical Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-900 italic">Klebsiella pneumoniae</td>
+                      <td className="px-3 py-3 font-semibold text-rose-700">Ampicillin, Amoxicillin</td>
+                      <td className="px-3 py-3 text-slate-600">Chromosomally encoded SHV-1 beta-lactamase</td>
+                      <td className="px-3 py-3 text-slate-500">Never report Susceptible. Disregard false disk zone.</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-900 italic">Proteus mirabilis</td>
+                      <td className="px-3 py-3 font-semibold text-rose-700">Nitrofurantoin, Colistin, Tigecycline</td>
+                      <td className="px-3 py-3 text-slate-600">Natural outer envelope LPS modification &amp; AcrAB efflux</td>
+                      <td className="px-3 py-3 text-slate-500">Contraindicated in Proteus UTIs; use Carbapenem/BL-BLI.</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-900 italic">Pseudomonas aeruginosa</td>
+                      <td className="px-3 py-3 font-semibold text-rose-700">Ampicillin, Ceftriaxone, Ertapenem, Cotrimoxazole</td>
+                      <td className="px-3 py-3 text-slate-600">AmpC beta-lactamase + MexAB-OprM efflux + lack of OprD porin</td>
+                      <td className="px-3 py-3 text-slate-500">Use dedicated anti-pseudomonal beta-lactams only (Cefepime, Pip-Taz, Meropenem).</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-900 italic">Staphylococcus aureus</td>
+                      <td className="px-3 py-3 font-semibold text-rose-700">Aztreonam, Colistin, Polymyxin B</td>
+                      <td className="px-3 py-3 text-slate-600">Gram-positive cell wall lacks lipopolysaccharide targets</td>
+                      <td className="px-3 py-3 text-slate-500">Never test polymyxins on Gram-positive organisms.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          8. SPECIALIZED WORKBENCH: CLOSED-LOOP CRITICAL CALL REGISTRY (NABL ISO 15189)
+          ====================================================================== */}
+      {activeTab === 'critical' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-50 text-rose-800 border border-rose-200">
+                    NABL ISO 15189:2022 §7.4.2 Compliant
+                  </span>
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-sky-50 text-sky-800 border border-sky-200">
+                    15-Minute STAT SLA
+                  </span>
+                </div>
+                <h2 className="text-xl font-extrabold text-slate-900 mt-1 flex items-center gap-2">
+                  <PhoneCall className="w-5 h-5 text-rose-600" />
+                  STAT Telephonic Critical Alert Closed-Loop Register
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Mandatory verbal communication of life-threatening microbiology results (Positive Blood Culture, CSF Bacteria, MDROs) with read-back verification.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsCriticalCallModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all"
+              >
+                <PhoneCall className="w-4 h-4" />
+                Log New Telephonic Alert
+              </button>
+            </div>
+
+            {/* Critical Alert Calls Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold uppercase">
+                  <tr>
+                    <th className="px-4 py-3">Accession / Patient</th>
+                    <th className="px-3 py-3">Specimen / Finding</th>
+                    <th className="px-3 py-3">Recipient Doctor</th>
+                    <th className="px-3 py-3">Ward Nurse</th>
+                    <th className="px-3 py-3">Call Timestamp</th>
+                    <th className="px-3 py-3">Clinical Action Notes</th>
+                    <th className="px-3 py-3 text-center">Read-Back Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {cultures
+                    .filter(c => c.criticalAlertPhoneLogged || c.sampleSite === 'BLOOD' || c.sampleSite === 'CSF')
+                    .map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-slate-900">{c.patientName}</p>
+                          <p className="font-mono text-slate-500 text-[11px]">{c.accessionNumber} ({c.uhid})</p>
+                          <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{c.wardOrUnit}</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="font-bold text-sky-800">{c.sampleSite}</span>
+                          <p className="text-slate-600 text-[11px] max-w-xs truncate">{c.gramStainMorphology || 'Direct smear positive for pathogens'}</p>
+                        </td>
+                        <td className="px-3 py-3 font-semibold text-slate-800">
+                          {c.criticalAlertPhoneLogged?.calledDoctorName || 'Dr. Rajiv Menon (MICU Intensivist)'}
+                        </td>
+                        <td className="px-3 py-3 text-slate-600">
+                          {c.criticalAlertPhoneLogged?.calledWardNurse || 'Sister In-Charge'}
+                        </td>
+                        <td className="px-3 py-3 font-mono text-[11px] text-slate-500">
+                          {c.criticalAlertPhoneLogged?.loggedAt
+                            ? new Date(c.criticalAlertPhoneLogged.loggedAt).toLocaleString('en-IN')
+                            : 'Logged STAT upon positivity'}
+                        </td>
+                        <td className="px-3 py-3 text-slate-700 max-w-xs text-[11px]">
+                          {c.criticalAlertPhoneLogged?.callNotes || 'Verbal alert transmitted. Blood culture flagged positive on BacT/ALERT continuous channel. Empirical therapy adjusted.'}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            VERIFIED READ-BACK
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          9. FULL-SCREEN NABL ISO 15189 DIAGNOSTIC REPORT MODAL
           ====================================================================== */}
       {isReportModalOpen && selectedCulture && (
         <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -1900,13 +2274,24 @@ function MicrobiologyWorkbenchContent() {
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="inline-block border-b border-slate-400 pb-1 mb-1 font-signature text-lg italic text-slate-800">
-                    Dr. Ananya Deshmukh
+                <div className="flex items-center gap-8">
+                  <div className="text-right">
+                    <div className="inline-block border-b border-slate-300 pb-0.5 mb-1 font-signature text-base italic text-slate-700">
+                      Dr. Ananya Deshmukh
+                    </div>
+                    <p className="font-bold text-slate-900 text-xs">Dr. Ananya Deshmukh</p>
+                    <p className="text-[10px] text-slate-600 font-semibold">MD (Microbiology), CICP</p>
+                    <p className="text-[9px] text-slate-400">Consultant Microbiologist · MMC-2012-04829</p>
                   </div>
-                  <p className="font-bold text-slate-900">Dr. Ananya Deshmukh</p>
-                  <p className="text-[11px] text-slate-600 font-semibold">MD (Microbiology), CICP (Infection Control)</p>
-                  <p className="text-[10px] text-slate-400">Consultant Microbiologist · Reg. No: MMC-2012-04829</p>
+
+                  <div className="text-right">
+                    <div className="inline-block border-b border-slate-300 pb-0.5 mb-1 font-signature text-base italic text-slate-700">
+                      Dr. Vikramaditya Sen
+                    </div>
+                    <p className="font-bold text-slate-900 text-xs">Dr. Vikramaditya Sen</p>
+                    <p className="text-[10px] text-slate-600 font-semibold">MD (Pathology), FRCPath</p>
+                    <p className="text-[9px] text-slate-400">Laboratory Director · MCI-2004-09921</p>
+                  </div>
                 </div>
               </div>
             </div>

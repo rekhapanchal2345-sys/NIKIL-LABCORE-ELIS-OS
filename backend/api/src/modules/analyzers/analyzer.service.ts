@@ -300,7 +300,7 @@ export const ensureSimulatorAnalyzer = async (identifier: string, name?: string)
       data: {
         name: name || `Virtual Laboratory Simulator (${cleanId})`,
         analyzerId: cleanId,
-        serialNumber: `SN-VIRTUAL-${cleanId}`,
+        serialNumber: cleanId,
         manufacturer: "Virtual Hardware Twin Systems",
         model: "Digital Twin LIS Bridge",
         analyzerType: "SIMULATOR",
@@ -418,78 +418,19 @@ export const handleSimulatorEvent = async (data: SimulatorEventInput) => {
   // 2. Machine Identifier Resolution & Virtual Analyzer Provisioning
   const analyzer = await ensureSimulatorAnalyzer(data.analyzerId);
 
-  // 3. Deduplication Key Generation & Journal Check
+  // 3. Deduplication Key Generation & Raw Payload Hash
   const rawPayloadStr = typeof data.payload === "string" ? data.payload : JSON.stringify(data.payload || {});
   const rawPayloadHash = crypto.createHash("sha256").update(rawPayloadStr, "utf8").digest("hex");
 
   const idempotencyHash = data.idempotencyKey
     ? crypto.createHash("sha256").update(`${organizationId}|${analyzer.analyzerId}|${data.idempotencyKey}`, "utf8").digest("hex")
-    : crypto.createHash("sha256").update(`${organizationId}|${analyzer.analyzerId}|${data.eventType}|${rawPayloadHash}|${data.timestamp || ""}`, "utf8").digest("hex");
+    : crypto.createHash("sha256").update(`${organizationId}|${analyzer.analyzerId}|${data.eventType}|${rawPayloadHash}|${data.timestamp || eventTimestamp.toISOString()}`, "utf8").digest("hex");
 
-  // Check if idempotency hash already exists in instrument_message_journal
-  try {
-    const existing = await pool.query(
-      `SELECT id, processing_status, received_at FROM instrument_message_journal WHERE idempotency_hash = $1 LIMIT 1`,
-      [idempotencyHash]
-    );
-
-    if (existing.rows.length > 0) {
-      // Duplicate message detected!
-      const journalEntry = existing.rows[0];
-      const dupLogId = `LOG-DUP-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-      await pool.query(
-        `INSERT INTO instrument_message_journal (
-          id, organization_id, analyzer_id, correlation_id, idempotency_hash, protocol,
-          raw_payload_hash, specimen_barcode, processing_status, error_code, error_diagnostic,
-          retry_count, received_at, processed_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
-        ON CONFLICT (idempotency_hash) DO UPDATE SET retry_count = instrument_message_journal.retry_count + 1`,
-        [
-          dupLogId,
-          organizationId,
-          analyzer.analyzerId,
-          data.idempotencyKey || dupLogId,
-          idempotencyHash + `_dup_${Date.now()}`,
-          "SIMULATOR",
-          rawPayloadHash,
-          data.payload?.barcode || null,
-          "DUPLICATE_IGNORED",
-          "ERR_DUPLICATE_SUPPRESSED",
-          `Duplicate event ${data.eventType} ignored to protect clinical state machine integrity. Original received at ${journalEntry.received_at}`,
-          1,
-        ]
-      ).catch(() => null);
-
-      await prisma.analyzerCommunicationLog.create({
-        data: {
-          analyzerId: analyzer.id,
-          direction: "INCOMING",
-          messageType: `${data.eventType}_DUPLICATE_IGNORED`,
-          protocol: analyzer.protocol,
-          payload: JSON.stringify({ isSimulation: true, idempotencyHash, deduplicated: true }),
-          status: "SUCCESS",
-          responseTime: latency,
-        },
-      }).catch(() => null);
-
-      return {
-        success: true,
-        status: "DUPLICATE_IGNORED",
-        deduplicated: true,
-        analyzerId: analyzer.analyzerId,
-        message: "Duplicate machine event received and safely suppressed without side-effects.",
-        idempotencyHash,
-      };
-    }
-  } catch (err: any) {
-    console.warn("[Simulator Integration Engine] Journal deduplication check warning:", err?.message);
-  }
-
-  // 4. Handle Malformed Payload / Dead-Letter Queue (DLQ)
+  // 4. Handle Malformed Payload / Dead-Letter Queue (DLQ) Immediately
   if (data.eventType === "MALFORMED_FRAME" || data.errorCode === "MALFORMED_PAYLOAD") {
     const deadLetterId = `DLQ-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const errorDiagnostic = data.errorMessage || "Malformed simulator frame: checksum mismatch or invalid delimiters";
+    const dlqIdempotencyHash = idempotencyHash + `_dlq_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
     try {
       await pool.query(
@@ -504,7 +445,7 @@ export const handleSimulatorEvent = async (data: SimulatorEventInput) => {
           organizationId,
           analyzer.analyzerId,
           deadLetterId,
-          idempotencyHash,
+          dlqIdempotencyHash,
           "SIMULATOR",
           rawPayloadHash,
           data.payload?.barcode || null,
@@ -545,16 +486,80 @@ export const handleSimulatorEvent = async (data: SimulatorEventInput) => {
         status: "FAILED",
         errorMessage: errorDiagnostic,
         responseTime: latency,
+        parsedData: { isSimulation: true, simulationMode: "SIMULATION_MODE", errorCode: data.errorCode },
       },
     }).catch(() => null);
 
     return {
       success: false,
       status: "DEAD_LETTER",
+      isSimulation: true,
       analyzerId: analyzer.analyzerId,
       error: errorDiagnostic,
       dlqId: deadLetterId,
     };
+  }
+
+  // 5. Deduplication Check via SHA-256 Idempotency Hash in Journal
+  try {
+    const existing = await pool.query(
+      `SELECT id, processing_status, received_at FROM instrument_message_journal WHERE idempotency_hash = $1 LIMIT 1`,
+      [idempotencyHash]
+    );
+
+    if (existing.rows.length > 0) {
+      // Duplicate message detected!
+      const journalEntry = existing.rows[0];
+      const dupLogId = `LOG-DUP-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+      await pool.query(
+        `INSERT INTO instrument_message_journal (
+          id, organization_id, analyzer_id, correlation_id, idempotency_hash, protocol,
+          raw_payload_hash, specimen_barcode, processing_status, error_code, error_diagnostic,
+          retry_count, received_at, processed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        ON CONFLICT (idempotency_hash) DO UPDATE SET retry_count = instrument_message_journal.retry_count + 1`,
+        [
+          dupLogId,
+          organizationId,
+          analyzer.analyzerId,
+          data.idempotencyKey || dupLogId,
+          idempotencyHash + `_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          "SIMULATOR",
+          rawPayloadHash,
+          data.payload?.barcode || null,
+          "DUPLICATE_IGNORED",
+          "ERR_DUPLICATE_SUPPRESSED",
+          `Duplicate event ${data.eventType} ignored to protect clinical state machine integrity. Original received at ${journalEntry.received_at}`,
+          1,
+        ]
+      ).catch(() => null);
+
+      await prisma.analyzerCommunicationLog.create({
+        data: {
+          analyzerId: analyzer.id,
+          direction: "INCOMING",
+          messageType: `${data.eventType}_DUPLICATE_IGNORED`,
+          protocol: analyzer.protocol,
+          payload: JSON.stringify({ isSimulation: true, idempotencyHash, deduplicated: true }),
+          status: "SUCCESS",
+          responseTime: latency,
+          parsedData: { isSimulation: true, simulationMode: "SIMULATION_MODE", deduplicated: true },
+        },
+      }).catch(() => null);
+
+      return {
+        success: true,
+        status: "DUPLICATE_IGNORED",
+        isSimulation: true,
+        deduplicated: true,
+        analyzerId: analyzer.analyzerId,
+        message: "Duplicate machine event received and safely suppressed without side-effects.",
+        idempotencyHash,
+      };
+    }
+  } catch (err: any) {
+    console.warn("[Simulator Integration Engine] Journal deduplication check warning:", err?.message);
   }
 
   // 5. State Machine Processing & Transitions
@@ -698,6 +703,8 @@ export const handleSimulatorEvent = async (data: SimulatorEventInput) => {
     idempotencyHash,
     journalId,
     timestamp: new Date().toISOString(),
+    isSimulation: true,
+    deduplicated: false,
   };
 };
 

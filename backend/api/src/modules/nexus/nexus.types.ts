@@ -340,7 +340,7 @@ export interface EnterpriseAnalyzerTelemetry {
     model: string;
     serialNumber: string;
     department: string;
-    status: 'ONLINE' | 'DEGRADED_QC_WARNING' | 'LOCKED_WESTGARD_VIOLATION' | 'MAINTENANCE_OFFLINE';
+    status: 'ONLINE' | 'RECONNECTED' | 'DEGRADED_QC_WARNING' | 'LOCKED_WESTGARD_VIOLATION' | 'MAINTENANCE_OFFLINE' | 'OFFLINE' | 'ERROR';
     throughputNominalPerHour: number;
     currentThroughputRealtime: number;
     currentQueueDepth: number;
@@ -359,5 +359,10 @@ export interface EnterpriseAnalyzerTelemetry {
     rulHours: number;
     lastCalibrationTime: string;
     lastQcStatus: string;
+    lastSuccessfulHeartbeat?: string | null;
+    heartbeatAgeSeconds?: number | null;
+    connectionHealth?: 'HEALTHY' | 'STALE' | 'OFFLINE' | 'ERROR';
+    isSimulated?: boolean;
+    connectionLatencyMs?: number;
 }
 

@@ -63,6 +63,12 @@ router.get(
 );
 
 router.get(
+  "/pipeline",
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAB_TECH, UserRole.PATHOLOGIST, UserRole.FRONT_DESK),
+  pipeline
+);
+
+router.get(
   "/analytics/revenue-by-doctor",
   authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PATHOLOGIST),
   revenueByDoctor

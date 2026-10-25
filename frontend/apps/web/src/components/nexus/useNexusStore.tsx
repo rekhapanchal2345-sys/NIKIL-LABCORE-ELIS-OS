@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { nexusApi } from '@/lib/api';
 import {
     DataProvenance,
     EnterpriseAnalyzerTelemetry,
@@ -94,6 +95,10 @@ export interface NexusState {
     liveSpecimens: LiveSpecimenCarrier[];
     paretoPolicy: 'BALANCED_CLINICAL' | 'AGGRESSIVE_STAT' | 'REAGENT_CONSERVATIVE';
 
+    // Integration Engine Telemetry & Dead-Letter Queue
+    rejectedMessages: any[];
+    unacknowledgedAlerts: any[];
+
     // Interactive Pre-Analytics HIL State
     hilSimulator: {
         analyteCode: string;
@@ -141,6 +146,7 @@ export interface NexusStoreActions {
     launchPneumaticCapsule: (origin: string, dest: string, priority?: 'STAT_EMERGENCY' | 'URGENT' | 'ROUTINE') => void;
     dispatchWorkOrder: (analyzerId: string, taskTitle: string, priority?: 'EMERGENCY_STAT' | 'HIGH' | 'ROUTINE') => BiomedicalWorkOrder;
     toggleHl7Stream: () => void;
+    refreshFleetStatus: () => Promise<void>;
 }
 
 
@@ -727,6 +733,46 @@ export const NexusStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderRecord[]>([]);
     const [liveSpecimens, setLiveSpecimens] = useState<LiveSpecimenCarrier[]>(INITIAL_SPECIMENS);
     const [paretoPolicy, setParetoPolicyState] = useState<'BALANCED_CLINICAL' | 'AGGRESSIVE_STAT' | 'REAGENT_CONSERVATIVE'>('BALANCED_CLINICAL');
+    const [rejectedMessages, setRejectedMessages] = useState<any[]>([]);
+    const [unacknowledgedAlerts, setUnacknowledgedAlerts] = useState<any[]>([]);
+
+    const refreshFleetStatus = useCallback(async () => {
+        try {
+            const res = await nexusApi.getFleetStatus(30);
+            if (res?.success && res?.data) {
+                if (Array.isArray(res.data.fleet) && res.data.fleet.length > 0) {
+                    setFleet((prevFleet) => {
+                        const nextFleet = [...prevFleet];
+                        for (const incoming of res.data.fleet) {
+                            const idx = nextFleet.findIndex(
+                                (f) => f.analyzerId === incoming.analyzerId || f.serialNumber === incoming.serialNumber
+                            );
+                            if (idx >= 0) {
+                                nextFleet[idx] = { ...nextFleet[idx], ...incoming };
+                            } else {
+                                nextFleet.push(incoming);
+                            }
+                        }
+                        return nextFleet;
+                    });
+                }
+                if (Array.isArray(res.data.rejectedMessages)) {
+                    setRejectedMessages(res.data.rejectedMessages);
+                }
+                if (Array.isArray(res.data.unacknowledgedAlerts)) {
+                    setUnacknowledgedAlerts(res.data.unacknowledgedAlerts);
+                }
+            }
+        } catch {
+            // Fail-soft for background telemetry poller
+        }
+    }, []);
+
+    useEffect(() => {
+        void refreshFleetStatus();
+        const interval = setInterval(refreshFleetStatus, 5000);
+        return () => clearInterval(interval);
+    }, [refreshFleetStatus]);
 
     // HIL Simulator State
     const [hilSimulator, setHilSimulator] = useState<NexusState['hilSimulator']>({
@@ -1149,6 +1195,8 @@ export const NexusStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         purchaseOrders,
         liveSpecimens,
         paretoPolicy,
+        rejectedMessages,
+        unacknowledgedAlerts,
         hilSimulator,
         kpis,
     };
@@ -1175,6 +1223,7 @@ export const NexusStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         launchPneumaticCapsule,
         dispatchWorkOrder,
         toggleHl7Stream,
+        refreshFleetStatus,
     };
 
     const value: NexusStoreContextValue = {

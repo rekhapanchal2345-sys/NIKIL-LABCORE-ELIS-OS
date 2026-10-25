@@ -515,6 +515,7 @@ app.use("/api/nexus", nexusRoutes);
 
 app.use("/api/enterprise", enterpriseWorkflowsRoutes);
 app.use("/api/v1/enterprise", enterpriseWorkflowsRoutes);
+app.use("/api/enterprise-workflows", enterpriseWorkflowsRoutes);
 
 // =======================================================
 // ENTERPRISE CLINICAL WORKFLOWS (TIER 2)

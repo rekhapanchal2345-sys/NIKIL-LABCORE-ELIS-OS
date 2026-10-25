@@ -123,7 +123,136 @@ export const CLSI_M100_BREAKPOINTS: Record<string, ClsiBreakpointRule> = {
     sMinZoneMm: 21,
     rMaxZoneMm: 17,
   },
+  AMP: {
+    antibioticCode: 'AMP',
+    antibioticName: 'Ampicillin',
+    antibioticClass: 'Penicillins',
+    isRestrictedReserve: false,
+    sMaxMic: 8,
+    rMinMic: 32,
+    sMinZoneMm: 17,
+    rMaxZoneMm: 13,
+  },
+  NIT: {
+    antibioticCode: 'NIT',
+    antibioticName: 'Nitrofurantoin',
+    antibioticClass: 'Nitrofurans (Urine Only)',
+    isRestrictedReserve: false,
+    sMaxMic: 32,
+    rMinMic: 128,
+    sMinZoneMm: 17,
+    rMaxZoneMm: 14,
+  },
+  FOS: {
+    antibioticCode: 'FOS',
+    antibioticName: 'Fosfomycin',
+    antibioticClass: 'Phosphonic Acids (Urine Only)',
+    isRestrictedReserve: false,
+    sMaxMic: 64,
+    rMinMic: 256,
+    sMinZoneMm: 16,
+    rMaxZoneMm: 12,
+  },
+  CZA: {
+    antibioticCode: 'CZA',
+    antibioticName: 'Ceftazidime-Avibactam',
+    antibioticClass: 'Novel Beta-Lactam / Beta-Lactamase Inhibitor',
+    isRestrictedReserve: true,
+    sMaxMic: 8,
+    rMinMic: 16,
+    sMinZoneMm: 21,
+    rMaxZoneMm: 20,
+  },
+  TGC: {
+    antibioticCode: 'TGC',
+    antibioticName: 'Tigecycline',
+    antibioticClass: 'Glycylcyclines',
+    isRestrictedReserve: true,
+    sMaxMic: 2,
+    rMinMic: 8,
+    sMinZoneMm: 19,
+    rMaxZoneMm: 14,
+  },
+  GEN: {
+    antibioticCode: 'GEN',
+    antibioticName: 'Gentamicin',
+    antibioticClass: 'Aminoglycosides',
+    isRestrictedReserve: false,
+    sMaxMic: 4,
+    rMinMic: 16,
+    sMinZoneMm: 15,
+    rMaxZoneMm: 12,
+  },
+  COT: {
+    antibioticCode: 'COT',
+    antibioticName: 'Trimethoprim-Sulfamethoxazole',
+    antibioticClass: 'Folate Pathway Inhibitors',
+    isRestrictedReserve: false,
+    sMaxMic: 2,
+    rMinMic: 4,
+    sMinZoneMm: 16,
+    rMaxZoneMm: 10,
+  },
+  ERT: {
+    antibioticCode: 'ERT',
+    antibioticName: 'Ertapenem',
+    antibioticClass: 'Carbapenems (Group 1)',
+    isRestrictedReserve: false,
+    sMaxMic: 0.5,
+    rMinMic: 2,
+    sMinZoneMm: 22,
+    rMaxZoneMm: 18,
+  },
 };
+
+/**
+ * Clinical Intrinsic Resistance Validation Rules (CLSI M100 Appendix B / EUCAST Expert Rules)
+ */
+export interface IntrinsicResistanceRule {
+  organismPattern: RegExp;
+  organismDisplay: string;
+  inherentlyResistantCodes: Array<{
+    code: string;
+    name: string;
+    mechanism: string;
+  }>;
+}
+
+export const INTRINSIC_RESISTANCE_RULES: IntrinsicResistanceRule[] = [
+  {
+    organismPattern: /klebsiella/i,
+    organismDisplay: 'Klebsiella species',
+    inherentlyResistantCodes: [
+      { code: 'AMP', name: 'Ampicillin', mechanism: 'Constitutive chromosomal SHV-1 beta-lactamase.' },
+    ],
+  },
+  {
+    organismPattern: /proteus/i,
+    organismDisplay: 'Proteus species',
+    inherentlyResistantCodes: [
+      { code: 'NIT', name: 'Nitrofurantoin', mechanism: 'Naturally elevated minimum inhibitory concentration.' },
+      { code: 'CST', name: 'Colistin', mechanism: 'Cell envelope lipid A modification prevents polymyxin binding.' },
+      { code: 'TGC', name: 'Tigecycline', mechanism: 'Constitutive AcrAB-TolC multidrug efflux pumps.' },
+    ],
+  },
+  {
+    organismPattern: /pseudomonas/i,
+    organismDisplay: 'Pseudomonas aeruginosa',
+    inherentlyResistantCodes: [
+      { code: 'AMP', name: 'Ampicillin', mechanism: 'Inducible chromosomal AmpC cephalosporinase.' },
+      { code: 'CRO', name: 'Ceftriaxone', mechanism: 'Low outer membrane permeability & AmpC enzyme.' },
+      { code: 'COT', name: 'Trimethoprim-Sulfamethoxazole', mechanism: 'MexAB-OprM multidrug efflux system.' },
+      { code: 'ERT', name: 'Ertapenem', mechanism: 'Lacks required outer membrane porin OprD specificity.' },
+    ],
+  },
+  {
+    organismPattern: /staphylococcus/i,
+    organismDisplay: 'Staphylococcus aureus',
+    inherentlyResistantCodes: [
+      { code: 'CST', name: 'Colistin', mechanism: 'Polymyxins lack target sites on Gram-positive peptidoglycan.' },
+    ],
+  },
+];
 
 export interface AccessionCultureInput {
   sampleId: string;
@@ -416,6 +545,34 @@ export class MicrobiologyAstService {
     }
 
     return Array.from(flags);
+  }
+
+  /**
+   * Identifies any anomalous or impossible susceptibility findings violating
+   * intrinsic microbial resistance rules (CLSI M100 Appendix B / EUCAST Expert Rules).
+   */
+  public validateIntrinsicResistance(
+    organismName: string,
+    results: EvaluatedAstResult[]
+  ): Array<{ antibioticCode: string; antibioticName: string; mechanism: string }> {
+    const violations: Array<{ antibioticCode: string; antibioticName: string; mechanism: string }> = [];
+    for (const rule of INTRINSIC_RESISTANCE_RULES) {
+      if (rule.organismPattern.test(organismName)) {
+        for (const intrinsic of rule.inherentlyResistantCodes) {
+          const match = results.find(
+            (r) => r.antibioticCode === intrinsic.code && r.interpretation === 'S'
+          );
+          if (match) {
+            violations.push({
+              antibioticCode: intrinsic.code,
+              antibioticName: intrinsic.name,
+              mechanism: intrinsic.mechanism,
+            });
+          }
+        }
+      }
+    }
+    return violations;
   }
 
   /**

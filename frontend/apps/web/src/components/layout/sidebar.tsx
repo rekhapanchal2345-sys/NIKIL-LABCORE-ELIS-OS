@@ -414,6 +414,8 @@ const menuSections: MenuSection[] = [
           { label: "AST & MIC Workstation", href: "/microbiology?tab=ast", badge: "VITEK-2", badgeVariant: "purple" },
           { label: "Antibiogram Matrix (HICC)", href: "/microbiology?tab=antibiogram", badge: "EUCAST", badgeVariant: "blue" },
           { label: "AMR & Superbug Surveillance", href: "/microbiology?tab=amr", badge: "CLSI", badgeVariant: "amber" },
+          { label: "Antibiotic Stewardship (CDSS)", href: "/microbiology?tab=stewardship", badge: "AI-Rx", badgeVariant: "emerald" },
+          { label: "Critical Call Log (ISO 15189)", href: "/microbiology?tab=critical", badge: "NABL", badgeVariant: "red" },
         ],
       },
       {

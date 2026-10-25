@@ -59,6 +59,8 @@ router.post('/emergency-stop', requireRoles('SUPER_ADMIN', 'ADMIN', 'PATHOLOGIST
 // 1. NEXUS EXECUTIVE COMMAND CENTER
 // =========================================================================
 router.get('/overview', nexusController.getCommandCenterOverview);
+router.get('/command-center', nexusController.getCommandCenterOverview);
+router.get('/fleet-status', nexusController.getFleetStatus);
 router.get('/', nexusController.getCommandCenterOverview);
 
 // =========================================================================

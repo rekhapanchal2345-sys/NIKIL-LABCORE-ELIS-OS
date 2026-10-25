@@ -993,6 +993,50 @@ function OmniscientNexusDeckInner() {
                 {/* --------------------------------------------------------------------- */}
                 {state.activeTab === 'OVERVIEW' && (
                     <div className="space-y-6 animate-fadeIn">
+                        {/* OFFLINE / STALE HEARTBEAT ALERT BANNER */}
+                        {state.fleet.some((a) => a.status === 'OFFLINE' || a.connectionHealth === 'OFFLINE' || a.connectionHealth === 'STALE') && (
+                            <div className="p-4 rounded-xl border border-rose-500/70 bg-rose-950/40 backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-[0_0_25px_rgba(244,63,94,0.15)] animate-pulse">
+                                <div className="flex items-center gap-3">
+                                    <AlertOctagon className="w-6 h-6 text-rose-400 shrink-0" />
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-mono font-bold uppercase tracking-wider text-rose-300">
+                                                FLEET CONNECTION ALERT // ANALYZER OFFLINE
+                                            </span>
+                                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-200 border border-rose-500/40">
+                                                Threshold: 30s Staleness
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-rose-100 mt-1">
+                                            Heartbeats stopped or connection dropped for:{' '}
+                                            {state.fleet
+                                                .filter((a) => a.status === 'OFFLINE' || a.connectionHealth === 'OFFLINE' || a.connectionHealth === 'STALE')
+                                                .map((a) => `${a.name} [${a.serialNumber || a.analyzerId}] (${a.heartbeatAgeSeconds !== null && a.heartbeatAgeSeconds !== undefined ? `${a.heartbeatAgeSeconds}s elapsed` : 'Offline'})`)
+                                                .join(', ')}
+                                            . Dashboard will auto-update upon machine reconnection.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Link
+                                        href="/analyzers"
+                                        className="px-3 py-1.5 rounded-lg bg-rose-600/40 hover:bg-rose-600/60 text-white text-xs font-mono font-semibold border border-rose-500/50 flex items-center gap-1.5 transition-all"
+                                    >
+                                        <span>Open Simulator Controls</span>
+                                        <ArrowRight className="w-3.5 h-3.5" />
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        onClick={() => actions.refreshFleetStatus()}
+                                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-all"
+                                    >
+                                        <RefreshCw className="w-3.5 h-3.5" />
+                                        <span>Check Status</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Executive KPI Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between hover:border-slate-700 transition-all shadow-sm">
@@ -1780,28 +1824,67 @@ function OmniscientNexusDeckInner() {
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <h3 className="text-sm font-bold text-white">{anz.name}</h3>
+                                            <div className="flex items-center gap-1.5">
+                                                <h3 className="text-sm font-bold text-white">{anz.name}</h3>
+                                                {anz.isSimulated && (
+                                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                                        SIMULATED TWIN
+                                                    </span>
+                                                )}
+                                            </div>
                                             <span className="text-[11px] text-slate-400 font-mono">
                                                 {anz.manufacturer} • {anz.serialNumber}
                                             </span>
                                         </div>
-                                        <span
-                                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                                                anz.status === 'ONLINE'
-                                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse'
-                                            }`}
-                                        >
-                                            {anz.status}
-                                        </span>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span
+                                                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                                    anz.status === 'ONLINE'
+                                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                                        : anz.status === 'RECONNECTED'
+                                                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                                                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse'
+                                                }`}
+                                            >
+                                                {anz.status}
+                                            </span>
+                                            {anz.connectionHealth && (
+                                                <span
+                                                    className={`text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
+                                                        anz.connectionHealth === 'HEALTHY'
+                                                            ? 'text-emerald-300 bg-emerald-950/60 border-emerald-500/30'
+                                                            : anz.connectionHealth === 'STALE'
+                                                            ? 'text-amber-300 bg-amber-950/60 border-amber-500/30'
+                                                            : 'text-rose-300 bg-rose-950/60 border-rose-500/30'
+                                                    }`}
+                                                >
+                                                    LINK: {anz.connectionHealth}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3 text-xs font-mono bg-slate-950 p-3 rounded-lg border border-slate-800/80">
                                         <div>Throughput: <strong className="text-white">{anz.currentThroughputRealtime} / {anz.throughputNominalPerHour}h</strong></div>
                                         <div>Queue Depth: <strong className="text-cyan-300">{anz.currentQueueDepth} racks</strong></div>
-                                        <div>Lamp Hours: <strong className="text-slate-300">{anz.opticalLampHours}h</strong></div>
+                                        <div>
+                                            Heartbeat:{' '}
+                                            <strong
+                                                className={
+                                                    anz.connectionHealth === 'STALE' || anz.connectionHealth === 'OFFLINE'
+                                                        ? 'text-rose-400 font-bold'
+                                                        : 'text-emerald-400'
+                                                }
+                                            >
+                                                {anz.heartbeatAgeSeconds !== null && anz.heartbeatAgeSeconds !== undefined
+                                                    ? `${anz.heartbeatAgeSeconds}s ago`
+                                                    : anz.lastSuccessfulHeartbeat
+                                                    ? 'Active'
+                                                    : 'Offline'}
+                                            </strong>
+                                        </div>
+                                        <div>Latency: <strong className="text-cyan-400">{anz.connectionLatencyMs || 12}ms</strong></div>
                                         <div>Chamber Temp: <strong className="text-emerald-400">{anz.chamberTemperatureCelsius}°C</strong></div>
-                                        <div>Vacuum Press: <strong className="text-slate-300">{anz.vacuumPressureKpa} kPa</strong></div>
                                         <div>RUL Remaining: <strong className={anz.rulHours < 50 ? 'text-rose-400' : 'text-cyan-400'}>{anz.rulHours}h</strong></div>
                                     </div>
 
@@ -1849,6 +1932,78 @@ function OmniscientNexusDeckInner() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+
+                        {/* Integration Engine Telemetry, Dead-Letter Queue & Message Journal */}
+                        <div className="p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                        <Database className="w-4 h-4 text-cyan-400" />
+                                        LabCore Integration Engine — Dead-Letter Queue &amp; Message Journal
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Incoming ASTM/HL7 frames, deduplication journal, rejected messages, and automated fail-soft routing
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                        Journaled: {state.rejectedMessages?.length || 0} rejected/duplicate entries
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => actions.refreshFleetStatus()}
+                                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 transition-colors"
+                                        title="Refresh fleet telemetry"
+                                    >
+                                        <RefreshCw className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Rejected Messages / DLQ List */}
+                            <div className="space-y-2">
+                                {state.rejectedMessages && state.rejectedMessages.length > 0 ? (
+                                    state.rejectedMessages.slice(0, 6).map((msg: any, mIdx: number) => (
+                                        <div
+                                            key={msg.id || mIdx}
+                                            className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs font-mono"
+                                        >
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span
+                                                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                            msg.processing_status === 'DUPLICATE_IGNORED'
+                                                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                                                : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                                        }`}
+                                                    >
+                                                        {msg.processing_status}
+                                                    </span>
+                                                    <span className="font-bold text-white">{msg.analyzer_id}</span>
+                                                    <span className="text-slate-500">
+                                                        • {new Date(msg.received_at).toLocaleTimeString()}
+                                                    </span>
+                                                </div>
+                                                <p className="text-slate-300 text-xs font-sans mt-0.5">
+                                                    {msg.error_code ? `[${msg.error_code}] ` : ''}
+                                                    {msg.error_diagnostic ||
+                                                        (msg.processing_status === 'DUPLICATE_IGNORED'
+                                                            ? 'Idempotent SHA-256 duplicate suppressed'
+                                                            : 'Dead letter stored')}
+                                                </p>
+                                            </div>
+                                            <span className="text-[10px] text-slate-500 font-mono">
+                                                Retries: {msg.retry_count ?? 0}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="p-4 rounded-lg bg-slate-950/60 border border-slate-800/50 text-center text-xs text-slate-500 font-mono">
+                                        No rejected messages or dead-letter items in current window. All incoming frames processing nominally.
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Biomedical Engineering & Maintenance Work Orders Console */}

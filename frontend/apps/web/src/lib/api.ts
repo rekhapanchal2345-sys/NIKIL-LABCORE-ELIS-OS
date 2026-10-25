@@ -6909,6 +6909,44 @@ export const analyzersApi = {
       body: JSON.stringify(data),
     });
   },
+
+  // Virtual Machine Simulator -> Integration Engine Bridge
+  sendSimulatorEvent: async (data: {
+    analyzerId: string;
+    eventType: 'ONLINE' | 'OFFLINE' | 'RECONNECTED' | 'ERROR' | 'HEARTBEAT' | 'MALFORMED_FRAME';
+    isSimulation: true;
+    simulationMode: 'SIMULATION_MODE';
+    timestamp?: string;
+    latencyMs?: number;
+    payload?: Record<string, any>;
+    idempotencyKey?: string;
+    errorCode?: string;
+    errorMessage?: string;
+  }) => {
+    return apiCall('/api/analyzers/simulator/event', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// Omniscient Nexus Command Center API
+export const nexusApi = {
+  getOverview: async () => {
+    return apiCall('/api/nexus/overview');
+  },
+  getFleetStatus: async (staleThresholdSeconds: number = 30) => {
+    return apiCall(`/api/nexus/fleet-status?staleThresholdSeconds=${staleThresholdSeconds}`);
+  },
+  getOperatingMode: async (orgId?: string) => {
+    return apiCall(`/api/nexus/mode${orgId ? `?organizationId=${orgId}` : ''}`);
+  },
+  reviewProposal: async (id: string, decision: 'APPROVED' | 'REJECTED', reviewNotes?: string) => {
+    return apiCall(`/api/nexus/proposals/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, reviewNotes }),
+    });
+  },
 };
 
 // Alias for compatibility
