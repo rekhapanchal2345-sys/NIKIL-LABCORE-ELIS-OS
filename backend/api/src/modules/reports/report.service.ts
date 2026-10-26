@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { ReportStatus } from "@prisma/client";
-import prisma from "../../../config/database";
+import prisma from "../../lib/prisma";
+import { dispatchApprovedReportToWhatsApp } from "../communications/whatsapp-report-delivery.service";
 import { HttpError } from "../../utils/http-error";
 import { reportStorageService } from "./report.storage.service";
 
@@ -362,7 +363,9 @@ export const getPublishedReports =
           let deliveryStatus = "UNDELIVERED";
           let deliveryMethod = null;
 
-          const whatsappSent = communications.some(c => c.type === "SMS" && c.status === "DELIVERED");
+          const whatsappSent = communications.some(
+            c => (c.type === "WHATSAPP" || c.type === "SMS") && (c.status === "DELIVERED" || c.status === "SENT")
+          );
           const emailSent = communications.some(c => c.type === "EMAIL" && c.status === "DELIVERED");
 
           if (whatsappSent) {
@@ -1305,7 +1308,8 @@ export const sendReportToDoctor = async (
   }
 };
 
-export const sendReportWhatsApp = async (reportId: string, phone?: string, userId?: string) => {
+export const sendReportWhatsApp = async (reportId: string, phone?: string, userId?: string) => { const report = await resolveReportForAction(reportId); if (!report) throw new Error("Report not found"); return dispatchApprovedReportToWhatsApp(report.orderId, { actorId: userId }); };
+const _oldSendReportWhatsApp = async (reportId: string, phone?: string, userId?: string) => {
   const report = await resolveReportForAction(reportId);
   if (!report) throw new Error("Report not found");
   const order = await prisma.order.findUnique({
