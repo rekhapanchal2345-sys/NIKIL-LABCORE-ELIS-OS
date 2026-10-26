@@ -57,6 +57,12 @@ import {
   suspiciousRequestDetector,
   authEventLogger,
 } from "../middleware/security.middleware";
+import {
+  strictAuthLimiter,
+  globalApiLimiter,
+  reportDownloadLimiter,
+  searchQueryLimiter,
+} from "./modules/security/rate-limiters";
 
 // =======================================================
 // EXPRESS APPLICATION
@@ -158,6 +164,12 @@ app.use("/api/auth", ipSecurityGuard);
 
 // Detect SQL injection, XSS and path traversal payloads
 app.use("/api", suspiciousRequestDetector);
+
+// Rate Limiting (OWASP A04/A07 Brute-Force & Denial of Service Defense)
+app.use("/api/auth", strictAuthLimiter);
+app.use("/api/reports/download", reportDownloadLimiter);
+app.use("/api/search", searchQueryLimiter);
+app.use("/api", globalApiLimiter);
 
 // =======================================================
 // REQUEST BODY
