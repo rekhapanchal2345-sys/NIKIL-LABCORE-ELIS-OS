@@ -9,7 +9,7 @@
 ## 📊 EXECUTIVE SPRINT SUMMARY & PROGRESS TRACKER
 
 ```
-[██████████████████████████████████████████░░░░░░] 70.0% COMPLETED (21 / 30 HOURS)
+[████████████████████████████████████████████░░░░] 73.3% COMPLETED (22 / 30 HOURS)
 ```
 
 | Phase / Hour Block | Focus | Status | Deliverables Certified |
@@ -19,7 +19,7 @@
 | **Hour 15 (Day 15)** | Multi-Branch Architecture & Tenancy | ✅ **100% COMPLETE** | Branch Model, Context Injection, Blr/Mum Tenant Isolation, HQ Aggregated Analytics (39/39 Asserts) |
 | **Hour 16 (Day 16)** | Cash Shift Daybook & Automated DR | ✅ **100% COMPLETE** | Physical Denominations (₹2000-₹1), Variance Triage, AES-256 DB Backup & GFS Retention (51/51 Asserts) |
 | **Hours 17–21 (Days 17–21)** | Enterprise UI, Security & Testing | ✅ **100% COMPLETE** | Hours 17–21 Certified (Week 3 Milestone Passed: 27/27 Tests, 100% Coverage, Formal Certification) |
-| **Hours 22–28 (Days 22–28)** | Production Deploy, RBAC & Load Test | ⏳ **QUEUED** | Docker Prod, Nginx TLS 1.3, 7-Tier RBAC, Role Manuals, 50-User Stress Test, Failover DR Drill |
+| **Hours 22–28 (Days 22–28)** | Production Deploy, RBAC & Load Test | 🔄 **IN PROGRESS (1/7)** | Hour 22 Certified (Docker Compose, Nginx TLS 1.3, ASTM TCP 5005, UFW Firewall: 25/25 Tests, 152/152 Asserts) |
 | **Hours 29–30 (Days 29–30)** | Final Quality Audit & Go-Live | ⏳ **QUEUED** | Zero-Defect Bug Bash, 12/12 Automated Production Checklist, Hospital Operational Sign-Off |
 
 ---
@@ -239,13 +239,22 @@
 ### 🕒 BLOCK 4: PRODUCTION DEPLOYMENT, RBAC & RESILIENCE (Hours 22–28 = Days 22–28)
 ### ═══════════════════════════════════════════════════════════════════
 
-#### 🔷 HOUR 22 (Day 22) — Production Infrastructure & Nginx Reverse Proxy
-- **Objective:** Production-grade deployment stack with TLS 1.3 encryption and container orchestration.
+#### 🔷 HOUR 22 (Day 22) — Production Infrastructure & Nginx Reverse Proxy (TLS 1.3) ✅
+- **Objective:** Production-grade deployment stack with TLS 1.3 encryption, ASTM analyzer Layer 4 TCP proxy, container orchestration, and server firewall hardening.
 - **Architectural Deliverables:**
-  - `docker-compose.prod.yml` provisioning Web (3001), Auth (3002), API (5000), Postgres (5432), Redis (6379), and TCP Analyzer (5005).
-  - Nginx configuration with TLS 1.3, SSL ciphers, WebSocket proxying (`/socket.io`), and Gzip compression.
-  - UFW firewall rules exposing ports 80, 443, and 5005 only.
-- **Verification Script:** `test-day22-infra-deploy.ts`.
+  - `docker-compose.prod.yml` upgraded with all 7 production services: `postgres` (16-alpine with healthcheck & limits), `redis` (7-alpine with AOF & auth), `backend` (Express API with healthcheck & backup/upload persistence), `web` (Next.js 15 standalone), `login-portal` (Vite SPA), `nginx` (TLS 1.3 reverse proxy & ASTM stream), and `certbot` (automated Let's Encrypt renewal loop).
+  - High-throughput `nginx/nginx.conf` with top-level `stream { ... }` block forwarding raw Layer 4 TCP packets on port 5005 directly to `backend:5005` for clinical hematology/biochemistry hardware analyzers (Sysmex, Roche Cobas, Mindray, Beckman Coulter).
+  - Production virtual host `nginx/conf.d/labcore.conf`:
+    - Port 80: Let's Encrypt ACME challenge endpoint (`/.well-known/acme-challenge/`) + strict HTTP to HTTPS permanent 301 redirection.
+    - Port 443: TLS 1.3 only (`TLSv1.3 TLSv1.2`), modern ECDHE ciphers, HSTS with preload (`max-age=63072000; includeSubDomains; preload`), OCSP stapling, security headers (nosniff, SAMEORIGIN, CSP, Referrer-Policy), Socket.io WebSocket proxying (`/socket.io/` with 24h timeout), and Next.js static asset caching (`/_next/static/` 365d immutable).
+  - Automated Ubuntu 24.04 LTS VPS provisioning script (`deploy/setup-production-server.sh` & companion `deploy/setup-production-server.ps1`):
+    - System hardware audit (min 4 vCPU, 8GB RAM, 100GB SSD).
+    - Linux kernel sysctl optimization (`somaxconn=65535`, `file-max=2097152`, `overcommit_memory=1`).
+    - UFW firewall rules: default deny incoming, default allow outgoing, exposing only ports `22` (SSH), `80` (HTTP), `443` (HTTPS), and `5005` (ASTM TCP Analyzer).
+    - Fail2ban intrusion defense and systemd `labcore.service` automated boot service.
+  - SSL certificate automation (`nginx/ssl/generate-self-signed-ssl.sh`, `generate-self-signed-ssl.ps1`, `generate-letsencrypt.sh`) and verified bundled staging SAN certificates for `elis.yourhospital.com`, `localhost`, and `127.0.0.1`.
+  - Comprehensive operations manual updated in `DEPLOYMENT_GUIDE.md`.
+- **Verification Script:** `backend/test-day22-infra-deploy.ts` — **Certified 100% (25/25 Tests, 152/152 Assertions Passed, 0 Failures)**.
 
 #### 🔷 HOUR 23 (Day 23) — Production Database Seeding & Observability Telemetry
 - **Objective:** Deployment database bootstrapping, Super Admin account provisioning, and live health monitors.

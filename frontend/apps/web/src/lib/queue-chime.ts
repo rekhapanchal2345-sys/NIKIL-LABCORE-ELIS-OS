@@ -127,6 +127,13 @@ class EliteQueueAudioEngine {
   }
 
   /**
+   * Play specific chime tone (alias for playHospitalChime)
+   */
+  public playTone(overrideStyle?: any): Promise<void> {
+    return this.playHospitalChime(overrideStyle);
+  }
+
+  /**
    * Play the selected hospital acoustic chime
    */
   public playHospitalChime(overrideStyle?: ChimeStyle): Promise<void> {

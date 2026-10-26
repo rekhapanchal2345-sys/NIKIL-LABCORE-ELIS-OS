@@ -93,6 +93,7 @@ export interface QueueToken {
   riskLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
   holdReason?: string;
   callCount?: number;
+  serviceRequested?: string;
 }
 
 const STORAGE_KEY = 'labcore_opd_live_queue_v5';

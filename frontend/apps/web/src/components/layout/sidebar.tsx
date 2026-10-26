@@ -257,6 +257,8 @@ const menuSections: MenuSection[] = [
           { label: "Today's Registrations", href: "/patients?chip=TODAY", badge: "Today", badgeVariant: "teal" },
           { label: "STAT & Critical Watchlist", href: "/patients?chip=CRITICAL", badge: "Urgent", badgeVariant: "red", liveKey: "criticalPatients" },
           { label: "Inpatient (IPD) / Wards", href: "/patients?chip=IPD", badge: "Beds", badgeVariant: "blue" },
+          { label: "Phlebotomy Accession Desk", href: "/patients?chip=PHLEBOTOMY", badge: "Tubes", badgeVariant: "teal" },
+          { label: "Cashless TPA & Billing Desk", href: "/patients?chip=BILLING", badge: "Claims", badgeVariant: "amber" },
           { label: "Pending Diagnostic Roster", href: "/patients?chip=PENDING", badge: "Pending", badgeVariant: "amber" },
           { isDivider: true, dividerLabel: "NATIONAL DIGITAL HEALTH", label: "", href: "#" },
           { label: "ABDM / ABHA Digital Desk", href: "/abdm", badge: "ABHA", badgeVariant: "purple" },

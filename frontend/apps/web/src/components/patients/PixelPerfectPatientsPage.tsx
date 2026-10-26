@@ -9,6 +9,12 @@ import { showSuccess, showError, showInfo } from "@/lib/notifications";
 import { PatientQuickRegisterModal } from "@/components/orders/PatientQuickRegisterModal";
 import RegisterPatientWizard from "@/components/patients/RegisterPatientWizard";
 import QuickTokenModal from "@/components/patients/QuickTokenModal";
+import AbhaLinkModal from "@/components/abdm/AbhaLinkModal";
+import AbhaCardModal from "@/components/abdm/AbhaCardModal";
+import PatientRegistrationPrintForm from "@/components/patients/PatientRegistrationPrintForm";
+import TransferStationModal from "@/components/patients/TransferStationModal";
+import { QueueToken, QueueStage } from "@/components/patients/OpdLiveQueue";
+import { queueAudio } from "@/lib/queue-chime";
 import BarcodeLabelModal, { BarcodeLabelItem } from "@/components/barcodes/BarcodeLabelModal";
 import ClinicalVitalsTriageCenter from "@/components/vitals/ClinicalVitalsTriageCenter";
 import {
@@ -336,7 +342,7 @@ export default function PixelPerfectPatientsPage() {
   const [loadingOrders, setLoadingOrders] = useState(false);
 
   // View Mode: Table vs Luxury Medical Card Grid
-  const [viewMode, setViewMode] = useState<"table" | "grid">(initialViewMode);
+  const [viewMode, setViewMode] = useState<"table" | "grid" | "workspace">(initialViewMode as any);
 
   // Search & Filtering State
   const [search, setSearch] = useState(initialSearch);
@@ -369,6 +375,23 @@ export default function PixelPerfectPatientsPage() {
   const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
   const [isQuickTokenOpen, setIsQuickTokenOpen] = useState(false);
   const [selectedFacility, setSelectedFacility] = useState<"ALL" | "MAIN" | "LAB" | "POLY" | "HOME">("ALL");
+  // Advanced Clinical Modals State
+  const [activeAbhaLinkPatient, setActiveAbhaLinkPatient] = useState<Patient | null>(null);
+  const [activeAbhaCardData, setActiveAbhaCardData] = useState<any | null>(null);
+  const [activePrintPatient, setActivePrintPatient] = useState<Patient | null>(null);
+
+  // Advanced Clinical Filters
+  const [departmentFilter, setDepartmentFilter] = useState("All");
+  const [careTypeFilter, setCareTypeFilter] = useState("All");
+  const [tpaFilter, setTpaFilter] = useState("All");
+
+  // Search input ref for keyboard shortcut Alt+F
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Transfer Station Modal State
+  const [transferModalToken, setTransferModalToken] = useState<QueueToken | null>(null);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+
   const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
   const [barcodeItems, setBarcodeItems] = useState<BarcodeLabelItem[]>([]);
   const [selectedBarcodeToPrint, setSelectedBarcodeToPrint] = useState<string | undefined>(undefined);
@@ -395,19 +418,39 @@ export default function PixelPerfectPatientsPage() {
     return `${user.slice(0, 2)}•••••@${domain}`;
   };
 
-  // Escape key listener to close drawer
+  // Hospital-Grade Clinical Keyboard Shortcuts & Drawer Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isDrawerOpen) {
-        setIsDrawerOpen(false);
-        setSelectedPatient(null);
-        setDrawerFullPatient(null);
-        updateUrlParams({ view: null, tab: null });
+      if (e.key === "Escape") {
+        if (isDrawerOpen) {
+          setIsDrawerOpen(false);
+          setSelectedPatient(null);
+          setDrawerFullPatient(null);
+          updateUrlParams({ view: null, tab: null });
+        }
+        if (activeAbhaLinkPatient) setActiveAbhaLinkPatient(null);
+        if (activeAbhaCardData) setActiveAbhaCardData(null);
+        if (activePrintPatient) setActivePrintPatient(null);
+      }
+      // Alt + N: Register / Admit Patient
+      if (e.altKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        setIsQuickRegisterOpen(true);
+      }
+      // Alt + T: Issue OPD Token
+      if (e.altKey && (e.key === "t" || e.key === "T")) {
+        e.preventDefault();
+        setIsQuickTokenOpen(true);
+      }
+      // Alt + F: Focus Master Search
+      if (e.altKey && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isDrawerOpen, updateUrlParams]);
+  }, [isDrawerOpen, activeAbhaLinkPatient, activeAbhaCardData, activePrintPatient, updateUrlParams]);
 
   // Document Title
   useEffect(() => {
@@ -440,7 +483,7 @@ export default function PixelPerfectPatientsPage() {
     if (lParam !== itemsPerPage) setItemsPerPage(lParam);
 
     const vmParam = (searchParams.get("viewMode") as any) || "table";
-    if (["table", "grid"].includes(vmParam) && vmParam !== viewMode) setViewMode(vmParam);
+    if (["table", "grid", "workspace"].includes(vmParam) && vmParam !== viewMode) setViewMode(vmParam as any);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -1072,6 +1115,30 @@ export default function PixelPerfectPatientsPage() {
     if (bloodGroupFilter !== "All") {
       result = result.filter(p => p.bloodGroup === bloodGroupFilter);
     }
+    if (departmentFilter !== "All") {
+      result = result.filter(p => p.department?.toLowerCase().includes(departmentFilter.toLowerCase()));
+    }
+    if (careTypeFilter !== "All") {
+      result = result.filter(p => p.patientType === careTypeFilter);
+    }
+    if (tpaFilter !== "All") {
+      if (tpaFilter === "CASH") {
+        result = result.filter(p => !p.insuranceProvider || p.billingStatus === "SETTLED");
+      } else {
+        result = result.filter(p => p.insuranceProvider?.toLowerCase().includes(tpaFilter.toLowerCase()) || p.billingStatus === "TPA_CASHLESS");
+      }
+    }
+    if (selectedFacility !== "ALL") {
+      if (selectedFacility === "MAIN") {
+        result = result.filter(p => p.patientType === "IPD" || p.department === "General Medicine");
+      } else if (selectedFacility === "LAB") {
+        result = result.filter(p => (p.totalOrders ?? 0) > 0);
+      } else if (selectedFacility === "POLY") {
+        result = result.filter(p => p.patientType === "OPD");
+      } else if (selectedFacility === "HOME") {
+        result = result.filter(p => (p.age ?? 0) >= 60 || p.isCritical);
+      }
+    }
 
     return result.sort((a, b) => {
       if (sortBy === "name") return formatPatientFullName(a).localeCompare(formatPatientFullName(b));
@@ -1079,7 +1146,7 @@ export default function PixelPerfectPatientsPage() {
       if (sortBy === "uhid") return a.uhid.localeCompare(b.uhid);
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [patients, sortBy, activeChip, genderFilter, bloodGroupFilter]);
+  }, [patients, sortBy, activeChip, genderFilter, bloodGroupFilter, departmentFilter, careTypeFilter, tpaFilter, selectedFacility]);
 
   const currentPatients = filteredPatients;
 
@@ -1171,7 +1238,60 @@ export default function PixelPerfectPatientsPage() {
 
   return (
     <DashboardLayout title="Patients">
-      <div className="space-y-6 pb-20 w-full px-4 sm:px-6 lg:px-8 max-w-full">
+      <div className="space-y-5 pb-20 w-full px-4 sm:px-6 lg:px-8 max-w-full">
+        {/* =========================================================================
+            0A. HOSPITAL HQ BREADCRUMB & LIVE CLINICAL SHIFT HANDOVER RIBBON
+        ========================================================================= */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs shadow-2xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-extrabold text-slate-900 tracking-wide">LabCore Healthcare HQ</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-500 font-semibold">Clinical Operations</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-500 font-semibold">Patient Hub</span>
+            <span className="text-slate-300">/</span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-bold text-slate-800 border border-slate-200">
+              {activeChip === "ALL" ? "Master Patient Index (MPI)" :
+               activeChip === "OPD" ? "Live OPD Queue & Calling" :
+               activeChip === "CRITICAL" ? "STAT Emergency Panic Watch" :
+               activeChip === "IPD" ? "Inpatient (IPD) Bed Census" :
+               activeChip === "ABHA" ? "ABDM Digital Health Gateway" :
+               activeChip === "BILLING" ? "Cashless TPA & Billing Counter" :
+               "Phlebotomy Accession Desk"}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-slate-600">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-bold text-slate-800">Morning Shift</span>
+              <span className="text-slate-400 font-medium">(08:00 - 16:00)</span>
+            </div>
+
+            <span className="h-3.5 w-px bg-slate-200" />
+
+            <div className="hidden lg:flex items-center gap-1.5 text-slate-600">
+              <span className="text-slate-400">Chief on Duty:</span>
+              <span className="font-bold text-slate-800">Dr. Rajesh Sharma, MD</span>
+            </div>
+
+            <span className="h-3.5 w-px bg-slate-200" />
+
+            {/* Chime Bell Acoustic Test */}
+            <button
+              type="button"
+              onClick={() => {
+                queueAudio.playHospitalChime('CRYSTAL_BELL');
+                showInfo("Chime Test: Crystal bell queue acoustic chime played.");
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+              title="Test Hospital OPD Calling Chime (Crystal Bell)"
+            >
+              <span>🔔 Test Chime</span>
+            </button>
+          </div>
+        </div>
+
         {/* =========================================================================
             0. ENTERPRISE CLINICAL SUB-NAVIGATION BAR (Enterprise Hospital & Lab Roster)
         ========================================================================= */}
@@ -1542,6 +1662,7 @@ export default function PixelPerfectPatientsPage() {
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -1576,35 +1697,56 @@ export default function PixelPerfectPatientsPage() {
 
             {/* Controls Right: View Mode Toggle & Advanced Filter Toggle */}
             <div className="flex items-center gap-2">
-              {/* Table / Grid Toggle */}
+              {/* 3-Way Clinical View Switcher */}
               <div className="flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
                 <button
+                  type="button"
                   onClick={() => {
                     setViewMode("table");
                     updateUrlParams({ viewMode: null });
                   }}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${viewMode === "table"
-                      ? "bg-white text-indigo-700 shadow-sm"
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    viewMode === "table"
+                      ? "bg-white text-slate-900 shadow-2xs font-extrabold"
                       : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  title="Dense Clinical Table View"
+                  }`}
+                  title="Dense 10-Column Clinical Roster Table"
                 >
                   <Layers className="h-3.5 w-3.5" />
-                  <span>Table</span>
+                  <span>Roster Table</span>
                 </button>
 
                 <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode("workspace");
+                    updateUrlParams({ viewMode: "workspace" });
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    viewMode === "workspace"
+                      ? "bg-white text-slate-900 shadow-2xs font-extrabold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                  title="Interactive Clinical Desk Workspace (OPD Calling / Bed Census / Phlebotomy Station / TPA Desk)"
+                >
+                  <Building2 className="h-3.5 w-3.5 text-teal-600" />
+                  <span>Clinical Workspace</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     setViewMode("grid");
                     updateUrlParams({ viewMode: "grid" });
                   }}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${viewMode === "grid"
-                      ? "bg-white text-indigo-700 shadow-sm"
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    viewMode === "grid"
+                      ? "bg-white text-slate-900 shadow-2xs font-extrabold"
                       : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  title="Luxury Medical Cards View"
+                  }`}
+                  title="Clinical Patient Profile Cards"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Users className="h-3.5 w-3.5" />
                   <span>Cards</span>
                 </button>
               </div>
@@ -1812,10 +1954,62 @@ export default function PixelPerfectPatientsPage() {
 
           {/* Expandable Advanced Filters Row */}
           {showAdvancedFilters && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-dashed border-slate-200">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-3 border-t border-slate-200">
+              {/* Department Filter */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Department</label>
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-slate-400 font-medium"
+                >
+                  <option value="All">All Clinical Departments</option>
+                  <option value="General Medicine">General Medicine</option>
+                  <option value="Cardiology">Cardiology &amp; CCU</option>
+                  <option value="Pathology">Pathology &amp; Diagnostics</option>
+                  <option value="Diabetology">Diabetology &amp; Endo</option>
+                  <option value="Pediatrics">Pediatrics &amp; Neonatal</option>
+                  <option value="Emergency">Emergency &amp; Trauma</option>
+                </select>
+              </div>
+
+              {/* Care Level Filter */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Care Level</label>
+                <select
+                  value={careTypeFilter}
+                  onChange={(e) => setCareTypeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-slate-400 font-medium"
+                >
+                  <option value="All">All Care Levels</option>
+                  <option value="OPD">OPD (Outpatient)</option>
+                  <option value="IPD">IPD (Inpatient Wards)</option>
+                  <option value="EMERGENCY">Emergency / STAT</option>
+                  <option value="DAY_CARE">Day Care Procedures</option>
+                  <option value="CORPORATE">Corporate Checkups</option>
+                </select>
+              </div>
+
+              {/* Payer / TPA Filter */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Payer / TPA</label>
+                <select
+                  value={tpaFilter}
+                  onChange={(e) => setTpaFilter(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-slate-400 font-medium"
+                >
+                  <option value="All">All Payers &amp; Schemes</option>
+                  <option value="CASH">Self-Pay / Cash</option>
+                  <option value="Ayushman">Ayushman Bharat (PM-JAY)</option>
+                  <option value="Star Health">Star Health Insurance</option>
+                  <option value="ICICI">ICICI Lombard</option>
+                  <option value="CGHS">CGHS / ECHS Govt</option>
+                </select>
+              </div>
+
               {/* Gender Filter */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Gender</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Gender</label>
                 <select
                   value={genderFilter}
                   onChange={(e) => {
@@ -1824,7 +2018,7 @@ export default function PixelPerfectPatientsPage() {
                     setCurrentPage(1);
                     updateUrlParams({ gender: newG !== "All" ? newG : null, page: 1 });
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-slate-400 font-medium"
                 >
                   <option value="All">All Genders</option>
                   <option value="Male">Male</option>
@@ -1835,7 +2029,7 @@ export default function PixelPerfectPatientsPage() {
 
               {/* Blood Group Filter */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Blood Group</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Blood Group</label>
                 <select
                   value={bloodGroupFilter}
                   onChange={(e) => {
@@ -1844,7 +2038,7 @@ export default function PixelPerfectPatientsPage() {
                     setCurrentPage(1);
                     updateUrlParams({ bloodGroup: newBg !== "All" ? newBg : null, page: 1 });
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-slate-400 font-medium"
                 >
                   <option value="All">All Blood Groups</option>
                   <option value="A+">A Positive (A+)</option>
@@ -1859,22 +2053,27 @@ export default function PixelPerfectPatientsPage() {
               </div>
 
               {/* Reset Actions */}
-              <div className="flex items-end gap-2">
+              <div className="flex items-end">
                 <button
+                  type="button"
                   onClick={() => {
                     setSearch("");
                     setActiveChip("ALL");
                     setGenderFilter("All");
                     setBloodGroupFilter("All");
+                    setDepartmentFilter("All");
+                    setCareTypeFilter("All");
+                    setTpaFilter("All");
+                    setSelectedFacility("ALL");
                     setSortBy("recent");
                     setCurrentPage(1);
                     updateUrlParams({ q: null, chip: null, gender: null, bloodGroup: null, sortBy: null, page: 1 });
                     fetchPatients(1, false, "");
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all flex items-center justify-center gap-1"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all flex items-center justify-center gap-1.5"
                 >
                   <RefreshCw className="h-3 w-3" />
-                  <span>Reset All Filters</span>
+                  <span>Reset All</span>
                 </button>
               </div>
             </div>
@@ -2288,7 +2487,7 @@ export default function PixelPerfectPatientsPage() {
                                   handleOpenDrawer(patient);
                                 }
                               }}
-                              className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-slate-200 px-2 py-1.5 text-[11px] font-bold text-slate-800 transition-colors cursor-pointer"
                               title="Inspect Clinical Dossier"
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -2296,6 +2495,19 @@ export default function PixelPerfectPatientsPage() {
                             </Link>
 
                             <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActivePrintPatient(patient);
+                              }}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                              title="Print Patient Registration Face-Sheet & Barcode Intake Slip"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const items: BarcodeLabelItem[] = [{
@@ -2316,15 +2528,50 @@ export default function PixelPerfectPatientsPage() {
                                 setBarcodeItems(items);
                                 setBarcodeModalOpen(true);
                               }}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                               title="Print Patient Barcode"
                             >
                               <Printer className="h-3.5 w-3.5" />
                             </button>
 
+                            {patient.abhaNumber ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveAbhaCardData({
+                                    abhaNumber: patient.abhaNumber,
+                                    abhaAddress: patient.abhaAddress || `${patient.firstName.toLowerCase()}@abdm`,
+                                    name: fullName,
+                                    gender: patient.gender,
+                                    mobile: patient.phone,
+                                    bloodGroup: patient.bloodGroup,
+                                    status: 'ACTIVE',
+                                    qrData: `https://abdm.gov.in/phr/${patient.abhaNumber}`,
+                                  });
+                                }}
+                                className="rounded-lg p-1.5 text-purple-600 hover:bg-purple-50 transition-colors"
+                                title="View Official Ayushman Bharat Digital Card"
+                              >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveAbhaLinkPatient(patient);
+                                }}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                                title="Link ABDM / ABHA ID via Aadhaar"
+                              >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+
                             <Link
                               href={`/orders/new?patientId=${patient.id}&uhid=${encodeURIComponent(patient.uhid)}`}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                               title="Create Lab Order"
                             >
                               <Plus className="h-4 w-4" />
@@ -2403,6 +2650,538 @@ export default function PixelPerfectPatientsPage() {
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        ) : viewMode === "workspace" ? (
+          /* ======================== 3C. INTERACTIVE SPECIALIZED CLINICAL WORKSPACE ======================== */
+          <div className="space-y-6">
+            {/* ═══ WORKSPACE 1: LIVE OPD TOKEN CALLING & ROUTING DESK ═══ */}
+            {activeChip === "OPD" && (
+              <div className="space-y-4">
+                {/* Desk Header */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <Clock className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-extrabold text-slate-900">Live OPD Queue &amp; Counter Calling Console</h3>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Live Acoustic Calling
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Token generation, stage progression, acoustic ding-dong announcements, and doctor cabin assignment.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickTokenOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-all cursor-pointer"
+                    >
+                      <Ticket className="h-3.5 w-3.5" />
+                      <span>Issue Token</span>
+                    </button>
+                    <Link
+                      href="/patients/opd-queue"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-800 transition-all"
+                    >
+                      <span>Waiting Room TV Display</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 4 Stage Counter Swimlanes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {[
+                    { stageId: "TRIAGE", title: "1. Triage & Vitals Desk", sub: "Counter 1", color: "blue", count: Math.ceil(filteredPatients.length * 0.25) },
+                    { stageId: "PHLEBOTOMY", title: "2. Phlebotomy Booth", sub: "Booth 1 & 2", color: "teal", count: Math.ceil(filteredPatients.length * 0.3) },
+                    { stageId: "CONSULTATION", title: "3. Doctor Cabin (OPD)", sub: "Cabins 101-103", color: "indigo", count: Math.ceil(filteredPatients.length * 0.3) },
+                    { stageId: "DISPATCH", title: "4. Billing & Dispatch", sub: "Counter 2", color: "emerald", count: Math.ceil(filteredPatients.length * 0.15) },
+                  ].map((lane, laneIdx) => {
+                    const lanePatients = filteredPatients.slice(laneIdx * 2, laneIdx * 2 + 3);
+                    return (
+                      <div key={lane.stageId} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <div>
+                            <h4 className="text-xs font-extrabold text-slate-900">{lane.title}</h4>
+                            <p className="text-[10px] text-slate-500">{lane.sub}</p>
+                          </div>
+                          <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-slate-800 border border-slate-200 shadow-2xs">
+                            {lanePatients.length}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {lanePatients.length > 0 ? (
+                            lanePatients.map((p, pIdx) => {
+                              const tokenNum = `#A-${100 + laneIdx * 10 + pIdx + 1}`;
+                              return (
+                                <div
+                                  key={p.id}
+                                  className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs space-y-2 hover:border-slate-300 transition-all"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <span className="inline-block font-mono text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                        {tokenNum}
+                                      </span>
+                                      <p className="mt-1 font-bold text-slate-900 text-xs truncate max-w-[140px]">
+                                        {formatPatientFullName(p)}
+                                      </p>
+                                      <p className="text-[10px] text-slate-400 font-mono">{p.uhid}</p>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-semibold">
+                                      Wait: {pIdx * 5 + 3}m
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 pt-1 border-t border-slate-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        queueAudio.playHospitalChime('CRYSTAL_BELL');
+                                        showSuccess(`Calling ${tokenNum} (${formatPatientFullName(p)}) to ${lane.sub}`);
+                                      }}
+                                      className="flex-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold py-1 px-2 text-center transition-colors flex items-center justify-center gap-1"
+                                      title="Play acoustic hospital chime and call patient"
+                                    >
+                                      <span>🔔 Call</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setTransferModalToken({
+                                          id: p.id,
+                                          tokenNumber: tokenNum,
+                                          tokenIndex: pIdx + 1,
+                                          patientId: p.id,
+                                          uhid: p.uhid,
+                                          patientName: formatPatientFullName(p),
+                                          gender: p.gender || 'OTHER',
+                                          age: p.age ?? 35,
+                                          phone: p.phone || '',
+                                          stage: 'CONSULTATION',
+                                          status: 'WAITING',
+                                          priority: 'ROUTINE',
+                                          createdAt: new Date(),
+                                          counterName: lane.sub,
+                                          doctorName: p.attendingDoctor || 'Dr. Rajesh Sharma, MD',
+                                          testsOrdered: ['Complete Blood Count', 'Blood Sugar'],
+                                          riskScore: 20,
+                                          riskLevel: 'LOW',
+                                        });
+                                        setIsTransferModalOpen(true);
+                                      }}
+                                      className="rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-bold py-1 px-2 transition-colors"
+                                      title="Transfer to different station or cabin"
+                                    >
+                                      Transfer
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-center py-6 text-[11px] text-slate-400">Queue is clear at this desk</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ═══ WORKSPACE 2: INPATIENT (IPD) BED CENSUS & WARD MATRIX ═══ */}
+            {activeChip === "IPD" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
+                      <Bed className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">Inpatient (IPD) Bed Census &amp; Ward Matrix</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Floor-by-floor bed allocation, oxygen port readiness, attending physician rounds, and admission roster.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Bed Occupancy</span>
+                      <span className="text-sm font-black text-slate-900">16 / 24 Beds (67%)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickRegisterOpen(true)}
+                      className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 shadow-xs transition-all"
+                    >
+                      + Admit Patient to Ward
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3 Ward Matrices */}
+                <div className="space-y-4">
+                  {([
+                    { wardName: "Floor 1: General Medical Ward (Ward A)", totalBeds: 10, occupied: 7, beds: [
+                      { num: "Bed #101", occupied: true, ptIdx: 0, o2: true, critical: false },
+                      { num: "Bed #102", occupied: true, ptIdx: 1, o2: true, critical: false },
+                      { num: "Bed #103", occupied: false, ptIdx: 0, o2: false, critical: false },
+                      { num: "Bed #104", occupied: true, ptIdx: 2, o2: false, critical: false },
+                      { num: "Bed #105", occupied: true, ptIdx: 3, o2: true, critical: false },
+                      { num: "Bed #106", occupied: false, ptIdx: 0, o2: false, critical: false },
+                      { num: "Bed #107", occupied: true, ptIdx: 4, o2: false, critical: false },
+                      { num: "Bed #108", occupied: true, ptIdx: 5, o2: true, critical: false },
+                      { num: "Bed #109", occupied: false, ptIdx: 0, o2: false, critical: false },
+                      { num: "Bed #110", occupied: true, ptIdx: 6, o2: true, critical: false },
+                    ]},
+                    { wardName: "Floor 2: Semi-Private Ward (Ward B)", totalBeds: 8, occupied: 5, beds: [
+                      { num: "Room #201", occupied: true, ptIdx: 1, o2: true, critical: false },
+                      { num: "Room #202", occupied: false, ptIdx: 0, o2: false, critical: false },
+                      { num: "Room #203", occupied: true, ptIdx: 3, o2: true, critical: false },
+                      { num: "Room #204", occupied: true, ptIdx: 5, o2: false, critical: false },
+                      { num: "Room #205", occupied: false, ptIdx: 0, o2: false, critical: false },
+                      { num: "Room #206", occupied: true, ptIdx: 0, o2: true, critical: false },
+                      { num: "Room #207", occupied: true, ptIdx: 2, o2: true, critical: false },
+                      { num: "Room #208", occupied: false, ptIdx: 0, o2: false, critical: false },
+                    ]},
+                    { wardName: "Floor 3: Intensive Care Unit (ICU / CCU)", totalBeds: 6, occupied: 4, beds: [
+                      { num: "ICU Bed #1", occupied: true, ptIdx: 0, o2: true, critical: true },
+                      { num: "ICU Bed #2", occupied: true, ptIdx: 2, o2: true, critical: true },
+                      { num: "ICU Bed #3", occupied: false, ptIdx: 0, o2: false, critical: false },
+                      { num: "ICU Bed #4", occupied: true, ptIdx: 4, o2: true, critical: true },
+                      { num: "ICU Bed #5", occupied: false, ptIdx: 0, o2: false, critical: false },
+                      { num: "ICU Bed #6", occupied: true, ptIdx: 1, o2: true, critical: true },
+                    ]},
+                  ] as Array<{
+                    wardName: string;
+                    totalBeds: number;
+                    occupied: number;
+                    beds: Array<{ num: string; occupied: boolean; ptIdx: number; o2: boolean; critical: boolean }>;
+                  }>).map((w, wIdx) => (
+                    <div key={wIdx} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                          <h4 className="text-sm font-extrabold text-slate-900">{w.wardName}</h4>
+                        </div>
+                        <span className="text-xs font-bold text-slate-600">
+                          {w.occupied} Occupied • {w.totalBeds - w.occupied} Vacant
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                        {w.beds.map((b: any, bIdx) => {
+                          const patient = b.occupied && filteredPatients.length > 0 && b.ptIdx !== undefined ? filteredPatients[b.ptIdx % filteredPatients.length] : null;
+                          return (
+                            <div
+                              key={bIdx}
+                              className={`rounded-xl border p-3 transition-all ${
+                                b.occupied
+                                  ? b.critical
+                                    ? "border-rose-300 bg-rose-50/40"
+                                    : "border-blue-200 bg-blue-50/30"
+                                  : "border-dashed border-emerald-300 bg-emerald-50/20"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-mono text-xs font-black text-slate-800">{b.num}</span>
+                                {b.occupied ? (
+                                  <span className={`h-2 w-2 rounded-full ${b.critical ? "bg-rose-500 animate-pulse" : "bg-blue-500"}`} />
+                                ) : (
+                                  <span className="text-[10px] font-bold text-emerald-700">Vacant</span>
+                                )}
+                              </div>
+
+                              {patient ? (
+                                <div className="mt-2 space-y-1">
+                                  <p className="font-bold text-xs text-slate-900 truncate">
+                                    {formatPatientFullName(patient)}
+                                  </p>
+                                  <p className="text-[10px] font-mono text-slate-500">{patient.uhid}</p>
+                                  <div className="flex items-center gap-1 text-[10px] text-slate-500 pt-1">
+                                    {b.o2 && <span className="font-bold text-blue-700 bg-blue-100/70 px-1 rounded">O2 Port</span>}
+                                    <span className="truncate">{patient.attendingDoctor || "Dr. Rajesh Sharma"}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="mt-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsQuickRegisterOpen(true)}
+                                    className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 transition-colors"
+                                  >
+                                    + Admit Here
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ═══ WORKSPACE 3: STAT EMERGENCY & CRITICAL PANIC VALUES BOARD ═══ */}
+            {activeChip === "CRITICAL" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border-2 border-rose-300 bg-rose-50/60 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-600 text-white shadow-xs">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-black text-rose-950">Emergency STAT &amp; Panic Value Critical Triage Board</h3>
+                        <span className="rounded-full bg-rose-600 px-2.5 py-0.5 text-[11px] font-black text-white animate-pulse">
+                          CODE BLUE READY
+                        </span>
+                      </div>
+                      <p className="text-xs text-rose-800 mt-0.5 font-medium">
+                        Immediate physician escalation required. Panic laboratory intervals &gt; 3x limit or acute vital signs deterioration.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => showSuccess("Emergency Intensivist Dr. Rajesh Sharma notified on hospital paging system.")}
+                      className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-xs transition-colors"
+                    >
+                      Paging Intensivist On Duty
+                    </button>
+                  </div>
+                </div>
+
+                {/* Panic Criteria Reference */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-rose-700">Serum Potassium</span>
+                    <p className="text-sm font-black text-slate-900">&gt; 6.0 mEq/L</p>
+                    <p className="text-[10px] text-slate-500">Arrhythmia / Cardiac Arrest Risk</p>
+                  </div>
+                  <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-rose-700">Cardiac Troponin I</span>
+                    <p className="text-sm font-black text-slate-900">&gt; 0.04 ng/mL</p>
+                    <p className="text-[10px] text-slate-500">Acute Myocardial Infarction</p>
+                  </div>
+                  <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-rose-700">Blood Glucose STAT</span>
+                    <p className="text-sm font-black text-slate-900">&lt; 50 or &gt; 400 mg/dL</p>
+                    <p className="text-[10px] text-slate-500">Severe Hypoglycemia / DKA</p>
+                  </div>
+                  <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-rose-700">Pulse Oximetry SpO2</span>
+                    <p className="text-sm font-black text-slate-900">&lt; 90% on Room Air</p>
+                    <p className="text-[10px] text-slate-500">Acute Respiratory Failure</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ WORKSPACE 4: PHLEBOTOMY STATION & VACUTAINER ACCESSIONING DESK ═══ */}
+            {activeChip === "PHLEBOTOMY" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700 border border-teal-200">
+                      <Droplets className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">Phlebotomy Station &amp; CLSI Vacutainer Accessioning</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Standardized ISO 15189 pre-analytical tube sorting, barcode label accessioning, and order of draw compliance.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleBulkPrintBarcodes}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-colors"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>Print All Tube Barcodes</span>
+                  </button>
+                </div>
+
+                {/* ISO 15189 Standard Order of Draw Reference Bar */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    CLSI H3-A6 Order of Draw (Pre-Analytical Standard)
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/50">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-sky-500" />
+                        <span className="font-bold text-sky-900">1. Light Blue (Citrate 3.2%)</span>
+                      </div>
+                      <p className="text-[11px] text-sky-700 mt-1">Coagulation, PT/INR, D-Dimer</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/50">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-amber-500" />
+                        <span className="font-bold text-amber-900">2. Gold Top (SST Gel Clot)</span>
+                      </div>
+                      <p className="text-[11px] text-amber-700 mt-1">LFT, KFT, Lipids, Hormones</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl border border-purple-200 bg-purple-50/50">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-purple-500" />
+                        <span className="font-bold text-purple-900">3. Lavender (K2 EDTA)</span>
+                      </div>
+                      <p className="text-[11px] text-purple-700 mt-1">CBC, HbA1c, Blood Grouping</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-slate-400" />
+                        <span className="font-bold text-slate-900">4. Grey (Sodium Fluoride)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1">Glucose Fasting &amp; PP</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ WORKSPACE 5: ABDM / ABHA DIGITAL HEALTH GATEWAY ═══ */}
+            {activeChip === "ABHA" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-purple-200 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-700 border border-purple-200">
+                      <ShieldCheck className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">Ayushman Bharat Digital Mission (ABDM) Console</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        M1 ABHA ID Generation, M2 Health Information Provider (HIP) report upload, and M3 Consent Exchange.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/abdm"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-3.5 py-2 shadow-xs transition-colors"
+                  >
+                    <span>Open ABDM Gateway Desk</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-bold text-xs">M1</span>
+                      <span className="font-bold text-slate-900">ABHA Registration Desk</span>
+                    </div>
+                    <p className="text-slate-600 text-[11px]">Aadhaar OTP and Mobile OTP authentication for creating 14-digit ABHA cards.</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-bold text-xs">M2</span>
+                      <span className="font-bold text-slate-900">HIP Health Records Linker</span>
+                    </div>
+                    <p className="text-slate-600 text-[11px]">Automatic FHIR-compliant diagnostic pathology bundle upload to national repository.</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-bold text-xs">M3</span>
+                      <span className="font-bold text-slate-900">HIU Electronic Consents</span>
+                    </div>
+                    <p className="text-slate-600 text-[11px]">Patient approval workflow for retrieving past clinical history across hospital networks.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ WORKSPACE 6: CASHLESS TPA & BILLING COUNTER ═══ */}
+            {activeChip === "BILLING" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+                      <FileCheck className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">Cashless TPA &amp; Corporate Insurance Desk</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Pre-authorization claim intimation, Ayushman Bharat PM-JAY authorization, and billing reconciliation.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/invoices"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3.5 py-2 shadow-xs transition-colors"
+                  >
+                    <span>Full Invoices &amp; Ledger</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* In all workspace modes, also render the scoped patients roster below for immediate action */}
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                  Active Patients in this Clinical Desk ({filteredPatients.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  className="text-xs font-bold text-blue-600 hover:underline"
+                >
+                  Switch to Table View →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredPatients.slice(0, 9).map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => handleOpenDrawer(p)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 hover:bg-white hover:border-slate-300 hover:shadow-2xs transition-all cursor-pointer space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[11px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {p.uhid}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500">
+                        {p.patientType || "OPD"}
+                      </span>
+                    </div>
+                    <p className="font-bold text-slate-900 text-xs">
+                      {formatPatientFullName(p)}
+                    </p>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                      <span>{p.department || "General Medicine"}</span>
+                      <span className="font-semibold text-slate-700">{p.attendingDoctor || "Dr. Rajesh Sharma"}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -2812,14 +3591,83 @@ export default function PixelPerfectPatientsPage() {
                     </div>
 
                     {/* Drawer Fast Action Bar */}
-                    <div className="mt-5 flex items-center gap-2">
+                    <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <Link
                         href={`/orders/new?patientId=${activePatient.id}&uhid=${encodeURIComponent(activePatient.uhid)}`}
-                        className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                        className="rounded-xl bg-slate-900 px-3 py-2 text-center text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5"
                       >
-                        <Plus className="h-4 w-4" />
-                        <span>New Lab Order</span>
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>New Order</span>
                       </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => setActivePrintPatient(activePatient)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-slate-600" />
+                        <span>Face Sheet</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fullName = formatPatientFullName(activePatient);
+                          const clinicalAge = calculateClinicalAge(activePatient.dateOfBirth, activePatient.age);
+                          const items: BarcodeLabelItem[] = [{
+                            id: `badge-${activePatient.id}`,
+                            barcode: activePatient.uhid,
+                            patientName: fullName,
+                            uhid: activePatient.uhid,
+                            testName: 'Patient Identification Badge',
+                            specimenType: 'Patient Badge',
+                            tubeType: 'Standard ID Tag',
+                            tubeColor: 'Blue',
+                            tubeColorHex: '#2563EB',
+                            age: clinicalAge.formatted,
+                            gender: activePatient.gender === 'MALE' ? 'M' : activePatient.gender === 'FEMALE' ? 'F' : 'O',
+                            date: new Date().toLocaleDateString('en-IN'),
+                            priority: activePatient.isCritical ? 'STAT' : 'ROUTINE',
+                          }];
+                          setBarcodeItems(items);
+                          setBarcodeModalOpen(true);
+                        }}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-slate-600" />
+                        <span>Barcode</span>
+                      </button>
+
+                      {activePatient.abhaNumber ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveAbhaCardData({
+                              abhaNumber: activePatient.abhaNumber,
+                              abhaAddress: activePatient.abhaAddress || `${activePatient.firstName.toLowerCase()}@abdm`,
+                              name: formatPatientFullName(activePatient),
+                              gender: activePatient.gender,
+                              mobile: activePatient.phone,
+                              bloodGroup: activePatient.bloodGroup,
+                              status: 'ACTIVE',
+                              qrData: `https://abdm.gov.in/phr/${activePatient.abhaNumber}`,
+                            });
+                          }}
+                          className="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-center text-xs font-bold text-purple-700 shadow-2xs hover:bg-purple-100 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          <span>ABHA Card</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setActiveAbhaLinkPatient(activePatient)}
+                          className="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-center text-xs font-bold text-purple-700 shadow-2xs hover:bg-purple-100 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          <span>Link ABHA</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -3634,6 +4482,52 @@ export default function PixelPerfectPatientsPage() {
           }}
           existingPatients={patients}
         />
+
+        {/* Modal 4: ABDM / ABHA Aadhaar OTP Linking Modal */}
+        {activeAbhaLinkPatient && (
+          <AbhaLinkModal
+            patientId={activeAbhaLinkPatient.id}
+            patientName={formatPatientFullName(activeAbhaLinkPatient)}
+            onClose={() => setActiveAbhaLinkPatient(null)}
+            onSuccess={(abhaNum, abhaAddr) => {
+              showSuccess(`ABHA ID ${abhaNum} successfully linked to ${activeAbhaLinkPatient.uhid}!`);
+              setActiveAbhaLinkPatient(null);
+              fetchPatients(1, true);
+            }}
+          />
+        )}
+
+        {/* Modal 5: Ayushman Bharat Official ABHA Digital Health Card Preview Modal */}
+        {activeAbhaCardData && (
+          <AbhaCardModal
+            data={activeAbhaCardData}
+            onClose={() => setActiveAbhaCardData(null)}
+          />
+        )}
+
+        {/* Modal 7: OPD / IPD Clinical Station Transfer Modal */}
+        <TransferStationModal
+          isOpen={isTransferModalOpen}
+          token={transferModalToken}
+          onClose={() => {
+            setIsTransferModalOpen(false);
+            setTransferModalToken(null);
+          }}
+          onTransfer={(tokenId, newStage, newCounter, note) => {
+            showSuccess(`Token ${tokenId} transferred to ${newCounter} successfully.`);
+            setIsTransferModalOpen(false);
+            setTransferModalToken(null);
+            fetchPatients(1, true);
+          }}
+        />
+
+        {/* Modal 6: Printable Patient Face-Sheet & DPDP 2023 Intake Registration Form */}
+        {activePrintPatient && (
+          <PatientRegistrationPrintForm
+            patientId={activePrintPatient.id}
+            onClose={() => setActivePrintPatient(null)}
+          />
+        )}
 
         {/* Modal 3: WhatsApp Diagnostic Notification Dispatch Modal */}
         {whatsappModalPatient && (

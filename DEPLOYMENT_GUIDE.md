@@ -22,19 +22,46 @@ Expected output:
 
 ## 2. Architecture & Port Mapping
 
-| Service | Technology | Port | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Nginx** | Nginx Alpine | `80`, `443` | Reverse proxy, SSL/TLS termination, Gzip, WebSockets |
-| **Web App** | Next.js 15 | `3001` | Main Hospital & Laboratory Management UI |
-| **Login Portal** | Vite + React SPA | `3002` / `/portal` | Authentication & Secure Sign-in Portal |
-| **Backend API** | Node.js 20 + Express | `5000` | REST API, Socket.io real-time panic telemetry |
-| **Hardware TCP** | Node.js TCP Engine | `5005` | ASTM E1381/E1394 & HL7 v2.x MLLP Analyzer listener |
-| **PostgreSQL** | PostgreSQL 16 | `5432` | Primary Relational Database with Connection Pool |
-| **Redis** | Redis 7 | `6379` | Token blacklisting, session security, rate limits |
+| Service | Technology | Internal Port | Edge / Host Port | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Nginx Edge** | Nginx Alpine | `80`, `443` | `80`, `443` | Reverse proxy, TLS 1.3 termination, HSTS, WebSockets, rate limiting |
+| **Hardware TCP**| Nginx Stream -> Backend | `5005` | `5005` | ASTM E1381/E1394 & HL7 v2.x MLLP Analyzer raw TCP listener |
+| **Web App** | Next.js 15 | `3001` | `3001` (Internal) | Main Hospital & Laboratory Management UI |
+| **Login Portal** | Vite + React SPA | `3002` | `3002` (Internal `/portal`) | Authentication & Secure Sign-in Portal |
+| **Backend API** | Node.js 20 + Express | `5000` | `5000` (Internal `/api`) | REST API, Socket.io real-time panic telemetry |
+| **PostgreSQL** | PostgreSQL 16 Alpine | `5432` | `5432` (Protected) | Primary Relational Database with Connection Pool |
+| **Redis** | Redis 7 Alpine | `6379` | `6379` (Protected) | Token blacklisting, session security, rate limits, LRU cache |
+| **Certbot** | Certbot ACME Client | - | Background | Automated 60-day Let's Encrypt TLS renewal companion |
 
 ---
 
-## 3. Deployment Method A: Docker Compose (Recommended)
+## 3. Automated Server Provisioning (Ubuntu 24.04 LTS / 22.04 LTS)
+
+For automated single-command provisioning of a fresh Linux VPS (minimum 4 vCPU, 8GB RAM, 100GB SSD):
+
+```bash
+# Execute as root or with sudo
+sudo bash deploy/setup-production-server.sh
+```
+
+This automated script performs:
+1. **Hardware Verification**: Audits CPU cores, RAM, and disk storage headroom.
+2. **OS Packages**: Updates apt and installs `curl`, `git`, `ufw`, `fail2ban`, `certbot`, `python3-certbot-nginx`, `jq`, `htop`.
+3. **Docker Engine**: Installs official Docker Engine and Docker Compose v2.
+4. **Kernel Tuning (`/etc/sysctl.d/99-labcore.conf`)**:
+   - `net.core.somaxconn = 65535`
+   - `fs.file-max = 2097152`
+   - `vm.overcommit_memory = 1`
+   - `vm.max_map_count = 262144`
+5. **UFW Firewall Isolation**:
+   - Default deny incoming, default allow outgoing
+   - Exposes **only**: `22` (SSH), `80` (HTTP ACME/Redirect), `443` (HTTPS TLS 1.3), `5005` (ASTM TCP Analyzer)
+6. **Fail2ban**: Enables automated SSH brute-force IP banning.
+7. **Systemd Service**: Registers `labcore.service` for zero-touch auto-start on server boot.
+
+---
+
+## 4. Deployment Method A: Docker Compose with TLS 1.3 (Recommended)
 
 Docker Compose provides a turnkey, multi-container environment with automated database migrations, healthchecks, and reverse proxy routing.
 
@@ -49,39 +76,55 @@ cp .env.production.example .env.production
 > node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 > ```
 
-### Step 2: Build & Start All Services
+### Step 2: Configure TLS 1.3 SSL Certificate
+For domain names (e.g., `elis.yourhospital.com`):
+```bash
+# Request Let's Encrypt certificate:
+sudo bash nginx/ssl/generate-letsencrypt.sh elis.yourhospital.com admin@yourhospital.com
+```
+
+Or for internal staging / intranet deployment with self-signed SAN certificate:
+```bash
+bash nginx/ssl/generate-self-signed-ssl.sh elis.yourhospital.com 365
+```
+
+### Step 3: Build & Start All Services
 ```bash
 npm run docker:prod:up
 # Or directly:
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### Step 3: View Live Service Logs
+### Step 4: Verify Deployment Health
+```bash
+curl -k https://localhost/healthz
+# Expected output: healthy
+```
+
+### Step 5: View Live Service Logs
 ```bash
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
-### Step 4: Stop Services
+### Step 6: Stop Services
 ```bash
 npm run docker:prod:down
 ```
 
 ---
 
-## 4. Deployment Method B: Bare-Metal / VPS (PM2)
+## 5. Deployment Method B: Bare-Metal / VPS (PM2)
 
-For deployment on Linux servers (Ubuntu 22.04/24.04 LTS, Debian 12, or AlmaLinux):
+For deployment on Linux servers without Docker:
 
 ### Step 1: System Dependencies
 ```bash
-# Install Node.js 20 LTS, PostgreSQL 16, and Chromium for PDF generation
 sudo apt update
 sudo apt install -y curl ca-certificates postgresql postgresql-contrib redis-server chromium
 sudo npm install -g pm2
 ```
 
 ### Step 2: Database Migration & Super Admin Seeding
-Run zero-downtime database migrations:
 ```bash
 npm run deploy:migrate
 ```
@@ -91,7 +134,6 @@ npm run deploy:migrate
 ```bash
 npm run build:all
 ```
-*Builds `backend/dist`, `frontend/apps/web/.next`, and `login-portal/dist` in parallel.*
 
 ### Step 4: Start Services with PM2
 ```bash
@@ -107,19 +149,6 @@ npm run pm2:stop       # Stop processes
 pm2 startup            # Register PM2 to restart on system reboot
 pm2 save               # Save process table
 ```
-
----
-
-## 5. SSL / HTTPS Configuration (Nginx + Certbot)
-
-For production domain names (e.g., `elis.yourhospital.com`):
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d elis.yourhospital.com
-```
-
-Certbot automatically configures TLS 1.3 certificates and sets up automatic 60-day renewal.
 
 ---
 
@@ -145,5 +174,5 @@ psql -U labcore -d labcore_elis -f /path/to/backups/backup_name.sql
 To connect Sysmex, Roche Cobas, Mindray, or Beckman Coulter analyzer machines:
 1. Configure analyzer machine's host IP to point to the LabCore server IP.
 2. Set protocol mode: **ASTM E1381** or **HL7 v2.x (MLLP)**.
-3. Destination Port: `5005`.
+3. Destination Port: `5005` (proxied directly via Nginx Stream Layer 4 TCP proxy to backend).
 4. Handshakes and results are automatically processed and dispatched in real-time to the Pathologist Worklist.
