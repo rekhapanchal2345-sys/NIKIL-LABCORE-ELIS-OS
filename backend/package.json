@@ -23,7 +23,8 @@
     "create-sample-parameters": "node scripts/create-sample-parameters.js",
     "process-scheduled-messages": "ts-node --transpile-only ./scripts/process-scheduled-messages.ts",
     "test": "node --max-old-space-size=8192 ./node_modules/typescript/bin/tsc --noEmit",
-    "lint": "echo 'Linting not configured. Add eslint to devDependencies.' && exit 0"
+    "lint": "echo 'Linting not configured. Add eslint to devDependencies.' && exit 0",
+    "test:milestone": "ts-node --transpile-only ./test-day21-week3-milestone.ts"
   },
   "keywords": [],
   "type": "commonjs",
