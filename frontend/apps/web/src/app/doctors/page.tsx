@@ -73,9 +73,7 @@ function DoctorsPageContent() {
 
   useEffect(() => {
     const tabParam = (searchParams?.get("tab") as DoctorModuleTab) || "directory";
-    if (tabParam !== activeTab) {
-      setActiveTab(tabParam);
-    }
+    setActiveTab((prev) => (prev !== tabParam ? tabParam : prev));
   }, [searchParams]);
 
   const handleTabChange = (newTab: DoctorModuleTab) => {

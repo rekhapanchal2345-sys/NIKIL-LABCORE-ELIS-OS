@@ -12,19 +12,19 @@ export const CriticalPanicBanner: React.FC<Props> = ({ panicReports, onReviewRep
   const firstPanic = panicReports[0];
 
   return (
-    <div className="bg-gradient-to-r from-rose-950 via-rose-900 to-slate-900 border-b border-rose-500/40 px-6 py-2.5 text-rose-200 text-xs">
+    <div className="bg-rose-50 border-b border-rose-200 px-6 py-2.5 text-rose-900 text-xs shadow-2xs">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse"></span>
           <span>
-            <strong className="text-white">CRITICAL PANIC VALUE ALERT:</strong> Patient{' '}
-            <strong className="text-rose-100">{firstPanic.patientName} ({firstPanic.uhid})</strong> has severe panic readings in{' '}
-            <em className="text-rose-200">{firstPanic.testPanelName}</em>.
+            <strong className="text-rose-950 font-black">CRITICAL PANIC VALUE ALERT:</strong> Patient{' '}
+            <strong className="text-rose-900 font-bold">{firstPanic.patientName} ({firstPanic.uhid})</strong> has severe panic readings in{' '}
+            <span className="font-semibold">{firstPanic.testPanelName}</span>.
           </span>
         </div>
         <button
           onClick={() => onReviewReport(firstPanic)}
-          className="underline font-bold text-white hover:text-rose-200 flex items-center gap-1 transition"
+          className="font-bold text-rose-700 hover:text-rose-900 underline flex items-center gap-1 transition cursor-pointer"
         >
           Review & Sign-Off Immediately <i className="fa-solid fa-arrow-right"></i>
         </button>
