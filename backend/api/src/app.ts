@@ -44,6 +44,7 @@ import digitalTwinRoutes from "./modules/digital-twin/digital-twin.routes";
 import nexusRoutes from "./modules/nexus/nexus.routes";
 import enterpriseWorkflowsRoutes from "./modules/enterprise-workflows/enterprise-workflows.routes";
 import enterpriseTier2Routes from "./modules/enterprise-workflows-tier2/enterprise-tier2.routes";
+import branchRoutes from "./modules/branches/branch.routes";
 
 // =======================================================
 // MIDDLEWARE
@@ -530,6 +531,12 @@ app.use("/enterprise", enterpriseWorkflowsRoutes);
 app.use("/api/enterprise-tier2", enterpriseTier2Routes);
 app.use("/api/v1/enterprise-tier2", enterpriseTier2Routes);
 app.use("/enterprise-tier2", enterpriseTier2Routes);
+
+// =======================================================
+// BRANCHES & MULTI-TENANCY
+// =======================================================
+app.use("/api/branches", branchRoutes);
+app.use("/api/v1/branches", branchRoutes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

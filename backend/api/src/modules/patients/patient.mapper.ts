@@ -527,6 +527,7 @@ export const buildPatientData = (
   }
 
   if (input.isActive !== undefined) data.isActive = Boolean(input.isActive);
+  if (input.branchId !== undefined) data.branchId = text(input.branchId) ?? null;
 
   // isDraft is never client-controlled: each write path sets it explicitly, and a
   // PATCH that flipped it would hide a registered patient from the roster.

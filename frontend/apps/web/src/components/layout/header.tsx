@@ -49,6 +49,35 @@ export default function Header({
   const [isMounted, setIsMounted] = useState(false);
 
   const [showQuickComms, setShowQuickComms] = useState(false);
+  const [branches, setBranches] = useState<Array<{ id: string; code: string; name: string; isMainBranch: boolean }>>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [showBranchMenu, setShowBranchMenu] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('active_branch_id');
+      setSelectedBranchId(stored);
+      fetch('/api/branches')
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && Array.isArray(json.data)) {
+            setBranches(json.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleSelectBranch = (bId: string | null) => {
+    if (bId) {
+      localStorage.setItem('active_branch_id', bId);
+    } else {
+      localStorage.removeItem('active_branch_id');
+    }
+    setSelectedBranchId(bId);
+    setShowBranchMenu(false);
+    window.location.reload();
+  };
 
   // Global Ctrl+K (Search) & Ctrl+M (Quick Comms) Shortcuts
   useEffect(() => {
@@ -189,12 +218,52 @@ export default function Header({
           <span className="rounded bg-rose-200/90 px-1.5 py-0.2 text-[9px] font-mono font-extrabold text-rose-950">6m SLA</span>
         </div>
 
-        {/* Hospital Facility / Branch Status */}
-        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-[11px] text-[#475569]">
-          <Building2 className="w-3.5 h-3.5 text-[#0F766E]" />
-          <span className="font-semibold text-[#0F172A]">Central Diagnostics Hub</span>
-          <span className="text-slate-300">•</span>
-          <span className="font-mono text-[10px] text-[#059669] font-bold">ONLINE (ASTM/HL7)</span>
+        {/* Hospital Facility / Multi-Branch Dropdown Selector */}
+        <div className="relative hidden xl:block">
+          <button
+            type="button"
+            onClick={() => setShowBranchMenu(!showBranchMenu)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-[11px] text-[#475569] hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Click to switch branch context"
+          >
+            <Building2 className="w-3.5 h-3.5 text-[#0F766E]" />
+            <span className="font-semibold text-[#0F172A]">
+              {selectedBranchId
+                ? branches.find(b => b.id === selectedBranchId)?.name || 'Branch: ' + selectedBranchId.slice(0, 8)
+                : 'Central Diagnostics Hub (HQ)'}
+            </span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
+
+          {showBranchMenu && (
+            <div className="absolute left-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Select Laboratory Branch
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSelectBranch(null)}
+                className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${!selectedBranchId ? 'bg-teal-50/50 text-[#0F766E] font-bold' : 'text-slate-700'}`}
+              >
+                <span>🏢 Central Diagnostics Hub (All Branches)</span>
+                {!selectedBranchId && <CheckCircle2 className="w-3.5 h-3.5 text-[#0F766E]" />}
+              </button>
+              {branches.map(b => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => handleSelectBranch(b.id)}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${selectedBranchId === b.id ? 'bg-teal-50/50 text-[#0F766E] font-bold' : 'text-slate-700'}`}
+                >
+                  <div>
+                    <div>{b.name}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">Code: {b.code} {b.isMainBranch ? '(Main Hub)' : ''}</div>
+                  </div>
+                  {selectedBranchId === b.id && <CheckCircle2 className="w-3.5 h-3.5 text-[#0F766E]" />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Global Spotlight Search Trigger */}

@@ -180,6 +180,8 @@ export const createOrder = async (
 
         patientId: data.patientId,
 
+        branchId: data.branchId || patient.branchId || null,
+
         doctorId:
           data.doctorId,
 
@@ -391,6 +393,7 @@ export const getOrders = async (
     if (paymentStatus) andFilters.push({ paymentStatus });
     if (priority) andFilters.push({ priority });
     if (collectionType) andFilters.push({ collectionType });
+    if (options.branchId) andFilters.push({ branchId: options.branchId });
     if (dateFrom || dateTo) {
       const dateFilter: any = {};
       if (dateFrom) dateFilter.gte = new Date(dateFrom);

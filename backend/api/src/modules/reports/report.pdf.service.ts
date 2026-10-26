@@ -683,6 +683,7 @@ export async function generateOrderReportHtml(
     include: {
       patient: true,
       doctor: true,
+      branch: true,
       samples: {
         orderBy: { createdAt: 'desc' },
       },
@@ -746,10 +747,12 @@ export async function generateOrderReportHtml(
     orderBy: { createdAt: 'desc' },
   });
 
-  // Resolve Lab Letterhead configuration
-  const nablCertNumber = options.nablCertificateNumber || process.env.NABL_CERT_NUMBER || 'MC-4892';
+  // Resolve Lab Letterhead configuration (branch-specific override with global fallback)
+  const branchSettings = (order as any).branch;
+  const nablCertNumber = options.nablCertificateNumber || branchSettings?.nablNumber || process.env.NABL_CERT_NUMBER || 'MC-4892';
   const labName =
     options.labName ||
+    branchSettings?.name ||
     process.env.LAB_NAME ||
     'NIKIL LABCORE SUPER-SPECIALTY DIAGNOSTICS & PATHOLOGY CENTRE';
   const labTagline =
@@ -757,11 +760,12 @@ export async function generateOrderReportHtml(
     'NABL ISO 15189:2022 Accredited Clinical Reference Laboratory | ICMR & NABH Allied';
   const labAddress =
     options.labAddress ||
+    branchSettings?.address ||
     process.env.LAB_ADDRESS ||
     'Tower B, MedTech Clinical Park, Jubilee Hills, Hyderabad - 500033, Telangana, India';
-  const labPhone = options.labPhone || process.env.LAB_PHONE || '+91 40 6789 1518 / 1800-120-LABCORE';
-  const labEmail = options.labEmail || process.env.LAB_EMAIL || 'pathology.qa@labcore-elis.in';
-  const labGstin = options.labGstin || process.env.LAB_GSTIN || '36AAACN4892L1Z5';
+  const labPhone = options.labPhone || branchSettings?.phone || process.env.LAB_PHONE || '+91 40 6789 1518 / 1800-120-LABCORE';
+  const labEmail = options.labEmail || branchSettings?.email || process.env.LAB_EMAIL || 'pathology.qa@labcore-elis.in';
+  const labGstin = options.labGstin || branchSettings?.gstin || process.env.LAB_GSTIN || '36AAACN4892L1Z5';
 
   // Patient Demographics & CLSI C28-A3 Detailed Age
   const patient = order.patient;

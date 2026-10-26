@@ -126,6 +126,13 @@ async function sendRequest(
     ...(options.headers as Record<string, string> | {}),
   };
 
+  if (typeof window !== 'undefined') {
+    const activeBranchId = localStorage.getItem('active_branch_id');
+    if (activeBranchId && !headers['x-branch-id']) {
+      headers['x-branch-id'] = activeBranchId;
+    }
+  }
+
   if (token) {
     headers['Authorization'] = 'Bearer ' + token;
   }

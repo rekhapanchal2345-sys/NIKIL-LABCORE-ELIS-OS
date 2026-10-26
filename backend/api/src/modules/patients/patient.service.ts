@@ -421,27 +421,22 @@ export const createPatient = async (data: PatientInput, createdById?: string) =>
   
   while (true) {
     try {
-      patient = await prisma.$transaction(async (tx) => {
-        await ensurePatientCryptoColumns(tx);
-        const uhid = await generateUHID(tx);
-        const patientId = crypto.randomUUID();
-        const qrCode = generatePatientQRData(patientId, uhid);
+      const uhid = await generateUHID();
+      const patientId = crypto.randomUUID();
+      const qrCode = generatePatientQRData(patientId, uhid);
 
-        const created = await tx.patient.create({
-          data: {
-            ...payload,
-            id: patientId,
-            uhid,
-            createdById: validCreatedById,
-            verificationStatus: "UNVERIFIED",
-            phoneVerified: false,
-            emailVerified: false,
-            kycVerified: false,
-            qrCode,
-          },
-        });
-
-        return created;
+      patient = await prisma.patient.create({
+        data: {
+          ...payload,
+          id: patientId,
+          uhid,
+          createdById: validCreatedById,
+          verificationStatus: "UNVERIFIED",
+          phoneVerified: false,
+          emailVerified: false,
+          kycVerified: false,
+          qrCode,
+        },
       });
       break; // Success
     } catch (error: any) {
@@ -485,6 +480,7 @@ export const getPatients = async (options: {
   activeChip?: string;
   createdById?: string;
   includeDrafts?: boolean;
+  branchId?: string;
 }) => {
   const page = Math.max(1, Number(options.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 20));
@@ -494,6 +490,7 @@ export const getPatients = async (options: {
 
   if (!options.includeDrafts) filters.push({ isDraft: false });
   if (options.createdById) filters.push({ createdById: options.createdById });
+  if (options.branchId) filters.push({ branchId: options.branchId });
 
   const search = options.search?.trim();
   if (search) {

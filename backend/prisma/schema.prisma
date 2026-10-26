@@ -113,11 +113,14 @@ model User {
   breakGlassEvents             BreakGlassEvent[]
   digitalSignatures            DigitalSignature[]
   createdApiClients            ApiClient[]              @relation("ApiClientCreator")
+  branchId                     String?                  @map("branch_id")
+  branch                       Branch?                  @relation(fields: [branchId], references: [id])
 
   @@index([role])
   @@index([status])
   @@index([fullName])
   @@index([emailBlindIndex])
+  @@index([branchId])
   @@map("users")
 }
 
@@ -821,6 +824,8 @@ model Patient {
   whatsappConversations        WhatsAppConversation[] @relation("ConversationPatient")
   whatsappIncomingMessages     WhatsAppIncomingMessage[]
   whatsappScheduledMessages    WhatsAppScheduledMessage[]
+  branchId                     String?              @map("branch_id")
+  branch                       Branch?              @relation(fields: [branchId], references: [id])
 
   @@index([phone])
   @@index([phoneHash])                    // EMPI: exact phone blind-index
@@ -837,6 +842,7 @@ model Patient {
   @@index([abhaNumber])
   @@index([abhaAddress])
   @@index([kycVerifiedById])
+  @@index([branchId])
   @@map("patients")
 }
 
@@ -1213,6 +1219,8 @@ model Order {
   trackingHistory        SampleTrackingHistory[]
   samples                Sample[]
   commissionEntries       DoctorCommissionEntry[]
+  branchId               String?                 @map("branch_id")
+  branch                 Branch?                 @relation(fields: [branchId], references: [id])
 
   @@index([patientId])
   @@index([doctorId])
@@ -1220,6 +1228,7 @@ model Order {
   @@index([orderStatus])
   @@index([paymentStatus])
   @@index([createdAt])
+  @@index([branchId])
   @@map("orders")
 }
 
@@ -4153,3 +4162,32 @@ model NexusBioTensorAudit {
   @@index([patientId, createdAt])
   @@map("nexus_bio_tensor_audits")
 }
+
+model Branch {
+  id              String         @id @default(cuid())
+  code            String         @unique
+  name            String
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  phone           String?
+  email           String?
+  nablNumber      String?        @map("nabl_number")
+  gstin           String?
+  letterheadUrl   String?        @map("letterhead_url")
+  isActive        Boolean        @default(true) @map("is_active")
+  isMainBranch    Boolean        @default(false) @map("is_main_branch")
+  settings        Json?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  users           User[]
+  patients        Patient[]
+  orders          Order[]
+
+  @@index([code])
+  @@index([city])
+  @@index([isActive])
+  @@map("branches")
+}

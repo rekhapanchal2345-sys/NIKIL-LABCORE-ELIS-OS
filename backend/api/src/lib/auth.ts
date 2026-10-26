@@ -31,6 +31,7 @@ export interface AuthUser {
   fullName: string;
   role: UserRole;
   status: AccountStatus;
+  branchId?: string | null;
 }
 
 export interface JwtPayload {
@@ -40,6 +41,7 @@ export interface JwtPayload {
   fullName: string;
   role: UserRole;
   status: AccountStatus;
+  branchId?: string | null;
   sid?: string;           // Session ID
   jti?: string;           // JWT ID — used for blacklist-based revocation
   amr?: string[];         // Authentication Method References
@@ -127,6 +129,7 @@ export const generateAccessToken = (
     fullName: user.fullName,
     role: user.role,
     status: user.status,
+    branchId: user.branchId ?? null,
     sid: extras?.sid,
     amr: extras?.amr ?? ["pwd"],
     typ: "access",
@@ -385,6 +388,7 @@ export const verifyAccessToken = (
     fullName: String(payload.fullName || ""),
     role: VALID_ROLES.includes(role) ? role : "FRONT_DESK",
     status: VALID_STATUSES.includes(status) ? status : "ACTIVE",
+    branchId: payload.branchId ?? null,
     sid: payload.sid,
     amr: payload.amr,
     typ: payload.typ,
