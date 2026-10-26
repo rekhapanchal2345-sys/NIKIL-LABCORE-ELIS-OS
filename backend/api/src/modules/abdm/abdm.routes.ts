@@ -75,6 +75,20 @@ router.post(
   verifyAadhaarOtpAndGenerate
 );
 
+router.post(
+  "/abha/generate-otp",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  generateAadhaarOtp
+);
+
+router.post(
+  "/abha/verify-otp",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_ADMIN, UserRole.FRONT_DESK),
+  verifyAadhaarOtpAndGenerate
+);
+
 // ── ABHA Generation via Mobile OTP ──
 router.post(
   "/abha/generate/mobile/otp",

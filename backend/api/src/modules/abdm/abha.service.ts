@@ -15,6 +15,7 @@ import prisma from "../../../config/database";
 import { abdmPost } from "./abdm.gateway.client";
 import { sendSMS } from "../../lib/communication-providers";
 import abdmConfig from "./abdm.config";
+import { recordAbdmTransaction, updateAbdmTransaction } from "./abdm.transaction.helper";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -549,17 +550,7 @@ async function logTransaction(
   patientId: string | null,
   requestData: Record<string, unknown>
 ): Promise<string> {
-  const requestId = crypto.randomUUID();
-  await (prisma as any).abdmTransaction.create({
-    data: {
-      requestId,
-      action,
-      status: "INITIATED",
-      patientId: patientId ?? undefined,
-      requestData,
-    },
-  });
-  return requestId;
+  return recordAbdmTransaction({ action, patientId, requestData });
 }
 
 async function updateTransaction(
@@ -567,8 +558,5 @@ async function updateTransaction(
   status: string,
   responseData: Record<string, unknown>
 ) {
-  await (prisma as any).abdmTransaction.updateMany({
-    where: { requestId },
-    data: { status, responseData, updatedAt: new Date() },
-  });
+  return updateAbdmTransaction(requestId, status, responseData);
 }
