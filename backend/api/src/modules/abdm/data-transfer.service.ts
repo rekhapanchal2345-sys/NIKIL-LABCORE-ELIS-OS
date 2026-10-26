@@ -17,6 +17,7 @@ import abdmConfig from "./abdm.config";
 import { buildFhirBundle } from "./fhir.service";
 import { generateAbdmKeyPair, encryptForAbdm, AbdmKeyMaterial } from "./crypto.service";
 import { validateConsent } from "./consent.service";
+import { recordAbdmTransaction, updateAbdmTransaction } from "./abdm.transaction.helper";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -43,14 +44,12 @@ export async function handleHealthInfoRequest(hiReq: HiRequest): Promise<void> {
   const { requestId, transactionId, hiRequest } = hiReq;
 
   // Log incoming request
-  await (prisma as any).abdmTransaction.create({
-    data: {
-      requestId,
-      transactionId,
-      action: "HEALTH_INFO_REQUEST",
-      status: "CALLBACK_RECEIVED",
-      requestData: { consentId: hiRequest.consent.id, hiTypes: hiRequest.hiTypes, dateRange: hiRequest.dateRange },
-    },
+  await recordAbdmTransaction({
+    requestId,
+    transactionId,
+    action: "HEALTH_INFO_REQUEST",
+    status: "CALLBACK_RECEIVED",
+    requestData: { consentId: hiRequest.consent.id, hiTypes: hiRequest.hiTypes, dateRange: hiRequest.dateRange },
   });
 
   // ── Step 1: Send acknowledgement (ABDM requires this quickly) ──
@@ -246,8 +245,5 @@ async function updateTransactionStatus(
   status: string,
   responseData: Record<string, unknown>
 ): Promise<void> {
-  await (prisma as any).abdmTransaction.updateMany({
-    where: { requestId },
-    data: { status, responseData, updatedAt: new Date() },
-  });
+  await updateAbdmTransaction(requestId, status, responseData);
 }

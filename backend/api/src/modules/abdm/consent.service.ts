@@ -10,6 +10,11 @@
 import crypto from "crypto";
 import prisma from "../../../config/database";
 import { abdmPost } from "./abdm.gateway.client";
+import {
+  getAbdmConsentsTable,
+  recordAbdmTransaction,
+  updateAbdmTransaction,
+} from "./abdm.transaction.helper";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -54,13 +59,11 @@ export async function handleConsentNotification(
   const { requestId, notification: consentNotif } = notification;
 
   // Log the transaction
-  await (prisma as any).abdmTransaction.create({
-    data: {
-      requestId,
-      action: "CONSENT_NOTIFY",
-      status: "CALLBACK_RECEIVED",
-      requestData: notification as unknown as Record<string, unknown>,
-    },
+  await recordAbdmTransaction({
+    requestId,
+    action: "CONSENT_NOTIFY",
+    status: "CALLBACK_RECEIVED",
+    requestData: notification as unknown as Record<string, unknown>,
   });
 
   const { consentId, status, consentDetail } = consentNotif;
@@ -80,40 +83,52 @@ export async function handleConsentNotification(
   }
 
   // Upsert consent record
-  await (prisma as any).abdmConsent.upsert({
-    where: { consentId },
-    update: {
-      status,
-      consentDetail: consentDetail as unknown as Record<string, unknown>,
-      updatedAt: new Date(),
-      ...(consentDetail?.permission?.dateRange
-        ? {
-            dateFrom: new Date(consentDetail.permission.dateRange.from),
-            dateTo: new Date(consentDetail.permission.dateRange.to),
-          }
-        : {}),
-      ...(consentDetail?.permission?.dataEraseAt
-        ? { expiryDate: new Date(consentDetail.permission.dataEraseAt) }
-        : {}),
-    },
-    create: {
-      consentId,
-      patientId: patientId ?? "UNKNOWN",
-      status,
-      hiTypes: consentDetail?.hiTypes ?? [],
-      purpose: consentDetail?.purpose?.code,
-      consentDetail: consentDetail as unknown as Record<string, unknown>,
-      dateFrom: consentDetail?.permission?.dateRange?.from
-        ? new Date(consentDetail.permission.dateRange.from)
-        : undefined,
-      dateTo: consentDetail?.permission?.dateRange?.to
-        ? new Date(consentDetail.permission.dateRange.to)
-        : undefined,
-      expiryDate: consentDetail?.permission?.dataEraseAt
-        ? new Date(consentDetail.permission.dataEraseAt)
-        : undefined,
-    },
-  });
+  const consentsTable = getAbdmConsentsTable(prisma);
+  if (consentsTable) {
+    const existing = await consentsTable.findUnique({
+      where: { consentId },
+    });
+    if (existing) {
+      await consentsTable.update({
+        where: { consentId },
+        data: {
+          status,
+          consentDetail: consentDetail as unknown as Record<string, unknown>,
+          updatedAt: new Date(),
+          ...(consentDetail?.permission?.dateRange
+            ? {
+                dateFrom: new Date(consentDetail.permission.dateRange.from),
+                dateTo: new Date(consentDetail.permission.dateRange.to),
+              }
+            : {}),
+          ...(consentDetail?.permission?.dataEraseAt
+            ? { expiryDate: new Date(consentDetail.permission.dataEraseAt) }
+            : {}),
+        },
+      });
+    } else {
+      await consentsTable.create({
+        data: {
+          id: crypto.randomUUID(),
+          consentId,
+          patientId: patientId ?? "UNKNOWN",
+          status,
+          hiTypes: consentDetail?.hiTypes ?? [],
+          purpose: consentDetail?.purpose?.code,
+          consentDetail: consentDetail as unknown as Record<string, unknown>,
+          dateFrom: consentDetail?.permission?.dateRange?.from
+            ? new Date(consentDetail.permission.dateRange.from)
+            : undefined,
+          dateTo: consentDetail?.permission?.dateRange?.to
+            ? new Date(consentDetail.permission.dateRange.to)
+            : undefined,
+          expiryDate: consentDetail?.permission?.dataEraseAt
+            ? new Date(consentDetail.permission.dataEraseAt)
+            : undefined,
+        },
+      });
+    }
+  }
 
   // Acknowledge back to ABDM Gateway
   const ackRequestId = crypto.randomUUID();
@@ -127,10 +142,7 @@ export async function handleConsentNotification(
     error: null,
   });
 
-  await (prisma as any).abdmTransaction.updateMany({
-    where: { requestId },
-    data: { status: "SUCCESS" },
-  });
+  await updateAbdmTransaction(requestId, "SUCCESS");
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -145,7 +157,12 @@ export async function validateConsent(
   requestedHiTypes: string[],
   requestedDateRange: { from: string; to: string }
 ): Promise<{ valid: boolean; reason?: string }> {
-  const consent = await (prisma as any).abdmConsent.findUnique({
+  const consentsTable = getAbdmConsentsTable(prisma);
+  if (!consentsTable) {
+    return { valid: false, reason: "Consent table not available" };
+  }
+
+  const consent = await consentsTable.findUnique({
     where: { consentId },
   });
 
@@ -159,7 +176,7 @@ export async function validateConsent(
 
   if (consent.expiryDate && new Date() > new Date(consent.expiryDate)) {
     // Mark as expired
-    await (prisma as any).abdmConsent.update({
+    await consentsTable.update({
       where: { id: consent.id },
       data: { status: "EXPIRED" },
     });
@@ -201,7 +218,9 @@ export async function validateConsent(
 // ─────────────────────────────────────────────────────────────
 
 export async function getPatientConsents(patientId: string) {
-  return (prisma as any).abdmConsent.findMany({
+  const consentsTable = getAbdmConsentsTable(prisma);
+  if (!consentsTable) return [];
+  return consentsTable.findMany({
     where: { patientId },
     orderBy: { createdAt: "desc" },
   });

@@ -32,6 +32,11 @@ import { handleHealthInfoRequest } from "./data-transfer.service";
 import { buildFhirBundle } from "./fhir.service";
 import abdmConfig from "./abdm.config";
 import {
+  getAbdmCareContextsTable,
+  getAbdmConsentsTable,
+  getAbdmTransactionsTable,
+} from "./abdm.transaction.helper";
+import {
   requestAadhaarOtpSchema,
   verifyAadhaarOtpSchema,
   requestMobileOtpSchema,
@@ -53,15 +58,19 @@ import {
 
 export const getAbdmStats = async (_req: Request, res: Response): Promise<void> => {
   try {
+    const careContextsTable = getAbdmCareContextsTable(prisma);
+    const consentsTable = getAbdmConsentsTable(prisma);
+    const txTable = getAbdmTransactionsTable(prisma);
+
     const [totalAbhaPatients, totalCareContexts, totalConsents, totalTransactions] = await Promise.all([
       (prisma.patient as any).count({
         where: {
           abhaNumber: { not: null },
         },
       }),
-      (prisma as any).abdmCareContext?.count().catch(() => 0) ?? 0,
-      (prisma as any).abdmConsent?.count().catch(() => 0) ?? 0,
-      (prisma as any).abdmTransaction?.count().catch(() => 0) ?? 0,
+      careContextsTable ? careContextsTable.count().catch(() => 0) : 0,
+      consentsTable ? consentsTable.count().catch(() => 0) : 0,
+      txTable ? txTable.count().catch(() => 0) : 0,
     ]);
 
     res.json({
@@ -93,10 +102,11 @@ export const getAbdmStats = async (_req: Request, res: Response): Promise<void> 
 export const getAbdmTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
-    const transactions = await (prisma as any).abdmTransaction?.findMany({
+    const txTable = getAbdmTransactionsTable(prisma);
+    const transactions = txTable ? await txTable.findMany({
       take: limit,
       orderBy: { createdAt: "desc" },
-    }) || [];
+    }) : [];
 
     res.json({ success: true, data: transactions });
   } catch (err: any) {

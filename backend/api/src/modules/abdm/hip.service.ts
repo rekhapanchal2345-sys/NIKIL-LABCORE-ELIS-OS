@@ -11,6 +11,11 @@ import crypto from "crypto";
 import prisma from "../../../config/database";
 import { abdmPost } from "./abdm.gateway.client";
 import abdmConfig from "./abdm.config";
+import {
+  getAbdmCareContextsTable,
+  recordAbdmTransaction,
+  updateAbdmTransaction,
+} from "./abdm.transaction.helper";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -70,14 +75,12 @@ export async function handleDiscovery(req: DiscoveryRequest): Promise<void> {
   const { requestId, transactionId, patient } = req;
 
   // Log incoming request
-  await (prisma as any).abdmTransaction.create({
-    data: {
-      requestId,
-      transactionId,
-      action: "CARE_CONTEXT_DISCOVERY",
-      status: "CALLBACK_RECEIVED",
-      requestData: req as unknown as Record<string, unknown>,
-    },
+  await recordAbdmTransaction({
+    requestId,
+    transactionId,
+    action: "CARE_CONTEXT_DISCOVERY",
+    status: "CALLBACK_RECEIVED",
+    requestData: req as unknown as Record<string, unknown>,
   });
 
   // ── Match patient ──
@@ -128,14 +131,12 @@ export async function handleDiscovery(req: DiscoveryRequest): Promise<void> {
 export async function handleLinkInit(req: LinkInitRequest): Promise<void> {
   const { requestId, transactionId, patient } = req;
 
-  await (prisma as any).abdmTransaction.create({
-    data: {
-      requestId,
-      transactionId,
-      action: "CARE_CONTEXT_LINK_INIT",
-      status: "CALLBACK_RECEIVED",
-      requestData: req as unknown as Record<string, unknown>,
-    },
+  await recordAbdmTransaction({
+    requestId,
+    transactionId,
+    action: "CARE_CONTEXT_LINK_INIT",
+    status: "CALLBACK_RECEIVED",
+    requestData: req as unknown as Record<string, unknown>,
   });
 
   // Find LabCore patient by ABHA address
@@ -193,14 +194,12 @@ export async function handleLinkInit(req: LinkInitRequest): Promise<void> {
 export async function handleLinkConfirm(req: LinkConfirmRequest): Promise<void> {
   const { requestId, transactionId, confirmation } = req;
 
-  await (prisma as any).abdmTransaction.create({
-    data: {
-      requestId,
-      transactionId,
-      action: "CARE_CONTEXT_LINK_CONFIRM",
-      status: "CALLBACK_RECEIVED",
-      requestData: req as unknown as Record<string, unknown>,
-    },
+  await recordAbdmTransaction({
+    requestId,
+    transactionId,
+    action: "CARE_CONTEXT_LINK_CONFIRM",
+    status: "CALLBACK_RECEIVED",
+    requestData: req as unknown as Record<string, unknown>,
   });
 
   const stored = linkOtpStore.get(confirmation.linkRefNumber);
@@ -214,19 +213,31 @@ export async function handleLinkConfirm(req: LinkConfirmRequest): Promise<void> 
   } else {
     // Mark care contexts as linked in DB
     if (stored.patientId) {
+      const careContextsTable = getAbdmCareContextsTable(prisma);
       for (const ref of stored.careContextRefs) {
-        await (prisma as any).abdmCareContext.upsert({
-          where: { careContextReference: ref },
-          update: { isLinked: true, linkedAt: new Date() },
-          create: {
-            patientId: stored.patientId,
-            careContextReference: ref,
-            display: `Lab Visit ${ref.slice(-8)}`,
-            isLinked: true,
-            linkedAt: new Date(),
-            hiTypes: ["DiagnosticReport"],
-          },
-        });
+        if (careContextsTable) {
+          const existing = await careContextsTable.findUnique({
+            where: { careContextReference: ref },
+          });
+          if (existing) {
+            await careContextsTable.update({
+              where: { careContextReference: ref },
+              data: { isLinked: true, linkedAt: new Date(), updatedAt: new Date() },
+            });
+          } else {
+            await careContextsTable.create({
+              data: {
+                id: crypto.randomUUID(),
+                patientId: stored.patientId,
+                careContextReference: ref,
+                display: `Lab Visit ${ref.slice(-8)}`,
+                isLinked: true,
+                linkedAt: new Date(),
+                hiTypes: ["DiagnosticReport"],
+              },
+            });
+          }
+        }
       }
     }
     linkOtpStore.delete(confirmation.linkRefNumber);
@@ -280,27 +291,37 @@ export async function addCareContextForOrder(
   const display = orderDisplay || `Lab Report – ${new Date().toLocaleDateString("en-IN")}`;
 
   // Upsert care context record
-  await (prisma as any).abdmCareContext.upsert({
-    where: { careContextReference },
-    update: { display, hiTypes: ["DiagnosticReport"] },
-    create: {
-      patientId,
-      careContextReference,
-      display,
-      orderId,
-      hiTypes: ["DiagnosticReport"],
-    },
-  });
+  const careContextsTable = getAbdmCareContextsTable(prisma);
+  if (careContextsTable) {
+    const existing = await careContextsTable.findUnique({
+      where: { careContextReference },
+    });
+    if (existing) {
+      await careContextsTable.update({
+        where: { careContextReference },
+        data: { display, hiTypes: ["DiagnosticReport"], updatedAt: new Date() },
+      });
+    } else {
+      await careContextsTable.create({
+        data: {
+          id: crypto.randomUUID(),
+          patientId,
+          careContextReference,
+          display,
+          orderId,
+          hiTypes: ["DiagnosticReport"],
+        },
+      });
+    }
+  }
 
   const requestId = crypto.randomUUID();
-  await (prisma as any).abdmTransaction.create({
-    data: {
-      requestId,
-      action: "CARE_CONTEXT_ADD",
-      status: "INITIATED",
-      patientId,
-      requestData: { orderId, careContextReference },
-    },
+  await recordAbdmTransaction({
+    requestId,
+    action: "CARE_CONTEXT_ADD",
+    status: "INITIATED",
+    patientId,
+    requestData: { orderId, careContextReference },
   });
 
   // Notify ABDM Gateway
@@ -320,13 +341,7 @@ export async function addCareContextForOrder(
 
   const resp = await abdmPost("/v0.5/links/link/add-contexts", addContextsBody);
 
-  await (prisma as any).abdmTransaction.updateMany({
-    where: { requestId },
-    data: {
-      status: resp.ok ? "SUCCESS" : "FAILED",
-      responseData: resp.data as Record<string, unknown>,
-    },
-  });
+  await updateAbdmTransaction(requestId, resp.ok ? "SUCCESS" : "FAILED", resp.data as Record<string, unknown>);
 
   return { success: resp.ok, careContextReference };
 }
