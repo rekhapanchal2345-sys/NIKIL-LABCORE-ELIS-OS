@@ -152,6 +152,51 @@ runTest("Mathematical Telemetry (CRF Viterbi, Attention Entropy, Brier Calibrati
   assert.ok(tel.graphAttentionGatLayers === 3, "Must report 3-layer GAT architecture");
 });
 
+// 7. HIPAA Safe-Harbor PHI De-Identification
+runTest("HIPAA Safe-Harbor De-Identification (18 Identifier Types)", () => {
+  const noteWithPhi = `Patient Ramesh Gupta, UHID: LC-994821, Phone: (555) 234-5678, admitted on 12/04/2026.
+Presenting with acute anterior myocardial infarction and dyspnea. Troponin I elevated at 2.1 ng/mL.`;
+  const res = ClinicalNlpEngine.analyzeText(noteWithPhi);
+
+  assert.ok(res.deidentification, "Must include deidentification payload");
+  assert.ok(res.deidentification.redactedCount >= 2, `Expected >= 2 redacted PHI items, got ${res.deidentification.redactedCount}`);
+  assert.ok(res.deidentification.scrubbedText.includes("[DATE_OFFSET]"), "Must scrub dates to offset");
+  assert.ok(res.deidentification.scrubbedText.includes("[REDACTED_IDENTIFIER]") || res.deidentification.scrubbedText.includes("[PHONE_REDACTED]"), "Must redact identifiers or phone");
+});
+
+// 8. Pharmacovigilance & Contraindication Audit
+runTest("Pharmacovigilance (DDI & Contraindication Audit)", () => {
+  const note = `Elderly patient with stage 4 CKD (eGFR 22). Continued on Metformin 1000mg BD and Aspirin 325mg with Warfarin 5mg daily.`;
+  const res = ClinicalNlpEngine.analyzeText(note);
+
+  assert.ok(res.pharmacovigilance, "Must include pharmacovigilance audit");
+  assert.ok(res.pharmacovigilance.contraindications.length >= 1, "Must detect Metformin in CKD black-box contraindication");
+  assert.ok(res.pharmacovigilance.interactions.length >= 1, "Must detect Aspirin + Warfarin major bleeding interaction");
+});
+
+// 9. Multi-Dimensional Knowledge Graph (2D, 3D, and 4D Temporal Evolution)
+runTest("Multi-Dimensional Knowledge Graph (2D, 3D, and 4D Temporal Trajectories)", () => {
+  const note = `STEMI patient with elevated troponin 1.84 ng/mL and serum potassium 6.4 mEq/L. Prescribed Aspirin 300mg chewed.`;
+  const res = ClinicalNlpEngine.analyzeText(note);
+
+  const coords = res.knowledgeGraph.dimensionalCoordinates;
+  assert.ok(coords, "Must generate dimensional coordinates");
+  assert.ok(coords.projection2D.length > 0, "Must calculate 2D node coordinates");
+  assert.ok(coords.projection3D.length > 0, "Must calculate 3D spatial (x, y, z) coordinates");
+  assert.ok(coords.timeline4D.length === 5, "Must synthesize 5-stage 4D temporal evolution trajectory");
+});
+
+// 10. Comprehensive Clinical Risk & Regression Suite
+runTest("Expanded Clinical Risk & Regression Engines (CHA2DS2-VASc, HAS-BLED, CURB-65, qSOFA)", () => {
+  const note = `72yo male with atrial fibrillation, history of ischemic stroke, hypertension, and acute kidney injury on aspirin.`;
+  const res = ClinicalNlpEngine.analyzeText(note);
+
+  const scores = res.clinicalRiskScores;
+  assert.ok(scores.cha2ds2VascScore >= 4, `Expected high CHA2DS2-VASc >= 4, got ${scores.cha2ds2VascScore}`);
+  assert.ok(scores.hasBledScore >= 2, `Expected HAS-BLED >= 2, got ${scores.hasBledScore}`);
+  assert.ok(scores.kdigoCkdStage, "Must compute KDIGO CKD Stage");
+});
+
 console.log("=================================================");
 console.log(`📊 Enterprise Clinical NLP Tests: ${passed} / ${total} Passed (${Math.round(passed/total*100)}%)`);
 console.log("=================================================");
