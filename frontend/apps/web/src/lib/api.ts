@@ -4197,6 +4197,35 @@ export const dashboardApi = {
       };
     }
   },
+
+  // Get unified real-time hospital telemetry metrics
+  getMetrics: async () => {
+    try {
+      return await apiCall('/api/dashboard/metrics');
+    } catch (error) {
+      logDashboardFallback('Dashboard metrics API error', error);
+      return { success: false, data: null };
+    }
+  },
+
+  // Record panic read-back
+  acknowledgePanic: async (payload: {
+    resultValueId?: string;
+    orderId?: string;
+    recipientName?: string;
+    recipientContact?: string;
+    readBackNote?: string;
+  }) => {
+    try {
+      return await apiCall('/api/dashboard/panic-readback', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      logDashboardFallback('Dashboard panic readback error', error);
+      return { success: false };
+    }
+  },
 };
 
 // Patients API

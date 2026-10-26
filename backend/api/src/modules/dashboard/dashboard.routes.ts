@@ -10,6 +10,8 @@ import {
   getActivity,
   getPaymentStats,
   getTestStats,
+  getMetrics,
+  acknowledgePanic,
 } from "./dashboard.controller";
 
 const router = Router();
@@ -24,6 +26,18 @@ router.use(authenticate);
  * Get comprehensive dashboard statistics
  */
 router.get("/stats", getStats);
+
+/**
+ * GET /api/dashboard/metrics
+ * Get unified real-time hospital telemetry metrics
+ */
+router.get("/metrics", getMetrics);
+
+/**
+ * POST /api/dashboard/panic-readback
+ * Record critical value panic telephonic read-back
+ */
+router.post("/panic-readback", acknowledgePanic);
 
 /**
  * GET /api/dashboard/orders

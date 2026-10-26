@@ -173,7 +173,7 @@ export async function dispatchApprovedReportToWhatsApp(
     userId: actorId,
   });
 
-  const verificationUrl = `${publicHostUrl}/verify-report?token=${persistedReport.verificationToken}`;
+  const verificationUrl = `${publicHostUrl}/verify-report?token=${persistedReport.qrVerificationToken}`;
   const testNames = order.items.map((i) => i.test?.testName || "Laboratory Test").join(", ");
   const patientFullName = `${patient.firstName} ${patient.lastName}`.trim();
 

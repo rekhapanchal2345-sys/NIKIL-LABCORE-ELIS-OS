@@ -13,6 +13,8 @@ import {
   getRecentActivity,
   getPaymentAnalytics,
   getTestAnalytics,
+  getHospitalMetrics,
+  recordDashboardPanicAck,
 } from "./dashboard.service";
 
 import {
@@ -239,6 +241,57 @@ export const getTestStats = async (
       res,
       analytics,
       "Test analytics fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get unified real-time hospital telemetry metrics
+ */
+export const getMetrics = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const metrics = await getHospitalMetrics();
+    return successResponse(
+      res,
+      metrics,
+      "Hospital telemetry metrics fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Record critical value panic telephonic read-back from Dashboard
+ */
+export const acknowledgePanic = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { resultValueId, orderId, recipientName, recipientContact, readBackNote } = req.body;
+    const actorId = (req as any).user?.id || (req as any).user?.userId;
+
+    const result = await recordDashboardPanicAck({
+      resultValueId,
+      orderId,
+      recipientName,
+      recipientContact,
+      readBackNote,
+      actorId,
+    });
+
+    return successResponse(
+      res,
+      result,
+      "Critical panic read-back recorded successfully"
     );
   } catch (error) {
     next(error);
