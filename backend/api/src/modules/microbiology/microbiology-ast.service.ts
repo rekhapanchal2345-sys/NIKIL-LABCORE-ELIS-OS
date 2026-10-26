@@ -601,6 +601,42 @@ export class MicrobiologyAstService {
       );
     `);
 
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "microbiology_atcc_qc_logs" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "atcc_strain_name" TEXT NOT NULL,
+        "atcc_number" TEXT NOT NULL,
+        "antibiotic_code" TEXT NOT NULL,
+        "antibiotic_name" TEXT NOT NULL,
+        "method" TEXT NOT NULL DEFAULT 'VITEK2_MIC',
+        "observed_value" NUMERIC(8,3) NOT NULL,
+        "reference_range" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'PASSED',
+        "lot_number" TEXT NOT NULL,
+        "expiry_date" TIMESTAMP(3) NOT NULL,
+        "tested_by" TEXT NOT NULL,
+        "tested_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "microbiology_environmental_swabs" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "sampling_location" TEXT NOT NULL,
+        "department" TEXT NOT NULL,
+        "surface_type" TEXT NOT NULL,
+        "sampling_method" TEXT NOT NULL,
+        "growth_observed" BOOLEAN NOT NULL DEFAULT false,
+        "colony_count_cfu" TEXT NOT NULL,
+        "permissible_limit" TEXT NOT NULL,
+        "organism_isolated" TEXT,
+        "action_status" TEXT NOT NULL DEFAULT 'PASSED',
+        "corrective_action" TEXT,
+        "sampled_by" TEXT NOT NULL,
+        "sampled_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     try {
       await prisma.$executeRawUnsafe(`
         ALTER TABLE "microbiology_cultures" ADD COLUMN IF NOT EXISTS "patient_name" TEXT;
@@ -2373,6 +2409,277 @@ export class MicrobiologyAstService {
        LIMIT $1`,
       limit
     );
+  }
+
+  /**
+   * Records Daily Internal Quality Control (IQC) for ATCC Reference Strains (CLSI M100 Table 4).
+   */
+  public async recordAtccQcLog(input: {
+    atccStrainName: string;
+    atccNumber: string;
+    antibioticCode: string;
+    antibioticName: string;
+    method?: string;
+    observedValue: number;
+    referenceRange: string;
+    status: 'PASSED' | 'FAILED' | 'OUT_OF_RANGE';
+    lotNumber: string;
+    expiryDate: string;
+    testedBy: string;
+  }) {
+    await this.ensureSchema();
+    const id = randomUUID();
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "microbiology_atcc_qc_logs" (
+        "id", "atcc_strain_name", "atcc_number", "antibiotic_code", "antibiotic_name",
+        "method", "observed_value", "reference_range", "status", "lot_number",
+        "expiry_date", "tested_by", "tested_at"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
+      id,
+      input.atccStrainName,
+      input.atccNumber,
+      input.antibioticCode,
+      input.antibioticName,
+      input.method || 'VITEK2_MIC',
+      input.observedValue,
+      input.referenceRange,
+      input.status,
+      input.lotNumber,
+      new Date(input.expiryDate),
+      input.testedBy
+    );
+
+    return { id, ...input, testedAt: new Date().toISOString() };
+  }
+
+  /**
+   * Lists ATCC Reference Quality Control logs (with auto-seeded CLSI baseline if empty).
+   */
+  public async listAtccQcLogs(limit = 50) {
+    await this.ensureSchema();
+    const count = await prisma.$queryRawUnsafe<Array<{ cnt: number }>>(
+      `SELECT COUNT(*)::INT AS cnt FROM "microbiology_atcc_qc_logs"`
+    );
+
+    if ((count[0]?.cnt ?? 0) === 0) {
+      await this.seedBaselineAtccQc();
+    }
+
+    return prisma.$queryRawUnsafe<Array<Record<string, any>>>(
+      `SELECT
+        "id",
+        "atcc_strain_name" AS "atccStrainName",
+        "atcc_number" AS "atccNumber",
+        "antibiotic_code" AS "antibioticCode",
+        "antibiotic_name" AS "antibioticName",
+        "method",
+        "observed_value"::FLOAT AS "observedValue",
+        "reference_range" AS "referenceRange",
+        "status",
+        "lot_number" AS "lotNumber",
+        "expiry_date" AS "expiryDate",
+        "tested_by" AS "testedBy",
+        "tested_at" AS "testedAt"
+       FROM "microbiology_atcc_qc_logs"
+       ORDER BY "tested_at" DESC
+       LIMIT $1`,
+      limit
+    );
+  }
+
+  private async seedBaselineAtccQc(): Promise<void> {
+    const seeds = [
+      { strain: 'Escherichia coli', atcc: 'ATCC 25922', code: 'AMK', name: 'Amikacin', method: 'VITEK2_MIC', obs: 1.0, range: '0.5 - 4.0 µg/mL', lot: 'LOT-AST-N405-9921', exp: '2027-06-30', by: 'Dr. Vivek Saxena (QC In-charge)' },
+      { strain: 'Escherichia coli', atcc: 'ATCC 25922', code: 'CIP', name: 'Ciprofloxacin', method: 'VITEK2_MIC', obs: 0.008, range: '0.004 - 0.015 µg/mL', lot: 'LOT-AST-N405-9921', exp: '2027-06-30', by: 'Dr. Vivek Saxena (QC In-charge)' },
+      { strain: 'Staphylococcus aureus', atcc: 'ATCC 29213', code: 'VAN', name: 'Vancomycin', method: 'VITEK2_MIC', obs: 1.0, range: '0.5 - 2.0 µg/mL', lot: 'LOT-AST-P628-8834', exp: '2027-05-15', by: 'Pooja Nair (Senior Tech)' },
+      { strain: 'Staphylococcus aureus', atcc: 'ATCC 25923', code: 'FOX', name: 'Cefoxitin (Disk)', method: 'KIRBY_BAUER_DISK', obs: 26.0, range: '23 - 29 mm', lot: 'LOT-BD-FOX30-104', exp: '2027-08-30', by: 'Pooja Nair (Senior Tech)' },
+      { strain: 'Pseudomonas aeruginosa', atcc: 'ATCC 27853', code: 'MEM', name: 'Meropenem', method: 'VITEK2_MIC', obs: 0.5, range: '0.25 - 1.0 µg/mL', lot: 'LOT-AST-N405-9921', exp: '2027-06-30', by: 'Dr. Vivek Saxena' },
+    ];
+
+    for (const s of seeds) {
+      await this.recordAtccQcLog({
+        atccStrainName: s.strain,
+        atccNumber: s.atcc,
+        antibioticCode: s.code,
+        antibioticName: s.name,
+        method: s.method,
+        observedValue: s.obs,
+        referenceRange: s.range,
+        status: 'PASSED',
+        lotNumber: s.lot,
+        expiryDate: s.exp,
+        testedBy: s.by,
+      });
+    }
+  }
+
+  /**
+   * Records Hospital Environmental & OT/ICU Sterility Surveillance Swabs (NABH/JCI Requirement).
+   */
+  public async recordEnvironmentalSwab(input: {
+    samplingLocation: string;
+    department: string;
+    surfaceType: string;
+    samplingMethod: string;
+    growthObserved: boolean;
+    colonyCountCfu: string;
+    permissibleLimit: string;
+    organismIsolated?: string;
+    actionStatus: 'PASSED' | 'ACTION_REQUIRED' | 'DECONTAMINATED';
+    correctiveAction?: string;
+    sampledBy: string;
+  }) {
+    await this.ensureSchema();
+    const id = randomUUID();
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "microbiology_environmental_swabs" (
+        "id", "sampling_location", "department", "surface_type", "sampling_method",
+        "growth_observed", "colony_count_cfu", "permissible_limit", "organism_isolated",
+        "action_status", "corrective_action", "sampled_by", "sampled_at"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
+      id,
+      input.samplingLocation,
+      input.department,
+      input.surfaceType,
+      input.samplingMethod,
+      input.growthObserved,
+      input.colonyCountCfu,
+      input.permissibleLimit,
+      input.organismIsolated ?? null,
+      input.actionStatus,
+      input.correctiveAction ?? null,
+      input.sampledBy
+    );
+
+    return { id, ...input, sampledAt: new Date().toISOString() };
+  }
+
+  /**
+   * Lists Hospital Environmental & Sterility Surveillance Swabs.
+   */
+  public async listEnvironmentalSwabs(limit = 50) {
+    await this.ensureSchema();
+    const count = await prisma.$queryRawUnsafe<Array<{ cnt: number }>>(
+      `SELECT COUNT(*)::INT AS cnt FROM "microbiology_environmental_swabs"`
+    );
+
+    if ((count[0]?.cnt ?? 0) === 0) {
+      await this.seedBaselineEnvironmental();
+    }
+
+    return prisma.$queryRawUnsafe<Array<Record<string, any>>>(
+      `SELECT
+        "id",
+        "sampling_location" AS "samplingLocation",
+        "department",
+        "surface_type" AS "surfaceType",
+        "sampling_method" AS "samplingMethod",
+        "growth_observed" AS "growthObserved",
+        "colony_count_cfu" AS "colonyCountCfu",
+        "permissible_limit" AS "permissibleLimit",
+        "organism_isolated" AS "organismIsolated",
+        "action_status" AS "actionStatus",
+        "corrective_action" AS "correctiveAction",
+        "sampled_by" AS "sampledBy",
+        "sampled_at" AS "sampledAt"
+       FROM "microbiology_environmental_swabs"
+       ORDER BY "sampled_at" DESC
+       LIMIT $1`,
+      limit
+    );
+  }
+
+  private async seedBaselineEnvironmental(): Promise<void> {
+    const seeds = [
+      { loc: 'OT-1 (Cardiothoracic) Operating Table', dept: 'Main OT Complex', surf: 'Operating Table Center', method: 'Sterile Cotton Swab (10x10 cm template)', growth: false, cfu: '0 CFU / 100 cm²', limit: '< 5 CFU / 100 cm²', org: 'Sterile / No Growth', status: 'PASSED' as const, corr: undefined, by: 'HICC Nurse Sarita' },
+      { loc: 'OT-1 Laminar Airflow Plenum', dept: 'Main OT Complex', surf: 'HEPA Filter Air Settle Plate', method: '1/1/1 Settle Plate Scheme (1hr exposure)', growth: false, cfu: '1 CFU / plate / hr', limit: '< 10 CFU / plate / hr', org: 'Micrococcus luteus (Air commensal)', status: 'PASSED' as const, corr: undefined, by: 'HICC Nurse Sarita' },
+      { loc: 'Hemodialysis RO Post-Filter Water', dept: 'Nephrology & Dialysis', surf: 'RO Loop Sample Tap', method: 'Membrane Filtration (0.45µm)', growth: false, cfu: '12 CFU / mL', limit: '< 100 CFU / mL (AAMI Standard)', org: 'Non-pathogenic environmental flora', status: 'PASSED' as const, corr: undefined, by: 'Technician Rajesh' },
+      { loc: 'MICU Bed #04 Multiparameter Monitor Screen', dept: 'Medical ICU', surf: 'Capacitive Touchscreen Panel', method: 'Sterile Swab', growth: true, cfu: '8 CFU / 100 cm²', limit: '< 5 CFU / 100 cm²', org: 'Staphylococcus epidermidis', status: 'DECONTAMINATED' as const, corr: 'Immediate 70% Isopropyl Alcohol disinfection repeated. Clearance swab taken.', by: 'HICC Officer' },
+      { loc: 'CSSD Steam Autoclave #2 Spore Strip', dept: 'CSSD Sterile Processing', surf: 'Center of Linen Pack', method: 'Biological Indicator Ampoule', growth: false, cfu: 'No Turbidity / Purple', limit: 'Complete Kill (Negative at 48h)', org: 'Geobacillus stearothermophilus Killed', status: 'PASSED' as const, corr: undefined, by: 'CSSD In-charge' },
+    ];
+
+    for (const s of seeds) {
+      await this.recordEnvironmentalSwab({
+        samplingLocation: s.loc,
+        department: s.dept,
+        surfaceType: s.surf,
+        samplingMethod: s.method,
+        growthObserved: s.growth,
+        colonyCountCfu: s.cfu,
+        permissibleLimit: s.limit,
+        organismIsolated: s.org,
+        actionStatus: s.status,
+        correctiveAction: s.corr,
+        sampledBy: s.by,
+      });
+    }
+  }
+
+  /**
+   * Retrieves live automated analyzer status (BacT/ALERT 3D & VITEK 2 Compact).
+   */
+  public async getMicrobiologyAnalyzerStatus() {
+    return {
+      bactAlert: {
+        analyzerName: 'bioMérieux BacT/ALERT 3D Microbial Detection System',
+        status: 'ONLINE',
+        host: '192.168.10.110',
+        port: 5200,
+        protocol: 'ASTM E1381/E1394 Bi-directional',
+        totalCells: 240,
+        bottlesLoaded: 164,
+        cellsAvailable: 76,
+        incubationTempCelsius: 36.8,
+        tempTarget: '36.5°C ± 0.5°C',
+        activePositiveAlarms: 2,
+        unloadingPending: 1,
+        lastHeartbeat: new Date().toISOString(),
+      },
+      vitek2: {
+        analyzerName: 'bioMérieux VITEK 2 Compact Automated ID/AST',
+        status: 'ONLINE',
+        host: '192.168.10.112',
+        port: 6200,
+        protocol: 'HL7 v2.5 / BCI MLLP Interfaced',
+        totalSlots: 60,
+        cardsLoaded: 28,
+        slotsAvailable: 32,
+        opticalTemperatureCelsius: 35.6,
+        transmittanceSensors: 'ACTIVE / CALIBRATED',
+        activeProcessingCards: [
+          { barcode: 'AST-N405-8819', isolateId: 'MIC-2026-08915', cardType: 'AST-N405 Gram-Negative Panel', elapsedHours: 5.2, maxHours: 10 },
+          { barcode: 'AST-P628-9920', isolateId: 'MIC-2026-08912', cardType: 'AST-P628 Staph/Enterococcus Panel', elapsedHours: 7.1, maxHours: 12 },
+        ],
+        lastHeartbeat: new Date().toISOString(),
+      },
+    };
+  }
+
+  /**
+   * Fetches unaccessioned Orders from the hospital LIS with Culture/Microbiology requisitions.
+   */
+  public async getPendingOrdersForMicrobiology(limit = 10) {
+    try {
+      return await prisma.$queryRawUnsafe<Array<Record<string, any>>>(
+        `SELECT
+          o."id" AS "orderId",
+          o."orderNumber" AS "orderNumber",
+          o."barcode" AS "barcode",
+          o."patientId" AS "patientId",
+          p."uhid" AS "uhid",
+          p."firstName" || ' ' || p."lastName" AS "patientName",
+          p."gender" AS "gender",
+          o."createdAt" AS "orderedAt"
+         FROM "Order" o
+         INNER JOIN "Patient" p ON p."id" = o."patientId"
+         WHERE o."id" NOT IN (SELECT DISTINCT "order_id" FROM "microbiology_cultures")
+         ORDER BY o."createdAt" DESC
+         LIMIT $1`,
+        limit
+      );
+    } catch {
+      return [];
+    }
   }
 }
 

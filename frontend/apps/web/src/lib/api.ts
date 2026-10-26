@@ -7315,6 +7315,24 @@ export const microbiologyApi = {
     ),
   exportWhonetUrl: (windowDays = 90) =>
     `/api/enterprise-tier2/microbiology/whonet-export?windowDays=${windowDays}`,
+  listAtccQc: (limit = 50) =>
+    apiCall(`/api/enterprise-tier2/microbiology/atcc-qc?limit=${limit}`),
+  recordAtccQc: (data: any) =>
+    apiCall('/api/enterprise-tier2/microbiology/atcc-qc', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  listEnvironmentalSwabs: (limit = 50) =>
+    apiCall(`/api/enterprise-tier2/microbiology/environmental-swabs?limit=${limit}`),
+  recordEnvironmentalSwab: (data: any) =>
+    apiCall('/api/enterprise-tier2/microbiology/environmental-swabs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getAnalyzers: () =>
+    apiCall('/api/enterprise-tier2/microbiology/analyzers'),
+  getPendingOrders: (limit = 10) =>
+    apiCall(`/api/enterprise-tier2/microbiology/pending-orders?limit=${limit}`),
 };
 
 export default apiCall;

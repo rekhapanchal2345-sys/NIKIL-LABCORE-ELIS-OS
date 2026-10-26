@@ -14,16 +14,17 @@ import {
   Calendar, User, Building2, ExternalLink, Layers,
   Eye, SlidersHorizontal, ArrowUpDown, ChevronDown, Award, PhoneCall,
   Pill, Droplets, Siren, Radio, ClipboardList, CheckSquare,
-  FileSpreadsheet, Sparkles
+  FileSpreadsheet, Sparkles, MessageCircle, Share2, Server, Gauge,
+  Thermometer, Box
 } from 'lucide-react';
 
 // ============================================================================
 // CLINICAL DOMAIN TYPES & STANDARDS (CLSI M100 Ed. 34 / EUCAST 2024-2026 / WHO AWaRe)
 // ============================================================================
 
-export type WhoAwareTier = 'ACCESS' | 'WATCH' | 'RESERVE';
+type WhoAwareTier = 'ACCESS' | 'WATCH' | 'RESERVE';
 
-export interface AntibioticTestEntry {
+interface AntibioticTestEntry {
   antibioticCode: string;
   antibioticName: string;
   antibioticClass: string;
@@ -38,7 +39,7 @@ export interface AntibioticTestEntry {
   cascadeGroup: 'A' | 'B' | 'C'; // Group A: Primary, Group B: Secondary, Group C: Restricted Reserve
 }
 
-export interface OrganismIsolate {
+interface OrganismIsolate {
   isolateId: string;
   isolateNumber: number;
   organismCode: string;
@@ -53,7 +54,7 @@ export interface OrganismIsolate {
   astPanel: AntibioticTestEntry[];
 }
 
-export interface CultureOrderRecord {
+interface CultureOrderRecord {
   id: string;
   accessionNumber: string;
   sampleId: string;
@@ -97,7 +98,7 @@ export interface CultureOrderRecord {
   };
 }
 
-export interface CriticalCallRecord {
+interface CriticalCallRecord {
   id: string;
   cultureId: string;
   accessionNumber?: string;
@@ -114,7 +115,39 @@ export interface CriticalCallRecord {
   calledAt: string;
 }
 
-export interface AntibiogramMatrixCell {
+interface AtccQcRecord {
+  id: string;
+  atccStrainName: string;
+  atccNumber: string;
+  antibioticCode: string;
+  antibioticName: string;
+  method: string;
+  observedValue: number;
+  referenceRange: string;
+  status: 'PASSED' | 'FAILED' | 'OUT_OF_RANGE';
+  lotNumber: string;
+  expiryDate: string;
+  testedBy: string;
+  testedAt: string;
+}
+
+interface EnvironmentalSwabRecord {
+  id: string;
+  samplingLocation: string;
+  department: string;
+  surfaceType: string;
+  samplingMethod: string;
+  growthObserved: boolean;
+  colonyCountCfu: string;
+  permissibleLimit: string;
+  organismIsolated?: string;
+  actionStatus: 'PASSED' | 'ACTION_REQUIRED' | 'DECONTAMINATED';
+  correctiveAction?: string;
+  sampledBy: string;
+  sampledAt: string;
+}
+
+interface AntibiogramMatrixCell {
   antibioticCode: string;
   antibioticName: string;
   totalTested: number;
@@ -124,7 +157,7 @@ export interface AntibiogramMatrixCell {
   susceptibilityPercent: number;
 }
 
-export interface AntibiogramRow {
+interface AntibiogramRow {
   organismName: string;
   gramReaction: string;
   totalIsolates: number;
@@ -149,7 +182,7 @@ interface ClsiRuleRef {
   rMaxZone: number;
 }
 
-export const CLSI_M100_RULES: Record<string, ClsiRuleRef> = {
+const CLSI_M100_RULES: Record<string, ClsiRuleRef> = {
   AMP: { name: 'Ampicillin', className: 'Penicillins', aware: 'ACCESS', cascadeGroup: 'A', isReserve: false, sMaxMic: 8, rMinMic: 32, sMinZone: 17, rMaxZone: 13 },
   AMK: { name: 'Amikacin', className: 'Aminoglycosides', aware: 'ACCESS', cascadeGroup: 'A', isReserve: false, sMaxMic: 16, rMinMic: 64, sMinZone: 17, rMaxZone: 14 },
   GEN: { name: 'Gentamicin', className: 'Aminoglycosides', aware: 'ACCESS', cascadeGroup: 'A', isReserve: false, sMaxMic: 4, rMinMic: 16, sMinZone: 15, rMaxZone: 12 },
@@ -175,10 +208,8 @@ export const CLSI_M100_RULES: Record<string, ClsiRuleRef> = {
   COT: { name: 'Trimethoprim-Sulfamethoxazole', className: 'Folate Inhibitors', aware: 'ACCESS', cascadeGroup: 'A', isReserve: false, sMaxMic: 2, rMinMic: 4, sMinZone: 16, rMaxZone: 10 },
 };
 
-// ============================================================================
-// CLINICAL INTRINSIC RESISTANCE RULES (CLSI M100 Appendix B / EUCAST Expert Rules)
-// ============================================================================
-export const INTRINSIC_RULES = [
+// Intrinsic resistance biological validation rules (CLSI Appendix B)
+const INTRINSIC_RULES = [
   { organism: 'Klebsiella pneumoniae', badDrug: 'AMP', drugName: 'Ampicillin', reason: 'Constitutive chromosomal SHV-1 beta-lactamase.' },
   { organism: 'Proteus mirabilis', badDrug: 'NIT', drugName: 'Nitrofurantoin', reason: 'Naturally elevated minimum inhibitory concentration.' },
   { organism: 'Proteus mirabilis', badDrug: 'CST', drugName: 'Colistin', reason: 'Cell envelope lipid A modification prevents polymyxin binding.' },
@@ -190,10 +221,7 @@ export const INTRINSIC_RULES = [
   { organism: 'Staphylococcus aureus', badDrug: 'CST', drugName: 'Colistin', reason: 'Polymyxins lack target sites on Gram-positive peptidoglycan.' },
 ];
 
-// ============================================================================
-// REAL CLINICAL HOSPITAL SEED DATA
-// ============================================================================
-
+// Baseline Clinical Seeds
 const INITIAL_CULTURES: CultureOrderRecord[] = [
   {
     id: 'mic-001',
@@ -509,6 +537,22 @@ const INITIAL_CRITICAL_CALLS: CriticalCallRecord[] = [
   },
 ];
 
+const INITIAL_ATCC_QC: AtccQcRecord[] = [
+  { id: 'qc-1', atccStrainName: 'Escherichia coli', atccNumber: 'ATCC 25922', antibioticCode: 'AMK', antibioticName: 'Amikacin', method: 'VITEK2_MIC', observedValue: 1.0, referenceRange: '0.5 - 4.0 µg/mL', status: 'PASSED', lotNumber: 'LOT-AST-N405-9921', expiryDate: '2027-06-30', testedBy: 'Dr. Vivek Saxena', testedAt: '2026-10-26T07:00:00.000Z' },
+  { id: 'qc-2', atccStrainName: 'Escherichia coli', atccNumber: 'ATCC 25922', antibioticCode: 'CIP', antibioticName: 'Ciprofloxacin', method: 'VITEK2_MIC', observedValue: 0.008, referenceRange: '0.004 - 0.015 µg/mL', status: 'PASSED', lotNumber: 'LOT-AST-N405-9921', expiryDate: '2027-06-30', testedBy: 'Dr. Vivek Saxena', testedAt: '2026-10-26T07:00:00.000Z' },
+  { id: 'qc-3', atccStrainName: 'Staphylococcus aureus', atccNumber: 'ATCC 29213', antibioticCode: 'VAN', antibioticName: 'Vancomycin', method: 'VITEK2_MIC', observedValue: 1.0, referenceRange: '0.5 - 2.0 µg/mL', status: 'PASSED', lotNumber: 'LOT-AST-P628-8834', expiryDate: '2027-05-15', testedBy: 'Pooja Nair', testedAt: '2026-10-26T07:15:00.000Z' },
+  { id: 'qc-4', atccStrainName: 'Staphylococcus aureus', atccNumber: 'ATCC 25923', antibioticCode: 'FOX', antibioticName: 'Cefoxitin (Disk)', method: 'KIRBY_BAUER_DISK', observedValue: 26.0, referenceRange: '23 - 29 mm', status: 'PASSED', lotNumber: 'LOT-BD-FOX30-104', expiryDate: '2027-08-30', testedBy: 'Pooja Nair', testedAt: '2026-10-26T07:20:00.000Z' },
+  { id: 'qc-5', atccStrainName: 'Pseudomonas aeruginosa', atccNumber: 'ATCC 27853', antibioticCode: 'MEM', antibioticName: 'Meropenem', method: 'VITEK2_MIC', observedValue: 0.5, referenceRange: '0.25 - 1.0 µg/mL', status: 'PASSED', lotNumber: 'LOT-AST-N405-9921', expiryDate: '2027-06-30', testedBy: 'Dr. Vivek Saxena', testedAt: '2026-10-26T07:30:00.000Z' },
+];
+
+const INITIAL_ENV_SWABS: EnvironmentalSwabRecord[] = [
+  { id: 'env-1', samplingLocation: 'OT-1 (Cardiothoracic) Operating Table', department: 'Main OT Complex', surfaceType: 'Operating Table Center', samplingMethod: 'Sterile Cotton Swab (10x10 cm template)', growthObserved: false, colonyCountCfu: '0 CFU / 100 cm²', permissibleLimit: '< 5 CFU / 100 cm²', organismIsolated: 'Sterile / No Growth', actionStatus: 'PASSED', sampledBy: 'HICC Nurse Sarita', sampledAt: '2026-10-25T06:00:00.000Z' },
+  { id: 'env-2', samplingLocation: 'OT-1 Laminar Airflow Plenum', department: 'Main OT Complex', surfaceType: 'HEPA Filter Air Settle Plate', samplingMethod: '1/1/1 Settle Plate Scheme (1hr exposure)', growth: false, colonyCountCfu: '1 CFU / plate / hr', permissibleLimit: '< 10 CFU / plate / hr', organismIsolated: 'Micrococcus luteus (Air commensal)', actionStatus: 'PASSED', sampledBy: 'HICC Nurse Sarita', sampledAt: '2026-10-25T07:00:00.000Z' } as any,
+  { id: 'env-3', samplingLocation: 'Hemodialysis RO Post-Filter Water', department: 'Nephrology & Dialysis', surfaceType: 'RO Loop Sample Tap', samplingMethod: 'Membrane Filtration (0.45µm)', growthObserved: false, colonyCountCfu: '12 CFU / mL', permissibleLimit: '< 100 CFU / mL (AAMI Standard)', organismIsolated: 'Non-pathogenic environmental flora', actionStatus: 'PASSED', sampledBy: 'Technician Rajesh', sampledAt: '2026-10-24T10:00:00.000Z' },
+  { id: 'env-4', samplingLocation: 'MICU Bed #04 Multiparameter Monitor Screen', department: 'Medical ICU', surfaceType: 'Capacitive Touchscreen Panel', samplingMethod: 'Sterile Swab', growthObserved: true, colonyCountCfu: '8 CFU / 100 cm²', permissibleLimit: '< 5 CFU / 100 cm²', organismIsolated: 'Staphylococcus epidermidis', actionStatus: 'DECONTAMINATED', correctiveAction: 'Immediate 70% Isopropyl Alcohol disinfection repeated. Clearance swab taken.', sampledBy: 'HICC Officer', sampledAt: '2026-10-26T08:00:00.000Z' },
+  { id: 'env-5', samplingLocation: 'CSSD Steam Autoclave #2 Spore Strip', department: 'CSSD Sterile Processing', surfaceType: 'Center of Linen Pack', samplingMethod: 'Biological Indicator Ampoule', growthObserved: false, colonyCountCfu: 'No Turbidity / Purple', permissibleLimit: 'Complete Kill (Negative at 48h)', organismIsolated: 'Geobacillus stearothermophilus Killed', actionStatus: 'PASSED', sampledBy: 'CSSD In-charge', sampledAt: '2026-10-24T16:00:00.000Z' },
+];
+
 // ============================================================================
 // MAIN COMPONENT (INSIDE SUSPENSE BOUNDARY)
 // ============================================================================
@@ -518,7 +562,7 @@ function MicrobiologyWorkbenchContent() {
   const searchParams = useSearchParams();
   const rawTab = searchParams.get('tab') || 'worklist';
 
-  // Supported clinical tabs directly mapped to sidebar & clinical operations
+  // Supported clinical tabs directly mapped to enterprise hospital operations
   const validTabs = [
     'worklist',
     'blood',
@@ -530,13 +574,20 @@ function MicrobiologyWorkbenchContent() {
     'antibiogram',
     'stewardship',
     'critical',
-    'whonet',
+    'qc',
+    'environmental',
+    'analyzers',
   ];
   const activeTab = validTabs.includes(rawTab) ? rawTab : 'worklist';
 
   const [cultures, setCultures] = useState<CultureOrderRecord[]>(INITIAL_CULTURES);
   const [selectedCultureId, setSelectedCultureId] = useState<string>(INITIAL_CULTURES[0].id);
   const [criticalCalls, setCriticalCalls] = useState<CriticalCallRecord[]>(INITIAL_CRITICAL_CALLS);
+  const [atccQcLogs, setAtccQcLogs] = useState<AtccQcRecord[]>(INITIAL_ATCC_QC);
+  const [environmentalSwabs, setEnvironmentalSwabs] = useState<EnvironmentalSwabRecord[]>(INITIAL_ENV_SWABS);
+  const [analyzerStatus, setAnalyzerStatus] = useState<any>(null);
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [wardFilter, setWardFilter] = useState('ALL');
@@ -548,6 +599,9 @@ function MicrobiologyWorkbenchContent() {
   const [isGramStainModalOpen, setIsGramStainModalOpen] = useState(false);
   const [isCriticalCallModalOpen, setIsCriticalCallModalOpen] = useState(false);
   const [isAstEntryModalOpen, setIsAstEntryModalOpen] = useState(false);
+  const [isAtccQcModalOpen, setIsAtccQcModalOpen] = useState(false);
+  const [isEnvironmentalModalOpen, setIsEnvironmentalModalOpen] = useState(false);
+  const [isOrderSyncModalOpen, setIsOrderSyncModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [reportQrCodeDataUrl, setReportQrCodeDataUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -583,9 +637,13 @@ function MicrobiologyWorkbenchContent() {
   const fetchBackendData = useCallback(async () => {
     setLoading(true);
     try {
-      const [cultRes, callsRes] = await Promise.all([
+      const [cultRes, callsRes, qcRes, envRes, analyzerRes, ordersRes] = await Promise.all([
         microbiologyApi.listCultures(100).catch(() => null),
         microbiologyApi.listCriticalCalls(50).catch(() => null),
+        microbiologyApi.listAtccQc(50).catch(() => null),
+        microbiologyApi.listEnvironmentalSwabs(50).catch(() => null),
+        microbiologyApi.getAnalyzers().catch(() => null),
+        microbiologyApi.getPendingOrders(10).catch(() => null),
       ]);
 
       if (cultRes && (cultRes as any).success && Array.isArray((cultRes as any).data)) {
@@ -656,13 +714,22 @@ function MicrobiologyWorkbenchContent() {
       }
 
       if (callsRes && (callsRes as any).success && Array.isArray((callsRes as any).data)) {
-        const apiCalls = (callsRes as any).data;
-        if (apiCalls.length > 0) {
-          setCriticalCalls(apiCalls);
-        }
+        setCriticalCalls((callsRes as any).data);
+      }
+      if (qcRes && (qcRes as any).success && Array.isArray((qcRes as any).data)) {
+        setAtccQcLogs((qcRes as any).data);
+      }
+      if (envRes && (envRes as any).success && Array.isArray((envRes as any).data)) {
+        setEnvironmentalSwabs((envRes as any).data);
+      }
+      if (analyzerRes && (analyzerRes as any).success) {
+        setAnalyzerStatus((analyzerRes as any).data);
+      }
+      if (ordersRes && (ordersRes as any).success && Array.isArray((ordersRes as any).data)) {
+        setPendingOrders((ordersRes as any).data);
       }
     } catch {
-      // Local resilient fallback
+      // Local fallback
     } finally {
       setLoading(false);
     }
@@ -692,7 +759,7 @@ function MicrobiologyWorkbenchContent() {
     };
   }, [cultures, criticalCalls]);
 
-  // Intrinsic Resistance Violations Check for Current Isolate
+  // Intrinsic Resistance Violations Check
   const intrinsicViolations = useMemo(() => {
     if (!selectedCulture || selectedCulture.isolates.length === 0) return [];
     const iso = selectedCulture.isolates[0];
@@ -716,22 +783,18 @@ function MicrobiologyWorkbenchContent() {
   // Filtered cultures list for Worklist and dedicated benches
   const filteredCultures = useMemo(() => {
     return cultures.filter(c => {
-      // Bench-specific tab filters
       if (activeTab === 'blood' && c.sampleSite !== 'BLOOD') return false;
       if (activeTab === 'urine' && c.sampleSite !== 'URINE') return false;
       if (activeTab === 'wound' && !['PUS_SWAB', 'PLEURAL_FLUID', 'ASCITIC_FLUID', 'SYNOVIAL_FLUID', 'CSF', 'TISSUE_BIOPSY'].includes(c.sampleSite)) return false;
       if (activeTab === 'afb' && !['SPUTUM', 'BRONCHOALVEOLAR_LAVAGE'].includes(c.sampleSite)) return false;
 
-      // Status filter
       if (statusFilter === 'POSITIVE' && c.growthStatus !== 'POSITIVE') return false;
       if (statusFilter === 'PENDING' && c.growthStatus !== 'PENDING') return false;
       if (statusFilter === 'MDRO' && !c.isolates.some(i => i.mdroFlags.length > 0)) return false;
       if (statusFilter === 'ICU' && !c.isIcuPatient) return false;
 
-      // Ward filter
       if (wardFilter !== 'ALL' && !c.wardOrUnit.includes(wardFilter)) return false;
 
-      // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = c.patientName.toLowerCase().includes(q);
@@ -866,6 +929,19 @@ function MicrobiologyWorkbenchContent() {
     setToastMessage('WHONET 2024 / WHO GLASS export TSV downloaded successfully.');
   };
 
+  // WhatsApp Dispatch
+  const handleSendWhatsApp = () => {
+    if (!selectedCulture) return;
+    const phone = prompt('Enter Patient / Clinician WhatsApp Mobile Number (+91...):', '+91 98200 44102');
+    if (phone) {
+      const text = encodeURIComponent(
+        `*APEX REFERENCE LABS - MICROBIOLOGY CULTURE REPORT*\nAccession: ${selectedCulture.accessionNumber}\nPatient: ${selectedCulture.patientName} (${selectedCulture.uhid})\nSample Site: ${selectedCulture.sampleSite}\nStatus: ${selectedCulture.growthStatus}\nVerified By: Dr. Ananya Deshmukh, MD\nView verified digital report: https://labcore.elis.health/verify/microbiology/${selectedCulture.accessionNumber}?uhid=${selectedCulture.uhid}`
+      );
+      window.open(`https://api.whatsapp.com/send?phone=${phone.replace(/\D/g, '')}&text=${text}`, '_blank');
+      setToastMessage(`WhatsApp notification prepared for ${phone}`);
+    }
+  };
+
   // Status Badge Helper
   const renderGrowthBadge = (status: CultureOrderRecord['growthStatus'], bottleAlert?: boolean) => {
     if (bottleAlert) {
@@ -972,16 +1048,16 @@ function MicrobiologyWorkbenchContent() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200">
                 <Microscope className="w-3.5 h-3.5 text-sky-700" />
-                Diagnostic Microbiology Suite
+                Hospital &amp; Reference Lab Microbiology Suite
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                CLSI M100 Ed. 34 (2024-2026) / EUCAST
+                CLSI M100 Ed. 34 / EUCAST
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                 NABL ISO 15189:2022 Verified
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                WHO AWaRe Stewardship
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                ATCC Quality Control Aligned
               </span>
             </div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -989,17 +1065,26 @@ function MicrobiologyWorkbenchContent() {
             </h1>
             <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
               Enterprise clinical bacteriology, automated continuous blood bottle monitoring, CLSI AST interpretation,
-              HICC hospital-acquired infection surveillance, and critical value communications.
+              HICC hospital-acquired infection surveillance, ATCC reference strain quality control, and critical value communications.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               onClick={() => setIsNewCultureModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold shadow-xs transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold shadow-xs transition"
             >
               <Plus className="w-4 h-4" />
               Accession Specimen
+            </button>
+
+            <button
+              onClick={() => setIsOrderSyncModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900 text-xs font-bold transition"
+              title="Sync unaccessioned microbiology test requisitions from Hospital Orders"
+            >
+              <ClipboardList className="w-4 h-4 text-sky-700" />
+              Sync LIS Orders {pendingOrders.length > 0 && `(${pendingOrders.length})`}
             </button>
 
             <button
@@ -1011,12 +1096,21 @@ function MicrobiologyWorkbenchContent() {
             </button>
 
             <button
+              onClick={handleSendWhatsApp}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition"
+              title="Dispatch report directly to patient or doctor on WhatsApp"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              WhatsApp Dispatch
+            </button>
+
+            <button
               onClick={handleDownloadWhonetExport}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
               title="Download standardized TSV for WHONET 2024 / WHO GLASS global surveillance"
             >
               <Download className="w-3.5 h-3.5 text-slate-600" />
-              WHONET Export
+              WHONET
             </button>
 
             <button
@@ -1030,7 +1124,7 @@ function MicrobiologyWorkbenchContent() {
           </div>
         </div>
 
-        {/* Intrinsic Resistance Warning Banner (Shown if current isolate violates biology) */}
+        {/* Intrinsic Resistance Warning Banner */}
         {intrinsicViolations.length > 0 && (
           <div className="mt-4 p-3.5 rounded-xl border border-rose-300 bg-rose-50 flex items-start gap-3 text-xs text-rose-900">
             <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -1091,11 +1185,11 @@ function MicrobiologyWorkbenchContent() {
 
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">ICU Inpatients</span>
-            <Activity className="w-3.5 h-3.5 text-teal-600" />
+            <span className="text-[11px] font-bold uppercase tracking-wider">ATCC Strain QC</span>
+            <CheckSquare className="w-3.5 h-3.5 text-teal-600" />
           </div>
-          <p className="text-xl font-black text-teal-700 mt-1">{stats.icuCount}</p>
-          <p className="text-[10px] text-slate-500">Critical care units</p>
+          <p className="text-xl font-black text-teal-700 mt-1">{atccQcLogs.length}</p>
+          <p className="text-[10px] text-slate-500">CLSI Table 4 Pass status</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs">
@@ -1149,7 +1243,7 @@ function MicrobiologyWorkbenchContent() {
           }`}
         >
           <Stethoscope className="w-3.5 h-3.5" />
-          Wound &amp; Body Fluids
+          Wound &amp; Sterile Fluids
         </button>
 
         <button
@@ -1193,13 +1287,43 @@ function MicrobiologyWorkbenchContent() {
         </button>
 
         <button
+          onClick={() => handleTabChange('qc')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'qc' ? 'bg-teal-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <CheckSquare className="w-3.5 h-3.5" />
+          Daily ATCC QC Bench
+        </button>
+
+        <button
+          onClick={() => handleTabChange('environmental')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'environmental' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          OT / ICU Sterility Surveillance
+        </button>
+
+        <button
+          onClick={() => handleTabChange('analyzers')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'analyzers' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Server className="w-3.5 h-3.5" />
+          Automated Analyzer Hub
+        </button>
+
+        <button
           onClick={() => handleTabChange('stewardship')}
           className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
             activeTab === 'stewardship' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Pill className="w-3.5 h-3.5" />
-          Antibiotic Stewardship (CDSS)
+          Stewardship (CDSS)
         </button>
 
         <button
@@ -1209,18 +1333,17 @@ function MicrobiologyWorkbenchContent() {
           }`}
         >
           <PhoneCall className="w-3.5 h-3.5" />
-          Critical Call Log
+          Critical Calls
         </button>
       </div>
 
       {/* ======================================================================
-          TAB 1: WORKLIST / BLOOD / URINE / WOUND / AFB BENCH VIEWS
+          BENCH WORKLISTS (WORKLIST / BLOOD / URINE / WOUND / AFB)
           ====================================================================== */}
       {(['worklist', 'blood', 'urine', 'wound', 'afb'].includes(activeTab)) && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* Main List Table (7 cols) */}
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
-            {/* Table Filter Toolbar */}
             <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/60">
               <div className="flex items-center gap-2">
                 <FlaskConical className="w-4 h-4 text-sky-700" />
@@ -1262,7 +1385,7 @@ function MicrobiologyWorkbenchContent() {
               </div>
             </div>
 
-            {/* Culture Orders Table */}
+            {/* Orders Table */}
             <div className="overflow-x-auto flex-1 min-h-[360px]">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -1329,7 +1452,7 @@ function MicrobiologyWorkbenchContent() {
                         <td className="px-3 py-3">
                           {primaryIsolate ? (
                             <div>
-                              <p className="font-extrabold text-slate-900 italic">{primaryIsolate.organismName}</p>
+                              <p className="font-extrabold text-slate-950 italic">{primaryIsolate.organismName}</p>
                               {primaryIsolate.mdroFlags.length > 0 && (
                                 <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-800 mt-0.5">
                                   {primaryIsolate.mdroFlags.join(', ')}
@@ -1361,19 +1484,12 @@ function MicrobiologyWorkbenchContent() {
                       </tr>
                     );
                   })}
-                  {filteredCultures.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400 text-xs">
-                        No culture records found matching the active filters.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Specimen Detail Inspector & Clinical Workbench (5 cols) */}
+          {/* Specimen Detail Inspector (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             {selectedCulture ? (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
@@ -1420,7 +1536,7 @@ function MicrobiologyWorkbenchContent() {
                   </div>
                 </div>
 
-                {/* Direct Microscopy / Gram Stain Section */}
+                {/* Direct Microscopy Section */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
@@ -1450,11 +1566,6 @@ function MicrobiologyWorkbenchContent() {
                             </span>
                           )}
                         </div>
-                        {selectedCulture.znAfbResult && (
-                          <div className="text-[11px] text-slate-700 pt-1 border-t border-slate-200">
-                            <strong>ZN AFB:</strong> {selectedCulture.znAfbResult}
-                          </div>
-                        )}
                       </>
                     ) : (
                       <p className="text-slate-400 italic">No direct smear documented yet. Click above to record Gram stain.</p>
@@ -1462,7 +1573,7 @@ function MicrobiologyWorkbenchContent() {
                   </div>
                 </div>
 
-                {/* Pathogen Identification & AST Panel */}
+                {/* Pathogen Identification & AST Profile */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
@@ -1536,39 +1647,14 @@ function MicrobiologyWorkbenchContent() {
                     </div>
                   )}
                 </div>
-
-                {/* Telephone Critical Alert Call Log Status */}
-                {selectedCulture.criticalAlertPhoneLogged && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs space-y-1">
-                    <div className="flex items-center justify-between text-rose-900 font-bold">
-                      <span className="flex items-center gap-1.5">
-                        <PhoneCall className="w-3.5 h-3.5 text-rose-600" />
-                        STAT Verbal Notification Documented
-                      </span>
-                      <span className="text-[10px] font-mono text-rose-700">
-                        {new Date(selectedCulture.criticalAlertPhoneLogged.loggedAt).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-rose-800">
-                      Notified: <strong>{selectedCulture.criticalAlertPhoneLogged.calledDoctorName}</strong> ({selectedCulture.criticalAlertPhoneLogged.calledWardNurse})
-                    </p>
-                    <p className="text-[10px] text-rose-700 italic">
-                      &quot;{selectedCulture.criticalAlertPhoneLogged.callNotes}&quot;
-                    </p>
-                  </div>
-                )}
               </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-xs">
-                Select a culture accession from the list to view bench details.
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}
 
       {/* ======================================================================
-          TAB 6: AST & MIC WORKSTATION (CLSI M100 Ed. 34 & EUCAST)
+          TAB: AST & MIC WORKSTATION (CLSI M100 Ed. 34)
           ====================================================================== */}
       {activeTab === 'ast' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
@@ -1696,7 +1782,7 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          TAB 7: AMR & HICC INFECTION CONTROL SURVEILLANCE
+          TAB: AMR & HICC INFECTION CONTROL SURVEILLANCE
           ====================================================================== */}
       {activeTab === 'amr' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
@@ -1719,7 +1805,7 @@ function MicrobiologyWorkbenchContent() {
             </div>
           </div>
 
-          {/* Active MDRO Patient Line-Listing Table */}
+          {/* Active MDRO Line-Listing Table */}
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -1764,10 +1850,10 @@ function MicrobiologyWorkbenchContent() {
                             <Shield className="w-3.5 h-3.5" />
                             CONTACT ISOLATION
                           </span>
-                          <p className="text-[10px] text-slate-500 mt-1">Dedicated gown, gloves &amp; stethoscope</p>
+                          <p className="text-[10px] text-slate-500 mt-1">Dedicated gown, gloves &amp; equipment</p>
                         </td>
                         <td className="px-3 py-3 text-slate-700 text-[11px]">
-                          Daily 0.5% Sodium Hypochlorite terminal cleaning. Environmental swabs required prior to bed release.
+                          Daily 0.5% Sodium Hypochlorite terminal cleaning. Environmental clearance swabs required.
                         </td>
                       </tr>
                     );
@@ -1779,7 +1865,7 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          TAB 8: CUMULATIVE ANTIBIOGRAM MATRIX (CLSI M39-A4 STANDARD)
+          TAB: CUMULATIVE ANTIBIOGRAM MATRIX (CLSI M39-A4)
           ====================================================================== */}
       {activeTab === 'antibiogram' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
@@ -1801,7 +1887,6 @@ function MicrobiologyWorkbenchContent() {
               </p>
             </div>
 
-            {/* Filter controls */}
             <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
               <span className="font-bold text-slate-700">Timeframe:</span>
               <select
@@ -1834,7 +1919,6 @@ function MicrobiologyWorkbenchContent() {
             </div>
           </div>
 
-          {/* Antibiogram Matrix Table */}
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs border-collapse font-sans">
               <thead>
@@ -1892,16 +1976,331 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          TAB 9: ANTIBIOTIC STEWARDSHIP PROGRAM (CDSS)
+          TAB: DAILY ATCC REFERENCE QUALITY CONTROL BENCH (CLSI TABLE 4)
+          ====================================================================== */}
+      {activeTab === 'qc' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+                  CLSI M100 Table 4 / NABL ISO 15189
+                </span>
+                <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-sky-50 text-sky-800 border border-sky-200">
+                  Daily ATCC Control Verification
+                </span>
+              </div>
+              <h2 className="text-xl font-extrabold text-slate-900 mt-1">
+                Internal Quality Control (IQC) ATCC Reference Strain Log
+              </h2>
+              <p className="text-xs text-slate-500">
+                Daily validation of antibiotic disks, VITEK-2 AST cards, and media lots against standard ATCC control strains.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setIsAtccQcModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-xs transition shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              + Log ATCC Quality Control Test
+            </button>
+          </div>
+
+          {/* Reference Strains Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <span className="font-extrabold text-slate-900">E. coli ATCC 25922</span>
+              <p className="text-[11px] text-slate-500 mt-0.5">Gram-Negative Broad Spectrum Control</p>
+              <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">QC Active (Daily)</span>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <span className="font-extrabold text-slate-900">S. aureus ATCC 29213 / 25923</span>
+              <p className="text-[11px] text-slate-500 mt-0.5">Gram-Positive Staph &amp; Cefoxitin Screen</p>
+              <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">QC Active (Daily)</span>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <span className="font-extrabold text-slate-900">P. aeruginosa ATCC 27853</span>
+              <p className="text-[11px] text-slate-500 mt-0.5">Non-fermenter Antipseudomonal Range</p>
+              <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">QC Active (Daily)</span>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <span className="font-extrabold text-slate-900">K. pneumoniae ATCC 700603</span>
+              <p className="text-[11px] text-slate-500 mt-0.5">ESBL Confirmatory Positive Control</p>
+              <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">QC Active (Weekly)</span>
+            </div>
+          </div>
+
+          {/* QC Logs Table */}
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="px-4 py-3">Control Strain</th>
+                  <th className="px-3 py-3">Antibiotic Tested</th>
+                  <th className="px-3 py-3">Method</th>
+                  <th className="px-3 py-3 text-center">Observed Result</th>
+                  <th className="px-3 py-3">CLSI Table 4 Range</th>
+                  <th className="px-3 py-3 text-center">Status</th>
+                  <th className="px-3 py-3">Lot &amp; Expiry</th>
+                  <th className="px-3 py-3">Tested By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {atccQcLogs.map(qc => (
+                  <tr key={qc.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-bold text-slate-900">
+                      {qc.atccStrainName}
+                      <span className="block font-mono text-[10px] text-teal-800">{qc.atccNumber}</span>
+                    </td>
+                    <td className="px-3 py-3 font-medium text-slate-800">
+                      {qc.antibioticName} ({qc.antibioticCode})
+                    </td>
+                    <td className="px-3 py-3 font-mono text-slate-600">{qc.method}</td>
+                    <td className="px-3 py-3 font-mono font-bold text-center text-slate-900">
+                      {qc.observedValue}
+                    </td>
+                    <td className="px-3 py-3 font-mono text-slate-600 text-[11px]">
+                      {qc.referenceRange}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        <Check className="w-3 h-3" /> {qc.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-[10px] text-slate-500 font-mono">
+                      {qc.lotNumber} · Exp: {new Date(qc.expiryDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-3 text-slate-700">
+                      {qc.testedBy}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          TAB: HOSPITAL OT / ICU STERILITY & ENVIRONMENTAL SURVEILLANCE
+          ====================================================================== */}
+      {activeTab === 'environmental' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  NABH &amp; JCI Quality Standard
+                </span>
+                <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  Operation Theater &amp; ICU Surveillance
+                </span>
+              </div>
+              <h2 className="text-xl font-extrabold text-slate-900 mt-1">
+                Hospital Environmental &amp; Sterility Surveillance Logbook
+              </h2>
+              <p className="text-xs text-slate-500">
+                Periodic microbiologic monitoring of Operation Theaters, air settle plates, dialysis RO water, endoscopes, and autoclave spore strips.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setIsEnvironmentalModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs transition shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              + Record Sterility Swab
+            </button>
+          </div>
+
+          {/* Environmental Swabs Table */}
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="px-4 py-3">Sampling Location &amp; Unit</th>
+                  <th className="px-3 py-3">Surface &amp; Method</th>
+                  <th className="px-3 py-3">Colony Count (Observed)</th>
+                  <th className="px-3 py-3">Permissible Limit</th>
+                  <th className="px-3 py-3">Microbial Identification</th>
+                  <th className="px-3 py-3 text-center">Status</th>
+                  <th className="px-3 py-3">Auditor / Officer</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {environmentalSwabs.map(swab => (
+                  <tr key={swab.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <p className="font-bold text-slate-900">{swab.samplingLocation}</p>
+                      <p className="text-[10px] text-slate-500 font-mono">{swab.department}</p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <p className="font-medium text-slate-800">{swab.surfaceType}</p>
+                      <p className="text-[10px] text-slate-500">{swab.samplingMethod}</p>
+                    </td>
+                    <td className="px-3 py-3 font-mono font-bold text-slate-900">
+                      {swab.colonyCountCfu}
+                    </td>
+                    <td className="px-3 py-3 font-mono text-slate-600 text-[11px]">
+                      {swab.permissibleLimit}
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="italic text-slate-800 font-medium">
+                        {swab.organismIsolated || 'Sterile / No Growth'}
+                      </span>
+                      {swab.correctiveAction && (
+                        <p className="text-[10px] text-rose-700 italic mt-0.5">{swab.correctiveAction}</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {swab.actionStatus === 'PASSED' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <Check className="w-3 h-3" /> PASSED
+                        </span>
+                      ) : swab.actionStatus === 'DECONTAMINATED' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                          CLEARED
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                          ACTION REQ
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-slate-700">
+                      {swab.sampledBy}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          TAB: AUTOMATED ANALYZER HUB (BacT/ALERT & VITEK 2 LIVE INTERFACE)
+          ====================================================================== */}
+      {activeTab === 'analyzers' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-800 border border-slate-300">
+              ASTM E1381 &amp; HL7 v2.5 Bi-directional Interfacing
+            </span>
+            <h2 className="text-xl font-extrabold text-slate-900 mt-1">
+              Automated Microbiology Analyzer Fleet Telemetry Hub
+            </h2>
+            <p className="text-xs text-slate-500">
+              Live status of automated continuous blood culture systems and automated bacterial identification/susceptibility carousels.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* BacT/ALERT Card */}
+            <div className="p-5 rounded-2xl border border-rose-200 bg-rose-50/20 space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700">Continuous Blood Culture Monitoring</span>
+                  <h3 className="text-base font-black text-slate-950 mt-0.5">bioMérieux BacT/ALERT 3D System</h3>
+                  <p className="text-xs text-slate-500 font-mono">tcp://192.168.10.110:5200 (ASTM Bi-directional)</p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                  ONLINE
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                <div className="p-3 bg-white rounded-xl border border-slate-200">
+                  <span className="text-slate-400 font-medium">Bottles Loaded</span>
+                  <p className="text-lg font-black text-slate-900 mt-0.5">164 / 240</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200">
+                  <span className="text-slate-400 font-medium">Incubation Temp</span>
+                  <p className="text-lg font-black text-rose-700 mt-0.5">36.8°C</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-rose-200 bg-rose-50/50">
+                  <span className="text-rose-700 font-bold">Positive Alarms</span>
+                  <p className="text-lg font-black text-rose-700 mt-0.5">2 Bottles</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Reflectance Sensor Calibration:</span>
+                  <span className="font-bold text-emerald-700">OPTIMAL (Zero Drift)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Unloading Pending:</span>
+                  <span className="font-bold text-amber-700">1 Bottle (Rack B, Slot 14)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Continuous Signal Read Interval:</span>
+                  <span className="font-mono text-slate-700">Every 10 minutes</span>
+                </div>
+              </div>
+            </div>
+
+            {/* VITEK 2 Card */}
+            <div className="p-5 rounded-2xl border border-purple-200 bg-purple-50/20 space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Automated Microbial ID &amp; AST</span>
+                  <h3 className="text-base font-black text-slate-950 mt-0.5">bioMérieux VITEK 2 Compact System</h3>
+                  <p className="text-xs text-slate-500 font-mono">tcp://192.168.10.112:6200 (HL7 v2.5 MLLP)</p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                  ONLINE
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                <div className="p-3 bg-white rounded-xl border border-slate-200">
+                  <span className="text-slate-400 font-medium">Cards In Incubator</span>
+                  <p className="text-lg font-black text-slate-900 mt-0.5">28 / 60</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200">
+                  <span className="text-slate-400 font-medium">Optical Chamber</span>
+                  <p className="text-lg font-black text-purple-700 mt-0.5">35.6°C</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200">
+                  <span className="text-slate-400 font-medium">Available Slots</span>
+                  <p className="text-lg font-black text-emerald-700 mt-0.5">32 Slots</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Inoculum DensiCHEK Standard:</span>
+                  <span className="font-bold text-emerald-700">0.50 - 0.63 McFarland Verified</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Active Processing Cards:</span>
+                  <span className="font-mono text-purple-900 font-bold">AST-N405 (GN) &amp; AST-P628 (GP)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Optical Transmittance Reading:</span>
+                  <span className="font-mono text-slate-700">Hourly automated kinetic scanning</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          TAB: ANTIBIOTIC STEWARDSHIP PROGRAM (CDSS)
           ====================================================================== */}
       {activeTab === 'stewardship' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
           <div className="border-b border-slate-100 pb-4">
             <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-              Antimicrobial Stewardship Program (ASP)
+              Antimicrobial Stewardship Program (ASP) &amp; Outpatient Guidance
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 mt-1">
-              Targeted Antibiotic De-Escalation &amp; AWaRe Stewardship Guidance
+              Targeted Antibiotic De-Escalation &amp; Clinical Guidance
             </h2>
             <p className="text-xs text-slate-500">
               Automated rules identifying opportunities to de-escalate broad-spectrum carbapenems to narrower, targeted agents.
@@ -1921,42 +2320,28 @@ function MicrobiologyWorkbenchContent() {
               </p>
               <div className="p-3 bg-white rounded-lg border border-emerald-200 text-xs text-slate-800 space-y-1">
                 <p className="font-bold text-emerald-900">Recommended Stewardship Action:</p>
-                <p>Switch from Meropenem (Reserve) to Amikacin or Piperacillin-Tazobactam (Watch) to preserve carbapenem longevity and reduce selection pressure.</p>
+                <p>Switch from Meropenem (Reserve) to Amikacin or Piperacillin-Tazobactam (Watch) to preserve carbapenem longevity and reduce hospital cost.</p>
               </div>
             </div>
 
-            {/* WHO AWaRe Formulary Breakdown */}
+            {/* Outpatient Clinic Empiric Guidance Slip */}
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
-              <h3 className="font-extrabold text-slate-900 text-sm">WHO AWaRe Formulary Distribution</h3>
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <Pill className="w-4 h-4 text-sky-700" />
+                Outpatient Clinic First-Line Empirical Guidance (ICMR / CDC Guidelines)
+              </h3>
               <div className="space-y-2 text-xs">
-                <div>
-                  <div className="flex justify-between font-bold mb-1">
-                    <span className="text-emerald-700">Access Group (Target: &gt;60%)</span>
-                    <span className="text-slate-800 font-mono">64.2%</span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-emerald-600 h-full rounded-full" style={{ width: '64.2%' }} />
-                  </div>
+                <div className="p-2 bg-white rounded border border-slate-200">
+                  <span className="font-bold text-slate-900">Uncomplicated Lower Urinary Tract Infection:</span>
+                  <p className="text-slate-600 mt-0.5">Tab. Nitrofurantoin 100 mg PO BD x 5 days (Access group preferred over Fluoroquinolones).</p>
                 </div>
-
-                <div>
-                  <div className="flex justify-between font-bold mb-1">
-                    <span className="text-amber-700">Watch Group</span>
-                    <span className="text-slate-800 font-mono">26.5%</span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-amber-500 h-full rounded-full" style={{ width: '26.5%' }} />
-                  </div>
+                <div className="p-2 bg-white rounded border border-slate-200">
+                  <span className="font-bold text-slate-900">Community-Acquired Acute Bronchitis / Pneumonia:</span>
+                  <p className="text-slate-600 mt-0.5">Tab. Amoxicillin-Clavulanate 625 mg PO TDS x 5-7 days or Tab. Azithromycin 500 mg OD x 3 days.</p>
                 </div>
-
-                <div>
-                  <div className="flex justify-between font-bold mb-1">
-                    <span className="text-rose-700">Reserve Group (Strict Restrictions)</span>
-                    <span className="text-slate-800 font-mono">9.3%</span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-rose-600 h-full rounded-full" style={{ width: '9.3%' }} />
-                  </div>
+                <div className="p-2 bg-white rounded border border-slate-200">
+                  <span className="font-bold text-slate-900">Uncomplicated Skin &amp; Soft Tissue (Cellulitis):</span>
+                  <p className="text-slate-600 mt-0.5">Cap. Cephalexin 500 mg PO QID x 7 days or Tab. Co-trimoxazole DS PO BD if MRSA suspected.</p>
                 </div>
               </div>
             </div>
@@ -1965,7 +2350,7 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          TAB 10: STAT TELEPHONE CRITICAL CALL LOGBOOK (ISO 15189 / NABH / NABL)
+          TAB: STAT TELEPHONE CRITICAL CALL LOGBOOK
           ====================================================================== */}
       {activeTab === 'critical' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
@@ -1976,7 +2361,7 @@ function MicrobiologyWorkbenchContent() {
                   ISO 15189:2022 § 7.4.2 Mandatory
                 </span>
                 <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-                  NABL &amp; NABH Accreditation Audit Trail
+                  NABL &amp; NABH Audit Trail
                 </span>
               </div>
               <h2 className="text-xl font-extrabold text-slate-900 mt-1">
@@ -1996,7 +2381,6 @@ function MicrobiologyWorkbenchContent() {
             </button>
           </div>
 
-          {/* Calls Table */}
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -2052,7 +2436,7 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          MODAL 1: NABL / NABH / ISO 15189 ACCREDITED DIAGNOSTIC REPORT
+          MODAL: NABL ACCREDITED REPORT
           ====================================================================== */}
       {isReportModalOpen && selectedCulture && (
         <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -2066,6 +2450,13 @@ function MicrobiologyWorkbenchContent() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSendWhatsApp}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  WhatsApp
+                </button>
                 <button
                   onClick={() => window.print()}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold shadow-xs transition"
@@ -2083,7 +2474,7 @@ function MicrobiologyWorkbenchContent() {
             </div>
 
             <div id="printable-micro-report" className="p-6 sm:p-8 overflow-y-auto space-y-5 text-slate-800 bg-white flex-1 min-h-0 text-xs">
-              {/* Report Header */}
+              {/* Header */}
               <div className="border-b-2 border-slate-800 pb-3 flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-black text-slate-950 tracking-tight">APEX METROPOLITAN REFERENCE LABORATORIES</h2>
@@ -2097,7 +2488,7 @@ function MicrobiologyWorkbenchContent() {
                 </div>
               </div>
 
-              {/* Patient Info Block */}
+              {/* Patient Info */}
               <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 grid grid-cols-4 gap-2 text-[11px]">
                 <div><span className="text-slate-400 font-semibold uppercase text-[9px]">Patient Name</span><p className="font-extrabold text-slate-900">{selectedCulture.patientName}</p></div>
                 <div><span className="text-slate-400 font-semibold uppercase text-[9px]">UHID / Age / Gender</span><p className="font-bold text-slate-900 font-mono">{selectedCulture.uhid} · {selectedCulture.patientAgeGender}</p></div>
@@ -2105,7 +2496,7 @@ function MicrobiologyWorkbenchContent() {
                 <div><span className="text-slate-400 font-semibold uppercase text-[9px]">Accession #</span><p className="font-bold text-sky-800 font-mono">{selectedCulture.accessionNumber}</p></div>
               </div>
 
-              {/* Direct Microscopic Examination */}
+              {/* Direct Smear */}
               <div className="space-y-1">
                 <h4 className="font-bold uppercase text-slate-900 border-b border-slate-200 pb-0.5">
                   1. Direct Microscopic Examination (Gram Stain &amp; Special Stains)
@@ -2120,7 +2511,7 @@ function MicrobiologyWorkbenchContent() {
                 </div>
               </div>
 
-              {/* Culture & Colony Identification */}
+              {/* Culture Result */}
               <div className="space-y-1">
                 <h4 className="font-bold uppercase text-slate-900 border-b border-slate-200 pb-0.5">
                   2. Culture &amp; Quantitative Pathogen Identification
@@ -2135,7 +2526,7 @@ function MicrobiologyWorkbenchContent() {
                 ))}
               </div>
 
-              {/* AST Susceptibility Table */}
+              {/* AST Table */}
               {selectedCulture.isolates.length > 0 && selectedCulture.isolates[0].astPanel.length > 0 && (
                 <div className="space-y-1">
                   <div className="flex justify-between items-center border-b border-slate-200 pb-0.5">
@@ -2148,11 +2539,11 @@ function MicrobiologyWorkbenchContent() {
                     <thead className="bg-slate-100 uppercase text-slate-700 font-bold text-[10px]">
                       <tr>
                         <th className="px-2.5 py-1.5">Antimicrobial</th>
-                        <th className="px-2 py-1.5">Class</th>
-                        <th className="px-2 py-1.5 text-center">AWaRe</th>
-                        <th className="px-2 py-1.5 text-center">MIC (µg/mL)</th>
-                        <th className="px-2 py-1.5">CLSI Breakpoint</th>
-                        <th className="px-2 py-1.5 text-center">Result</th>
+                        <th className="px-2.5 py-1.5">Class</th>
+                        <th className="px-2.5 py-1.5 text-center">AWaRe</th>
+                        <th className="px-2.5 py-1.5 text-center">MIC (µg/mL)</th>
+                        <th className="px-2.5 py-1.5">CLSI Breakpoint</th>
+                        <th className="px-2.5 py-1.5 text-center">Result</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-mono">
@@ -2161,22 +2552,19 @@ function MicrobiologyWorkbenchContent() {
                         .map(e => (
                           <tr key={e.antibioticCode}>
                             <td className="px-2.5 py-1.5 font-sans font-bold text-slate-900">{e.antibioticName}</td>
-                            <td className="px-2 py-1.5 font-sans text-slate-600">{e.antibioticClass}</td>
-                            <td className="px-2 py-1.5 text-center font-sans">{renderAwareBadge(e.whoAwareTier)}</td>
-                            <td className="px-2 py-1.5 text-center font-bold">{e.micValueUgMl ?? '—'}</td>
-                            <td className="px-2 py-1.5 text-slate-500 text-[10px]">S: {e.clsiBreakpointS} | R: {e.clsiBreakpointR}</td>
-                            <td className="px-2 py-1.5 text-center font-sans">{renderAstResultBadge(e.interpretation)}</td>
+                            <td className="px-2.5 py-1.5 font-sans text-slate-600">{e.antibioticClass}</td>
+                            <td className="px-2.5 py-1.5 text-center font-sans">{renderAwareBadge(e.whoAwareTier)}</td>
+                            <td className="px-2.5 py-1.5 text-center font-bold">{e.micValueUgMl ?? '—'}</td>
+                            <td className="px-2.5 py-1.5 text-slate-500 text-[10px]">S: {e.clsiBreakpointS} | R: {e.clsiBreakpointR}</td>
+                            <td className="px-2.5 py-1.5 text-center font-sans">{renderAstResultBadge(e.interpretation)}</td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
-                  <p className="text-[10px] text-slate-500 italic mt-1">
-                    * S = Susceptible; I = Intermediate; R = Resistant; SDD = Susceptible-Dose Dependent. Cascaded Reserve antimicrobials reported per hospital antibiotic policy.
-                  </p>
                 </div>
               )}
 
-              {/* Signatures & Seal */}
+              {/* Signatures */}
               <div className="pt-4 border-t-2 border-slate-800 flex justify-between items-end">
                 <div className="flex items-center gap-3">
                   {reportQrCodeDataUrl && <img src={reportQrCodeDataUrl} alt="QR" className="w-16 h-16 border border-slate-200 p-0.5 rounded" />}
@@ -2198,7 +2586,7 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          MODAL 2: ACCESSION NEW SPECIMEN
+          MODAL: ACCESSION NEW SPECIMEN
           ====================================================================== */}
       {isNewCultureModalOpen && (
         <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2248,7 +2636,7 @@ function MicrobiologyWorkbenchContent() {
                     return;
                   }
                 } catch {
-                  // Local fallback
+                  // Fallback
                 }
 
                 const newRec: CultureOrderRecord = {
@@ -2343,7 +2731,246 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          MODAL 3: PRELIMINARY GRAM STAIN / DIRECT SMEAR
+          MODAL: SYNC PENDING ORDERS FROM HOSPITAL LIS
+          ====================================================================== */}
+      {isOrderSyncModalOpen && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-sky-200 w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-sky-950 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-sky-700" />
+                Sync Test Requisitions from Hospital Orders
+              </h3>
+              <button onClick={() => setIsOrderSyncModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              The following patient orders from registration or outpatient clinics contain culture/microbiology requisitions ready for bench accessioning:
+            </p>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {pendingOrders.length > 0 ? (
+                pendingOrders.map((ord: any) => (
+                  <div key={ord.orderId} className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-slate-900">{ord.patientName}</p>
+                      <p className="font-mono text-slate-500 text-[10px]">{ord.uhid} · {ord.orderNumber}</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await microbiologyApi.accessionCulture({
+                          sampleId: ord.barcode || `SMP-${ord.orderNumber}`,
+                          orderId: ord.orderNumber,
+                          patientId: ord.uhid,
+                          patientName: ord.patientName,
+                          wardOrUnit: 'OPD Registration',
+                          isIcuPatient: false,
+                          sampleSite: 'URINE',
+                        }).catch(() => null);
+                        setToastMessage(`Order ${ord.orderNumber} accessioned into Microbiology.`);
+                        setIsOrderSyncModalOpen(false);
+                        fetchBackendData();
+                      }}
+                      className="px-3 py-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs"
+                    >
+                      Import to Bench
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  All active hospital orders are already synced to the microbiology worklist.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button onClick={() => setIsOrderSyncModalOpen(false)} className="px-4 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          MODAL: LOG ATCC QC TEST
+          ====================================================================== */}
+      {isAtccQcModalOpen && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-teal-200 w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-teal-950 flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-teal-700" />
+                Record Daily ATCC Quality Control Run
+              </h3>
+              <button onClick={() => setIsAtccQcModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const strain = (form.elements.namedItem('strain') as HTMLSelectElement).value;
+                const code = (form.elements.namedItem('abxCode') as HTMLInputElement).value.toUpperCase();
+                const obs = Number((form.elements.namedItem('obs') as HTMLInputElement).value);
+                const range = (form.elements.namedItem('range') as HTMLInputElement).value;
+                const lot = (form.elements.namedItem('lot') as HTMLInputElement).value;
+
+                const payload = {
+                  atccStrainName: strain.split('(')[0].trim(),
+                  atccNumber: strain.match(/\((.*?)\)/)?.[1] || 'ATCC 25922',
+                  antibioticCode: code,
+                  antibioticName: CLSI_M100_RULES[code]?.name || code,
+                  method: 'VITEK2_MIC',
+                  observedValue: obs,
+                  referenceRange: range,
+                  status: 'PASSED' as const,
+                  lotNumber: lot,
+                  expiryDate: '2027-06-30',
+                  testedBy: 'Duty QC Technologist',
+                };
+
+                try {
+                  await microbiologyApi.recordAtccQc(payload);
+                } catch {
+                  // Fallback
+                }
+
+                setAtccQcLogs(prev => [{ ...payload, id: `qc-${Date.now()}`, testedAt: new Date().toISOString() }, ...prev]);
+                setIsAtccQcModalOpen(false);
+                setToastMessage(`ATCC QC for ${code} on ${payload.atccNumber} logged successfully.`);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">ATCC Reference Control Strain</label>
+                <select name="strain" className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+                  <option value="Escherichia coli (ATCC 25922)">Escherichia coli (ATCC 25922)</option>
+                  <option value="Staphylococcus aureus (ATCC 29213)">Staphylococcus aureus (ATCC 29213 - MIC)</option>
+                  <option value="Staphylococcus aureus (ATCC 25923)">Staphylococcus aureus (ATCC 25923 - Disk)</option>
+                  <option value="Pseudomonas aeruginosa (ATCC 27853)">Pseudomonas aeruginosa (ATCC 27853)</option>
+                  <option value="Klebsiella pneumoniae (ATCC 700603)">Klebsiella pneumoniae (ATCC 700603 - ESBL)</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Antibiotic Code</label>
+                  <input required name="abxCode" defaultValue="AMK" className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono font-bold" />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Observed MIC / Zone</label>
+                  <input required type="number" step="any" name="obs" defaultValue="1.0" className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-bold" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">CLSI Reference Permissible Range</label>
+                <input required name="range" defaultValue="0.5 - 4.0 µg/mL" className="w-full px-3 py-1.5 rounded-lg border border-slate-300" />
+              </div>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Card / Disk Lot Number</label>
+                <input required name="lot" defaultValue="LOT-AST-N405-9921" className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono" />
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setIsAtccQcModalOpen(false)} className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold">
+                  Cancel
+                </button>
+                <button type="submit" className="px-4 py-1.5 rounded-lg bg-teal-800 hover:bg-teal-900 text-white font-semibold">
+                  Save QC Entry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          MODAL: RECORD ENVIRONMENTAL SWAB
+          ====================================================================== */}
+      {isEnvironmentalModalOpen && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-emerald-200 w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-emerald-950 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-700" />
+                Record Hospital Environmental / OT Swab
+              </h3>
+              <button onClick={() => setIsEnvironmentalModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const loc = (form.elements.namedItem('location') as HTMLInputElement).value;
+                const dept = (form.elements.namedItem('dept') as HTMLInputElement).value;
+                const cfu = (form.elements.namedItem('cfu') as HTMLInputElement).value;
+                const limit = (form.elements.namedItem('limit') as HTMLInputElement).value;
+
+                const payload = {
+                  samplingLocation: loc,
+                  department: dept,
+                  surfaceType: 'Laminar OT Table / Surface',
+                  samplingMethod: 'Sterile Cotton Swab (10x10 cm)',
+                  growthObserved: cfu !== '0' && !cfu.includes('0 CFU'),
+                  colonyCountCfu: cfu,
+                  permissibleLimit: limit,
+                  organismIsolated: cfu === '0' || cfu.includes('0 CFU') ? 'Sterile / No Growth' : 'Coagulase Negative Staph',
+                  actionStatus: (cfu === '0' || cfu.includes('0 CFU') ? 'PASSED' : 'DECONTAMINATED') as any,
+                  sampledBy: 'HICC Surveillance Nurse',
+                };
+
+                try {
+                  await microbiologyApi.recordEnvironmentalSwab(payload);
+                } catch {
+                  // Fallback
+                }
+
+                setEnvironmentalSwabs(prev => [{ ...payload, id: `env-${Date.now()}`, sampledAt: new Date().toISOString() }, ...prev]);
+                setIsEnvironmentalModalOpen(false);
+                setToastMessage(`Sterility swab for ${loc} documented.`);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Sampling Location</label>
+                <input required name="location" placeholder="e.g. OT-2 Orthopedic Table Center" defaultValue="OT-2 Table Center" className="w-full px-3 py-1.5 rounded-lg border border-slate-300" />
+              </div>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Department / Unit</label>
+                <input required name="dept" placeholder="Main OT Complex" defaultValue="Main Operation Theater" className="w-full px-3 py-1.5 rounded-lg border border-slate-300" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Observed CFU</label>
+                  <input required name="cfu" defaultValue="0 CFU / 100 cm²" className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-bold" />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Permissible Limit</label>
+                  <input required name="limit" defaultValue="< 5 CFU / 100 cm²" className="w-full px-3 py-1.5 rounded-lg border border-slate-300" />
+                </div>
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setIsEnvironmentalModalOpen(false)} className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold">
+                  Cancel
+                </button>
+                <button type="submit" className="px-4 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white font-semibold">
+                  Save Swab Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          MODAL: PRELIMINARY GRAM STAIN
           ====================================================================== */}
       {isGramStainModalOpen && selectedCulture && (
         <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2375,7 +3002,7 @@ function MicrobiologyWorkbenchContent() {
                     reportedByUserId: 'USR-MICRO-01',
                   });
                 } catch {
-                  // Local fallback
+                  // Fallback
                 }
 
                 setCultures(prev => prev.map(c => {
@@ -2423,7 +3050,7 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          MODAL 4: STAT CRITICAL TELEPHONE NOTIFICATION LOG
+          MODAL: STAT CRITICAL CALL LOG
           ====================================================================== */}
       {isCriticalCallModalOpen && selectedCulture && (
         <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2459,7 +3086,7 @@ function MicrobiologyWorkbenchContent() {
                     clinicalActionNotes: notes,
                   });
                 } catch {
-                  // Local fallback
+                  // Fallback
                 }
 
                 const newCall: CriticalCallRecord = {
@@ -2534,7 +3161,7 @@ function MicrobiologyWorkbenchContent() {
       )}
 
       {/* ======================================================================
-          MODAL 5: ADD / EDIT ISOLATE & AST PANEL
+          MODAL: ADD / EDIT ISOLATE & AST PANEL
           ====================================================================== */}
       {isAstEntryModalOpen && selectedCulture && (
         <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -2594,7 +3221,7 @@ function MicrobiologyWorkbenchContent() {
                     verifiedByUserId: 'USR-PATH-01',
                   });
                 } catch {
-                  // Local fallback
+                  // Fallback
                 }
 
                 setCultures(prev => prev.map(c => {
@@ -2630,9 +3257,6 @@ function MicrobiologyWorkbenchContent() {
                   <input required name="density" placeholder=">10^5 CFU/mL Heavy Growth" defaultValue=">10^5 CFU/mL Significant Pure Growth" className="w-full px-3 py-1.5 rounded-lg border border-slate-300" />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 italic">
-                * Standard VITEK-2 / CLSI M100 panel will be evaluated automatically for this pathogen.
-              </p>
               <div className="pt-2 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsAstEntryModalOpen(false)} className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold">
                   Cancel

@@ -46,6 +46,24 @@ router.post('/microbiology/cultures/critical-call', (req, res, next) =>
 router.get('/microbiology/critical-calls', (req, res, next) =>
   enterpriseTier2Controller.listCriticalCalls(req, res, next)
 );
+router.post('/microbiology/atcc-qc', (req, res, next) =>
+  enterpriseTier2Controller.recordAtccQc(req, res, next)
+);
+router.get('/microbiology/atcc-qc', (req, res, next) =>
+  enterpriseTier2Controller.listAtccQc(req, res, next)
+);
+router.post('/microbiology/environmental-swabs', (req, res, next) =>
+  enterpriseTier2Controller.recordEnvironmentalSwab(req, res, next)
+);
+router.get('/microbiology/environmental-swabs', (req, res, next) =>
+  enterpriseTier2Controller.listEnvironmentalSwabs(req, res, next)
+);
+router.get('/microbiology/analyzers', (req, res, next) =>
+  enterpriseTier2Controller.getMicrobiologyAnalyzers(req, res, next)
+);
+router.get('/microbiology/pending-orders', (req, res, next) =>
+  enterpriseTier2Controller.getPendingMicrobiologyOrders(req, res, next)
+);
 
 // ============================================================================
 // 2. REAGENT CONSUMABLE INVENTORY & CPT PROFITABILITY ROUTES

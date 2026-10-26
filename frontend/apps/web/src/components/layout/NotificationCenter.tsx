@@ -22,6 +22,7 @@ import {
   Filter
 } from "lucide-react";
 import { dashboardApi } from "@/lib/api";
+import { audioAlertEngine } from "@/lib/audioAlerts";
 
 export interface NotificationItem {
   id: string;
@@ -55,34 +56,10 @@ export default function NotificationCenter({
   // Play luxury synthesized sound chime using Web Audio API
   const playChime = useCallback((type: "normal" | "critical") => {
     if (!soundEnabled || typeof window === "undefined") return;
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      if (type === "critical") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.35);
-      } else {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-        osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.28);
-      }
-    } catch (e) {
-      // Audio context might be restricted before user gesture
+    if (type === "critical") {
+      audioAlertEngine.playCriticalPanicChime().catch(() => {});
+    } else {
+      audioAlertEngine.playInfoNotice().catch(() => {});
     }
   }, [soundEnabled]);
 

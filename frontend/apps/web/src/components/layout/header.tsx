@@ -17,6 +17,8 @@ import {
   Activity,
   Sparkles,
   MessageSquare,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleLabel } from "@/lib/auth";
@@ -25,6 +27,8 @@ import GlobalSearchModal from "./GlobalSearchModal";
 import LogoutModal from "@/components/auth/LogoutModal";
 import QuickCommunicationSlideover from "@/components/communication/QuickCommunicationSlideover";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
+import ThemeToggle from "./ThemeToggle";
+import { useAudioAlerts } from "@/hooks/useAudioAlerts";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -41,6 +45,7 @@ export default function Header({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const { isMuted, toggleMute, testAudio } = useAudioAlerts();
   const [unreadCount, setUnreadCount] = useState(3);
   const [hasCriticalAlert, setHasCriticalAlert] = useState(true);
   const [userInitials, setUserInitials] = useState('JA');
@@ -312,6 +317,25 @@ export default function Header({
             2
           </span>
         </button>
+
+        {/* Sound / Panic Alarm Toggle */}
+        <button
+          type="button"
+          onClick={toggleMute}
+          onDoubleClick={testAudio}
+          className={`w-9 h-9 lg:w-10 lg:h-10 border rounded-lg flex items-center justify-center relative transition-all duration-200 ${
+            isMuted
+              ? "border-slate-200 bg-slate-100 text-slate-400 hover:text-slate-600 dark:bg-slate-800 dark:border-slate-700"
+              : "border-slate-200 bg-[#F8FAFC] text-indigo-600 hover:bg-white hover:border-indigo-300 dark:bg-slate-800 dark:border-slate-700 dark:text-indigo-400"
+          }`}
+          title={isMuted ? "Audio Panic Alerts Muted (Click to Unmute)" : "Audio Panic Alerts Active (Double-click to test alarm)"}
+          aria-label={isMuted ? "Unmute audio alerts" : "Mute audio alerts"}
+        >
+          {isMuted ? <VolumeX className="w-4 h-4 lg:w-5 lg:h-5" /> : <Volume2 className="w-4 h-4 lg:w-5 lg:h-5" />}
+        </button>
+
+        {/* Visual Theme Selector (Dark/Light/System) */}
+        <ThemeToggle />
 
         {/* Notifications */}
         <div className="relative">

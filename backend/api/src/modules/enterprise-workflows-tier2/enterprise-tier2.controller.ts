@@ -327,6 +327,63 @@ export class EnterpriseTier2Controller {
     }
   }
 
+  public async recordAtccQc(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await microbiologyAstService.recordAtccQcLog(req.body);
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async listAtccQc(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const logs = await microbiologyAstService.listAtccQcLogs(limit);
+      res.status(200).json({ success: true, data: logs });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async recordEnvironmentalSwab(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await microbiologyAstService.recordEnvironmentalSwab(req.body);
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async listEnvironmentalSwabs(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const swabs = await microbiologyAstService.listEnvironmentalSwabs(limit);
+      res.status(200).json({ success: true, data: swabs });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async getMicrobiologyAnalyzers(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const telemetry = await microbiologyAstService.getMicrobiologyAnalyzerStatus();
+      res.status(200).json({ success: true, data: telemetry });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async getPendingMicrobiologyOrders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const orders = await microbiologyAstService.getPendingOrdersForMicrobiology(limit);
+      res.status(200).json({ success: true, data: orders });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // --- MODULE 2: REAGENT INVENTORY & CPT PROFITABILITY ---
 
   public async getReagentInventoryOverview(_req: Request, res: Response, next: NextFunction) {
