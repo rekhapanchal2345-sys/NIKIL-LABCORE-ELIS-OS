@@ -46,6 +46,7 @@ import enterpriseWorkflowsRoutes from "./modules/enterprise-workflows/enterprise
 import enterpriseTier2Routes from "./modules/enterprise-workflows-tier2/enterprise-tier2.routes";
 import branchRoutes from "./modules/branches/branch.routes";
 import searchRoutes from "./modules/search/search.routes";
+import cacheRoutes from "./modules/cache/cache.routes";
 
 // =======================================================
 // MIDDLEWARE
@@ -556,6 +557,12 @@ app.use("/api/v1/branches", branchRoutes);
 // =======================================================
 app.use("/api/search", searchRoutes);
 app.use("/api/v1/search", searchRoutes);
+
+// =======================================================
+// CACHE & PERFORMANCE TELEMETRY
+// =======================================================
+app.use("/api/cache", cacheRoutes);
+app.use("/api/v1/cache", cacheRoutes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

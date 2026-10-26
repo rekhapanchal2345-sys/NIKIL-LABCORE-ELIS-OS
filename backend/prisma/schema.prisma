@@ -1065,6 +1065,8 @@ model Test {
   @@index([categoryId])
   @@index([sampleType])
   @@index([isActive])
+  @@index([isActive, categoryId])
+  @@index([testCode, isActive])
   @@map("tests")
 }
 
@@ -1120,6 +1122,7 @@ model ReferenceRange {
   @@index([ageGroup])
   @@index([gender])
   @@index([isActive])
+  @@index([parameterId, isActive])
   @@map("reference_ranges")
 }
 
@@ -1229,6 +1232,9 @@ model Order {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([branchId])
+  @@index([branchId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([orderStatus, createdAt])
   @@map("orders")
 }
 
@@ -1288,6 +1294,8 @@ model Sample {
   @@index([testId])
   @@index([status])
   @@index([collectedById])
+  @@index([orderId, status])
+  @@index([status, collectedAt])
   @@map("samples")
 }
 

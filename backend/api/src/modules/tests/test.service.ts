@@ -1,5 +1,6 @@
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
+import { cacheService, CacheKeys, CacheTags, CacheTTL } from "../cache/cache.service";
 
 const toNumeric = (val: unknown): number => {
   if (val === null || val === undefined) return 0;
@@ -18,36 +19,45 @@ export const createCategory = async (data: any) => {
     throw new Error("Test category already exists");
   }
 
-  return prisma.testCategory.create({
+  const created = await prisma.testCategory.create({
     data,
   });
+  await cacheService.invalidateTag(CacheTags.CATALOG);
+  return created;
 };
 
 export const getCategories = async () => {
-  return prisma.testCategory.findMany({
-    where: {
-      isActive: true,
-    },
-    include: {
-      tests: {
+  return cacheService.remember(
+    CacheKeys.testCategories(),
+    CacheTTL.ONE_HOUR,
+    async () => {
+      return prisma.testCategory.findMany({
         where: {
           isActive: true,
         },
-        select: {
-          id: true,
-          testCode: true,
-          testName: true,
-          shortName: true,
-          price: true,
-          offerPrice: true,
-          b2bRate: true,
-          sampleType: true,
-          tatHours: true,
+        include: {
+          tests: {
+            where: {
+              isActive: true,
+            },
+            select: {
+              id: true,
+              testCode: true,
+              testName: true,
+              shortName: true,
+              price: true,
+              offerPrice: true,
+              b2bRate: true,
+              sampleType: true,
+              tatHours: true,
+            },
+          },
         },
-      },
+        orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+      });
     },
-    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-  });
+    [CacheTags.CATALOG]
+  );
 };
 
 export const getCategoryById = async (id: string) => {
@@ -149,7 +159,7 @@ export const createTest = async (data: any) => {
     throw new Error("Test code already exists");
   }
 
-  return prisma.test.create({
+  const newTest = await prisma.test.create({
     data: {
       ...cleanedData,
       gstPercentage: cleanedData.gstPercentage ?? 0,
@@ -161,6 +171,8 @@ export const createTest = async (data: any) => {
       parameters: true,
     },
   });
+  await cacheService.invalidateTag(CacheTags.CATALOG);
+  return newTest;
 };
 
 /**

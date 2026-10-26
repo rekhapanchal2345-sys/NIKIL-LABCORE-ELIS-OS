@@ -1,61 +1,30 @@
 /**
- * High-Performance In-Memory Cache for LabCore ELIS Backend
- * Provides microsecond response times for frequently accessed datasets
- * (e.g., Dashboard stats, test catalogs, doctor rosters, metric counters).
+ * High-Performance Caching Layer for LabCore ELIS Backend
+ * Backed by Redis with automatic resilient In-Memory LRU fallback.
+ * Provides microsecond response times for frequently accessed datasets.
  */
 
-type CacheEntry<T> = {
-  value: T;
-  expiresAt: number;
-};
+import { cacheService, CacheTags, CacheKeys, CacheTTL } from "../modules/cache/cache.service";
 
-class MemoryCache {
-  private store = new Map<string, CacheEntry<any>>();
-  private cleanupInterval: NodeJS.Timeout | null = null;
-
-  constructor() {
-    // Run periodic cleanup every 60 seconds to prevent memory leaks
-    if (typeof setInterval !== "undefined") {
-      this.cleanupInterval = setInterval(() => {
-        this.cleanup();
-      }, 60000);
-      if (this.cleanupInterval.unref) {
-        this.cleanupInterval.unref();
-      }
-    }
+export class CacheAdapter {
+  public async get<T>(key: string): Promise<T | null> {
+    return cacheService.get<T>(key);
   }
 
-  public get<T>(key: string): T | null {
-    const entry = this.store.get(key);
-    if (!entry) return null;
-
-    if (Date.now() > entry.expiresAt) {
-      this.store.delete(key);
-      return null;
-    }
-
-    return entry.value as T;
+  public async set<T>(key: string, value: T, ttlSeconds: number = 30): Promise<void> {
+    await cacheService.set<T>(key, value, ttlSeconds);
   }
 
-  public set<T>(key: string, value: T, ttlSeconds: number = 30): void {
-    const expiresAt = Date.now() + ttlSeconds * 1000;
-    this.store.set(key, { value, expiresAt });
+  public async del(key: string): Promise<void> {
+    await cacheService.del(key);
   }
 
-  public del(key: string): void {
-    this.store.delete(key);
+  public async delPrefix(prefix: string): Promise<void> {
+    await cacheService.del(prefix);
   }
 
-  public delPrefix(prefix: string): void {
-    for (const key of this.store.keys()) {
-      if (key.startsWith(prefix)) {
-        this.store.delete(key);
-      }
-    }
-  }
-
-  public clear(): void {
-    this.store.clear();
+  public async clear(): Promise<void> {
+    await cacheService.flushAll();
   }
 
   public async getOrSet<T>(
@@ -63,25 +32,18 @@ class MemoryCache {
     ttlSeconds: number,
     fetcher: () => Promise<T>
   ): Promise<T> {
-    const cached = this.get<T>(key);
-    if (cached !== null) {
-      return cached;
-    }
-
-    const fresh = await fetcher();
-    this.set(key, fresh, ttlSeconds);
-    return fresh;
+    return cacheService.remember<T>(key, ttlSeconds, fetcher);
   }
 
-  private cleanup(): void {
-    const now = Date.now();
-    for (const [key, entry] of this.store.entries()) {
-      if (now > entry.expiresAt) {
-        this.store.delete(key);
-      }
-    }
+  public async invalidateTag(tag: string): Promise<number> {
+    return cacheService.invalidateTag(tag);
+  }
+
+  public getMetrics() {
+    return cacheService.getMetrics();
   }
 }
 
-export const cache = new MemoryCache();
+export const cache = new CacheAdapter();
+export { cacheService, CacheTags, CacheKeys, CacheTTL };
 export default cache;

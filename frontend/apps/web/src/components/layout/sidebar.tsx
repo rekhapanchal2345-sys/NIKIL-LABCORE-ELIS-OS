@@ -234,12 +234,12 @@ const menuSections: MenuSection[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // SECTION 2 — PATIENT MANAGEMENT (Step 1 of Clinical Pipeline)
+  // SECTION 2 — PATIENT MANAGEMENT & CLINICAL CARE (Small Clinic to Enterprise Hospital)
   // ══════════════════════════════════════════════════════════════════════════
   {
     id: "patients",
-    title: "① Patient Management",
-    badge: "Registration",
+    title: "① Patient Care & Records",
+    badge: "Clinical Hub",
     items: [
       {
         id: "patients",
@@ -249,16 +249,17 @@ const menuSections: MenuSection[] = [
         icon: UserCircle2,
         accent: ACCENTS.sapphire,
         children: [
-          { label: "Patient Directory (MPI)", href: "/patients", badge: "MPI", badgeVariant: "blue" },
-          { label: "Register New Patient", href: "/patients/new", badge: "Quick", badgeVariant: "emerald" },
-          { label: "Active Patients", href: "/patients?chip=ACTIVE", badge: "Live", badgeVariant: "emerald" },
-          { isDivider: true, dividerLabel: "OPD & QUEUE", label: "", href: "#" },
-          { label: "OPD Queue (Live)", href: "/patients/opd-queue", badge: "Live", badgeVariant: "emerald", liveKey: "opdQueue" },
-          { label: "Today's Registrations", href: "/patients?chip=TODAY", badge: "Today", badgeVariant: "blue" },
-          { label: "Critical Watch List", href: "/patients?chip=CRITICAL", badge: "Urgent", badgeVariant: "red", liveKey: "criticalPatients" },
-          { label: "Pending Orders Roster", href: "/patients?chip=PENDING", badge: "Pending", badgeVariant: "amber" },
-          { isDivider: true, dividerLabel: "COMPLIANCE & ABHA", label: "", href: "#" },
-          { label: "ABDM / ABHA Console", href: "/abdm", badge: "ABHA", badgeVariant: "purple" },
+          { label: "Master Patient Index (MPI)", href: "/patients", badge: "MPI", badgeVariant: "blue" },
+          { label: "Register / Admit Patient", href: "/patients/new", badge: "Admission", badgeVariant: "emerald" },
+          { label: "Active In-Process Cases", href: "/patients?chip=ACTIVE", badge: "Active", badgeVariant: "emerald" },
+          { isDivider: true, dividerLabel: "OPD & CLINICAL QUEUE", label: "", href: "#" },
+          { label: "Live OPD & Token Queue", href: "/patients/opd-queue", badge: "Live", badgeVariant: "emerald", liveKey: "opdQueue" },
+          { label: "Today's Registrations", href: "/patients?chip=TODAY", badge: "Today", badgeVariant: "teal" },
+          { label: "STAT & Critical Watchlist", href: "/patients?chip=CRITICAL", badge: "Urgent", badgeVariant: "red", liveKey: "criticalPatients" },
+          { label: "Inpatient (IPD) / Wards", href: "/patients?chip=IPD", badge: "Beds", badgeVariant: "blue" },
+          { label: "Pending Diagnostic Roster", href: "/patients?chip=PENDING", badge: "Pending", badgeVariant: "amber" },
+          { isDivider: true, dividerLabel: "NATIONAL DIGITAL HEALTH", label: "", href: "#" },
+          { label: "ABDM / ABHA Digital Desk", href: "/abdm", badge: "ABHA", badgeVariant: "purple" },
         ],
       },
       {

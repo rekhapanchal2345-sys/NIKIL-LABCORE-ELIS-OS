@@ -1,4 +1,5 @@
 import prisma from "../../lib/prisma";
+import { cacheService, CacheKeys, CacheTags, CacheTTL } from "../cache/cache.service";
 
 export interface LaboratorySettingsData {
   id?: string;
@@ -146,60 +147,67 @@ async function ensureSettingsTable(): Promise<void> {
 }
 
 export const getLaboratorySettings = async (): Promise<LaboratorySettingsData> => {
-  try {
-    await ensureSettingsTable();
+  return cacheService.remember(
+    CacheKeys.laboratorySettings(),
+    CacheTTL.THIRTY_MINUTES,
+    async () => {
+      try {
+        await ensureSettingsTable();
 
-    const row = await prisma.laboratorySettings.findFirst();
+        const row = await prisma.laboratorySettings.findFirst();
 
-    if (row) {
-      const parsed: LaboratorySettingsData = {
-        id: row.id,
-        labName: row.labName || inMemorySettingsCache.labName,
-        labPhone: row.labPhone || inMemorySettingsCache.labPhone,
-        labEmail: row.labEmail || inMemorySettingsCache.labEmail,
-        labAddress: row.labAddress || undefined,
-        labCity: row.labCity || undefined,
-        labState: row.labState || undefined,
-        labPincode: row.labPincode || undefined,
-        emailProvider: row.emailProvider || "custom",
-        emailApiKey: row.emailApiKey || undefined,
-        emailFromEmail: row.emailFromEmail || undefined,
-        emailFromName: row.emailFromName || undefined,
-        smtpHost: row.smtpHost || undefined,
-        smtpPort: row.smtpPort ? Number(row.smtpPort) : 587,
-        smtpUser: row.smtpUser || undefined,
-        smtpPassword: row.smtpPassword || undefined,
-        smsProvider: row.smsProvider || "custom",
-        smsApiKey: row.smsApiKey || undefined,
-        smsApiSecret: row.smsApiSecret || undefined,
-        smsSenderId: row.smsSenderId || undefined,
-        whatsappProvider: row.whatsappProvider || "custom",
-        whatsappPhoneNumberId: row.whatsappPhoneNumberId || undefined,
-        whatsappAccessToken: row.whatsappAccessToken || undefined,
-        whatsappWebhookUrl: row.whatsappWebhookUrl || undefined,
-        whatsappVerifyToken: row.whatsappVerifyToken || undefined,
-        whatsappBusinessProfileId: row.whatsappBusinessProfileId || undefined,
-        whatsappAIEnabled: row.whatsappAIEnabled ?? false,
-        callProvider: row.callProvider || "custom",
-        callApiKey: row.callApiKey || undefined,
-        callApiSecret: row.callApiSecret || undefined,
-        callCallerId: row.callCallerId || undefined,
-        enableAutomatedNotifications: row.enableAutomatedNotifications ?? true,
-        enablePatientNotifications: row.enablePatientNotifications ?? true,
-        enableDoctorNotifications: row.enableDoctorNotifications ?? false,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      };
+        if (row) {
+          const parsed: LaboratorySettingsData = {
+            id: row.id,
+            labName: row.labName || inMemorySettingsCache.labName,
+            labPhone: row.labPhone || inMemorySettingsCache.labPhone,
+            labEmail: row.labEmail || inMemorySettingsCache.labEmail,
+            labAddress: row.labAddress || undefined,
+            labCity: row.labCity || undefined,
+            labState: row.labState || undefined,
+            labPincode: row.labPincode || undefined,
+            emailProvider: row.emailProvider || "custom",
+            emailApiKey: row.emailApiKey || undefined,
+            emailFromEmail: row.emailFromEmail || undefined,
+            emailFromName: row.emailFromName || undefined,
+            smtpHost: row.smtpHost || undefined,
+            smtpPort: row.smtpPort ? Number(row.smtpPort) : 587,
+            smtpUser: row.smtpUser || undefined,
+            smtpPassword: row.smtpPassword || undefined,
+            smsProvider: row.smsProvider || "custom",
+            smsApiKey: row.smsApiKey || undefined,
+            smsApiSecret: row.smsApiSecret || undefined,
+            smsSenderId: row.smsSenderId || undefined,
+            whatsappProvider: row.whatsappProvider || "custom",
+            whatsappPhoneNumberId: row.whatsappPhoneNumberId || undefined,
+            whatsappAccessToken: row.whatsappAccessToken || undefined,
+            whatsappWebhookUrl: row.whatsappWebhookUrl || undefined,
+            whatsappVerifyToken: row.whatsappVerifyToken || undefined,
+            whatsappBusinessProfileId: row.whatsappBusinessProfileId || undefined,
+            whatsappAIEnabled: row.whatsappAIEnabled ?? false,
+            callProvider: row.callProvider || "custom",
+            callApiKey: row.callApiKey || undefined,
+            callApiSecret: row.callApiSecret || undefined,
+            callCallerId: row.callCallerId || undefined,
+            enableAutomatedNotifications: row.enableAutomatedNotifications ?? true,
+            enablePatientNotifications: row.enablePatientNotifications ?? true,
+            enableDoctorNotifications: row.enableDoctorNotifications ?? false,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
 
-      // Update in-memory cache
-      inMemorySettingsCache = { ...inMemorySettingsCache, ...parsed };
-      return parsed;
-    }
-  } catch (error) {
-    console.warn("Database query for laboratory settings failed, using resilient fallback cache:", error);
-  }
+          // Update in-memory fallback cache
+          inMemorySettingsCache = { ...inMemorySettingsCache, ...parsed };
+          return parsed;
+        }
+      } catch (error) {
+        console.warn("Database query for laboratory settings failed, using resilient fallback cache:", error);
+      }
 
-  return inMemorySettingsCache;
+      return inMemorySettingsCache;
+    },
+    [CacheTags.SETTINGS]
+  );
 };
 
 export const updateLaboratorySettings = async (data: LaboratorySettingsData): Promise<LaboratorySettingsData> => {
@@ -254,6 +262,9 @@ export const updateLaboratorySettings = async (data: LaboratorySettingsData): Pr
   } catch (error) {
     console.warn("Could not persist settings to PostgreSQL, held safely in cache:", error);
   }
+
+  // Invalidate cache immediately on mutation
+  await cacheService.invalidateTag(CacheTags.SETTINGS);
 
   return inMemorySettingsCache;
 };

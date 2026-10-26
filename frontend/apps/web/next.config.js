@@ -10,6 +10,9 @@ const nextConfig = {
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname),
   devIndicators: false, // Prevents floating Next.js dev badge from overlapping sidebar settings button
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
 
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],
