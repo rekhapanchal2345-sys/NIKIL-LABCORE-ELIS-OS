@@ -28,6 +28,13 @@ export const AccessionCultureSchema = z.object({
     'TISSUE_BIOPSY',
   ]),
   incubationTempCelsius: z.number().min(20).max(45).optional(),
+  patientName: z.string().optional(),
+  patientUhid: z.string().optional(),
+  patientAgeGender: z.string().optional(),
+  specimenQuality: z.string().optional(),
+  timeToPositivityHours: z.number().optional(),
+  bottleType: z.string().optional(),
+  growthStatus: z.string().optional(),
 });
 
 export const PreliminaryGramStainSchema = z.object({
@@ -194,6 +201,127 @@ export class EnterpriseTier2Controller {
         sampleSite,
       });
       res.status(200).json({ success: true, data: antibiogram });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async calculatePkPdSimulation(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = microbiologyAstService.calculatePkPdMonteCarlo({
+        antibioticCode: String(req.body.antibioticCode || 'MEM'),
+        patientAgeYears: Number(req.body.patientAgeYears ?? 54),
+        patientWeightKg: Number(req.body.patientWeightKg ?? 70),
+        patientGender: req.body.patientGender === 'FEMALE' ? 'FEMALE' : 'MALE',
+        serumCreatinineMgDl: Number(req.body.serumCreatinineMgDl ?? 1.1),
+        dosageMg: Number(req.body.dosageMg ?? 1000),
+        dosingIntervalHours: Number(req.body.dosingIntervalHours ?? 8),
+        infusionDurationHours: Number(req.body.infusionDurationHours ?? 3.0),
+        targetMicUgMl: Number(req.body.targetMicUgMl ?? 1.0),
+        isIcuPatient: Boolean(req.body.isIcuPatient ?? true),
+      });
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async evaluateResistomeConcordance(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = microbiologyAstService.evaluateResistomeGenotypeConcordance({
+        cultureId: String(req.body.cultureId || ''),
+        isolateNumber: Number(req.body.isolateNumber ?? 1),
+        organismName: String(req.body.organismName || 'Klebsiella pneumoniae'),
+        detectedGenes: Array.isArray(req.body.detectedGenes) ? req.body.detectedGenes : ['blaNDM_1', 'blaCTX_M_15'],
+        observedPhenotypes: req.body.observedPhenotypes,
+      });
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async calculateSynergyCheckerboard(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = microbiologyAstService.calculateSynergyCheckerboard({
+        antibioticCodeA: String(req.body.antibioticCodeA || 'CZA'),
+        antibioticCodeB: String(req.body.antibioticCodeB || 'ATM'),
+        micAloneAUgMl: Number(req.body.micAloneAUgMl ?? 64),
+        micAloneBUgMl: Number(req.body.micAloneBUgMl ?? 32),
+        micComboAUgMl: Number(req.body.micComboAUgMl ?? 4),
+        micComboBUgMl: Number(req.body.micComboBUgMl ?? 2),
+      });
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async getTransmissionClusterGraph(req: Request, res: Response, next: NextFunction) {
+    try {
+      const minSnpThreshold = req.query.minSnpThreshold ? Number(req.query.minSnpThreshold) : 15;
+      const windowDays = req.query.windowDays ? Number(req.query.windowDays) : 30;
+      const result = await microbiologyAstService.generateTransmissionClusterGraph({
+        minSnpThreshold,
+        windowDays,
+      });
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async exportWhonetGlass(req: Request, res: Response, next: NextFunction) {
+    try {
+      const windowDays = req.query.windowDays ? Number(req.query.windowDays) : 90;
+      const result = await microbiologyAstService.exportWhonetGlassData(windowDays);
+      res.setHeader('Content-Type', result.contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      res.status(200).send(result.tsvContent);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async logCriticalCall(req: Request, res: Response, next: NextFunction) {
+    try {
+      const {
+        cultureId,
+        callerUserName,
+        receiverDoctorOrNurse,
+        wardOrDepartment,
+        contactNumber,
+        criticalFinding,
+        readbackConfirmed,
+        clinicalActionNotes,
+      } = req.body;
+
+      if (!cultureId || !receiverDoctorOrNurse || !criticalFinding) {
+        throw new HttpError(400, 'cultureId, receiverDoctorOrNurse, and criticalFinding are required');
+      }
+
+      const result = await microbiologyAstService.logCriticalValueCall({
+        cultureId: String(cultureId),
+        callerUserName: callerUserName || (req as any).user?.name || 'Lab Technologist',
+        receiverDoctorOrNurse: String(receiverDoctorOrNurse),
+        wardOrDepartment: String(wardOrDepartment || 'ICU'),
+        contactNumber: String(contactNumber || ''),
+        criticalFinding: String(criticalFinding),
+        readbackConfirmed: Boolean(readbackConfirmed ?? true),
+        clinicalActionNotes: clinicalActionNotes ? String(clinicalActionNotes) : undefined,
+      });
+
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async listCriticalCalls(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const calls = await microbiologyAstService.listCriticalValueCalls(limit);
+      res.status(200).json({ success: true, data: calls });
     } catch (error) {
       next(error);
     }

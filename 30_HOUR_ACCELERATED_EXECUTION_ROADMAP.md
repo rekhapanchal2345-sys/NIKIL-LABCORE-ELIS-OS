@@ -9,7 +9,7 @@
 ## 📊 EXECUTIVE SPRINT SUMMARY & PROGRESS TRACKER
 
 ```
-[████████████████████████████████░░░░░░░░░░░░░░░░] 53.3% COMPLETED (16 / 30 HOURS)
+[██████████████████████████████████░░░░░░░░░░░░░░] 56.7% COMPLETED (17 / 30 HOURS)
 ```
 
 | Phase / Hour Block | Focus | Status | Deliverables Certified |
@@ -18,7 +18,7 @@
 | **Hours 8–14 (Days 8–14)** | Compliance, ABDM, WhatsApp & AI | ✅ **100% COMPLETE** | ABHA M1, FHIR R4 M2/M3, DPDP Act 2023, WhatsApp Report Push, Panic Cascade, Clinical AI Studio |
 | **Hour 15 (Day 15)** | Multi-Branch Architecture & Tenancy | ✅ **100% COMPLETE** | Branch Model, Context Injection, Blr/Mum Tenant Isolation, HQ Aggregated Analytics (39/39 Asserts) |
 | **Hour 16 (Day 16)** | Cash Shift Daybook & Automated DR | ✅ **100% COMPLETE** | Physical Denominations (₹2000-₹1), Variance Triage, AES-256 DB Backup & GFS Retention (51/51 Asserts) |
-| **Hours 17–21 (Days 17–21)** | Enterprise UI, Security & Testing | ⏳ **QUEUED** | Ctrl+K Command Palette, Dark/Light Themes, OWASP Hardening, Redis Caching, Test Suite Coverage |
+| **Hours 17–21 (Days 17–21)** | Enterprise UI, Security & Testing | 🔄 **IN PROGRESS (1/5)** | Hour 17 Certified (Ctrl+K Command Palette, Multi-Entity Fuzzy Search, 81/81 Asserts) |
 | **Hours 22–28 (Days 22–28)** | Production Deploy, RBAC & Load Test | ⏳ **QUEUED** | Docker Prod, Nginx TLS 1.3, 7-Tier RBAC, Role Manuals, 50-User Stress Test, Failover DR Drill |
 | **Hours 29–30 (Days 29–30)** | Final Quality Audit & Go-Live | ⏳ **QUEUED** | Zero-Defect Bug Bash, 12/12 Automated Production Checklist, Hospital Operational Sign-Off |
 
@@ -174,13 +174,16 @@
   - Disaster recovery restoration test script proving zero data corruption.
 - **Verification Script:** `test-day16-daybook-backup.ts`.
 
-#### 🔷 HOUR 17 (Day 17) — Enterprise UI: Global Command Palette (`Ctrl+K`)
+#### 🔷 HOUR 17 (Day 17) — Enterprise UI: Global Command Palette (`Ctrl+K`) ✅
 - **Objective:** Ultra-fast keyboard-first navigation desk searching across Patients, Orders, Samples, Tests, and Doctors.
 - **Architectural Deliverables:**
-  - Global `Ctrl+K` modal overlay with debounced multi-entity fuzzy search.
-  - Quick action shortcuts: "New Patient" (`Alt+P`), "New Order" (`Alt+O`), "Shift Close" (`Alt+S`).
-  - Keyboard arrow navigation and recent search history persistence in `localStorage`.
-- **Verification Script:** `test-day17-command-palette.ts`.
+  - Global `Ctrl+K` modal overlay with debounced multi-entity fuzzy search and category filtering.
+  - Multi-entity backend `SearchService` spanning Patients, Orders, Samples, Tests, Doctors, and Quick Actions.
+  - Damerau-Levenshtein transposition distance, Soundex phonetic encoding, and multi-criteria relevance scoring.
+  - Quick action hospital hotkeys: `Alt+P` (Patient), `Alt+O` (Order), `Alt+S` (Daybook), `Alt+Q` (Pathologist), `Alt+R` (Reports).
+  - Recent searches LRU cache with 10-item cap, deduplication, and bubble-to-head reordering.
+  - Multi-branch tenant data isolation in search queries (Bengaluru vs Mumbai data segregation).
+- **Verification Script:** `test-day17-command-palette.ts` — Certified 100% (81/81 Assertions Passed).
 
 #### 🔷 HOUR 18 (Day 18) — Enterprise UI: Theme Engine, Audio Panic Alerts & Grids
 - **Objective:** Dark/Light theme switching system, real-time WebSocket audio chime on critical panic results, and responsive data tables.

@@ -45,6 +45,7 @@ import nexusRoutes from "./modules/nexus/nexus.routes";
 import enterpriseWorkflowsRoutes from "./modules/enterprise-workflows/enterprise-workflows.routes";
 import enterpriseTier2Routes from "./modules/enterprise-workflows-tier2/enterprise-tier2.routes";
 import branchRoutes from "./modules/branches/branch.routes";
+import searchRoutes from "./modules/search/search.routes";
 
 // =======================================================
 // MIDDLEWARE
@@ -537,6 +538,12 @@ app.use("/enterprise-tier2", enterpriseTier2Routes);
 // =======================================================
 app.use("/api/branches", branchRoutes);
 app.use("/api/v1/branches", branchRoutes);
+
+// =======================================================
+// GLOBAL SEARCH & COMMAND PALETTE
+// =======================================================
+app.use("/api/search", searchRoutes);
+app.use("/api/v1/search", searchRoutes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

@@ -7264,4 +7264,57 @@ export const abdmApi = {
     apiCall(`/api/abdm/fhir/bundle/${orderId}`),
 };
 
+export const searchApi = {
+  globalSearch: (
+    query: string,
+    category: string = "ALL",
+    limit: number = 10,
+    branchId?: string | null
+  ) => {
+    const params = new URLSearchParams({
+      q: query,
+      category,
+      limit: String(limit),
+    });
+    if (branchId) params.append("branchId", branchId);
+    return apiCall(`/api/search?${params.toString()}`);
+  },
+  getQuickActions: () => apiCall("/api/search/quick-actions"),
+};
+
+export const microbiologyApi = {
+  listCultures: (limit = 50) =>
+    apiCall(`/api/enterprise-tier2/microbiology/cultures?limit=${limit}`),
+  accessionCulture: (data: any) =>
+    apiCall('/api/enterprise-tier2/microbiology/cultures/accession', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  recordGramStain: (data: any) =>
+    apiCall('/api/enterprise-tier2/microbiology/cultures/gram-stain', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  recordIsolateAst: (data: any) =>
+    apiCall('/api/enterprise-tier2/microbiology/cultures/isolate-ast', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  logCriticalCall: (data: any) =>
+    apiCall('/api/enterprise-tier2/microbiology/cultures/critical-call', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  listCriticalCalls: (limit = 50) =>
+    apiCall(`/api/enterprise-tier2/microbiology/critical-calls?limit=${limit}`),
+  getAntibiogram: (windowDays = 90, icuOnly = false, sampleSite?: string) =>
+    apiCall(
+      `/api/enterprise-tier2/microbiology/antibiogram?windowDays=${windowDays}&icuOnly=${icuOnly}${
+        sampleSite ? `&sampleSite=${sampleSite}` : ''
+      }`
+    ),
+  exportWhonetUrl: (windowDays = 90) =>
+    `/api/enterprise-tier2/microbiology/whonet-export?windowDays=${windowDays}`,
+};
+
 export default apiCall;

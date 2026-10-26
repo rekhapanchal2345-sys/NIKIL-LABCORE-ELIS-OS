@@ -24,6 +24,7 @@ import NotificationCenter from "./NotificationCenter";
 import GlobalSearchModal from "./GlobalSearchModal";
 import LogoutModal from "@/components/auth/LogoutModal";
 import QuickCommunicationSlideover from "@/components/communication/QuickCommunicationSlideover";
+import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -79,21 +80,11 @@ export default function Header({
     window.location.reload();
   };
 
-  // Global Ctrl+K (Search) & Ctrl+M (Quick Comms) Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setShowSearchModal((prev) => !prev);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-        setShowQuickComms((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Global Ctrl+K (Search), Ctrl+M (Quick Comms) & Alt+ Quick Action Shortcuts
+  useGlobalKeyboardShortcuts({
+    onToggleSearch: () => setShowSearchModal((prev) => !prev),
+    onOpenQuickComms: () => setShowQuickComms((prev) => !prev),
+  });
 
   useEffect(() => {
     setIsMounted(true);

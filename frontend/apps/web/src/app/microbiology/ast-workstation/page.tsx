@@ -324,7 +324,7 @@ export default function MicrobiologyAstWorkstationPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout title="Microbiology AST & MIC Workstation">
-        <div className="max-w-[1720px] mx-auto px-4 sm:px-6 py-6 space-y-6 text-slate-800 bg-[#f8fafc] min-h-screen">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5 text-slate-800 bg-[#f8fafc] min-h-screen">
 
           {/* Top Clinical Header Banner */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden">

@@ -25,6 +25,27 @@ router.post('/microbiology/cultures/isolate-ast', (req, res, next) =>
 router.get('/microbiology/antibiogram', (req, res, next) =>
   enterpriseTier2Controller.getHiccAntibiogram(req, res, next)
 );
+router.post('/microbiology/pkpd-simulation', (req, res, next) =>
+  enterpriseTier2Controller.calculatePkPdSimulation(req, res, next)
+);
+router.post('/microbiology/resistome-concordance', (req, res, next) =>
+  enterpriseTier2Controller.evaluateResistomeConcordance(req, res, next)
+);
+router.post('/microbiology/synergy-checkerboard', (req, res, next) =>
+  enterpriseTier2Controller.calculateSynergyCheckerboard(req, res, next)
+);
+router.get('/microbiology/transmission-graph', (req, res, next) =>
+  enterpriseTier2Controller.getTransmissionClusterGraph(req, res, next)
+);
+router.get('/microbiology/whonet-export', (req, res, next) =>
+  enterpriseTier2Controller.exportWhonetGlass(req, res, next)
+);
+router.post('/microbiology/cultures/critical-call', (req, res, next) =>
+  enterpriseTier2Controller.logCriticalCall(req, res, next)
+);
+router.get('/microbiology/critical-calls', (req, res, next) =>
+  enterpriseTier2Controller.listCriticalCalls(req, res, next)
+);
 
 // ============================================================================
 // 2. REAGENT CONSUMABLE INVENTORY & CPT PROFITABILITY ROUTES
