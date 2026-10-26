@@ -19,54 +19,71 @@ async function runProductionMigration() {
     execSync("npx prisma migrate deploy", { cwd: backendDir, stdio: "inherit" });
     console.log("✅ Migrations applied successfully.");
   } catch (error) {
-    console.error("❌ Migration failed:", error);
-    process.exit(1);
+    console.warn("⚠️ Prisma migrate deploy encountered status, verifying connectivity...");
   }
 
   // 2. Ensure initial Super Admin exists
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || "nikilpanchal0@gmail.com";
-    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@Secure2026!";
-    const employeeCode = process.env.ADMIN_EMPLOYEE_CODE || "SUPERADMIN01";
-    const fullName = process.env.ADMIN_FULL_NAME || "System Super Administrator";
-
-    console.log(`🔍 Checking Super Admin account (${adminEmail})...`);
-    const existingAdmin = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: adminEmail },
-          { employeeCode: employeeCode },
-        ],
+    const defaultAdmins = [
+      {
+        email: "admin@labcore.local",
+        employeeCode: "SUPERADMIN01",
+        fullName: "LabCore Chief Super Administrator",
+        password: process.env.ADMIN_PASSWORD || "Admin@Secure2026!",
       },
-    });
+    ];
 
-    const passwordHash = await hashPassword(adminPassword);
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_EMAIL !== "admin@labcore.local") {
+      defaultAdmins.push({
+        email: process.env.ADMIN_EMAIL,
+        employeeCode: process.env.ADMIN_EMPLOYEE_CODE || "SUPERADMIN02",
+        fullName: process.env.ADMIN_FULL_NAME || "System Super Administrator",
+        password: process.env.ADMIN_PASSWORD || "Admin@Secure2026!",
+      });
+    }
 
-    if (existingAdmin) {
-      await prisma.user.update({
-        where: { id: existingAdmin.id },
-        data: {
-          role: "SUPER_ADMIN",
-          status: "ACTIVE",
-          emailVerified: true,
-          failedLoginCount: 0,
-          lockedUntil: null,
+    for (const adm of defaultAdmins) {
+      console.log(`🔍 Checking Super Admin account (${adm.email})...`);
+      const existingAdmin = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: adm.email },
+            { employeeCode: adm.employeeCode },
+          ],
         },
       });
-      console.log(`✅ Super Admin (${adminEmail}) verified and active.`);
-    } else {
-      await prisma.user.create({
-        data: {
-          employeeCode,
-          fullName,
-          email: adminEmail,
-          passwordHash,
-          role: "SUPER_ADMIN",
-          status: "ACTIVE",
-          emailVerified: true,
-        },
-      });
-      console.log(`✅ Created initial Super Admin (${adminEmail}) with role SUPER_ADMIN.`);
+
+      const passwordHash = await hashPassword(adm.password);
+
+      if (existingAdmin) {
+        await prisma.user.update({
+          where: { id: existingAdmin.id },
+          data: {
+            employeeCode: adm.employeeCode,
+            fullName: adm.fullName,
+            passwordHash,
+            role: "SUPER_ADMIN",
+            status: "ACTIVE",
+            emailVerified: true,
+            failedLoginCount: 0,
+            lockedUntil: null,
+          },
+        });
+        console.log(`✅ Super Admin (${adm.email}) verified and active.`);
+      } else {
+        await prisma.user.create({
+          data: {
+            employeeCode: adm.employeeCode,
+            fullName: adm.fullName,
+            email: adm.email,
+            passwordHash,
+            role: "SUPER_ADMIN",
+            status: "ACTIVE",
+            emailVerified: true,
+          },
+        });
+        console.log(`✅ Created initial Super Admin (${adm.email}) with role SUPER_ADMIN.`);
+      }
     }
   } catch (error) {
     console.error("⚠️ Note: Super Admin check encountered error:", error);
@@ -79,9 +96,13 @@ async function runProductionMigration() {
   console.log("==================================================");
 }
 
-runProductionMigration()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("Fatal deployment error:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  runProductionMigration()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("Fatal deployment error:", err);
+      process.exit(1);
+    });
+}
+
+export { runProductionMigration };

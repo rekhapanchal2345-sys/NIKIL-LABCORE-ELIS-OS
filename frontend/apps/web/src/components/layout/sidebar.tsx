@@ -266,15 +266,25 @@ const menuSections: MenuSection[] = [
       },
       {
         id: "doctors",
-        label: "Doctors",
+        label: "Doctor Operations",
         name: "doctors",
         href: "/doctors",
         icon: Stethoscope,
         accent: ACCENTS.teal,
         children: [
-          { label: "All Doctors", href: "/doctors" },
-          { label: "Add Doctor / Pathologist", href: "/doctors/new" },
-          { label: "Referral Commission Report", href: "/invoices?tab=b2b" },
+          { label: "Doctor & Specialist Directory", href: "/doctors", badge: "Roster", badgeVariant: "blue" },
+          { label: "Register Doctor / Specialist", href: "/doctors/new", badge: "Add", badgeVariant: "emerald" },
+          { isDivider: true, dividerLabel: "CLINICAL PRACTICE & OPD", label: "", href: "#" },
+          { label: "OPD Consultation Queue", href: "/doctors?tab=opd-queue", badge: "Live", badgeVariant: "emerald" },
+          { label: "Inpatient (IPD) Bed Rounds", href: "/doctors?tab=ipd-rounds", badge: "IPD", badgeVariant: "teal" },
+          { label: "Smart E-Prescription & CPOE", href: "/doctors?tab=prescriptions", badge: "Rx", badgeVariant: "purple" },
+          { isDivider: true, dividerLabel: "DIAGNOSTIC & PATHOLOGY", label: "", href: "#" },
+          { label: "Pathologist Sign-Off Desk", href: "/doctors?tab=verification", badge: "Sign", badgeVariant: "red" },
+          { label: "Patient Longitudinal EMR", href: "/doctors?tab=emr", badge: "Trends", badgeVariant: "blue" },
+          { isDivider: true, dividerLabel: "B2B REFERRAL & SETTLEMENTS", label: "", href: "#" },
+          { label: "Referral Commission Ledger", href: "/doctors?tab=referrals", badge: "Payouts", badgeVariant: "amber" },
+          { label: "Weekly Duty Roster & Shifts", href: "/doctors?tab=roster", badge: "Schedule", badgeVariant: "teal" },
+          { label: "Doctor Performance Analytics", href: "/doctors?tab=analytics", badge: "KPI", badgeVariant: "emerald" },
         ],
       },
       {
@@ -934,6 +944,11 @@ export default function Sidebar({
     if (hrefPath === "/ai-studio" && !hrefQuery) {
       const tab = searchParams.get("tab");
       return pathname === "/ai-studio" && (!tab || tab === "overview");
+    }
+
+    if (hrefPath === "/doctors" && !hrefQuery) {
+      const tab = searchParams.get("tab");
+      return pathname === "/doctors" && (!tab || tab === "directory");
     }
 
     // /settings owns its tabs through ?tab=, and /settings/communications is a

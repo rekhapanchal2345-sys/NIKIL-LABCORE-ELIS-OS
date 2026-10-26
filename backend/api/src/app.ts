@@ -47,6 +47,8 @@ import enterpriseTier2Routes from "./modules/enterprise-workflows-tier2/enterpri
 import branchRoutes from "./modules/branches/branch.routes";
 import searchRoutes from "./modules/search/search.routes";
 import cacheRoutes from "./modules/cache/cache.routes";
+import healthRoutes from "./modules/health/health.routes";
+import { requestCorrelationMiddleware } from "./lib/logger.service";
 
 // =======================================================
 // MIDDLEWARE
@@ -259,26 +261,13 @@ app.get("/", (_req: Request, res: Response) => {
   });
 });
 
-app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).json({
-    success: true,
-    message: "LabCore ELIS API is running",
-    service: "LabCore Enterprise Laboratory Information System",
-    version: "1.0.0",
-    environment: process.env.NODE_ENV || "development",
-    timestamp: new Date().toISOString(),
-  });
-});
+// =======================================================
+// HEALTH & OBSERVABILITY MULTI-PROBE TELEMETRY
+// =======================================================
 
-app.get("/api/health", (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: "online",
-    timestamp: new Date().toISOString(),
-    system: "LabCore ELIS & Hospital Information System",
-    module: "Doctor & Pathologist Advanced Portal",
-    version: "2.5.0-PRO",
-  });
-});
+app.use("/api/health", healthRoutes);
+app.use("/health", healthRoutes);
+app.use("/api/v1/health", healthRoutes);
 
 // =======================================================
 // API ROOT

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import DoctorTable, { Doctor } from "@/components/doctors/DoctorTable";
@@ -12,6 +13,17 @@ import DoctorSamplePickupModal from "@/components/doctors/DoctorSamplePickupModa
 import DoctorTariffSheetModal from "@/components/doctors/DoctorTariffSheetModal";
 import DoctorAnalyticsModal from "@/components/doctors/DoctorAnalyticsModal";
 import RegisterDoctorWizard from "@/components/doctors/RegisterDoctorWizard";
+import DoctorNavigationHeader, { DoctorModuleTab } from "@/components/doctors/DoctorNavigationHeader";
+import DoctorOpdQueueView from "@/components/doctors/DoctorOpdQueueView";
+import DoctorIpdRoundsView from "@/components/doctors/DoctorIpdRoundsView";
+import DoctorPrescriptionCpoeView from "@/components/doctors/DoctorPrescriptionCpoeView";
+import DoctorVerificationView from "@/components/doctors/DoctorVerificationView";
+import DoctorEmrTrendsView from "@/components/doctors/DoctorEmrTrendsView";
+import DoctorReferralLedgerView from "@/components/doctors/DoctorReferralLedgerView";
+import DoctorDutyRosterView from "@/components/doctors/DoctorDutyRosterView";
+import DoctorPracticeAnalyticsView from "@/components/doctors/DoctorPracticeAnalyticsView";
+import PrescriptionBuilderModal, { PrescriptionData } from "@/components/doctors/PrescriptionBuilderModal";
+
 import { doctorApi } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { showSuccess, showError } from "@/lib/notifications";
@@ -44,7 +56,9 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 
-export default function DoctorsPage() {
+function DoctorsPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { hasAnyRole } = useAuth();
   
   // Role permissions
@@ -53,6 +67,27 @@ export default function DoctorsPage() {
   const canDeleteDoctor = hasAnyRole(["ADMIN", "SUPER_ADMIN"]);
   const canPayoutDoctor = hasAnyRole(["ADMIN", "SUPER_ADMIN", "FRONT_DESK"]);
 
+  // Active Main Sub-Module Tab
+  const urlTab = (searchParams?.get("tab") as DoctorModuleTab) || "directory";
+  const [activeTab, setActiveTab] = useState<DoctorModuleTab>(urlTab);
+
+  useEffect(() => {
+    const tabParam = (searchParams?.get("tab") as DoctorModuleTab) || "directory";
+    if (tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (newTab: DoctorModuleTab) => {
+    setActiveTab(newTab);
+    if (newTab === "directory") {
+      router.push("/doctors");
+    } else {
+      router.push(`/doctors?tab=${newTab}`);
+    }
+  };
+
+  // Doctors directory state
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +98,8 @@ export default function DoctorsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Search, Filters & Tabs
-  const [activeTab, setActiveTab] = useState<"all" | "referring" | "pathologists" | "partners" | "pending_payouts">("all");
+  // Directory sub-filter tabs & Search
+  const [directoryFilterTab, setDirectoryFilterTab] = useState<"all" | "referring" | "pathologists" | "partners" | "pending_payouts">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterSpecialization, setFilterSpecialization] = useState("");
@@ -83,6 +118,10 @@ export default function DoctorsPage() {
   const [selectedDoctorForAnalytics, setSelectedDoctorForAnalytics] = useState<DoctorProfileData | null>(null);
   const [doctorToEdit, setDoctorToEdit] = useState<DoctorProfileData | null>(null);
   const [showAddEditModal, setShowAddEditModal] = useState(false);
+
+  // New Prescription Modal State
+  const [isRxBuilderOpen, setIsRxBuilderOpen] = useState(false);
+  const [prefillPatientForRx, setPrefillPatientForRx] = useState<any>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -107,11 +146,11 @@ export default function DoctorsPage() {
       if (filterSpecialization) params.specialization = filterSpecialization;
       if (filterStatus) params.isActive = filterStatus === "active" ? "true" : "false";
 
-      if (activeTab === "referring") {
+      if (directoryFilterTab === "referring") {
         params.doctorType = "REFERRING_DOCTOR";
-      } else if (activeTab === "pathologists") {
+      } else if (directoryFilterTab === "pathologists") {
         params.doctorType = "PATHOLOGIST";
-      } else if (activeTab === "partners") {
+      } else if (directoryFilterTab === "partners") {
         params.typeGroup = "partners";
       }
 
@@ -140,9 +179,8 @@ export default function DoctorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, filterSpecialization, filterStatus, activeTab]);
+  }, [page, limit, debouncedSearch, filterSpecialization, filterStatus, directoryFilterTab]);
 
-  // Fetch doctors on parameter change
   useEffect(() => {
     fetchDoctors();
   }, [fetchDoctors]);
@@ -151,7 +189,7 @@ export default function DoctorsPage() {
   const getFilteredDoctors = () => {
     let list = [...doctors];
 
-    if (activeTab === "pending_payouts") {
+    if (directoryFilterTab === "pending_payouts") {
       list = list.filter(
         (d) =>
           d.doctorType !== "IN_HOUSE_PATHOLOGIST" &&
@@ -161,7 +199,6 @@ export default function DoctorsPage() {
       );
     }
 
-    // Sorting
     list.sort((a, b) => {
       let comp = 0;
       switch (sortBy) {
@@ -303,86 +340,52 @@ export default function DoctorsPage() {
     showSuccess("Doctors Directory CSV exported successfully");
   };
 
+  const handleOpenNewRxWithPatient = (patient?: any) => {
+    setPrefillPatientForRx(patient || null);
+    setIsRxBuilderOpen(true);
+  };
+
+  const handlePrescriptionCreated = (rx: PrescriptionData) => {
+    showSuccess(`Prescription ${rx.prescriptionNumber} registered in clinical EMR.`);
+  };
+
   return (
     <ProtectedRoute requiredRoles={["ADMIN", "FRONT_DESK", "LAB_TECH", "PATHOLOGIST", "DOCTOR"]}>
-      <DashboardLayout title="Doctors & Referral Management">
-        <div className="space-y-6">
+      <DashboardLayout title="Doctor Module & Clinical Operations">
+        <div className="space-y-5">
           
-          {/* Modern Hero Banner - Light White Professional UI */}
-          <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm">
-            <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-slate-50 rounded-full blur-2xl pointer-events-none"></div>
-            
-            <div className="relative p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-7 h-7 text-indigo-600" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                      Doctors & Referral Management
-                    </h1>
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
-                      LIS B2B Portal
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                    Clinical practitioners, referring physician commissions, and pathologist digital authorizations
-                  </p>
-                </div>
-              </div>
+          {/* ── Enterprise Doctor Module Navigation Header (Ultra Light White Theme) ── */}
+          <DoctorNavigationHeader
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            kpis={{
+              totalDoctors,
+              activeDoctors,
+              opdQueueCount: 3,
+              ipdCount: 4,
+              pendingVerifications: 3,
+              criticalPanics: 2,
+              monthlyRevenue: totalReferralRevenue,
+              pendingPayouts: totalPendingPayout,
+            }}
+            onOpenSamplePickup={() => {
+              const firstDoc = (filteredDoctors[0] as DoctorProfileData) || null;
+              setSelectedDoctorForPickup(firstDoc);
+            }}
+            onOpenTariffSheet={() => {
+              const firstDoc = (filteredDoctors[0] as DoctorProfileData) || null;
+              setSelectedDoctorForTariff(firstDoc);
+            }}
+            onOpenNewRx={() => handleOpenNewRxWithPatient(null)}
+            onAddNewDoctor={() => {
+              setDoctorToEdit(null);
+              setShowAddEditModal(true);
+            }}
+            onExportCSV={handleExportCSV}
+            canAddDoctor={canAddDoctor}
+          />
 
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button
-                  onClick={() => {
-                    const firstDoc = (filteredDoctors[0] as DoctorProfileData) || null;
-                    setSelectedDoctorForPickup(firstDoc);
-                  }}
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 shadow-xs transition-all active:scale-95 cursor-pointer"
-                  title="Schedule Phlebotomy Specimen Pickup Requisition"
-                >
-                  <Bike className="w-4 h-4 text-rose-600" />
-                  <span>Sample Pickup</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    const firstDoc = (filteredDoctors[0] as DoctorProfileData) || null;
-                    setSelectedDoctorForTariff(firstDoc);
-                  }}
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 shadow-xs transition-all active:scale-95 cursor-pointer"
-                  title="Diagnostic Rate Master & B2B Tariff Directory"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-amber-600" />
-                  <span>Rate Master</span>
-                </button>
-
-                <button
-                  onClick={handleExportCSV}
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-xs transition-all active:scale-95 cursor-pointer"
-                  title="Export Doctors to CSV"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export CSV</span>
-                </button>
-
-                {canAddDoctor && (
-                  <button
-                    onClick={() => {
-                      setDoctorToEdit(null);
-                      setShowAddEditModal(true);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs shadow-md transition-all active:scale-95 transform hover:-translate-y-0.5 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4 text-white" />
-                    <span>Add New Doctor</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Error Alert */}
+          {/* ── Error Communication Notice ── */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4 flex items-center gap-3 text-xs font-semibold">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -391,6 +394,7 @@ export default function DoctorsPage() {
                 <p className="text-red-700">{error}</p>
               </div>
               <button
+                type="button"
                 onClick={fetchDoctors}
                 className="px-3 py-1.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-colors flex items-center gap-1"
               >
@@ -400,297 +404,359 @@ export default function DoctorsPage() {
             </div>
           )}
 
-          {/* Business & Clinical KPI Metrics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* KPI 1: Total Doctors */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Users className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                  {activeDoctors} Active
-                </span>
-              </div>
-              <p className="text-2xl font-black text-slate-900">{totalDoctors}</p>
-              <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
-                <span>Referring: <strong>{referringCount}</strong></span>
-                <span>Pathologists: <strong>{pathologistCount}</strong></span>
-              </div>
-            </div>
-
-            {/* KPI 2: Monthly Patient Referrals */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  This Month
-                </span>
-              </div>
-              <p className="text-2xl font-black text-slate-900">{monthlyReferrals}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">Patients referred this month (Total: {totalReferrals})</p>
-            </div>
-
-            {/* KPI 3: Referral Business Revenue */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
-                  Paid Revenue
-                </span>
-              </div>
-              <p className="text-2xl font-black text-slate-900">₹{totalReferralRevenue.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">Actual billing from paid orders</p>
-            </div>
-
-            {/* KPI 4: Pending Commission Payouts */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <button
-                  onClick={() => setActiveTab("pending_payouts")}
-                  className="text-[10px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2 py-0.5 rounded-full transition-colors"
-                >
-                  View Payouts
-                </button>
-              </div>
-              <p className="text-2xl font-black text-purple-900">₹{totalPendingPayout.toLocaleString()}</p>
-              <p className="text-xs text-purple-700 font-medium mt-1">Unsettled referral incentives</p>
-            </div>
-
-          </div>
-
-          {/* Interactive Category Filter Tabs */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-1">
-            <button
-              onClick={() => { setActiveTab("all"); setPage(1); }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === "all"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              All Practitioners ({totalDoctors})
-            </button>
-
-            <button
-              onClick={() => { setActiveTab("referring"); setPage(1); }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === "referring"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              Referring Physicians ({referringCount})
-            </button>
-
-            <button
-              onClick={() => { setActiveTab("pathologists"); setPage(1); }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === "pathologists"
-                  ? "bg-purple-600 text-white shadow-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              <Award className="w-3.5 h-3.5" />
-              In-House Pathologists ({pathologistCount})
-            </button>
-
-            <button
-              onClick={() => { setActiveTab("partners"); setPage(1); }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === "partners"
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              <Building className="w-3.5 h-3.5" />
-              Hospital / Clinic Partners ({partnersCount})
-            </button>
-
-            <button
-              onClick={() => { setActiveTab("pending_payouts"); setPage(1); }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === "pending_payouts"
-                  ? "bg-amber-600 text-white shadow-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              Pending Commission Payouts (₹{totalPendingPayout.toLocaleString()})
-            </button>
-          </div>
-
-          {/* Search, Specialization & Multi-Criteria Filter Bar */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* ── VIEW 1: DOCTOR DIRECTORY & CREDENTIALING ── */}
+          {activeTab === "directory" && (
+            <div className="space-y-4">
               
-              {/* Search Bar */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search doctor across entire database by name, clinic, specialization, phone, code or MCI reg..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-xs font-medium placeholder-slate-400 focus:border-indigo-600 focus:outline-none"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Filters & Sorters */}
-              <div className="flex flex-wrap items-center gap-2">
+              {/* Business & Clinical KPI Metrics Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
-                {/* Specialization Select */}
-                <select
-                  value={filterSpecialization}
-                  onChange={(e) => { setFilterSpecialization(e.target.value); setPage(1); }}
-                  className="rounded-xl border border-slate-200 py-2 px-3 text-xs font-semibold text-slate-700 focus:border-indigo-600 focus:outline-none bg-white"
-                >
-                  <option value="">All Specializations</option>
-                  {specializationsList.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                {/* KPI 1: Total Doctors */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
+                      {activeDoctors} Active
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-slate-900">{totalDoctors}</p>
+                  <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+                    <span>Referring: <strong>{referringCount}</strong></span>
+                    <span>Pathologists: <strong>{pathologistCount}</strong></span>
+                  </div>
+                </div>
 
-                {/* Status Select */}
-                <select
-                  value={filterStatus}
-                  onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-                  className="rounded-xl border border-slate-200 py-2 px-3 text-xs font-semibold text-slate-700 focus:border-indigo-600 focus:outline-none bg-white"
-                >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                {/* KPI 2: Monthly Patient Referrals */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      This Month
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-slate-900">{monthlyReferrals}</p>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">Patients referred this month (Total: {totalReferrals})</p>
+                </div>
 
-                {/* Sort By Select */}
-                <select
-                  value={`${sortBy}-${sortOrder}`}
-                  onChange={(e) => {
-                    const [field, order] = e.target.value.split("-");
-                    setSortBy(field);
-                    setSortOrder(order as "asc" | "desc");
-                  }}
-                  className="rounded-xl border border-slate-200 py-2 px-3 text-xs font-semibold text-slate-700 focus:border-indigo-600 focus:outline-none bg-white"
-                >
-                  <option value="name-asc">Name (A-Z)</option>
-                  <option value="name-desc">Name (Z-A)</option>
-                  <option value="referrals-desc">Highest Referrals</option>
-                  <option value="specialization-asc">Specialization</option>
-                  <option value="doctorCode-asc">Doctor Code</option>
-                </select>
+                {/* KPI 3: Referral Business Revenue */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                      Paid Revenue
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-slate-900">₹{totalReferralRevenue.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">Actual billing from referred patients</p>
+                </div>
 
-                {(searchTerm || filterSpecialization || filterStatus) && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setFilterSpecialization("");
-                      setFilterStatus("");
-                      setPage(1);
-                    }}
-                    className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                  >
-                    Reset Filters
-                  </button>
-                )}
+                {/* KPI 4: Pending Commission Payouts */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDirectoryFilterTab("pending_payouts")}
+                      className="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full transition-colors"
+                    >
+                      View Payouts
+                    </button>
+                  </div>
+                  <p className="text-2xl font-black text-amber-900">₹{totalPendingPayout.toLocaleString()}</p>
+                  <p className="text-xs text-amber-700 font-medium mt-1">Unsettled referral incentives</p>
+                </div>
 
               </div>
-            </div>
-          </div>
 
-          {/* Results Summary Bar */}
-          <div className="flex items-center justify-between text-xs text-slate-600 px-1">
-            <span>
-              Showing <strong className="text-slate-900">{filteredDoctors.length}</strong> doctors on Page {page} of {totalPages} (Total: {totalCount})
-            </span>
-            <span className="text-[11px] text-slate-400">
-              Real server-side database pagination & search active
-            </span>
-          </div>
-
-          {/* Clinical Doctor Directory Table */}
-          <DoctorTable
-            doctors={filteredDoctors}
-            loading={loading}
-            canEdit={canEditDoctor}
-            canDelete={canDeleteDoctor}
-            canPayout={canPayoutDoctor}
-            onDelete={handleDeleteDoctor}
-            onQuickView={(doc) => setSelectedDoctorForView(doc as DoctorProfileData)}
-            onPayout={(doc) => setSelectedDoctorForPayout(doc as DoctorProfileData)}
-            onRequisitionSlip={(doc) => {
-              setSelectedDoctorForRequisition(doc as DoctorProfileData);
-              setRequisitionAutoOpenModal(undefined);
-            }}
-            onWhatsAppDoctor={(doc) => {
-              setSelectedDoctorForRequisition(doc as DoctorProfileData);
-              setRequisitionAutoOpenModal("whatsapp");
-            }}
-            onEmailDoctor={(doc) => {
-              setSelectedDoctorForRequisition(doc as DoctorProfileData);
-              setRequisitionAutoOpenModal("email");
-            }}
-            onSamplePickup={(doc) => setSelectedDoctorForPickup(doc as DoctorProfileData)}
-            onIdBadge={(doc) => setSelectedDoctorForBadge(doc as DoctorProfileData)}
-            onTariffSheet={(doc) => setSelectedDoctorForTariff(doc as DoctorProfileData)}
-            onAnalytics={(doc) => setSelectedDoctorForAnalytics(doc as DoctorProfileData)}
-            onEdit={(doc) => {
-              setDoctorToEdit(doc as DoctorProfileData);
-              setShowAddEditModal(true);
-            }}
-          />
-
-          {/* Server Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between text-xs">
-              <span className="text-slate-600 font-medium">
-                Page <strong className="text-slate-900">{page}</strong> of <strong>{totalPages}</strong>
-              </span>
-
-              <div className="flex items-center gap-2">
+              {/* Interactive Category Filter Tabs */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
                 <button
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  type="button"
+                  onClick={() => { setDirectoryFilterTab("all"); setPage(1); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    directoryFilterTab === "all"
+                      ? "bg-slate-900 text-white shadow-2xs"
+                      : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
+                  }`}
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
+                  <Users className="w-3.5 h-3.5" />
+                  All Practitioners ({totalDoctors})
                 </button>
 
                 <button
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                  type="button"
+                  onClick={() => { setDirectoryFilterTab("referring"); setPage(1); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    directoryFilterTab === "referring"
+                      ? "bg-sky-600 text-white shadow-2xs"
+                      : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
+                  }`}
                 >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
+                  <User className="w-3.5 h-3.5" />
+                  Referring Physicians ({referringCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setDirectoryFilterTab("pathologists"); setPage(1); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    directoryFilterTab === "pathologists"
+                      ? "bg-teal-600 text-white shadow-2xs"
+                      : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  In-House Pathologists ({pathologistCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setDirectoryFilterTab("partners"); setPage(1); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    directoryFilterTab === "partners"
+                      ? "bg-indigo-600 text-white shadow-2xs"
+                      : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  <Building className="w-3.5 h-3.5" />
+                  Hospital / Clinic Partners ({partnersCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setDirectoryFilterTab("pending_payouts"); setPage(1); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    directoryFilterTab === "pending_payouts"
+                      ? "bg-amber-600 text-white shadow-2xs"
+                      : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Pending Payouts (₹{totalPendingPayout.toLocaleString()})
                 </button>
               </div>
+
+              {/* Search, Specialization & Multi-Criteria Filter Bar */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  
+                  {/* Search Bar */}
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      placeholder="Search doctor across entire database by name, clinic, specialization, phone, code or MCI reg..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-xs font-medium placeholder-slate-400 focus:border-sky-600 focus:outline-none bg-white"
+                    />
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filters & Sorters */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={filterSpecialization}
+                      onChange={(e) => { setFilterSpecialization(e.target.value); setPage(1); }}
+                      className="rounded-xl border border-slate-200 py-2 px-3 text-xs font-semibold text-slate-700 focus:border-sky-600 focus:outline-none bg-white"
+                    >
+                      <option value="">All Specializations</option>
+                      {specializationsList.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                      className="rounded-xl border border-slate-200 py-2 px-3 text-xs font-semibold text-slate-700 focus:border-sky-600 focus:outline-none bg-white"
+                    >
+                      <option value="">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+
+                    <select
+                      value={`${sortBy}-${sortOrder}`}
+                      onChange={(e) => {
+                        const [field, order] = e.target.value.split("-");
+                        setSortBy(field);
+                        setSortOrder(order as "asc" | "desc");
+                      }}
+                      className="rounded-xl border border-slate-200 py-2 px-3 text-xs font-semibold text-slate-700 focus:border-sky-600 focus:outline-none bg-white"
+                    >
+                      <option value="name-asc">Name (A-Z)</option>
+                      <option value="name-desc">Name (Z-A)</option>
+                      <option value="referrals-desc">Highest Referrals</option>
+                      <option value="specialization-asc">Specialization</option>
+                      <option value="doctorCode-asc">Doctor Code</option>
+                    </select>
+
+                    {(searchTerm || filterSpecialization || filterStatus) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setFilterSpecialization("");
+                          setFilterStatus("");
+                          setPage(1);
+                        }}
+                        className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                      >
+                        Reset Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Results Summary Bar */}
+              <div className="flex items-center justify-between text-xs text-slate-600 px-1">
+                <span>
+                  Showing <strong className="text-slate-900">{filteredDoctors.length}</strong> doctors on Page {page} of {totalPages} (Total: {totalCount})
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Real server-side database pagination & search active
+                </span>
+              </div>
+
+              {/* Clinical Doctor Directory Table */}
+              <DoctorTable
+                doctors={filteredDoctors}
+                loading={loading}
+                canEdit={canEditDoctor}
+                canDelete={canDeleteDoctor}
+                canPayout={canPayoutDoctor}
+                onDelete={handleDeleteDoctor}
+                onQuickView={(doc) => setSelectedDoctorForView(doc as DoctorProfileData)}
+                onPayout={(doc) => setSelectedDoctorForPayout(doc as DoctorProfileData)}
+                onRequisitionSlip={(doc) => {
+                  setSelectedDoctorForRequisition(doc as DoctorProfileData);
+                  setRequisitionAutoOpenModal(undefined);
+                }}
+                onWhatsAppDoctor={(doc) => {
+                  setSelectedDoctorForRequisition(doc as DoctorProfileData);
+                  setRequisitionAutoOpenModal("whatsapp");
+                }}
+                onEmailDoctor={(doc) => {
+                  setSelectedDoctorForRequisition(doc as DoctorProfileData);
+                  setRequisitionAutoOpenModal("email");
+                }}
+                onSamplePickup={(doc) => setSelectedDoctorForPickup(doc as DoctorProfileData)}
+                onIdBadge={(doc) => setSelectedDoctorForBadge(doc as DoctorProfileData)}
+                onTariffSheet={(doc) => setSelectedDoctorForTariff(doc as DoctorProfileData)}
+                onAnalytics={(doc) => setSelectedDoctorForAnalytics(doc as DoctorProfileData)}
+                onEdit={(doc) => {
+                  setDoctorToEdit(doc as DoctorProfileData);
+                  setShowAddEditModal(true);
+                }}
+              />
+
+              {/* Server Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">
+                    Page <strong className="text-slate-900">{page}</strong> of <strong>{totalPages}</strong>
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={page <= 1 || loading}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={page >= totalPages || loading}
+                      onClick={() => setPage((p) => p + 1)}
+                      className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
+          )}
+
+          {/* ── VIEW 2: OPD CONSULTATION QUEUE ── */}
+          {activeTab === "opd-queue" && (
+            <DoctorOpdQueueView
+              onOpenNewRx={handleOpenNewRxWithPatient}
+            />
+          )}
+
+          {/* ── VIEW 3: INPATIENT (IPD) BED ROUNDS ── */}
+          {activeTab === "ipd-rounds" && (
+            <DoctorIpdRoundsView
+              onOpenNewRx={handleOpenNewRxWithPatient}
+            />
+          )}
+
+          {/* ── VIEW 4: SMART E-PRESCRIPTIONS & CPOE ── */}
+          {activeTab === "prescriptions" && (
+            <DoctorPrescriptionCpoeView
+              onOpenNewRx={() => handleOpenNewRxWithPatient(null)}
+            />
+          )}
+
+          {/* ── VIEW 5: PATHOLOGIST SIGN-OFF WORKSTATION ── */}
+          {activeTab === "verification" && (
+            <DoctorVerificationView />
+          )}
+
+          {/* ── VIEW 6: LONGITUDINAL PATIENT EMR TRENDS ── */}
+          {activeTab === "emr" && (
+            <DoctorEmrTrendsView />
+          )}
+
+          {/* ── VIEW 7: B2B REFERRAL LEDGER & PAYOUTS ── */}
+          {activeTab === "referrals" && (
+            <DoctorReferralLedgerView
+              onOpenPayoutModal={(doc) => setSelectedDoctorForPayout(doc as DoctorProfileData)}
+              onOpenTariffSheet={(doc) => setSelectedDoctorForTariff(doc as DoctorProfileData)}
+              onOpenRequisitionSlip={(doc) => setSelectedDoctorForRequisition(doc as DoctorProfileData)}
+            />
+          )}
+
+          {/* ── VIEW 8: DOCTOR DUTY ROSTER & SHIFTS ── */}
+          {activeTab === "roster" && (
+            <DoctorDutyRosterView />
+          )}
+
+          {/* ── VIEW 9: CLINICAL PRACTICE ANALYTICS ── */}
+          {activeTab === "analytics" && (
+            <DoctorPracticeAnalyticsView />
           )}
 
         </div>
 
-        {/* MODAL 1: DOCTOR QUICK VIEW PROFILE DRAWER */}
+        {/* ── MODAL 1: DOCTOR QUICK VIEW PROFILE DRAWER ── */}
         <DoctorQuickViewModal
           isOpen={Boolean(selectedDoctorForView)}
           onClose={() => setSelectedDoctorForView(null)}
@@ -718,7 +784,7 @@ export default function DoctorsPage() {
           }}
         />
 
-        {/* MODAL 2: REFERRAL COMMISSION PAYOUT SETTLEMENT MODAL */}
+        {/* ── MODAL 2: REFERRAL COMMISSION PAYOUT SETTLEMENT MODAL ── */}
         <DoctorCommissionPayoutModal
           isOpen={Boolean(selectedDoctorForPayout)}
           onClose={() => setSelectedDoctorForPayout(null)}
@@ -726,7 +792,7 @@ export default function DoctorsPage() {
           onPayoutSuccess={() => fetchDoctors()}
         />
 
-        {/* MODAL 3: OFFICIAL CLINICAL INVESTIGATION REQUISITION SLIP / RX PAD */}
+        {/* ── MODAL 3: OFFICIAL CLINICAL INVESTIGATION REQUISITION SLIP / RX PAD ── */}
         <DoctorRequisitionSlipModal
           isOpen={Boolean(selectedDoctorForRequisition)}
           onClose={() => {
@@ -737,35 +803,35 @@ export default function DoctorsPage() {
           autoOpenModal={requisitionAutoOpenModal}
         />
 
-        {/* MODAL 4: DOCTOR DIGITAL PRIVILEGE ID BADGE & CERTIFICATE */}
+        {/* ── MODAL 4: DOCTOR DIGITAL PRIVILEGE ID BADGE & CERTIFICATE ── */}
         <DoctorIdBadgeModal
           isOpen={Boolean(selectedDoctorForBadge)}
           onClose={() => setSelectedDoctorForBadge(null)}
           doctor={selectedDoctorForBadge}
         />
 
-        {/* MODAL 5: PHLEBOTOMY SPECIMEN PICKUP & RIDER DISPATCH */}
+        {/* ── MODAL 5: PHLEBOTOMY SPECIMEN PICKUP & RIDER DISPATCH ── */}
         <DoctorSamplePickupModal
           isOpen={Boolean(selectedDoctorForPickup)}
           onClose={() => setSelectedDoctorForPickup(null)}
           doctor={selectedDoctorForPickup}
         />
 
-        {/* MODAL 6: DIAGNOSTIC RATE MASTER & TARIFF DIRECTORY */}
+        {/* ── MODAL 6: DIAGNOSTIC RATE MASTER & TARIFF DIRECTORY ── */}
         <DoctorTariffSheetModal
           isOpen={Boolean(selectedDoctorForTariff)}
           onClose={() => setSelectedDoctorForTariff(null)}
           doctor={selectedDoctorForTariff}
         />
 
-        {/* MODAL 7: CLINICAL ANALYTICS & PRESCRIBING DOSSIER */}
+        {/* ── MODAL 7: CLINICAL ANALYTICS & PRESCRIBING DOSSIER ── */}
         <DoctorAnalyticsModal
           isOpen={Boolean(selectedDoctorForAnalytics)}
           onClose={() => setSelectedDoctorForAnalytics(null)}
           doctor={selectedDoctorForAnalytics}
         />
 
-        {/* MODAL 8: ENTERPRISE 8-STEP DOCTOR REGISTRATION & COMPLIANCE WIZARD */}
+        {/* ── MODAL 8: ENTERPRISE 8-STEP DOCTOR REGISTRATION & COMPLIANCE WIZARD ── */}
         <RegisterDoctorWizard
           isOpen={showAddEditModal}
           onClose={() => {
@@ -780,7 +846,31 @@ export default function DoctorsPage() {
           }}
         />
 
+        {/* ── MODAL 9: SMART E-PRESCRIPTION & CPOE BUILDER MODAL ── */}
+        <PrescriptionBuilderModal
+          isOpen={isRxBuilderOpen}
+          onClose={() => {
+            setIsRxBuilderOpen(false);
+            setPrefillPatientForRx(null);
+          }}
+          onSubmit={handlePrescriptionCreated}
+          prefillPatient={prefillPatientForRx}
+        />
+
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+export default function DoctorsPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-8 text-center text-slate-400">
+        <div className="w-8 h-8 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+        <p className="text-xs font-semibold">Loading Doctor Operations...</p>
+      </div>
+    }>
+      <DoctorsPageContent />
+    </Suspense>
   );
 }

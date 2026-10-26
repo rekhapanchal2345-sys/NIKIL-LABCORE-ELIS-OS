@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "deploy:migrate": "ts-node --transpile-only ./scripts/deploy-migrate.ts",
+    "seed:prod": "ts-node --transpile-only ./scripts/seed-production-catalog.ts",
     "create-admin": "node scripts/create-admin.js",
     "create-admin-ts": "ts-node --transpile-only ./scripts/create-admin-prisma.ts",
     "create-admin-sql": "ts-node --transpile-only ./scripts/create-admin.ts",
