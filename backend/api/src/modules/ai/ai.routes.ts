@@ -16,6 +16,11 @@ import {
   coagulationAnalyze,
   smartReportGenerate,
   interpretOrderGemini,
+  cbcGeminiAnalyze,
+  thyroidGeminiAnalyze,
+  getClinicalRiskCards,
+  overrideAiDiagnosis,
+  getOrderAiOverrides,
 } from "./ai.controller";
 import { authenticate } from "../../../middleware/auth";
 
@@ -68,5 +73,11 @@ router.post("/report/generate", smartReportGenerate);
 // Engine 7: Google Gemini AI Pathology Reasoning & Differential Diagnosis
 router.post("/gemini/interpret", interpretOrderGemini);
 router.get("/gemini/order/:orderId", interpretOrderGemini);
+router.post("/gemini/cbc", cbcGeminiAnalyze);
+router.post("/gemini/thyroid", thyroidGeminiAnalyze);
+router.post("/gemini/risk-cards", getClinicalRiskCards);
+router.get("/gemini/risk-cards/:orderId", getClinicalRiskCards);
+router.post("/gemini/override", overrideAiDiagnosis);
+router.get("/gemini/overrides/:orderId", getOrderAiOverrides);
 
 export default router;

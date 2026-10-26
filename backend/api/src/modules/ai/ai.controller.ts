@@ -16,7 +16,14 @@ import {
   analyzeCoagulation,
   generateSmartReport,
 } from "./ai.service";
-import { interpretOrderWithGemini } from "./gemini.service";
+import {
+  interpretOrderWithGemini,
+  analyzeCbcWithGemini,
+  analyzeThyroidWithGemini,
+  generateClinicalRiskCard,
+  recordDoctorAiOverride,
+  getDoctorAiOverrides,
+} from "./gemini.service";
 
 export const trainClassical = async (
   req: Request,
@@ -304,6 +311,106 @@ export const interpretOrderGemini = async (
       success: true,
       message: "Diagnostic interpretation generated successfully",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cbcGeminiAnalyze = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await analyzeCbcWithGemini(req.body);
+    res.status(200).json({
+      success: true,
+      message: "CBC morphology & scattergram interpretation generated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const thyroidGeminiAnalyze = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await analyzeThyroidWithGemini(req.body);
+    res.status(200).json({
+      success: true,
+      message: "Thyroid endocrine differential diagnosis generated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getClinicalRiskCards = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const orderId = (req.params.orderId || req.body.orderId) as string;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "orderId is required" });
+    }
+    const cards = await generateClinicalRiskCard(orderId);
+    res.status(200).json({
+      success: true,
+      message: "Clinical risk prediction cards generated successfully",
+      data: cards,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const overrideAiDiagnosis = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { orderId, doctorId, aiSuggestedDiagnosis, doctorFinalDiagnosis, overrideReason, clinicalNotes } = req.body;
+    const actorId = doctorId || (req as any).user?.id || (req as any).user?.userId;
+
+    const result = await recordDoctorAiOverride({
+      orderId,
+      doctorId: actorId,
+      aiSuggestedDiagnosis,
+      doctorFinalDiagnosis,
+      overrideReason,
+      clinicalNotes,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Doctor clinical override recorded with SHA-256 tamper-evident chaining",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOrderAiOverrides = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const orderId = (req.params.orderId || "") as string;
+    const overrides = await getDoctorAiOverrides(orderId);
+    res.status(200).json({
+      success: true,
+      data: overrides,
     });
   } catch (error) {
     next(error);
