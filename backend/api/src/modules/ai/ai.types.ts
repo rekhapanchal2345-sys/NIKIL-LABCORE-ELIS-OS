@@ -48,6 +48,18 @@ export interface ClassicalMlTrainingResult {
   rocCurve?: { fpr: number; tpr: number }[];
   prCurve?: { recall: number; precision: number }[];
   calibrationData?: { bin: number; predictedProb: number; trueFraction: number }[];
+  brierScore?: number;
+  expectedCalibrationError?: number;
+  matthewsCorrelationCoefficient?: number;
+  diagnosticOddsRatio?: number;
+  sensitivity?: number;
+  specificity?: number;
+  positiveLikelihoodRatio?: number;
+  negativeLikelihoodRatio?: number;
+  numberNeededToDiagnose?: number;
+  conformalCoverage95?: { lowerResidual: number; upperResidual: number; empiricalCoverage: number };
+  decisionCurveAnalysis?: { threshold: number; netBenefitModel: number; netBenefitAll: number; netBenefitNone: number }[];
+  faganNomogram?: { preTestProbability: number; postTestProbabilityPositive: number; postTestProbabilityNegative: number; positiveLr: number; negativeLr: number };
   hardwareTelemetry?: {
     vramUsedMb: number;
     totalVramMb: number;
@@ -66,9 +78,38 @@ export interface ClassicalMlTrainingResult {
     sha256: string;
     sizeKb: number;
   };
-  hyperparameterGrid?: { nEstimators: number; maxDepth: number; lr: number; rocAuc: number; latencyMs: number }[];
+    hyperparameterGrid?: { nEstimators: number; maxDepth: number; lr: number; rocAuc: number; latencyMs: number }[];
   astmFrames?: string[];
   leveyJenningsPoints?: { run: number; value: number; sd: number; status: "PASS" | "WARNING" | "VIOLATION" }[];
+  gnnTopology?: {
+    nodes: { id: string; label: string; organ: string; baselineRef: string; embeddingDim: number }[];
+    edges: { source: string; target: string; mechanism: string; attentionWeight: number }[];
+    summary: { layers: number; attentionHeads: number; homophilyRatio: number; pooling: string };
+  };
+  coxSurvivalAnalysis?: {
+    hazardRatios: { covariate: string; hr: number; ciLower: number; ciUpper: number; pValue: number }[];
+    concordanceIndex: number;
+    kaplanMeierCurve: { timeDays: number; survivalProb: number; atRisk: number }[];
+    eventRates: { day30: number; day90: number; year1: number };
+  };
+  michaelisMenten?: {
+    vMax: number;
+    km: number;
+    kineticsEquation: string;
+    kalmanStates: { timeSec: number; rawAbsorbance: number; filteredAbsorbance: number; residual: number }[];
+  };
+  causalGraph?: {
+    dagConfounders: string[];
+    averageTreatmentEffects: { intervention: string; baselineRisk: number; counterfactualRisk: number; ateAbsoluteReduction: number }[];
+  };
+  eqasProficiency?: {
+    program: string;
+    sdiScore: number;
+    enRatio: number;
+    zScore: number;
+    traceabilityStandard: string;
+    status: "EXEMPLARY" | "ACCEPTABLE" | "UNACCEPTABLE";
+  };
   trainingLogs?: string[];
   trainedAt: string;
 }
@@ -288,9 +329,70 @@ export interface PredictionResult {
     qrVerificationUrl: string;
   };
   confidenceInterval?: { lower: number; upper: number };
+  conformalPredictionInterval?: { lower: number; upper: number; coverage: string };
+  uncertaintyDecomposition?: {
+    aleatoricUncertainty: number;
+    epistemicUncertainty: number;
+    totalUncertainty: number;
+    reliabilityConfidence: number;
+  };
+  faganNomogram?: {
+    priorProbability: number;
+    postProbabilityPos: number;
+    postProbabilityNeg: number;
+    positiveLr: number;
+    negativeLr: number;
+  };
+  decisionCurveUtility?: {
+    threshold: number;
+    modelNetBenefit: number;
+    treatAllNetBenefit: number;
+    avoidedInterventionsPer100: number;
+  };
+  deltaCheckRcv?: {
+    parameter: string;
+    previousValue: number;
+    currentValue: number;
+    deltaPercent: number;
+    rcvThreshold: number;
+    isTrueBiologicalChange: boolean;
+    alertLevel: "NORMAL" | "WARNING" | "CRITICAL_DELTA";
+  };
+  hl7FhirBundle?: any;
   reactionKinetics?: { timeSec: number; opticalDensity: number; deltaRate: number }[];
   astmTransmissionFrame?: string[];
   preAnalyticalInterference?: { hemolysis: string; icterus: string; lipemia: string; flag: string };
+  biomarkerGnnInference?: {
+    activeNodesCount: number;
+    topInteractions: { pathway: string; source: string; target: string; weight: number }[];
+    crossTalkIndex: number;
+  };
+  coxSurvivalEstimate?: {
+    hazardMultiplier: number;
+    eventProbability30Day: number;
+    eventProbability90Day: number;
+    eventProbability1Year: number;
+    prognosisCategory: "LOW_RISK" | "INTERMEDIATE" | "HIGH_ACUTE" | "CRITICAL_MORTALITY";
+  };
+  michaelisMentenKinetics?: {
+    observedVelocity: number;
+    substrateSaturationPct: number;
+    reactionOrder: "ZERO_ORDER_LINEAR" | "FIRST_ORDER_SUBSTRATE_DEPLETED";
+    kalmanResidual: number;
+  };
+  causalCounterfactuals?: {
+    intervention: string;
+    baselineRisk: number;
+    postInterventionRisk: number;
+    absoluteRiskDelta: number;
+    clinicalRationale: string;
+  }[];
+  eqasProficiencyAudit?: {
+    sdi: number;
+    enNumber: number;
+    traceabilityNist: string;
+    ptSurveyPass: boolean;
+  };
   evaluatedAt: string;
 }
 
@@ -300,31 +402,142 @@ export interface NlpAnalysisRequest {
 
 export interface ExtractedEntity {
   name: string;
-  type: "LAB_TEST" | "BIOMARKER" | "MEDICATION" | "ANATOMY" | "SEVERITY" | "SYMPTOM";
+  entity?: string;
+  text?: string;
+  type: string;
   confidence: number;
+  startIndex?: number;
+  endIndex?: number;
+  assertion?: "AFFIRMED" | "NEGATED" | "UNCERTAIN_HEDGED" | "FAMILY_HISTORY";
+  assertionConfidence?: number;
+  assertionTrigger?: string | null;
+  temporalStatus?: string;
+  quantitativeValue?: number | null;
+  unit?: string;
+  loincCode?: string;
+  normalRange?: string;
+  isPanic?: boolean;
+  rxcui?: string;
+  drugClass?: string;
+  dosage?: string;
+  frequency?: string;
+  code?: string;
 }
 
 export interface Icd10Prediction {
   code: string;
+  icd11?: string;
   description: string;
+  hccCategory?: string;
+  billable?: boolean;
   confidence: number;
+  matchedKeywords?: string[];
 }
 
 export interface LoincPrediction {
   code: string;
   name: string;
+  unit?: string;
+  extractedValue?: number | null;
+  normalRange?: string;
+  panicThreshold?: string;
+  isPanic?: boolean;
   confidence: number;
+}
+
+export interface SnomedPrediction {
+  id: string;
+  fsn: string;
+  category: string;
+  confidence: number;
+}
+
+export interface RxNormPrediction {
+  rxcui: string;
+  name: string;
+  class: string;
+  dosage?: string;
+  frequency?: string;
+  confidence: number;
+}
+
+export interface ClinicalSection {
+  key: string;
+  label: string;
+  text: string;
+}
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: string;
+  assertion?: string;
+  confidence?: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  relation: string;
+  weight: number;
+  clinicalSignificance: string;
+}
+
+export interface ClinicalKnowledgeGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface ClinicalPhenotype {
+  id: string;
+  name: string;
+  status: "CONFIRMED" | "SUSPECTED" | "RULED_OUT";
+  score: number;
+  evidence: string[];
+}
+
+export interface ClinicalRiskScores {
+  charlsonComorbidityIndex: number;
+  estimated10YrSurvivalPct: number;
+  timiRiskScore: number;
+  kdigoCkdStage: string;
+  sofaScoreEstimate: number;
+}
+
+export interface DeepLearningTelemetry {
+  transformerArchitecture: string;
+  crfViterbiScore: number;
+  tokenAttentionEntropy: number;
+  graphAttentionGatLayers: number;
+  gnnEdgeCount: number;
+  bayesianBrierCalibration: number;
+  expectedCalibrationError: string;
+  inferenceLatencyMs: number;
+  precisionRecallAuc: number;
 }
 
 export interface NlpAnalysisResult {
   wordCount: number;
+  extractedEntitiesCount?: number;
   entities: ExtractedEntity[];
   icd10Codes: Icd10Prediction[];
+  suggestedICD10?: Icd10Prediction[];
   loincCodes?: LoincPrediction[];
+  snomedCodes?: SnomedPrediction[];
+  rxNormCodes?: RxNormPrediction[];
+  sections?: ClinicalSection[];
+  relations?: GraphEdge[];
+  knowledgeGraph?: ClinicalKnowledgeGraph;
+  phenotypes?: ClinicalPhenotype[];
+  clinicalRiskScores?: ClinicalRiskScores;
+  deepLearningTelemetry?: DeepLearningTelemetry;
+  fhirR4Bundle?: any;
   clinicalImpression: string;
-  urgency: "ROUTINE" | "HIGH_RISK" | "CRITICAL_PANIC";
+  urgency: any;
   keyBiomarkersIdentified: string[];
   recommendedAction: string;
+  structuredSummary?: any;
+  disclaimer?: string;
 }
 
 export interface DeltaCheckRequest {

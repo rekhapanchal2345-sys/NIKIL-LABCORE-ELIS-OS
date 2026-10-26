@@ -111,6 +111,7 @@ import {
 import { AiStudioDocumentationModal } from "@/components/ai-studio/AiStudioDocumentationModal";
 import ClinicalNeuralMachineWorkspace from "@/components/ai-studio/ClinicalNeuralMachineWorkspace";
 import { DiagnosticMlMachineStudio } from "@/components/ai-studio/DiagnosticMlMachineStudio";
+import ClinicalNlpEnterpriseStudio from "@/components/ai-studio/ClinicalNlpEnterpriseStudio";
 
 // ─── TAB TYPE DEFINITIONS (HOSPITAL ENTERPRISE EXPANDED) ────────────────────
 type AiTab =
@@ -1434,62 +1435,7 @@ function AiStudioContent() {
 
         {/* ══════════════ TAB: CLINICAL NLP ══════════════ */}
         {activeTab === "nlp" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2"><FileText className="w-4 h-4 text-teal-600" /> Clinical NLP Engine — EMR Text Analysis</h3>
-                <p className="text-xs text-slate-500 mt-0.5">LOINC/ICD-10 Entity Extraction · Clinical NER · Medication Parsing · Discharge Summary Processing</p>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-2">EMR Text / Discharge Summary / Doctor Notes</label>
-                <textarea
-                  value={nlpText} onChange={(e) => setNlpText(e.target.value)} rows={9}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 font-medium leading-relaxed focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 resize-none"
-                  placeholder="Paste clinical notes, discharge summary, or lab report narrative..."
-                />
-              </div>
-              <button onClick={runNlp} disabled={nlpLoading} className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white rounded-xl text-xs font-extrabold shadow-md shadow-teal-500/20 transition flex items-center justify-center gap-2 cursor-pointer">
-                {nlpLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing Clinical NLP...</> : <><Brain className="w-4 h-4" /> Run Clinical NLP Analysis</>}
-              </button>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-              <h3 className="font-bold text-sm text-slate-900 mb-4 flex items-center gap-2"><Database className="w-4 h-4 text-teal-600" /> NLP Analysis Results</h3>
-              {nlpLoading && <div className="h-48 flex items-center justify-center"><Loader2 className="w-6 h-6 text-teal-500 animate-spin" /></div>}
-              {nlpAnalysis ? (
-                <div className="space-y-4 text-xs">
-                  {nlpAnalysis.entities?.length > 0 && (
-                    <div>
-                      <p className="font-bold text-slate-600 mb-2 uppercase text-[10px] tracking-wide">Extracted Clinical Entities (LOINC/ICD-10)</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {nlpAnalysis.entities.map((e: any, i: number) => (
-                          <span key={i} className={`px-2.5 py-1 rounded-lg font-bold border text-[11px] ${e.type === "LAB_VALUE" ? "bg-sky-50 text-sky-700 border-sky-200" : e.type === "MEDICATION" ? "bg-violet-50 text-violet-700 border-violet-200" : e.type === "DIAGNOSIS" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-100 text-slate-700 border-slate-200"}`}>
-                            {e.text}
-                            {e.code && <span className="ml-1 opacity-70 font-mono text-[9px]">[{e.code}]</span>}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {nlpAnalysis.sentiment && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                      <p className="font-bold text-amber-800 mb-1">Clinical Urgency Level</p>
-                      <p className="text-amber-700">{nlpAnalysis.sentiment}</p>
-                    </div>
-                  )}
-                  {nlpAnalysis.summary && (
-                    <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl">
-                      <p className="font-bold text-sky-800 mb-1">AI Clinical Summary</p>
-                      <p className="text-slate-700 leading-relaxed">{nlpAnalysis.summary}</p>
-                    </div>
-                  )}
-                </div>
-              ) : !nlpLoading && (
-                <div className="h-48 flex items-center justify-center text-slate-400 text-xs text-center">
-                  <div><FileText className="w-8 h-8 mx-auto mb-2 opacity-30" /><p>Paste EMR text and run NLP analysis</p><p className="mt-1 text-[11px]">LOINC codes · ICD-10 · Medication NER · Diagnosis Extraction</p></div>
-                </div>
-              )}
-            </div>
-          </div>
+          <ClinicalNlpEnterpriseStudio />
         )}
 
         {/* ══════════════ TAB: DELTA-CHECK AI ══════════════ */}

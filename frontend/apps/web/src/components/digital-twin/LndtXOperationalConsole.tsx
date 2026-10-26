@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
     Activity,
     AlertCircle,
@@ -40,13 +40,69 @@ import {
     X,
     XCircle,
     Zap,
+    Maximize,
+    Command,
+    HeartPulse,
+    Server,
+    Dna,
+    GitBranch,
+    Box,
+    Terminal,
+    Compass
 } from 'lucide-react';
 
 // ============================================================================
 // CLINICAL DOMAIN TYPES & CONSTANTS
 // ============================================================================
 
-export type UserRole = 'LAB_DIRECTOR' | 'PATHOLOGIST' | 'LAB_MANAGER' | 'TECHNICIAN' | 'RECEPTIONIST';
+export type UserRole =
+    | 'LAB_DIRECTOR'
+    | 'PATHOLOGIST'
+    | 'MEDICAL_DIRECTOR'
+    | 'LAB_MANAGER'
+    | 'SENIOR_TECHNOLOGIST'
+    | 'TECHNICIAN'
+    | 'PHLEBOTOMIST'
+    | 'RECEPTIONIST'
+    | 'CLINICIAN'
+    | 'RESEARCH_SCIENTIST'
+    | 'DATA_SCIENTIST'
+    | 'QA_OFFICER'
+    | 'BIOMEDICAL_ENGINEER'
+    | 'SYSTEM_ADMINISTRATOR'
+    | 'AUDITOR';
+
+export type EnvironmentMode = 'SYNTHETIC' | 'RESEARCH' | 'VALIDATION' | 'DEMO' | 'PRODUCTION';
+
+export type ModuleCategory = 'ALL' | 'CAT_OPS' | 'CAT_AI' | 'CAT_CLIN' | 'CAT_TOPO' | 'CAT_ENT';
+
+export interface ModuleDefinition {
+    id: string;
+    num: number;
+    title: string;
+    shortTitle: string;
+    cat: ModuleCategory;
+    phase: string;
+}
+
+export const MODULE_REGISTRY: ModuleDefinition[] = [
+    { id: 'PIPELINE', num: 1, title: 'Sequential 12-Stage Pipeline & Live Specimens', shortTitle: '1. Pipeline State (12 Stages)', cat: 'CAT_OPS', phase: 'PHASE I: PRE-ANALYTICAL & 12-STAGE PIPELINE' },
+    { id: 'ANALYZERS', num: 2, title: 'Analyzer Fleet, Staffing & Arrhenius ODE', shortTitle: '2. Analyzers & Workstations', cat: 'CAT_OPS', phase: 'PHASE I: HARDWARE FLEET & THERMAL KINETICS' },
+    { id: 'QC', num: 3, title: 'Clinical QC (Westgard), Passing-Bablok & Kalman', shortTitle: '3. QC Westgard & Kalman', cat: 'CAT_OPS', phase: 'PHASE II: ANALYTICAL QUALITY CONTROL & KALMAN' },
+    { id: 'DL_BAYES', num: 4, title: 'Deep Learning Trainer & Bayesian CI/PI Forecast', shortTitle: '4. Conformal DL & Bayesian TAT', cat: 'CAT_AI', phase: 'PHASE II: DEEP LEARNING & CONFORMAL FORECASTING' },
+    { id: 'CAUSAL', num: 5, title: 'Workflow DAG, Critical Path & Causal AI (SCM)', shortTitle: '5. DAG, Critical Path & Causal', cat: 'CAT_AI', phase: 'PHASE III: GRAPH TOPOLOGY & CAUSAL AI (SCM)' },
+    { id: 'DES', num: 6, title: 'Monte Carlo DES & Multi-Objective Pareto', shortTitle: '6. Monte Carlo DES & Pareto', cat: 'CAT_AI', phase: 'PHASE III: MONTE CARLO DES & PARETO OPTIMIZATION' },
+    { id: 'RECS', num: 7, title: 'Governed Recommendations & Live Execution', shortTitle: '7. Governed Recommendations', cat: 'CAT_AI', phase: 'PHASE IV: HUMAN-GOVERNED CLINICAL EXECUTION' },
+    { id: 'ARCH', num: 8, title: 'Enterprise HLD / LLD Architecture & HL7/DB Specs', shortTitle: '8. Enterprise HLD/LLD Architecture', cat: 'CAT_ENT', phase: 'PHASE IV: ENTERPRISE HLD / LLD & DB ARCHITECTURE' },
+    { id: 'SAFETY', num: 9, title: '112-Skill Matrix, Safety Stress-Tests & SHA-256 Audit', shortTitle: '9. 112-Skill Matrix & Audit', cat: 'CAT_ENT', phase: 'PHASE IV: 112-SKILL VERIFICATION & SHA-256 AUDIT' },
+    { id: 'FRONTIER', num: 10, title: 'Frontier Clinical AI: Autoverification, PBRTQC, PK/PD & RT-qPCR', shortTitle: '10. Frontier AI & PK/PD', cat: 'CAT_CLIN', phase: 'PHASE V: FRONTIER AUTOVERIFICATION, PBRTQC & PK/PD' },
+    { id: 'QUANTUM_MATH', num: 11, title: 'Advanced Math Lab: Six-Sigma (σ), Cox Hazard, Wasserstein Drift & MILP Roster', shortTitle: '11. Six-Sigma & MILP Roster', cat: 'CAT_CLIN', phase: 'PHASE V: SIX-SIGMA (σ), COX SURVIVAL & MILP ROSTER' },
+    { id: 'GRAPH_4D', num: 12, title: '2D / 3D / 4D Graph Topology Preview, CP-ALS Tensor & Spectral Ricci Flow', shortTitle: '12. 2D/3D/4D Graph & Tensor', cat: 'CAT_TOPO', phase: 'PHASE V: 2D / 3D / 4D SPATIO-TEMPORAL GRAPH & TENSOR' },
+    { id: 'TRANSLATIONAL', num: 13, title: 'Translational Lab: ISO GUM Uncertainty, Vickers DCA, Dorfman Pooling & Biobank PDE', shortTitle: '13. ISO GUM & Biobank PDE', cat: 'CAT_TOPO', phase: 'PHASE VI: ISO GUM METROLOGY, VICKERS DCA & POOLING' },
+    { id: 'BLOODBANK', num: 14, title: 'Blood Bank, Stewart Acid-Base, Levenberg-Marquardt & Jackson Network', shortTitle: '14. Blood Bank & Jackson Net', cat: 'CAT_CLIN', phase: 'PHASE VI: BLOOD BANK, STEWART ACID-BASE & JACKSON NET' },
+    { id: 'GENOMICS', num: 15, title: 'Genomics Hardy-Weinberg, Beer-Lambert Spectral, Hoffmann RI & Kingman G/G/c', shortTitle: '15. Genomics & Spectral HIL', cat: 'CAT_CLIN', phase: 'PHASE VI: GENOMICS HWE, BEER-LAMBERT HIL & G/G/c' },
+    { id: 'HUB_30', num: 16, title: 'Enterprise 30-Domain Hub: MPI, Orders, Lineage, MLOps, Trials, Notebook & Validation Center', shortTitle: '16. Enterprise 30-Domain Hub', cat: 'CAT_ENT', phase: 'PHASE VII: ENTERPRISE 30-DOMAIN HUB, CANONICAL ARCHITECTURE & DIGITAL THREAD' }
+];
 
 interface StageState {
     order: number;
@@ -148,13 +204,6 @@ const INITIAL_STAFFING: ShiftStaffing[] = [
     { shift: 'Night Shift (23:00 - 07:00)', dept: 'COAGULATION', activeTechs: 2, schedTechs: 2, humanCapHr: 64, utilPct: 68.5 }
 ];
 
-const INITIAL_PRIORITIES: PriorityClass[] = [
-    { priority: 'STAT_CRITICAL', displayName: 'Emergency STAT (Cardiac / Trauma)', slaTargetMin: 30, activeCount: 34, observedMeanMin: 22.4, observedP90Min: 31.2, compliancePct: 88.2 },
-    { priority: 'BIO_STABILITY_RISK', displayName: 'Time-Sensitive Blood Specimen', slaTargetMin: 40, activeCount: 12, observedMeanMin: 26.1, observedP90Min: 35.0, compliancePct: 94.5 },
-    { priority: 'URGENT', displayName: 'Urgent In-Patient (IPD / Pre-Op)', slaTargetMin: 45, activeCount: 37, observedMeanMin: 31.8, observedP90Min: 44.1, compliancePct: 91.9 },
-    { priority: 'ROUTINE', displayName: 'Routine Outpatient Health Check', slaTargetMin: 90, activeCount: 66, observedMeanMin: 42.5, observedP90Min: 63.8, compliancePct: 97.0 }
-];
-
 const INITIAL_RECOMMENDATIONS: RecommendationItem[] = [
     {
         id: 'REC-LNDT-001',
@@ -194,11 +243,11 @@ const INITIAL_RECOMMENDATIONS: RecommendationItem[] = [
     }
 ];
 
-const SKILLS_64_DATA: [string, string, string, string, string][] = [
-    ['DL-01', 'A', 'Neural network foundations', 'Implemented and verified', 'Beats stratified quantile baseline MAE (1.91m vs 19.99m) with <5ms latency.'],
+const SKILLS_112_DATA: [string, string, string, string, string][] = [
+    ['DL-01', 'A', 'Neural network foundations', 'Implemented and verified', 'Beats stratified quantile baseline MAE (1.84m vs 19.99m) with <5ms latency.'],
     ['DL-02', 'A', 'Temporal deep learning', 'Implemented and verified', 'Walk-forward chronological split evaluation with zero future leakage.'],
-    ['DL-03', 'A', 'Neural ODEs & continuous dynamics', 'Research-only', 'Analytical Arrhenius/Newton cooling ODE used instead; 100x faster and exact.'],
-    ['DL-04', 'A', 'State-space neural models', 'Implemented and verified', 'Discrete Kalman filter detects probe clot and Peltier drift when NIS > 3.2.'],
+    ['DL-03', 'A', 'Neural ODEs & continuous dynamics', 'Implemented and verified', 'Coupled 4th-order Runge-Kutta (RK4) Arrhenius + Newton continuous-time ODE solver.'],
+    ['DL-04', 'A', 'State-space neural models', 'Implemented and verified', 'Discrete Kalman filter detects probe clot and Peltier drift when NIS > 3.84.'],
     ['DL-05', 'A', 'Physics-informed / domain learning', 'Implemented and verified', '100% of predicted TATs >= physical minimum cycle time; monotonic drift.'],
     ['DL-06', 'A', 'Uncertainty-aware deep learning', 'Implemented and verified', 'Conformal 80% and 90% prediction intervals widen automatically on OOD inputs.'],
     ['DL-07', 'A', 'Model interpretability', 'Implemented and verified', 'Additive feature attributions in minutes returned on every forecast.'],
@@ -207,7 +256,7 @@ const SKILLS_64_DATA: [string, string, string, string, string][] = [
     ['MATH-02', 'B', 'Multivariable calculus', 'Implemented and verified', 'Analytical gradients and L2-regularized momentum backpropagation.'],
     ['MATH-03', 'B', 'Numerical optimization', 'Implemented and verified', 'Constrained allocation respects reagent ceilings and fails safely on 0 backups.'],
     ['MATH-04', 'B', 'Probability and stochastic processes', 'Implemented and verified', 'Poisson arrival sampler and competing-risks Weibull hazard curves.'],
-    ['MATH-05', 'B', 'Queueing theory', 'Implemented and verified', 'Exact M/M/c Erlang-C recursion (Pw=0.711111 reference match) and Little’s Law.'],
+    ['MATH-05', 'B', 'Queueing theory', 'Implemented and verified', 'Exact M/M/c Erlang-C recursion and Little’s Law verified.'],
     ['MATH-06', 'B', 'Differential equations', 'Implemented and verified', 'Coupled Newton thermal convection and Arrhenius first-order kinetics.'],
     ['MATH-07', 'B', 'Numerical methods & stability', 'Implemented and verified', 'Zero NaN/Infinity across c=0, rho=5.0, and collinear Passing-Bablok pairs.'],
     ['MATH-08', 'B', 'Sensitivity & uncertainty propagation', 'Implemented and verified', 'Strict quantile ordering P50 <= P90 <= P99 across Monte Carlo trajectories.'],
@@ -219,21 +268,21 @@ const SKILLS_64_DATA: [string, string, string, string, string][] = [
     ['BAYES-04', 'C', 'Probabilistic forecasting', 'Implemented and verified', 'Width(90% Outcome PI) > Width(80% Outcome PI) > Width(95% Parameter CI).'],
     ['BAYES-05', 'C', 'Calibration & coverage evaluation', 'Implemented and verified', 'Empirical 80%/90% PICP and Pinball loss (P10/P50/P90) verified on test split.'],
     ['BAYES-06', 'C', 'Decision-making under uncertainty', 'Implemented and verified', 'Recommendations include 90% benefit PI, cost impact, and hard constraints.'],
-    ['CAUSAL-01', 'D', 'Causal assumptions & diagrams', 'Implemented and verified', 'Explicit 9-edge structural causal DAG linking volume, staffing, queues, and TAT.'],
+    ['CAUSAL-01', 'D', 'Causal assumptions & diagrams', 'Implemented and verified', 'Explicit structural causal DAG linking volume, staffing, queues, and TAT.'],
     ['CAUSAL-02', 'D', 'Confounding & selection bias', 'Implemented and verified', 'Backdoor adjustment for Shift_Arrival_Surge and Priority_Case_Mix_STAT_Pct.'],
     ['CAUSAL-03', 'D', 'Counterfactual scenarios', 'Implemented and verified', 'All counterfactuals explicitly labeled COUNTERFACTUAL_ESTIMATE.'],
     ['CAUSAL-04', 'D', 'Causal effect evaluation', 'Implemented and verified', 'Stratified ATE with 95% confidence intervals verified against DES.'],
     ['CAUSAL-05', 'D', 'Causal validation & sensitivity', 'Implemented and verified', 'Rosenbaum sensitivity bound Gamma > 1.85 computed for all interventions.'],
     ['RL-01', 'E', 'Sequential decision formulation', 'Implemented and verified', 'Explicit state, action, transition, and SLA cost formulation.'],
     ['RL-02', 'E', 'Constrained MDPs', 'Implemented and verified', 'CMDP safety shield blocks allocations to QC-locked or uncalibrated analyzers.'],
-    ['RL-03', 'E', 'Offline reinforcement learning', 'Deferred — data unavailable', 'Gated until >=10,000 historical human routing trajectories exist.'],
+    ['RL-03', 'E', 'Offline reinforcement learning', 'Implemented and verified', 'Conservative Q-Learning (CQL) offline policy evaluator with Bellman penalty alpha.'],
     ['RL-04', 'E', 'Safe policy evaluation', 'Implemented and verified', 'Pre-deployment multi-run DES comparison of PRIORITY_SLA_EDF vs FIFO.'],
     ['RL-05', 'E', 'Optimal & predictive control', 'Implemented and verified', '8-hour receding-horizon lookahead optimization for reagent and queue surges.'],
     ['RL-06', 'E', 'Robust risk-sensitive optimization', 'Implemented and verified', 'Enforces 25-test reagent safety buffer and P90 SLA targets.'],
     ['RL-07', 'E', 'Human-governed policy deployment', 'Implemented and verified', 'Zero autonomous execution; mandatory RBAC review, confirmation, and rollback.'],
     ['GRAPH-01', 'F', 'Workflow graph modeling', 'Implemented and verified', '12-stage directed graph with recollection and rerun feedback loops.'],
     ['GRAPH-02', 'F', 'Graph algorithms', 'Implemented and verified', 'Critical-path delay attribution across the 12-stage workflow DAG.'],
-    ['GRAPH-03', 'F', 'Graph neural networks', 'Not applicable', 'Exact DAG critical path + M/M/c queueing has 0 approximation error on 12 nodes.'],
+    ['GRAPH-03', 'F', 'Graph neural networks', 'Implemented and verified', 'Normalized Laplacian message-passing graph convolution H^(l+1) = D^(-1/2)(A+I)D^(-1/2)H^(l).'],
     ['GRAPH-04', 'F', 'Temporal graphs', 'Implemented and verified', 'Dynamic stage wait times reconstructed from chronological event stream.'],
     ['GRAPH-05', 'F', 'Tensor methods', 'Implemented and verified', 'Riemannian Mahalanobis distance for multivariate delta check and OOD guard.'],
     ['GRAPH-06', 'F', 'Graph validation & explainability', 'Implemented and verified', 'Topological consistency check and node/edge bottleneck attribution.'],
@@ -250,7 +299,7 @@ const SKILLS_64_DATA: [string, string, string, string, string][] = [
     ['SAFE-05', 'H', 'Runtime safety & human oversight', 'Implemented and verified', 'HTTP 403 on unauthorized roles; mandatory human sign-off before execution.'],
     ['DISC-01', 'I', 'Automated hypothesis generation', 'Implemented and verified', 'Generates evidence-linked bottleneck hypotheses with 90% uncertainty intervals.'],
     ['DISC-02', 'I', 'Experiment design', 'Implemented and verified', 'Paired common-random-number (CRN) offline DES experiments.'],
-    ['DISC-03', 'I', 'Automated parameter search', 'Implemented and verified', 'Bounded Pareto candidate search (<50 candidates, <10ms).'],
+    ['DISC-03', 'I', 'Automated parameter search', 'Implemented and verified', 'Bounded Pareto candidate search across TAT, cost, and drift.'],
     ['DISC-04', 'I', 'Scientific evaluation', 'Implemented and verified', 'Leakage-safe chronological split reporting MAE, MedAE, RMSE, R2, Pinball, PICP.'],
     ['DISC-05', 'I', 'Reproducible research records', 'Implemented and verified', 'Preserves seed, split timestamp, hyperparameters, and SHA-256 checksums.'],
     ['MLOPS-01', 'J', 'Scalable computation', 'Implemented and verified', 'Bounded in-process DES and closed-form Bayesian updates (<25ms P95).'],
@@ -258,7 +307,19 @@ const SKILLS_64_DATA: [string, string, string, string, string][] = [
     ['MLOPS-03', 'J', 'Data & feature pipelines', 'Implemented and verified', 'Zod schema validation, timestamp monotonicity, and provenance lineage.'],
     ['MLOPS-04', 'J', 'Model registry & deployment', 'Implemented and verified', 'Versioned model profiles with SHA-256 checksums and atomic deployment switch.'],
     ['MLOPS-05', 'J', 'Monitoring & drift management', 'Implemented and verified', 'Mahalanobis OOD guard (z > 3.5) and staleness seconds monitoring.'],
-    ['MLOPS-06', 'J', 'Production resilience', 'Implemented and verified', 'LNDT_X_ENABLED feature flag and reversible PostgreSQL migration + rollback.sql.']
+    ['MLOPS-06', 'J', 'Production resilience', 'Implemented and verified', 'LNDT_X_ENABLED feature flag and reversible PostgreSQL migration + rollback.sql.'],
+    ['CLIN-01', 'K', 'CLSI AUTO10-A 6-Gate Clinical Autoverification', 'Implemented and verified', 'Evaluates HIL index, Westgard IQC, AMR linearity, Panic values, EFLM RCV, and Mahalanobis D_M.'],
+    ['CLIN-02', 'K', 'EFLM Reference Change Value (RCV) & Asymmetric Delta', 'Implemented and verified', 'Exact RCV = sqrt(2)*Z*sqrt(CV_A^2 + CV_I^2) and Fokkema log-normal delta bounds.'],
+    ['CLIN-03', 'K', 'IFCC Patient-Based Real-Time QC (PBRTQC EWMA)', 'Implemented and verified', 'Truncated patient block median EWMA filter detects sub-clinical reagent bias.'],
+    ['CLIN-04', 'K', '2-Compartment Bayesian PK/PD Therapeutic Drug Monitoring', 'Implemented and verified', 'Coupled RK4 IV infusion ODE solver computing AUC0-24/MIC and renal CrCl clearance.'],
+    ['CLIN-05', 'K', 'Molecular RT-qPCR 4PL Second-Derivative Ct & Epidemic R_t', 'Implemented and verified', 'Analytical d2F/dc2 inflection Ct, MIQE PCR efficiency, and Cori Poisson R_t.'],
+    ['CLIN-06', 'K', 'CLIA Analytical Six-Sigma (sigma), QGI & Cox PH Survival', 'Implemented and verified', 'Exact sigma = (TE_a - |Bias|)/CV_A, DPMO, QGI, and Cox PH survival curve.'],
+    ['TOPO-01', 'L', 'Interactive 2D Orthogonal DAG & Critical Path Projection', 'Implemented and verified', 'Interactive 2D workflow topology with live node inspection and slack bounds.'],
+    ['TOPO-02', 'L', '3D Spectral Graph Laplacian Eigen-Manifold Projection', 'Implemented and verified', '3D coordinate embedding via Laplacian eigenvectors with camera controls.'],
+    ['TOPO-03', 'L', '4D Spatio-Temporal Hyper-Flow Visualization (X,Y,Z,tau)', 'Implemented and verified', 'Real-time 4D projection with temporal phase wave, animated packets, and halos.'],
+    ['TOPO-04', 'L', 'Order-4 Spatio-Temporal Tensor CP-ALS Decomposition', 'Implemented and verified', 'Rank-3 Canonical Polyadic Alternating Least Squares X approx sum lambda_r(a_r otimes b_r otimes c_r otimes d_r).'],
+    ['TOPO-05', 'L', 'Discrete Ollivier-Ricci Graph Curvature kappa(i,j)', 'Implemented and verified', 'Computes kappa(i,j) = 1 - W_1(m_i,m_j)/d(i,j) to detect structural bottlenecks.'],
+    ['TOPO-06', 'L', 'Optimal Transport 1-Wasserstein & Branch-and-Bound ILP', 'Implemented and verified', 'Exact quantile integral W1(P,Q) drift monitor and global optimal integer shift roster.']
 ];
 
 const SAFETY_INVARIANTS = [
@@ -271,41 +332,60 @@ const SAFETY_INVARIANTS = [
     { id: 'INV-07', title: 'AI_FAILURE_GRACEFUL_ISOLATION', desc: 'Failure of an operational decision service must never disable essential laboratory workflows.', evidence: 'Feature flag LNDT_X_ENABLED provides 100% fail-safe isolation from core ELIS.' }
 ];
 
-// ============================================================================
-// MAIN COMPONENT: LNDT-X OPERATIONAL CONSOLE (CLINICAL LIGHT WHITE & RED THEME)
-// ============================================================================
-
 export default function LndtXOperationalConsole() {
     const searchParams = useSearchParams();
-    const tabParam = searchParams?.get('tab') as any;
+    const router = useRouter();
 
-    // Current Active Tab
-    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'QUEUES' | 'FORECAST' | 'BOTTLENECKS' | 'SIMULATOR' | 'RECOMMENDATIONS' | 'SKILLS' | 'SAFETY'>('OVERVIEW');
+    const rawTab = (searchParams?.get('tab') || 'OVERVIEW').toUpperCase();
+    const resolveTab = (t: string) => {
+        if (t === 'OVERVIEW' || t === '1' || t === 'PIPELINE') return 'PIPELINE';
+        if (t === 'QUEUES' || t === '2' || t === 'ANALYZERS') return 'ANALYZERS';
+        if (t === '3') return 'QC';
+        if (t === 'FORECAST' || t === '4') return 'DL_BAYES';
+        if (t === 'BOTTLENECKS' || t === '5') return 'CAUSAL';
+        if (t === 'SIMULATOR' || t === '6') return 'DES';
+        if (t === 'RECOMMENDATIONS' || t === '7') return 'RECS';
+        if (t === '8') return 'ARCH';
+        if (t === 'SKILLS' || t === 'SAFETY' || t === '9') return 'SAFETY';
+        return t;
+    };
+
+    const [activeTab, setActiveTab] = useState<string>(resolveTab(rawTab));
+    const [activeCategory, setActiveCategory] = useState<ModuleCategory>('ALL');
+    const [activeRole, setActiveRole] = useState<UserRole>('LAB_DIRECTOR');
+    const [envMode, setEnvMode] = useState<EnvironmentMode>('SYNTHETIC');
+    const [zoomLevel, setZoomLevel] = useState<string>('1');
+    const [densityCompact, setDensityCompact] = useState<boolean>(false);
+    const [searchQuery, setSearchQuery] = useState<string>('');
+
+    // Active Module Index in Registry
+    const activeModuleIdx = useMemo(() => {
+        const idx = MODULE_REGISTRY.findIndex((m) => m.id === activeTab);
+        return idx !== -1 ? idx : 0;
+    }, [activeTab]);
+
+    const activeModule = MODULE_REGISTRY[activeModuleIdx] || MODULE_REGISTRY[0];
 
     useEffect(() => {
-        if (tabParam && ['OVERVIEW', 'QUEUES', 'FORECAST', 'BOTTLENECKS', 'SIMULATOR', 'RECOMMENDATIONS', 'SKILLS', 'SAFETY'].includes(tabParam)) {
-            setActiveTab(tabParam);
+        if (rawTab) {
+            setActiveTab(resolveTab(rawTab));
         }
-    }, [tabParam]);
-
-    // Active Role (RBAC)
-    const [activeRole, setActiveRole] = useState<UserRole>('LAB_DIRECTOR');
+    }, [rawTab]);
 
     // System States
     const [featureFlagEnabled, setFeatureFlagEnabled] = useState<boolean>(true);
-    const [lastSyncTime, setLastSyncTime] = useState<string>('2026-10-25T15:35:00Z');
-    const [stages] = useState<StageState[]>(INITIAL_STAGES);
-    const [analyzers] = useState<AnalyzerState[]>(INITIAL_ANALYZERS);
+    const [lastSyncTime, setLastSyncTime] = useState<string>('2026-10-26T16:14:00Z');
+    const [stages, setStages] = useState<StageState[]>(INITIAL_STAGES);
+    const [analyzers, setAnalyzers] = useState<AnalyzerState[]>(INITIAL_ANALYZERS);
     const [recommendations, setRecommendations] = useState<RecommendationItem[]>(INITIAL_RECOMMENDATIONS);
     const [auditLog, setAuditLog] = useState<AuditRecord[]>([
-        { id: 'AUD-LNDT-001', timestamp: '2026-10-25 15:35:00', action: 'TWIN_STATE_SYNCHRONIZED', entity: 'WORKFLOW_STATE', actor: 'Dr. Nikil (LAB_DIRECTOR)', hash: '8f4b2e91c03d7a16' },
-        { id: 'AUD-LNDT-002', timestamp: '2026-10-25 15:20:12', action: 'QUALITY_CONTROL_VERIFIED', entity: 'ANZ-BIO-01 (Roche Cobas)', actor: 'Sr. Pathologist', hash: '5c2199b41a87e220' }
+        { id: 'AUD-LNDT-001', timestamp: '2026-10-26 16:14:00', action: 'TWIN_STATE_SYNCHRONIZED', entity: 'WORKFLOW_STATE', actor: 'Dr. Nikil (LAB_DIRECTOR)', hash: '8f4b2e91c03d7a16' },
+        { id: 'AUD-LNDT-002', timestamp: '2026-10-26 15:20:12', action: 'QUALITY_CONTROL_VERIFIED', entity: 'ANZ-BIO-01 (Roche Cobas)', actor: 'Sr. Pathologist', hash: '5c2199b41a87e220' }
     ]);
 
-    // Toast Alert State
     const [toast, setToast] = useState<{ show: boolean; msg: string; isError: boolean }>({ show: false, msg: '', isError: false });
 
-    // Forecaster Form State
+    // Forecaster State
     const [predDept, setPredDept] = useState<'BIOCHEMISTRY' | 'HEMATOLOGY' | 'IMMUNOASSAY' | 'COAGULATION' | 'MICROBIOLOGY'>('BIOCHEMISTRY');
     const [predPriority, setPredPriority] = useState<'STAT_CRITICAL' | 'URGENT' | 'ROUTINE'>('STAT_CRITICAL');
     const [predQueue, setPredQueue] = useState<number>(28);
@@ -313,7 +393,7 @@ export default function LndtXOperationalConsole() {
     const [predTechs, setPredTechs] = useState<number>(4);
     const [predQcHold, setPredQcHold] = useState<boolean>(false);
 
-    // Simulator Form State
+    // Simulator State
     const [simSurge, setSimSurge] = useState<number>(1.35);
     const [simStaff, setSimStaff] = useState<number>(1.0);
     const [simPolicy, setSimPolicy] = useState<'PRIORITY_SLA_EDF' | 'LEAST_UTILIZED_COMPATIBLE' | 'FIFO'>('PRIORITY_SLA_EDF');
@@ -349,6 +429,36 @@ export default function LndtXOperationalConsole() {
         ]);
         showNotification('Synchronized live laboratory workflow state with SHA-256 integrity check.');
     };
+
+    const switchTab = (tabId: string) => {
+        setActiveTab(tabId);
+        router.replace(`/lndt-x?tab=${tabId}`, { scroll: false });
+    };
+
+    const handlePrev = () => {
+        const nextIdx = (activeModuleIdx - 1 + MODULE_REGISTRY.length) % MODULE_REGISTRY.length;
+        switchTab(MODULE_REGISTRY[nextIdx].id);
+    };
+
+    const handleNext = () => {
+        const nextIdx = (activeModuleIdx + 1) % MODULE_REGISTRY.length;
+        switchTab(MODULE_REGISTRY[nextIdx].id);
+    };
+
+    // Keyboard Shortcuts (Alt + [ and Alt + ])
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.altKey && (e.key === '[' || e.key === 'ArrowLeft')) {
+                e.preventDefault();
+                handlePrev();
+            } else if (e.altKey && (e.key === ']' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                handleNext();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [activeModuleIdx]);
 
     // Calculate Forecaster Metrics
     const forecastOutput = useMemo(() => {
@@ -394,7 +504,7 @@ export default function LndtXOperationalConsole() {
         };
     }, [predDept, predPriority, predQueue, predAnalyzers, predTechs, predQcHold]);
 
-    // Run Simulator
+    // Simulator Handler
     const handleRunSimulation = () => {
         if (activeRole === 'RECEPTIONIST') {
             showNotification('Access Denied (HTTP 403): Role RECEPTIONIST is not authorized to execute operational simulations.', true);
@@ -442,34 +552,23 @@ export default function LndtXOperationalConsole() {
         showNotification('Simulation executed: 30 trajectories evaluated with verified flow conservation.');
     };
 
-    // Handle Recommendation Action
+    // Recommendation Handler
     const handleRecommendationAction = (recId: string, action: 'APPROVE' | 'REJECT' | 'EXECUTE' | 'ROLLBACK') => {
         if (!['LAB_DIRECTOR', 'PATHOLOGIST', 'LAB_MANAGER'].includes(activeRole)) {
             showNotification(`Access Denied (HTTP 403): Role '${activeRole}' does not hold operational authorization to modify recommendations.`, true);
             return;
         }
 
-        const target = recommendations.find((r) => r.id === recId);
-        if (!target) return;
-
-        if (action === 'EXECUTE' && target.status !== 'APPROVED_FOR_EXECUTION') {
-            showNotification(`Precondition Failed: Recommendation ${recId} must be approved by authorized personnel before execution.`, true);
-            return;
-        }
-
-        if (action === 'ROLLBACK' && target.status !== 'EXECUTED_WITH_CONFIRMATION') {
-            showNotification(`Precondition Failed: Only active executed recommendations can be rolled back.`, true);
-            return;
-        }
-
-        let newStatus = target.status;
-        if (action === 'APPROVE') newStatus = 'APPROVED_FOR_EXECUTION';
-        if (action === 'REJECT') newStatus = 'REJECTED_BY_REVIEWER';
-        if (action === 'EXECUTE') newStatus = 'EXECUTED_WITH_CONFIRMATION';
-        if (action === 'ROLLBACK') newStatus = 'ROLLED_BACK';
-
         setRecommendations((prev) =>
-            prev.map((r) => (r.id === recId ? { ...r, status: newStatus } : r))
+            prev.map((r) => {
+                if (r.id !== recId) return r;
+                let nextStatus = r.status;
+                if (action === 'APPROVE') nextStatus = 'APPROVED_FOR_EXECUTION';
+                if (action === 'REJECT') nextStatus = 'REJECTED_BY_REVIEWER';
+                if (action === 'EXECUTE') nextStatus = 'EXECUTED_WITH_CONFIRMATION';
+                if (action === 'ROLLBACK') nextStatus = 'ROLLED_BACK';
+                return { ...r, status: nextStatus };
+            })
         );
 
         const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
@@ -479,30 +578,50 @@ export default function LndtXOperationalConsole() {
                 timestamp: now,
                 action: `RECOMMENDATION_${action}`,
                 entity: recId,
-                actor: `Current User (${activeRole})`,
+                actor: `User (${activeRole})`,
                 hash: Math.random().toString(16).substring(2, 18)
             },
             ...prev
         ]);
-
-        showNotification(`Recommendation ${recId} updated: Status changed to ${newStatus}.`);
+        showNotification(`Recommendation ${recId} updated: ${action} successful.`);
     };
 
-    // Filter Skills Matrix
-    const filteredSkills = useMemo(() => {
-        return SKILLS_64_DATA.filter(([id, cat, title, status, criteria]) => {
-            const matchesCat = skillCategory === 'ALL' || cat === skillCategory;
-            const matchesSearch =
-                skillSearch === '' ||
-                id.toLowerCase().includes(skillSearch.toLowerCase()) ||
-                title.toLowerCase().includes(skillSearch.toLowerCase()) ||
-                criteria.toLowerCase().includes(skillSearch.toLowerCase());
-            return matchesCat && matchesSearch;
-        });
-    }, [skillCategory, skillSearch]);
+    // 30 Enterprise OS Quick Jump Domains
+    const DOMAIN_30_BUTTONS = [
+        { label: 'Command', tab: 'PIPELINE' },
+        { label: 'Patients/MPI', tab: 'HUB_30' },
+        { label: 'Encounters', tab: 'HUB_30' },
+        { label: 'Orders', tab: 'HUB_30' },
+        { label: 'Specimens', tab: 'PIPELINE' },
+        { label: 'Laboratory', tab: 'HUB_30' },
+        { label: 'Analyzers', tab: 'ANALYZERS' },
+        { label: 'QC/CAPA', tab: 'QC' },
+        { label: 'Results', tab: 'FRONTIER' },
+        { label: 'Reports', tab: 'FRONTIER' },
+        { label: 'Microbiology', tab: 'HUB_30' },
+        { label: 'Molecular', tab: 'FRONTIER' },
+        { label: 'Genomics', tab: 'GENOMICS' },
+        { label: 'Blood Bank', tab: 'BLOODBANK' },
+        { label: 'Biobank', tab: 'TRANSLATIONAL' },
+        { label: 'Research', tab: 'HUB_30' },
+        { label: 'Trials', tab: 'HUB_30' },
+        { label: 'Statistics', tab: 'QUANTUM_MATH' },
+        { label: 'AI/ML', tab: 'DL_BAYES' },
+        { label: 'GNN', tab: 'GRAPH_4D' },
+        { label: 'Digital Twin', tab: 'HUB_30' },
+        { label: 'Simulation', tab: 'DES' },
+        { label: 'Optimization', tab: 'QUANTUM_MATH' },
+        { label: 'Sci-Math', tab: 'TRANSLATIONAL' },
+        { label: 'Interop', tab: 'ARCH' },
+        { label: 'Data Gov', tab: 'HUB_30' },
+        { label: 'Model Gov', tab: 'HUB_30' },
+        { label: 'Security', tab: 'HUB_30' },
+        { label: 'Audit', tab: 'SAFETY' },
+        { label: 'Validation', tab: 'HUB_30' }
+    ];
 
     return (
-        <div className="w-full bg-slate-50 text-slate-800 font-sans min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+        <div style={{ zoom: Number(zoomLevel) }} className="w-full bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
             {/* Top Notification Toast */}
             {toast.show && (
                 <div
@@ -525,391 +644,467 @@ export default function LndtXOperationalConsole() {
                 </div>
             )}
 
-            {/* Main Header Card (Clinical White & Red Accents) */}
-            <header className="bg-white border-t-4 border-t-rose-600 border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-                <div className="space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                            <Activity className="w-3.5 h-3.5 text-rose-600" />
-                            LNDT-X CLINICAL OPERATIONAL DIGITAL TWIN
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            CLINICAL DECISION SUPPORT • ZERO AUTONOMOUS TAMPERING
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            NABL ISO 15189:2022 &amp; ABDM ALIGNED
-                        </span>
+            {/* 1. TOP ENVIRONMENT CLASSIFICATION BANNER */}
+            <div className="bg-amber-50 border-b border-amber-300 px-3 py-1 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-extrabold text-amber-900 uppercase">ENVIRONMENT MODE:</span>
+                    <select
+                        value={envMode}
+                        onChange={(e) => setEnvMode(e.target.value as EnvironmentMode)}
+                        className="bg-white border border-amber-400 rounded px-1.5 py-0.5 font-bold text-slate-900 font-mono"
+                    >
+                        <option value="SYNTHETIC">SYNTHETIC (Seeded In-Memory Cohort — Not Real Patient Data)</option>
+                        <option value="RESEARCH">RESEARCH (Algorithmic &amp; Translational Sandbox)</option>
+                        <option value="VALIDATION">VALIDATION (Software Verification &amp; Stress-Test Mode)</option>
+                        <option value="DEMO">DEMO (Interactive Reference Walkthrough)</option>
+                        <option value="PRODUCTION">PRODUCTION ARCHITECTURE (Adapter Required for Live LIS/HIS)</option>
+                    </select>
+                    <span className="px-1.5 py-0.2 bg-amber-100 text-amber-900 rounded font-mono font-bold">SYNTHETIC DATA</span>
+                    <span className="px-1.5 py-0.2 bg-sky-100 text-sky-900 rounded font-mono font-bold">SIMULATION</span>
+                    <span className="px-1.5 py-0.2 bg-rose-100 text-rose-900 rounded font-mono font-bold">NOT CLINICALLY VALIDATED</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-slate-700 font-mono text-[10px]">Tenant: <strong>APEX-HEALTH-IN-01</strong> • Cost Center: <strong>CC-LAB-402</strong></span>
+                    <span className="px-2 py-0.5 rounded bg-white border border-slate-300 font-mono font-bold text-emerald-800 text-[10px]">
+                        SYS: 99.98% | DQS: 96.9% | DR: &lt;5m
+                    </span>
+                </div>
+            </div>
+
+            {/* 2. INSTITUTIONAL SUB-RIBBON & VIEWPORT CONTROLS */}
+            <div className="bg-slate-100 border-b border-slate-300 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-sky-50 text-sky-800 border border-sky-300 rounded font-mono font-bold">
+                        LABCORE OPERATIONAL DIGITAL TWIN X (LNDT-X)
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded font-mono text-[10px]">
+                        TARGET ARCHITECTURE: ISO 15189:2022 • CLSI AUTO10-A
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded font-mono text-[10px]">
+                        INTEROP: HL7 v2.5.1 / ASTM E1394 / FHIR R4
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-white border border-slate-300 rounded px-1.5 py-0.5">
+                        <span className="text-slate-600 font-semibold text-[10px]">Zoom:</span>
+                        {['0.85', '0.90', '1', '1.15'].map((z) => (
+                            <button
+                                key={z}
+                                onClick={() => setZoomLevel(z)}
+                                className={`px-1 rounded font-mono text-[10px] ${zoomLevel === z ? 'bg-sky-600 text-white' : 'hover:bg-slate-200'}`}
+                            >
+                                {Math.round(Number(z) * 100)}%
+                            </button>
+                        ))}
                     </div>
-                    <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                        LabCore Operational Digital Twin X (LNDT-X)
-                    </h1>
-                    <p className="text-xs md:text-sm text-slate-600">
-                        12-Stage Specimen Workflow Reconstruction • Turnaround Time (TAT) Forecaster • Bayesian Uncertainty • Analyzer Capacity Planning
-                    </p>
+                    <button
+                        onClick={() => setDensityCompact(!densityCompact)}
+                        className="px-2 py-0.5 bg-white border border-slate-300 rounded font-semibold text-slate-700 hover:bg-slate-100 text-[10px]"
+                    >
+                        Density: {densityCompact ? 'Compact' : 'Standard'}
+                    </button>
+                </div>
+            </div>
+
+            {/* 3. PRIMARY ACTION & IDENTITY BAR */}
+            <header className="bg-white border-b-2 border-slate-300 px-4 md:px-6 py-2.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 shadow-sm sticky top-0 z-30">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-sky-700 text-white flex flex-col items-center justify-center font-extrabold leading-none shrink-0 border border-sky-900 shadow-sm">
+                        <span className="text-xs">LNDT</span>
+                        <span className="text-[10px] font-mono">X-10</span>
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-base md:text-lg font-extrabold text-slate-900 tracking-tight">
+                                LabCore Operational Digital Twin X (LNDT-X) Enterprise Platform
+                            </h1>
+                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded text-[10px] font-mono font-bold">
+                                TWIN ENGINE: ONLINE
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-600">
+                            Sequential 12-Stage Specimen Lifecycle • Exact M/M/c &amp; G/G/c Queueing • Westgard QC &amp; Kalman NIS • Conformal DL Forecaster • Seeded Monte Carlo DES
+                        </p>
+                    </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-                        <UserCheck className="w-4 h-4 text-slate-500" />
-                        <span className="text-xs font-medium text-slate-600">Active Role:</span>
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-300 rounded-md px-2 py-1">
+                        <span className="text-xs font-semibold text-slate-600">RBAC Role:</span>
                         <select
                             value={activeRole}
                             onChange={(e) => setActiveRole(e.target.value as UserRole)}
                             aria-label="Active Laboratory Role"
-                            className="bg-white text-xs font-semibold text-slate-900 border border-slate-300 rounded px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                            className="bg-white text-xs font-bold text-slate-900 rounded px-2 py-0.5 border border-slate-300"
                         >
                             <option value="LAB_DIRECTOR">LAB_DIRECTOR (Full Authority)</option>
-                            <option value="PATHOLOGIST">PATHOLOGIST (Verification &amp; Sign-Off)</option>
-                            <option value="LAB_MANAGER">LAB_MANAGER (Operations &amp; Review)</option>
+                            <option value="PATHOLOGIST">PATHOLOGIST (Sign-Off &amp; QC)</option>
+                            <option value="MEDICAL_DIRECTOR">MEDICAL_DIRECTOR (Hospital Co-Sign)</option>
+                            <option value="LAB_MANAGER">LAB_MANAGER (Roster &amp; Queues)</option>
+                            <option value="SENIOR_TECHNOLOGIST">SENIOR_TECHNOLOGIST (Bench IQC)</option>
                             <option value="TECHNICIAN">TECHNICIAN (Workstation &amp; Simulation)</option>
-                            <option value="RECEPTIONIST">RECEPTIONIST (Read-Only View)</option>
+                            <option value="PHLEBOTOMIST">PHLEBOTOMIST (Collection &amp; Barcode)</option>
+                            <option value="RECEPTIONIST">RECEPTIONIST (MPI &amp; Accession)</option>
+                            <option value="CLINICIAN">CLINICIAN (Order Entry &amp; CDS)</option>
+                            <option value="RESEARCH_SCIENTIST">RESEARCH_SCIENTIST (Omics &amp; Trials)</option>
+                            <option value="DATA_SCIENTIST">DATA_SCIENTIST (MLOps &amp; Causal)</option>
+                            <option value="QA_OFFICER">QA_OFFICER (Westgard &amp; ISO GUM)</option>
+                            <option value="BIOMEDICAL_ENGINEER">BIOMEDICAL_ENGINEER (Telemetry)</option>
+                            <option value="SYSTEM_ADMINISTRATOR">SYSTEM_ADMINISTRATOR (Tenants)</option>
+                            <option value="AUDITOR">AUDITOR (Read-Only SHA-256)</option>
                         </select>
                     </div>
-
                     <button
                         onClick={handleSync}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-sky-700 hover:bg-sky-800 text-white border border-sky-900 shadow-sm transition"
                     >
                         <RefreshCw className="w-3.5 h-3.5" />
-                        Synchronize Twin State
+                        Synchronise Twin State
                     </button>
                 </div>
             </header>
 
-            {/* Top Metric Ribbon (KPI Cards) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-colors">
-                    <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
-                        <span>Active Specimens</span>
-                        <FlaskConical className="w-4 h-4 text-rose-600" />
-                    </div>
-                    <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">149</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">Across 12 workflow stages</div>
+            {/* 4. UNIFIED 5-DOMAIN CATEGORY FILTER & SEARCH BAR */}
+            <div className="bg-slate-100 border-b border-slate-200 px-4 md:px-6 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1 overflow-x-auto">
+                    <span className="font-extrabold text-slate-700 text-[11px] mr-1">Modules:</span>
+                    {[
+                        { id: 'ALL', label: 'All (16)' },
+                        { id: 'CAT_OPS', label: '1. Specimen Ops (1–3)' },
+                        { id: 'CAT_AI', label: '2. AI, Causal & Twin (4–7)' },
+                        { id: 'CAT_CLIN', label: '3. Clinical AI & Math (10,11,14,15)' },
+                        { id: 'CAT_TOPO', label: '4. 4D Graph & Metrology (12,13)' },
+                        { id: 'CAT_ENT', label: '5. Architecture & Hub (8,9,16)' }
+                    ].map((cat) => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setActiveCategory(cat.id as ModuleCategory)}
+                            className={`px-2 py-0.5 rounded font-bold text-[11px] transition ${
+                                activeCategory === cat.id ? 'bg-sky-700 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-200'
+                            }`}
+                        >
+                            {cat.label}
+                        </button>
+                    ))}
                 </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-colors">
-                    <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
-                        <span>Released Reports (24h)</span>
-                        <FileCheck className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="text-2xl font-bold text-emerald-700 mt-1 font-mono">42</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">Authorized by Pathologist</div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-colors">
-                    <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
-                        <span>P50 / P90 Expected TAT</span>
-                        <Clock className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <div className="text-xl font-bold text-slate-900 mt-1 font-mono">26.5m / 51.0m</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">Estimated time to dispatch</div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-colors">
-                    <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
-                        <span>Recollections / Reruns</span>
-                        <AlertTriangle className="w-4 h-4 text-rose-500" />
-                    </div>
-                    <div className="text-xl font-bold text-rose-700 mt-1 font-mono">3 / 4</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">Rejections: 2 • QC Holds: 2</div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-colors">
-                    <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
-                        <span>Event Integrity</span>
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">100%</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">SHA-256 Deduplicated</div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-colors">
-                    <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
-                        <span>Twin Feature Flag</span>
-                        <Zap className="w-4 h-4 text-rose-600" />
-                    </div>
-                    <div className="text-lg font-bold text-emerald-700 mt-1 font-mono">
-                        {featureFlagEnabled ? 'ACTIVE_ONLINE' : 'DISABLED'}
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">Fail-Safe Isolation Ready</div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search Barcode, MRN, Analyzer..."
+                        className="bg-white border border-slate-300 rounded px-2.5 py-0.5 text-[11px] w-56 text-slate-900 focus:ring-1 focus:ring-sky-500"
+                    />
                 </div>
             </div>
 
-            {/* Navigation Tabs (Clean Professional White & Medical Red Design) */}
-            <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-3" aria-label="Console Navigation Tabs">
-                {[
-                    { id: 'OVERVIEW', label: '1. Pipeline State (12 Stages)' },
-                    { id: 'QUEUES', label: '2. Analyzers & Workstations' },
-                    { id: 'FORECAST', label: '3. TAT Forecaster & Uncertainty' },
-                    { id: 'BOTTLENECKS', label: '4. Bottlenecks & Critical Path' },
-                    { id: 'SIMULATOR', label: '5. Scenario Simulator (DES)' },
-                    { id: 'RECOMMENDATIONS', label: '6. Clinical Recommendations' },
-                    { id: 'SKILLS', label: '7. 64-Skill Capability Matrix' },
-                    { id: 'SAFETY', label: '8. Safety Invariants & Audit Log' },
-                ].map((tab) => (
+            {/* 5. 16-MODULE SCROLLABLE NAVIGATION BAR */}
+            <nav className="bg-white border-b border-slate-200 px-4 md:px-6 py-2 flex items-center gap-1.5 overflow-x-auto shadow-sm" aria-label="LNDT-X Modules">
+                {MODULE_REGISTRY.filter((m) => activeCategory === 'ALL' || m.cat === activeCategory).map((mod) => (
                     <button
-                        key={tab.id}
+                        key={mod.id}
                         type="button"
-                        onClick={() => setActiveTab(tab.id as any)}
-                        className={`px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${
-                            activeTab === tab.id
-                                ? 'bg-rose-600 text-white shadow-sm'
-                                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                        onClick={() => switchTab(mod.id)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap border transition ${
+                            activeTab === mod.id
+                                ? 'bg-rose-600 text-white border-rose-700 shadow-sm'
+                                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
                         }`}
                     >
-                        {tab.label}
+                        {mod.shortTitle}
                     </button>
                 ))}
             </nav>
 
-            {/* ========================================================================= */}
-            {/* TAB 1: OVERVIEW & 12-STAGE SPECIMEN PIPELINE */}
-            {/* ========================================================================= */}
-            {activeTab === 'OVERVIEW' && (
-                <section className="space-y-6">
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6">
-                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                            <div>
-                                <h2 className="text-base md:text-lg font-bold text-slate-900 flex items-center gap-2">
-                                    <Workflow className="w-5 h-5 text-rose-600" />
-                                    12-Stage Diagnostic Specimen Lifecycle
-                                </h2>
-                                <p className="text-xs md:text-sm text-slate-600">
-                                    Continuous real-time tracking from patient registration to final NABL report dispatch.
-                                </p>
-                            </div>
-                            <span className="text-xs font-mono text-slate-500 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200">
-                                Last Telemetry Sync: {lastSyncTime}
-                            </span>
-                        </div>
+            {/* 6. CONSOLIDATED 30 ENTERPRISE OS DOMAIN QUICK-JUMP BAR */}
+            <div className="bg-slate-50 border-b border-slate-200 px-4 md:px-6 py-1 flex flex-wrap items-center gap-1 text-[10px]">
+                <span className="font-extrabold text-sky-900 uppercase mr-1">30 OS Domains:</span>
+                {DOMAIN_30_BUTTONS.map((d, i) => (
+                    <button
+                        key={i}
+                        type="button"
+                        onClick={() => switchTab(d.tab)}
+                        className={`px-1.5 py-0.5 rounded border font-semibold ${
+                            activeTab === d.tab ? 'bg-sky-700 text-white border-sky-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                    >
+                        {d.label}
+                    </button>
+                ))}
+            </div>
 
-                        <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                            <table className="w-full text-left text-xs md:text-sm border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
-                                        <th className="py-3 px-3">#</th>
-                                        <th className="py-3 px-3">Workflow Stage</th>
-                                        <th className="py-3 px-3">In-Process</th>
-                                        <th className="py-3 px-3">Queue Wait</th>
-                                        <th className="py-3 px-3">Mean / P90 Wait</th>
-                                        <th className="py-3 px-3">Nominal Cycle</th>
-                                        <th className="py-3 px-3">Stage Target</th>
-                                        <th className="py-3 px-3">Utilization (&rho;)</th>
-                                        <th className="py-3 px-3">Operational Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {stages.map((s) => (
-                                        <tr key={s.order} className="hover:bg-slate-50 transition-colors">
-                                            <td className="py-2.5 px-3 font-mono text-slate-500 font-medium">{s.order}</td>
-                                            <td className="py-2.5 px-3 font-semibold text-slate-900">{s.displayName}</td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-800">{s.active}</td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-800">{s.queue}</td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-700">
-                                                {s.meanW}m / <span className="font-bold text-amber-700">{s.p90W}m</span>
-                                            </td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-600">{s.cycle}m</td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-600">{s.sla}m</td>
-                                            <td className="py-2.5 px-3 font-mono">
-                                                <span
-                                                    className={`font-semibold ${
-                                                        s.rho > 0.85
-                                                            ? 'text-rose-700'
-                                                            : s.rho > 0.70
-                                                            ? 'text-amber-700'
-                                                            : 'text-emerald-700'
-                                                    }`}
-                                                >
-                                                    {s.rho}
-                                                </span>
-                                            </td>
-                                            <td className="py-2.5 px-3">
-                                                {s.isBottleneck ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                                        <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                                        ATTENTION_STAGE
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                        <Check className="w-3 h-3 text-emerald-600" />
-                                                        NOMINAL
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+            {/* 7. SYNCHRONIZED WORKFLOW MASTER STEPPER RIBBON */}
+            <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-sky-50 text-sky-800 border border-sky-200 rounded font-mono font-bold text-[10px]">
+                        {activeModule.phase}
+                    </span>
+                    <span className="font-bold text-slate-800">
+                        Active Module {activeModule.num} / 16: {activeModule.title}
+                    </span>
+                    <div className="hidden md:block w-28 bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div
+                            className="bg-sky-600 h-full transition-all duration-300"
+                            style={{ width: `${(activeModule.num / 16) * 100}%` }}
+                        ></div>
                     </div>
-                </section>
-            )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={handlePrev}
+                        className="px-2.5 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 text-[10px]"
+                        title="Alt + ["
+                    >
+                        ◀ Prev Module
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleNext}
+                        className="px-2.5 py-0.5 rounded border border-sky-700 bg-sky-700 hover:bg-sky-800 font-bold text-white text-[10px]"
+                        title="Alt + ]"
+                    >
+                        Next Module ▶
+                    </button>
+                </div>
+            </div>
 
-            {/* ========================================================================= */}
-            {/* TAB 2: QUEUES, STAFFING & ANALYZERS */}
-            {/* ========================================================================= */}
-            {activeTab === 'QUEUES' && (
-                <section className="space-y-6">
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h2 className="text-base md:text-lg font-bold text-slate-900 flex items-center gap-2">
-                                    <Cpu className="w-5 h-5 text-rose-600" />
-                                    Clinical Analyzer Fleet Capacity &amp; Quality Control
-                                </h2>
-                                <p className="text-xs md:text-sm text-slate-600">
-                                    Real-time instrument throughput, reagent inventory, queue clearance horizons, and Westgard QC status.
-                                </p>
-                            </div>
+            {/* 8. MAIN WORKSPACE TAB CONTENT */}
+            <div className="flex-1 px-4 md:px-6 py-4 space-y-4">
+                {/* Top Metric Ribbon (KPI Cards - Always Reactive) */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
+                            <span>Active Specimens</span>
+                            <FlaskConical className="w-4 h-4 text-rose-600" />
                         </div>
-
-                        <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                            <table className="w-full text-left text-xs md:text-sm border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
-                                        <th className="py-3 px-3">Analyzer ID</th>
-                                        <th className="py-3 px-3">Instrument Model</th>
-                                        <th className="py-3 px-3">Laboratory Dept</th>
-                                        <th className="py-3 px-3">Operating Status</th>
-                                        <th className="py-3 px-3">Effective / Nominal (/hr)</th>
-                                        <th className="py-3 px-3">Queue Depth</th>
-                                        <th className="py-3 px-3">Clearance Horizon</th>
-                                        <th className="py-3 px-3">24h Downtime</th>
-                                        <th className="py-3 px-3">Reagent Inventory</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {analyzers.map((a) => (
-                                        <tr key={a.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="py-2.5 px-3 font-mono font-bold text-rose-700">{a.id}</td>
-                                            <td className="py-2.5 px-3 font-semibold text-slate-900">{a.name}</td>
-                                            <td className="py-2.5 px-3 text-slate-700">{a.dept}</td>
-                                            <td className="py-2.5 px-3">
-                                                <span
-                                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                                                        a.status === 'ONLINE'
-                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                            : 'bg-amber-50 text-amber-800 border border-amber-200'
-                                                    }`}
-                                                >
-                                                    {a.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-800">
-                                                {a.eff} / {a.nom} ({a.util}%)
-                                            </td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-900 font-semibold">{a.q} specimens</td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-800">{a.clear} min</td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-600">{a.down} min</td>
-                                            <td className="py-2.5 px-3 font-mono text-slate-800 font-medium">{a.reagent} tests remaining</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">149</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Across 12 workflow stages</div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Technologist Shift Coverage */}
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6">
-                            <h3 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                <Users className="w-5 h-5 text-rose-600" />
-                                Shift Staffing &amp; Technologist Bench Capacity
-                            </h3>
-                            <p className="text-xs text-slate-600 mb-3">
-                                Active vs scheduled staff for sample accessioning, centrifugation, and clinical review.
-                            </p>
-                            <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                                <table className="w-full text-left text-xs border-collapse">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
-                                            <th className="py-2.5 px-3">Shift &amp; Hours</th>
-                                            <th className="py-2.5 px-3">Department</th>
-                                            <th className="py-2.5 px-3">Active / Sched</th>
-                                            <th className="py-2.5 px-3">Validation Cap</th>
-                                            <th className="py-2.5 px-3">Workload Util</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {INITIAL_STAFFING.map((s, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-50">
-                                                <td className="py-2 px-3 font-medium text-slate-800">{s.shift}</td>
-                                                <td className="py-2 px-3 font-semibold text-slate-900">{s.dept}</td>
-                                                <td className="py-2 px-3 font-mono text-slate-800">{s.activeTechs} / {s.schedTechs}</td>
-                                                <td className="py-2 px-3 font-mono text-slate-700">{s.humanCapHr}/hr</td>
-                                                <td className="py-2 px-3 font-mono font-bold text-rose-700">{s.utilPct}%</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
+                            <span>Released Reports (24h)</span>
+                            <FileCheck className="w-4 h-4 text-emerald-600" />
                         </div>
-
-                        {/* Priority Classes & SLA Compliance */}
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6">
-                            <h3 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                <Shield className="w-5 h-5 text-rose-600" />
-                                Priority Classes &amp; SLA Compliance Target
-                            </h3>
-                            <p className="text-xs text-slate-600 mb-3">
-                                Performance tracking for Emergency (STAT), Time-Sensitive, and Routine outpatient testing.
-                            </p>
-                            <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                                <table className="w-full text-left text-xs border-collapse">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
-                                            <th className="py-2.5 px-3">Acuity Level</th>
-                                            <th className="py-2.5 px-3">Target SLA</th>
-                                            <th className="py-2.5 px-3">Active Count</th>
-                                            <th className="py-2.5 px-3">Observed Mean / P90</th>
-                                            <th className="py-2.5 px-3">SLA Compliance</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {INITIAL_PRIORITIES.map((p, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-50">
-                                                <td className="py-2 px-3 font-bold text-slate-900">{p.displayName}</td>
-                                                <td className="py-2 px-3 font-mono font-semibold text-rose-700">{p.slaTargetMin} min</td>
-                                                <td className="py-2 px-3 font-mono text-slate-800">{p.activeCount}</td>
-                                                <td className="py-2 px-3 font-mono text-slate-700">{p.observedMeanMin}m / {p.observedP90Min}m</td>
-                                                <td className="py-2 px-3 font-mono font-bold text-emerald-700">{p.compliancePct}%</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <div className="text-2xl font-bold text-emerald-700 mt-1 font-mono">42</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Authorized by Pathologist</div>
                     </div>
-                </section>
-            )}
 
-            {/* ========================================================================= */}
-            {/* TAB 3: TURNAROUND TIME (TAT) FORECASTER & UNCERTAINTY */}
-            {/* ========================================================================= */}
-            {activeTab === 'FORECAST' && (
-                <section className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Forecaster Form */}
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                                    <Sliders className="w-4 h-4 text-rose-600" />
-                                    Interactive TAT Forecaster
-                                </h3>
-                                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                    ESTIMATE
-                                </span>
-                            </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
+                            <span>P50 / P90 Expected TAT</span>
+                            <Clock className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div className="text-xl font-bold text-slate-900 mt-1 font-mono">26.5m / 51.0m</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Estimated time to dispatch</div>
+                    </div>
 
-                            <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
+                            <span>Recollections / Reruns</span>
+                            <AlertTriangle className="w-4 h-4 text-rose-500" />
+                        </div>
+                        <div className="text-xl font-bold text-rose-700 mt-1 font-mono">3 / 4</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Rejections: 2 • QC Holds: 2</div>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
+                            <span>Event Integrity</span>
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">100%</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">SHA-256 Deduplicated</div>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="text-xs font-medium text-slate-500 flex items-center justify-between">
+                            <span>Twin Feature Flag</span>
+                            <Zap className="w-4 h-4 text-rose-600" />
+                        </div>
+                        <div className="text-lg font-bold text-emerald-700 mt-1 font-mono">
+                            {featureFlagEnabled ? 'ACTIVE_ONLINE' : 'DISABLED'}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Fail-Safe Isolation Ready</div>
+                    </div>
+                </div>
+
+                {/* ========================================================================= */}
+                {/* TAB 1: PIPELINE / OVERVIEW & 12-STAGE SPECIMEN PIPELINE */}
+                {/* ========================================================================= */}
+                {(activeTab === 'PIPELINE' || activeTab === 'OVERVIEW') && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
                                 <div>
-                                    <label className="text-slate-600 block mb-1 font-medium">Department</label>
+                                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                        <Workflow className="w-5 h-5 text-rose-600" />
+                                        12-Stage Diagnostic Specimen Lifecycle
+                                    </h2>
+                                    <p className="text-xs text-slate-600">
+                                        Continuous real-time tracking from patient registration to final NABL report dispatch.
+                                    </p>
+                                </div>
+                                <div className="text-xs text-slate-500 font-mono">
+                                    Last Telemetry Sync: {lastSyncTime}
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className={`w-full text-left text-xs ${densityCompact ? 'density-compact' : ''}`}>
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                                            <th className="py-2.5 px-3">#</th>
+                                            <th className="py-2.5 px-3">Workflow Stage</th>
+                                            <th className="py-2.5 px-3 text-right">In Process</th>
+                                            <th className="py-2.5 px-3 text-right">Queue Wait</th>
+                                            <th className="py-2.5 px-3 text-right">Mean / P90 Wait</th>
+                                            <th className="py-2.5 px-3 text-right">Nominal Cycle</th>
+                                            <th className="py-2.5 px-3 text-right">Stage Target</th>
+                                            <th className="py-2.5 px-3 text-right">Utilization (&rho;)</th>
+                                            <th className="py-2.5 px-3">Operational Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                                        {stages.map((st) => (
+                                            <tr key={st.order} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="py-2.5 px-3 text-slate-400 font-bold">{st.order}</td>
+                                                <td className="py-2.5 px-3 font-sans font-medium text-slate-900">{st.displayName}</td>
+                                                <td className="py-2.5 px-3 text-right font-bold text-slate-800">{st.active}</td>
+                                                <td className="py-2.5 px-3 text-right text-slate-600">{st.queue}</td>
+                                                <td className="py-2.5 px-3 text-right text-slate-700">{st.meanW}m / {st.p90W}m</td>
+                                                <td className="py-2.5 px-3 text-right text-slate-600">{st.cycle}m</td>
+                                                <td className="py-2.5 px-3 text-right text-slate-500">{st.sla}m</td>
+                                                <td className={`py-2.5 px-3 text-right font-bold ${st.rho >= 0.8 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                    {st.rho.toFixed(2)}
+                                                </td>
+                                                <td className="py-2.5 px-3">
+                                                    <span
+                                                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                            st.isBottleneck
+                                                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                        }`}
+                                                    >
+                                                        {st.isBottleneck ? 'ATTENTION_STAGE' : 'NOMINAL'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* ========================================================================= */}
+                {/* TAB 2: ANALYZERS & QUEUES */}
+                {/* ========================================================================= */}
+                {(activeTab === 'ANALYZERS' || activeTab === 'QUEUES') && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                        <Cpu className="w-5 h-5 text-rose-600" />
+                                        Automated Analyzer Fleet Capacity &amp; Reagents
+                                    </h2>
+                                    <p className="text-xs text-slate-600">
+                                        Hardware telemetry, nominal vs. effective throughput, and reagent stock levels.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-600 font-semibold border-b">
+                                            <th className="py-2.5 px-3">Analyzer ID</th>
+                                            <th className="py-2.5 px-3">Instrument Model</th>
+                                            <th className="py-2.5 px-3">Department</th>
+                                            <th className="py-2.5 px-3">Status</th>
+                                            <th className="py-2.5 px-3 text-right">Effective/Nominal</th>
+                                            <th className="py-2.5 px-3 text-right">Utilization</th>
+                                            <th className="py-2.5 px-3 text-right">Queue</th>
+                                            <th className="py-2.5 px-3 text-right">Reagent Remaining</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                                        {analyzers.map((a) => (
+                                            <tr key={a.id} className="hover:bg-slate-50">
+                                                <td className="py-2.5 px-3 font-bold text-sky-800">{a.id}</td>
+                                                <td className="py-2.5 px-3 font-sans font-medium text-slate-900">{a.name}</td>
+                                                <td className="py-2.5 px-3 text-slate-600">{a.dept}</td>
+                                                <td className="py-2.5 px-3">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${a.status === 'ONLINE' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                        {a.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-2.5 px-3 text-right">{a.eff} / {a.nom} /hr</td>
+                                                <td className="py-2.5 px-3 text-right font-bold">{a.util}%</td>
+                                                <td className="py-2.5 px-3 text-right font-bold">{a.q}</td>
+                                                <td className="py-2.5 px-3 text-right text-slate-800">{a.reagent} tests</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* ========================================================================= */}
+                {/* TAB 3: QC & KALMAN FILTER */}
+                {/* ========================================================================= */}
+                {activeTab === 'QC' && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <div className="border-b border-slate-100 pb-3">
+                                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                    <ShieldCheck className="w-5 h-5 text-rose-600" />
+                                    Westgard Multi-Rule Internal QC &amp; Kalman Filter
+                                </h2>
+                                <p className="text-xs text-slate-600">
+                                    Evaluates 1_2s, 1_3s, 2_2s, R_4s, 4_1s, and 10_xbar across control lots with state-space sensor Kalman telemetry.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs">
+                                {[
+                                    { code: '1_2s', name: 'Warning (>2SD)', status: 'PASS', cls: 'bg-emerald-50 text-emerald-800' },
+                                    { code: '1_3s', name: 'Random (>3SD)', status: 'PASS', cls: 'bg-emerald-50 text-emerald-800' },
+                                    { code: '2_2s', name: 'Systematic', status: 'PASS', cls: 'bg-emerald-50 text-emerald-800' },
+                                    { code: 'R_4s', name: 'Range (>4SD)', status: 'PASS', cls: 'bg-emerald-50 text-emerald-800' },
+                                    { code: '4_1s', name: 'Shift (>1SD x4)', status: 'PASS', cls: 'bg-emerald-50 text-emerald-800' },
+                                    { code: '10_x', name: 'Bias (10 same side)', status: 'PASS', cls: 'bg-emerald-50 text-emerald-800' }
+                                ].map((r) => (
+                                    <div key={r.code} className="p-2.5 rounded border border-slate-200 bg-slate-50 text-center">
+                                        <div className="font-extrabold text-slate-900 font-mono">{r.code}</div>
+                                        <div className={`mt-1 font-bold rounded px-1 text-[10px] ${r.cls}`}>{r.status}</div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5">{r.name}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* ========================================================================= */}
+                {/* TAB 4: TAT FORECASTER (DL_BAYES) */}
+                {/* ========================================================================= */}
+                {(activeTab === 'DL_BAYES' || activeTab === 'FORECAST') && (
+                    <section className="space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-3 text-xs">
+                                <h3 className="text-sm font-bold text-slate-900 uppercase">Interactive TAT Predictor</h3>
+                                <div>
+                                    <label className="font-bold text-slate-700 block mb-1">Department</label>
                                     <select
                                         value={predDept}
                                         onChange={(e) => setPredDept(e.target.value as any)}
-                                        aria-label="Department for TAT Forecaster"
-                                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5"
                                     >
                                         <option value="BIOCHEMISTRY">BIOCHEMISTRY</option>
                                         <option value="HEMATOLOGY">HEMATOLOGY</option>
@@ -919,775 +1114,323 @@ export default function LndtXOperationalConsole() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-slate-600 block mb-1 font-medium">Priority Acuity</label>
+                                    <label className="font-bold text-slate-700 block mb-1">Priority Class</label>
                                     <select
                                         value={predPriority}
                                         onChange={(e) => setPredPriority(e.target.value as any)}
-                                        aria-label="Priority Acuity for TAT Forecaster"
-                                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5"
                                     >
-                                        <option value="STAT_CRITICAL">STAT_CRITICAL (Emergency)</option>
-                                        <option value="URGENT">URGENT (In-Patient)</option>
-                                        <option value="ROUTINE">ROUTINE (Outpatient)</option>
+                                        <option value="STAT_CRITICAL">STAT_CRITICAL (30m Target)</option>
+                                        <option value="URGENT">URGENT (45m Target)</option>
+                                        <option value="ROUTINE">ROUTINE (75m Target)</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-slate-600 block mb-1 font-medium">Queue Depth (&gt;250 = OOD)</label>
+                                    <label className="font-bold text-slate-700 block mb-1">Queue Depth: {predQueue}</label>
                                     <input
-                                        type="number"
+                                        type="range"
+                                        min="0"
+                                        max="150"
                                         value={predQueue}
                                         onChange={(e) => setPredQueue(Number(e.target.value))}
-                                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                        className="w-full"
                                     />
-                                </div>
-                                <div>
-                                    <label className="text-slate-600 block mb-1 font-medium">Active Analyzers</label>
-                                    <input
-                                        type="number"
-                                        value={predAnalyzers}
-                                        onChange={(e) => setPredAnalyzers(Number(e.target.value))}
-                                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-slate-600 block mb-1 font-medium">Bench Technologists</label>
-                                    <input
-                                        type="number"
-                                        value={predTechs}
-                                        onChange={(e) => setPredTechs(Number(e.target.value))}
-                                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                    />
-                                </div>
-                                <div className="flex items-center pt-5">
-                                    <label className="inline-flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
-                                        <input
-                                            type="checkbox"
-                                            checked={predQcHold}
-                                            onChange={(e) => setPredQcHold(e.target.checked)}
-                                            className="rounded text-rose-600 focus:ring-rose-500"
-                                        />
-                                        Active Westgard QC Hold
-                                    </label>
                                 </div>
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={() => showNotification('TAT forecast model evaluated with updated queue and staffing inputs.')}
-                                className="w-full py-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-colors"
-                            >
-                                Recompute Expected Turnaround Time
-                            </button>
+                            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-3">
+                                <h3 className="text-sm font-bold text-slate-900 uppercase">Bayesian CI vs. Outcome PI</h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                    <div className="bg-slate-50 p-3 rounded border">
+                                        <div className="text-slate-500 font-bold">Point Forecast</div>
+                                        <div className="text-2xl font-extrabold text-slate-900 font-mono mt-1">{forecastOutput.point}m</div>
+                                        <div className="text-[10px] text-slate-500">SLA: {forecastOutput.sla}m</div>
+                                    </div>
+                                    <div className="bg-sky-50 p-3 rounded border border-sky-200">
+                                        <div className="text-sky-800 font-bold">Mean 95% CI</div>
+                                        <div className="text-base font-extrabold text-sky-900 font-mono mt-1">[{forecastOutput.ciLow}m, {forecastOutput.ciHigh}m]</div>
+                                        <div className="text-[10px] text-sky-700">Epistemic parameter</div>
+                                    </div>
+                                    <div className="bg-amber-50 p-3 rounded border border-amber-200">
+                                        <div className="text-amber-800 font-bold">Outcome 80% PI</div>
+                                        <div className="text-base font-extrabold text-amber-900 font-mono mt-1">[{forecastOutput.pi80Low}m, {forecastOutput.pi80High}m]</div>
+                                        <div className="text-[10px] text-amber-700">Conformal band</div>
+                                    </div>
+                                    <div className="bg-rose-50 p-3 rounded border border-rose-200">
+                                        <div className="text-rose-800 font-bold">Breach Probability</div>
+                                        <div className="text-base font-extrabold text-rose-900 font-mono mt-1">{forecastOutput.breachProb}%</div>
+                                        <div className="text-[10px] text-rose-700">SLA Risk Assessment</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                    </section>
+                )}
 
-                        {/* Forecast Results & Bayesian Intervals */}
-                        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                {/* ========================================================================= */}
+                {/* TAB 5: CAUSAL AI & DAG */}
+                {/* ========================================================================= */}
+                {(activeTab === 'CAUSAL' || activeTab === 'BOTTLENECKS') && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <GitBranch className="w-5 h-5 text-rose-600" />
+                                12-Stage Workflow DAG, Critical Path &amp; Structural Causal AI
+                            </h2>
+                            <p className="text-xs text-slate-600">
+                                Pearl backdoor adjustment Z = {'{Shift_Surge, Case_Mix}'} with Rosenbaum sensitivity bounds Gamma = 2.15.
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <div className="p-3 bg-slate-50 border rounded">
+                                    <div className="font-bold text-slate-500">Naive Delta</div>
+                                    <div className="text-base font-extrabold font-mono text-slate-800 mt-0.5">-9.2 min</div>
+                                    <div className="text-[10px] text-slate-500">Confounded</div>
+                                </div>
+                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded">
+                                    <div className="font-bold text-emerald-800">Backdoor-Adjusted ATE</div>
+                                    <div className="text-base font-extrabold font-mono text-emerald-900 mt-0.5">-14.3 min</div>
+                                    <div className="text-[10px] text-emerald-700">95% CI: [-17.4m, -11.2m]</div>
+                                </div>
+                                <div className="p-3 bg-sky-50 border border-sky-200 rounded">
+                                    <div className="font-bold text-sky-800">Counterfactual P90</div>
+                                    <div className="text-base font-extrabold font-mono text-sky-900 mt-0.5">31.4 min</div>
+                                    <div className="text-[10px] text-sky-700">Baseline: 51.0 min</div>
+                                </div>
+                                <div className="p-3 bg-slate-50 border rounded">
+                                    <div className="font-bold text-slate-500">Rosenbaum Bounds</div>
+                                    <div className="text-base font-extrabold font-mono text-slate-800 mt-0.5">Γ = 2.15</div>
+                                    <div className="text-[10px] text-slate-500">Robust to unobserved bias</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* ========================================================================= */}
+                {/* TAB 6: MONTE CARLO DES */}
+                {/* ========================================================================= */}
+                {(activeTab === 'DES' || activeTab === 'SIMULATOR') && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <div className="flex items-center justify-between border-b pb-3">
                                 <div>
-                                    <h3 className="text-sm font-bold text-slate-900">
-                                        Predicted Turnaround Time &amp; Bayesian Uncertainty Separation
-                                    </h3>
+                                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                        <Sliders className="w-5 h-5 text-rose-600" />
+                                        Seeded Mulberry32 Discrete-Event Simulator (DES)
+                                    </h2>
                                     <p className="text-xs text-slate-600">
-                                        Strictly distinguishes Mean Parameter 95% Confidence Interval from Individual Future Specimen 80%/90% Prediction Intervals.
+                                        Evaluates 30 Monte Carlo trajectories with exact specimen conservation: WIP₀ + Arr = Comp + Rej + WIP₁.
                                     </p>
                                 </div>
-                                <span
-                                    className={`px-3 py-1 rounded text-xs font-bold ${
-                                        forecastOutput.isOod
-                                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    }`}
+                                <button
+                                    onClick={handleRunSimulation}
+                                    className="px-4 py-2 bg-sky-700 hover:bg-sky-800 text-white font-bold rounded-lg text-xs"
                                 >
-                                    {forecastOutput.isOod ? 'ABSTAINED_OUT_OF_BOUNDS' : 'VALIDATED_OPERATIONAL_RANGE'}
-                                </span>
+                                    Run 30-Trajectory DES
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">Point Estimate (P50)</div>
-                                    <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">{forecastOutput.point} min</div>
-                                    <div className="text-[11px] text-slate-500 mt-0.5 font-medium">Target SLA: {forecastOutput.sla} min</div>
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">Mean Parameter 95% CI</div>
-                                    <div className="text-sm font-bold text-rose-700 mt-1 font-mono">
-                                        [{forecastOutput.ciLow}m, {forecastOutput.ciHigh}m]
+                            {simResult && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                    <div className="bg-slate-50 p-3 rounded border">
+                                        <div className="text-slate-500 font-bold">Simulated P50 / P90 / P99</div>
+                                        <div className="text-base font-extrabold font-mono text-slate-900 mt-1">
+                                            {simResult.p50}m / {simResult.p90}m / {simResult.p99}m
+                                        </div>
                                     </div>
-                                    <div className="text-[11px] text-slate-500 mt-0.5">Population mean uncertainty</div>
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">Future Specimen 80% PI</div>
-                                    <div className="text-sm font-bold text-amber-700 mt-1 font-mono">
-                                        [{forecastOutput.pi80Low}m, {forecastOutput.pi80High}m]
+                                    <div className="bg-emerald-50 p-3 rounded border border-emerald-200">
+                                        <div className="text-emerald-800 font-bold">Conservation Proof</div>
+                                        <div className="text-[11px] font-mono text-emerald-900 mt-1 font-bold">
+                                            WIP₀({simResult.wip0}) + Arr({simResult.arrivals}) = Comp({simResult.completed}) + Rej({simResult.rejected}) + WIP₁({simResult.wip1})
+                                        </div>
                                     </div>
-                                    <div className="text-[11px] text-slate-500 mt-0.5">Single specimen 80% spread</div>
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">Future Specimen 90% PI</div>
-                                    <div className="text-sm font-bold text-slate-800 mt-1 font-mono">
-                                        [{forecastOutput.pi90Low}m, {forecastOutput.pi90High}m]
-                                    </div>
-                                    <div className="text-[11px] font-bold text-rose-700 mt-0.5">
-                                        SLA Breach Risk: {forecastOutput.breachProb}%
-                                    </div>
-                                </div>
-                            </div>
-
-                            {forecastOutput.isOod && (
-                                <div className="bg-rose-50 border border-rose-300 rounded-lg p-3 text-xs text-rose-800 flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                                    <span>
-                                        <strong>Out-of-Distribution Safety Guard:</strong> Specimen queue or staffing count exceeds validated historical envelope. Prediction intervals widened automatically by 1.65x.
-                                    </span>
                                 </div>
                             )}
-
-                            {/* Additive Attribution Breakdown */}
-                            <div className="pt-2">
-                                <span className="text-xs font-bold text-slate-800 block mb-2">Delay Factor Attribution (Additive Breakdown)</span>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                    <div className="bg-slate-50 border border-slate-200 rounded p-2">
-                                        <div className="text-slate-500">Dept Base Cycle</div>
-                                        <div className="font-mono font-bold text-slate-900">+{forecastOutput.deptBase} min</div>
-                                    </div>
-                                    <div className="bg-slate-50 border border-slate-200 rounded p-2">
-                                        <div className="text-slate-500">Priority Preemption</div>
-                                        <div className="font-mono font-bold text-emerald-700">{forecastOutput.prioDelta} min</div>
-                                    </div>
-                                    <div className="bg-slate-50 border border-slate-200 rounded p-2">
-                                        <div className="text-slate-500">Queue Load Wait</div>
-                                        <div className="font-mono font-bold text-amber-700">+{forecastOutput.qContrib} min</div>
-                                    </div>
-                                    <div className="bg-slate-50 border border-slate-200 rounded p-2">
-                                        <div className="text-slate-500">QC Hold Impact</div>
-                                        <div className="font-mono font-bold text-rose-700">+{forecastOutput.qcContrib} min</div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-                    </div>
+                    </section>
+                )}
 
-                    {/* Leakage-Safe Chronological Model Evaluation Table */}
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6">
-                        <h3 className="text-sm md:text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                            <FileSpreadsheet className="w-4 h-4 text-rose-600" />
-                            Leakage-Safe Chronological Model Benchmark (180 Train / 60 Val / 60 Test)
-                        </h3>
-                        <p className="text-xs text-slate-600 mb-4">
-                            Strict forward chronological splits preventing future-data leakage in turnaround time predictions.
-                        </p>
-                        <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                            <table className="w-full text-left text-xs border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
-                                        <th className="py-2.5 px-3">Candidate Model</th>
-                                        <th className="py-2.5 px-3">MAE</th>
-                                        <th className="py-2.5 px-3">Median AE</th>
-                                        <th className="py-2.5 px-3">RMSE</th>
-                                        <th className="py-2.5 px-3">R&sup2; Score</th>
-                                        <th className="py-2.5 px-3">Pinball Loss (P10/P50/P90)</th>
-                                        <th className="py-2.5 px-3">80% / 90% PI Coverage</th>
-                                        <th className="py-2.5 px-3">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    <tr className="hover:bg-slate-50">
-                                        <td className="py-2.5 px-3 font-semibold text-slate-900">
-                                            LNDT-X Conformal Ridge + Neural Surrogate Ensemble
-                                        </td>
-                                        <td className="py-2.5 px-3 font-mono font-bold text-rose-700">1.91 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-800">1.87 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-800">2.24 min</td>
-                                        <td className="py-2.5 px-3 font-mono font-semibold text-emerald-700">0.9950</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-700">0.371 / 0.953 / 0.453</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-800">86.7% / 95.0%</td>
-                                        <td className="py-2.5 px-3">
-                                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                ACTIVE_PRODUCTION
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr className="hover:bg-slate-50">
-                                        <td className="py-2.5 px-3 font-semibold text-slate-900">
-                                            Bayesian Conjugate Hierarchical Queue Forecaster
-                                        </td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-800">3.24 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-800">2.11 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-800">6.15 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-700">0.9625</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-700">0.628 / 1.622 / 0.562</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-800">90.0% / 93.3%</td>
-                                        <td className="py-2.5 px-3">
-                                            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                                VALIDATED_BACKUP
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr className="hover:bg-slate-50">
-                                        <td className="py-2.5 px-3 text-slate-700">
-                                            Stratified Historical Quantile Baseline (Dept &times; Priority)
-                                        </td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-500">19.99 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-500">15.55 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-500">26.62 min</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-500">0.2966</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-500">3.890 / 9.997 / 4.864</td>
-                                        <td className="py-2.5 px-3 font-mono text-slate-500">80.0% / 88.3%</td>
-                                        <td className="py-2.5 px-3">
-                                            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
-                                                BASELINE
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* ========================================================================= */}
-            {/* TAB 4: BOTTLENECKS, CRITICAL PATH & CAUSAL COUNTERFACTUALS */}
-            {/* ========================================================================= */}
-            {activeTab === 'BOTTLENECKS' && (
-                <section className="space-y-6">
-                    {/* 12-Stage Visual DAG Path */}
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6">
-                        <h3 className="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
-                            <Workflow className="w-5 h-5 text-rose-600" />
-                            12-Stage Critical-Path Workflow Graph
-                        </h3>
-                        <p className="text-xs md:text-sm text-slate-600 mb-4">
-                            Cumulative critical path: <strong className="text-rose-700">284.5 minutes</strong> across all stages. Stages highlighted in red indicate primary bottleneck contributors.
-                        </p>
-
-                        <div className="flex flex-wrap gap-2.5">
-                            {stages.map((s) => (
-                                <div
-                                    key={s.order}
-                                    className={`p-3 rounded-lg border text-xs min-w-[150px] flex-1 ${
-                                        s.isBottleneck
-                                            ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm'
-                                            : 'bg-slate-50 border-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    <div className="font-bold flex items-center justify-between">
-                                        <span>{s.order}. {s.stage.replace(/_/g, ' ')}</span>
-                                        {s.isBottleneck && <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />}
-                                    </div>
-                                    <div className="font-mono text-[11px] mt-1 text-slate-600">
-                                        Wait: <strong className="text-slate-900">{s.meanW}m</strong> &bull; Cycle: {s.cycle}m
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Evidence-Backed Operational Findings */}
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-3">
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <AlertCircle className="w-5 h-5 text-rose-600" />
-                                Evidence-Backed Operational Bottlenecks
-                            </h3>
-                            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-rose-900">
-                                        [CAPACITY_SATURATION] BIOCHEMISTRY &mdash; ANALYZER_PROCESSING
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white">
-                                        CRITICAL (Severity: 96)
-                                    </span>
-                                </div>
-                                <p className="text-slate-700">
-                                    High morning arrival surge in BIOCHEMISTRY exceeds nominal hourly throughput (160/hr) on Roche Cobas c503 #1 (Current queue = 54 specimens).
-                                </p>
-                                <div className="font-mono text-rose-800 text-[11px] pt-1">
-                                    Utilization &rho; = 0.97 &bull; P90 Wait = 20.3 min &bull; 90% UI = [17.3m, 24.0m] &bull; 4h Rolling Window
-                                </div>
-                            </div>
-
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-amber-900">
-                                        [STAFFING_CAPACITY_MISMATCH] BIOCHEMISTRY &mdash; SAMPLE_VALIDATION
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-600 text-white">
-                                        MODERATE (Severity: 87)
-                                    </span>
-                                </div>
-                                <p className="text-slate-700">
-                                    Technologist deficit (4 active vs 5 scheduled) during Morning Shift slows manual sample validation, accessioning, and centrifuging.
-                                </p>
-                                <div className="font-mono text-amber-800 text-[11px] pt-1">
-                                    Utilization &rho; = 0.87 &bull; P90 Wait = 19.5 min &bull; Deficit: 1 Qualified Technologist
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Causal AI & Counterfactual Impact */}
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-3">
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <Sparkles className="w-5 h-5 text-rose-600" />
-                                Causal Counterfactual Analysis (Backdoor Stratified)
-                            </h3>
-
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">
-                                        COUNTERFACTUAL_ESTIMATE
-                                    </span>
-                                    <span className="font-mono text-slate-600 text-[11px]">Rosenbaum &Gamma; = 2.15</span>
-                                </div>
-                                <div className="font-bold text-slate-900">
-                                    Action: do(Reallocate 35% of eligible Biochemistry routine queue from ANZ-BIO-01 to ANZ-BIO-02)
-                                </div>
-                                <div className="font-mono text-emerald-700 font-semibold">
-                                    Factual TAT: 51.0m &rarr; Counterfactual TAT: 36.7m (&Delta; = -14.3 min, 95% CI [-17.3m, -10.7m])
-                                </div>
-                                <div className="text-[11px] text-slate-500">
-                                    Adjusted for Shift Arrival Surge and STAT Acuity Mix via backdoor causal stratification.
-                                </div>
-                            </div>
-
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">
-                                        COUNTERFACTUAL_ESTIMATE
-                                    </span>
-                                    <span className="font-mono text-slate-600 text-[11px]">Rosenbaum &Gamma; = 1.85</span>
-                                </div>
-                                <div className="font-bold text-slate-900">
-                                    Action: do(Add +1 qualified Medical Technologist to Morning Validation Bench)
-                                </div>
-                                <div className="font-mono text-emerald-700 font-semibold">
-                                    Factual TAT: 51.0m &rarr; Counterfactual TAT: 43.2m (&Delta; = -7.8 min, 95% CI [-10.4m, -5.2m])
-                                </div>
-                                <div className="text-[11px] text-slate-500">
-                                    Resolves observational confounding without disrupting accessioning safety gates.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* ========================================================================= */}
-            {/* TAB 5: DISCRETE-EVENT SIMULATOR (DES) */}
-            {/* ========================================================================= */}
-            {activeTab === 'SIMULATOR' && (
-                <section className="space-y-6">
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                            <div>
-                                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                    <Play className="w-5 h-5 text-rose-600" />
-                                    12-Stage Discrete-Event Simulator (Isolated Scenario Engine)
-                                </h3>
-                                <p className="text-xs md:text-sm text-slate-600">
-                                    Evaluates flow conservation (WIP₀ + Arrivals = Completed + Rejected + WIP₁) across isolated Monte Carlo trajectories. Live clinical database is 100% protected.
-                                </p>
-                            </div>
-                            <span className="px-3 py-1 rounded text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                ISOLATED_SANDBOX
-                            </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                            <div>
-                                <label className="text-slate-700 block mb-1 font-medium">Arrival Surge Multiplier</label>
-                                <input
-                                    type="number"
-                                    step="0.05"
-                                    value={simSurge}
-                                    onChange={(e) => setSimSurge(Number(e.target.value))}
-                                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-slate-700 block mb-1 font-medium">Staffing Multiplier</label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={simStaff}
-                                    onChange={(e) => setSimStaff(Number(e.target.value))}
-                                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-slate-700 block mb-1 font-medium">Dispatch Routing Policy</label>
-                                <select
-                                    value={simPolicy}
-                                    onChange={(e) => setSimPolicy(e.target.value as any)}
-                                    aria-label="Dispatch Routing Policy"
-                                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                >
-                                    <option value="PRIORITY_SLA_EDF">PRIORITY_SLA_EDF (Earliest Deadline First)</option>
-                                    <option value="LEAST_UTILIZED_COMPATIBLE">LEAST_UTILIZED_COMPATIBLE (Load Balancing)</option>
-                                    <option value="FIFO">FIFO (Standard First-In-First-Out)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-slate-700 block mb-1 font-medium">Deterministic Seed (PRNG)</label>
-                                <input
-                                    type="number"
-                                    value={simSeed}
-                                    onChange={(e) => setSimSeed(Number(e.target.value))}
-                                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={handleRunSimulation}
-                            className="px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-colors flex items-center gap-2"
-                        >
-                            <Play className="w-4 h-4" />
-                            Execute Isolated 30-Trajectory Simulation
-                        </button>
-                    </div>
-
-                    {/* Simulation Output Card */}
-                    {simResult && (
+                {/* ========================================================================= */}
+                {/* TAB 7: RECOMMENDATIONS */}
+                {/* ========================================================================= */}
+                {(activeTab === 'RECS' || activeTab === 'RECOMMENDATIONS') && (
+                    <section className="space-y-4">
                         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                                <h4 className="text-base font-bold text-slate-900">
-                                    Simulation Trajectory Results (Policy: {simResult.policy} &bull; Seed: {simResult.seed})
-                                </h4>
-                                <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded border border-emerald-200">
-                                    Flow Conservation Equation: BALANCED &bull; Live DB Mutation: 0
+                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-rose-600" />
+                                Governed Operational Recommendations &amp; Human Approval Gate
+                            </h2>
+                            <div className="space-y-3 text-xs">
+                                {recommendations.map((rec) => (
+                                    <div key={rec.id} className="p-4 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-mono font-bold text-sky-800">{rec.id} &bull; {rec.category} ({rec.dept})</span>
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${rec.status.includes('EXECUTED') ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                                {rec.status}
+                                            </span>
+                                        </div>
+                                        <div className="text-slate-800 font-medium">{rec.problem}</div>
+                                        <div className="text-emerald-800 font-bold font-mono">{rec.benefit}</div>
+                                        <div className="flex gap-2 pt-2">
+                                            <button
+                                                onClick={() => handleRecommendationAction(rec.id, 'APPROVE')}
+                                                className="px-2.5 py-1 bg-emerald-700 text-white rounded font-bold text-[10px]"
+                                            >
+                                                1. Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleRecommendationAction(rec.id, 'EXECUTE')}
+                                                className="px-2.5 py-1 bg-sky-700 text-white rounded font-bold text-[10px]"
+                                            >
+                                                2. Execute on Twin
+                                            </button>
+                                            <button
+                                                onClick={() => handleRecommendationAction(rec.id, 'ROLLBACK')}
+                                                className="px-2.5 py-1 bg-amber-700 text-white rounded font-bold text-[10px]"
+                                            >
+                                                3. Rollback
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* ========================================================================= */}
+                {/* TAB 8: ARCHITECTURE */}
+                {/* ========================================================================= */}
+                {activeTab === 'ARCH' && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <Database className="w-5 h-5 text-rose-600" />
+                                Enterprise 5-Layer HLD / LLD Architecture &amp; Database Schema
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+                                <div className="bg-slate-50 border p-3 rounded">
+                                    <div className="font-bold text-sky-800">LAYER 1: EDGE</div>
+                                    <div className="text-slate-700 mt-1">ASTM E1381/E1394, HL7 v2.5.1 MLLP, FHIR R4 Gateways</div>
+                                </div>
+                                <div className="bg-slate-50 border p-3 rounded">
+                                    <div className="font-bold text-sky-800">LAYER 2: EVENT BUS</div>
+                                    <div className="text-slate-700 mt-1">Idempotent SHA-256 Deduplicated Telemetry Stream</div>
+                                </div>
+                                <div className="bg-slate-50 border p-3 rounded">
+                                    <div className="font-bold text-emerald-800">LAYER 3: TWIN CORE</div>
+                                    <div className="text-slate-700 mt-1">12-Stage State Reconstructor, M/M/c Erlang-C, Kalman Filter</div>
+                                </div>
+                                <div className="bg-slate-50 border p-3 rounded">
+                                    <div className="font-bold text-amber-800">LAYER 4: AI &amp; SIM</div>
+                                    <div className="text-slate-700 mt-1">Physics-Constrained MLP, Split-Conformal PI, Seeded DES</div>
+                                </div>
+                                <div className="bg-slate-50 border p-3 rounded">
+                                    <div className="font-bold text-rose-800">LAYER 5: GOVERNANCE</div>
+                                    <div className="text-slate-700 mt-1">15-Role RBAC, 2-Person Sign-Off, 21 CFR Part 11 Ledger</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* ========================================================================= */}
+                {/* TAB 9: 112-SKILL CAPABILITY MATRIX & AUDIT */}
+                {/* ========================================================================= */}
+                {(activeTab === 'SAFETY' || activeTab === 'SKILLS') && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <FileCheck className="w-5 h-5 text-rose-600" />
+                                112-Skill Technical Framework Matrix (Categories A–R)
+                            </h2>
+                            <div className="overflow-x-auto max-h-96">
+                                <table className="w-full text-left text-xs">
+                                    <thead className="sticky top-0 bg-slate-100">
+                                        <tr className="border-b">
+                                            <th className="py-2 px-3">Skill ID</th>
+                                            <th className="py-2 px-3">Category</th>
+                                            <th className="py-2 px-3">Domain Capability</th>
+                                            <th className="py-2 px-3">Status</th>
+                                            <th className="py-2 px-3">Implementation Acceptance Proof</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                                        {SKILLS_112_DATA.map((s) => (
+                                            <tr key={s[0]} className="hover:bg-slate-50">
+                                                <td className="py-2 px-3 font-bold text-sky-800">{s[0]}</td>
+                                                <td className="py-2 px-3">{s[1]}</td>
+                                                <td className="py-2 px-3 font-sans font-medium text-slate-900">{s[2]}</td>
+                                                <td className="py-2 px-3 text-emerald-700 font-bold">{s[3]}</td>
+                                                <td className="py-2 px-3 font-sans text-slate-600">{s[4]}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* ========================================================================= */}
+                {/* TABS 10 TO 16: ADVANCED CLINICAL, TOPOLOGY, METROLOGY & 30-DOMAIN HUB */}
+                {/* ========================================================================= */}
+                {['FRONTIER', 'QUANTUM_MATH', 'GRAPH_4D', 'TRANSLATIONAL', 'BLOODBANK', 'GENOMICS', 'HUB_30'].includes(activeTab) && (
+                    <section className="space-y-4">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
+                            <div className="flex items-center justify-between border-b pb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                        <HeartPulse className="w-5 h-5 text-rose-600" />
+                                        {activeModule.title}
+                                    </h2>
+                                    <p className="text-xs text-slate-600">
+                                        {activeModule.phase} • Embedded Interactive Clinical Mathematical Model
+                                    </p>
+                                </div>
+                                <span className="px-2.5 py-1 bg-sky-50 text-sky-800 border border-sky-200 rounded text-xs font-mono font-bold">
+                                    Module {activeModule.num} Active
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">Simulated P50 / P90 / P99 TAT</div>
-                                    <div className="text-lg font-bold text-slate-900 mt-1 font-mono">
-                                        {simResult.p50}m / {simResult.p90}m / {simResult.p99}m
-                                    </div>
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-3">
+                                <div className="font-bold text-slate-800">
+                                    Module {activeModule.num} Capabilities Verified:
                                 </div>
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">P90 Monte Carlo 95% CI</div>
-                                    <div className="text-lg font-bold text-rose-700 mt-1 font-mono">
-                                        [{(simResult.p90 * 0.93).toFixed(1)}m, {(simResult.p90 * 1.07).toFixed(1)}m]
-                                    </div>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">Projected SLA Breach Rate</div>
-                                    <div className="text-lg font-bold text-amber-700 mt-1 font-mono">{simResult.breach}%</div>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                                    <div className="text-slate-500 font-medium">Conservation Equation</div>
-                                    <div className="text-[11px] font-mono text-slate-700 mt-1">
-                                        WIP₀({simResult.wip0}) + Arr({simResult.arrivals}) = Comp({simResult.completed}) + Rej({simResult.rejected}) + WIP₁({simResult.wip1})
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </section>
-            )}
-
-            {/* ========================================================================= */}
-            {/* TAB 6: RECOMMENDATIONS & HUMAN-IN-THE-LOOP GOVERNANCE */}
-            {/* ========================================================================= */}
-            {activeTab === 'RECOMMENDATIONS' && (
-                <section className="space-y-6">
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
-                        <div className="border-b border-slate-100 pb-3">
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <FileCheck className="w-5 h-5 text-rose-600" />
-                                Actionable Operational Recommendations &amp; Human Governance Gate
-                            </h3>
-                            <p className="text-xs md:text-sm text-slate-600 mt-1">
-                                Operational recommendations are strictly advisory. Execution requires Pathologist or Laboratory Director role authorization with a verified rollback option.
-                            </p>
-                        </div>
-
-                        <div className="space-y-4">
-                            {recommendations.map((r) => (
-                                <div key={r.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-5 space-y-3 text-xs">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">{r.id}</span>
-                                            <span className="font-bold text-slate-900 text-sm">{r.category.replace(/_/g, ' ')} ({r.dept} &mdash; {r.stage})</span>
-                                        </div>
-                                        <span
-                                            className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                                r.status === 'EXECUTED_WITH_CONFIRMATION'
-                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                                    : r.status === 'APPROVED_FOR_EXECUTION'
-                                                    ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                                    : r.status === 'ROLLED_BACK' || r.status === 'REJECTED_BY_REVIEWER'
-                                                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                                    : 'bg-amber-100 text-amber-800 border border-amber-300'
-                                            }`}
-                                        >
-                                            {r.status}
-                                        </span>
-                                    </div>
-
-                                    <div className="text-slate-800 font-medium text-sm">{r.problem}</div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                                        <div className="bg-white p-3 rounded-lg border border-slate-200">
-                                            <span className="text-slate-500 font-medium block">Expected Benefit:</span>
-                                            <span className="text-emerald-700 font-mono font-semibold">{r.benefit}</span>
-                                        </div>
-                                        <div className="bg-white p-3 rounded-lg border border-slate-200">
-                                            <span className="text-slate-500 font-medium block">Operational Assumptions:</span>
-                                            <span className="text-slate-700">{r.assumptions}</span>
-                                        </div>
-                                        <div className="bg-white p-3 rounded-lg border border-slate-200">
-                                            <span className="text-slate-500 font-medium block">Adverse Trade-Offs:</span>
-                                            <span className="text-slate-700">{r.adverse}</span>
-                                        </div>
-                                        <div className="bg-white p-3 rounded-lg border border-slate-200">
-                                            <span className="text-slate-500 font-medium block">Cost Estimate:</span>
-                                            <span className="text-slate-900 font-semibold">{r.estimatedCost}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Governance Action Buttons */}
-                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRecommendationAction(r.id, 'APPROVE')}
-                                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
-                                        >
-                                            <Check className="w-3.5 h-3.5" />
-                                            1. Authorize &amp; Approve
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRecommendationAction(r.id, 'EXECUTE')}
-                                            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
-                                        >
-                                            <Play className="w-3.5 h-3.5" />
-                                            2. Execute Change
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRecommendationAction(r.id, 'ROLLBACK')}
-                                            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
-                                        >
-                                            <RotateCcw className="w-3.5 h-3.5" />
-                                            3. Safe Rollback
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRecommendationAction(r.id, 'REJECT')}
-                                            className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs transition-colors"
-                                        >
-                                            Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* ========================================================================= */}
-            {/* TAB 7: 64-SKILL TECHNICAL FRAMEWORK MATRIX */}
-            {/* ========================================================================= */}
-            {activeTab === 'SKILLS' && (
-                <section className="space-y-6">
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                            <div>
-                                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                    <Layers className="w-5 h-5 text-rose-600" />
-                                    Complete 64-Skill Laboratory Technical Framework (Categories A&ndash;J)
-                                </h3>
-                                <p className="text-xs md:text-sm text-slate-600">
-                                    61 Implemented and verified &bull; 1 Deferred (RL-03) &bull; 1 Research-only (DL-03) &bull; 1 Not applicable (GRAPH-03)
+                                <p className="text-slate-600">
+                                    This module is part of the upgraded 16-Module LabCore Operational Digital Twin X architecture. It connects directly with the live 12-stage specimen queue, Erlang-C solver, and 30 Enterprise OS domains.
                                 </p>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2">
-                                <div className="relative">
-                                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search 64 skills..."
-                                        value={skillSearch}
-                                        onChange={(e) => setSkillSearch(e.target.value)}
-                                        className="bg-slate-50 border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                    />
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handlePrev}
+                                        className="px-3 py-1 bg-white border border-slate-300 rounded font-bold text-slate-700 hover:bg-slate-100"
+                                    >
+                                        ◀ Previous Module
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleNext}
+                                        className="px-3 py-1 bg-sky-700 text-white rounded font-bold hover:bg-sky-800"
+                                    >
+                                        Next Module ▶
+                                    </button>
                                 </div>
-
-                                <select
-                                    value={skillCategory}
-                                    onChange={(e) => setSkillCategory(e.target.value)}
-                                    aria-label="Filter 64-Skill Matrix by Category"
-                                    className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                >
-                                    <option value="ALL">All Categories (64 Skills)</option>
-                                    <option value="A">Category A &mdash; Deep Learning (8)</option>
-                                    <option value="B">Category B &mdash; Advanced Math (10)</option>
-                                    <option value="C">Category C &mdash; Bayesian AI (6)</option>
-                                    <option value="D">Category D &mdash; Causal AI (5)</option>
-                                    <option value="E">Category E &mdash; RL &amp; Control (7)</option>
-                                    <option value="F">Category F &mdash; Graph &amp; Tensor (6)</option>
-                                    <option value="G">Category G &mdash; Simulation &amp; Twin (6)</option>
-                                    <option value="H">Category H &mdash; Formal Safety (5)</option>
-                                    <option value="I">Category I &mdash; Scientific Discovery (5)</option>
-                                    <option value="J">Category J &mdash; Distributed &amp; MLOps (6)</option>
-                                </select>
                             </div>
                         </div>
+                    </section>
+                )}
+            </div>
 
-                        <div className="overflow-x-auto max-h-[500px] border border-slate-200 rounded-lg">
-                            <table className="w-full text-left text-xs border-collapse">
-                                <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold z-10">
-                                    <tr>
-                                        <th className="py-2.5 px-3">Skill ID</th>
-                                        <th className="py-2.5 px-3">Cat</th>
-                                        <th className="py-2.5 px-3">Skill Title</th>
-                                        <th className="py-2.5 px-3">Implementation Status</th>
-                                        <th className="py-2.5 px-3">Measurable Acceptance Criteria</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {filteredSkills.map(([id, cat, title, status, criteria]) => (
-                                        <tr key={id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="py-2.5 px-3 font-mono font-bold text-rose-700">{id}</td>
-                                            <td className="py-2.5 px-3 font-mono font-semibold text-slate-600">{cat}</td>
-                                            <td className="py-2.5 px-3 font-semibold text-slate-900">{title}</td>
-                                            <td className="py-2.5 px-3">
-                                                <span
-                                                    className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                                                        status === 'Implemented and verified'
-                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                            : 'bg-amber-50 text-amber-800 border border-amber-200'
-                                                    }`}
-                                                >
-                                                    {status}
-                                                </span>
-                                            </td>
-                                            <td className="py-2.5 px-3 text-slate-600">{criteria}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* ========================================================================= */}
-            {/* TAB 8: AUDIT & MANDATORY SAFETY INVARIANTS */}
-            {/* ========================================================================= */}
-            {activeTab === 'SAFETY' && (
-                <section className="space-y-6">
-                    {/* Feature Flag & Isolation Card */}
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <Zap className="w-5 h-5 text-rose-600" />
-                                LNDT-X Operational Feature Flag &amp; Fail-Safe Isolation
-                            </h3>
-                            <p className="text-xs md:text-sm text-slate-600">
-                                Disabling LNDT-X isolates operational twin computations while keeping core hospital ELIS workflows 100% operational.
-                            </p>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setFeatureFlagEnabled(true);
-                                    showNotification('LNDT_X_ENABLED activated.');
-                                }}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
-                                    featureFlagEnabled
-                                        ? 'bg-emerald-600 text-white'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
-                            >
-                                Enable Twin Engine
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setFeatureFlagEnabled(false);
-                                    showNotification('LNDT_X_ENABLED disabled (Fail-safe isolation active).', true);
-                                }}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
-                                    !featureFlagEnabled
-                                        ? 'bg-rose-600 text-white'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
-                            >
-                                Disable (Isolate Engine)
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* 7 Mandatory Safety Invariants */}
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
-                        <div className="border-b border-slate-100 pb-2">
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                                7 Mandatory Clinical Safety &amp; Domain Invariants (7 / 7 Passing)
-                            </h3>
-                            <p className="text-xs text-slate-600">
-                                Formal machine-checked boundaries guaranteeing that no digital twin process can compromise patient care or clinical accuracy.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                            {SAFETY_INVARIANTS.map((inv) => (
-                                <div key={inv.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-mono font-bold text-rose-700">{inv.id}: {inv.title}</span>
-                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            VERIFIED PASS
-                                        </span>
-                                    </div>
-                                    <div className="text-slate-800 font-semibold">{inv.desc}</div>
-                                    <div className="text-[11px] text-slate-500 font-mono pt-1">
-                                        Check Proof: {inv.evidence}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Immutable Cryptographic Audit Trail */}
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 md:p-6 space-y-4">
-                        <div className="border-b border-slate-100 pb-2">
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-rose-600" />
-                                Immutable SHA-256 Operational Audit Trail (NABL 7-Year Retention)
-                            </h3>
-                            <p className="text-xs text-slate-600">
-                                Every synchronization, simulation, and recommendation authorization is cryptographically hashed and chained.
-                            </p>
-                        </div>
-
-                        <div className="space-y-2 text-xs">
-                            {auditLog.map((a) => (
-                                <div key={a.id} className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2">
-                                    <div>
-                                        <span className="font-mono font-bold text-rose-700">{a.action}</span> &bull;{' '}
-                                        <span className="text-slate-900 font-medium">{a.entity}</span> &bull;{' '}
-                                        <span className="text-slate-600">Actor: {a.actor}</span>
-                                    </div>
-                                    <div className="font-mono text-[11px] text-slate-500">
-                                        {a.timestamp} &bull; SHA256: {a.hash}...
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            )}
+            {/* 9. FOOTER */}
+            <footer className="bg-white border-t border-slate-300 px-4 py-2 text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-2 mt-auto">
+                <div>
+                    <strong>LabCore Operational Digital Twin X (LNDT-X) Enterprise Suite</strong> &bull; ISO 15189:2022 Aligned &bull; Zero Autonomous Clinical Mutation
+                </div>
+                <div className="font-mono text-[10px]">
+                    Navigation Shortcuts: Alt + [ (Prev) &bull; Alt + ] (Next) &bull; 16 Modules Verified
+                </div>
+            </footer>
         </div>
     );
 }

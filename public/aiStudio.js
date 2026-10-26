@@ -437,29 +437,90 @@ const AiStudio = {
     }
   },
 
-  // 4. CLINICAL NLP
+  // 4. CLINICAL NLP & MEDICAL INTELLIGENCE
   initNlp() {
-    const textInput = document.getElementById('nlpTextInput');
+    const textInput = document.getElementById('nlpTextInput') || document.getElementById('nlpInputText');
     if (textInput && !textInput.value) {
-      textInput.value = `Patient Vikram Malhotra presented with severe retrosternal chest pain and palpitations. Emergency Cardiac Risk Panel ordered. Observed Troponin I (High Sensitivity) elevated at 1.84 ng/mL with severe delta surge. Serum Potassium elevated at 6.4 mEq/L and Serum Creatinine at 2.3 mg/dL. Known history of Type 2 Diabetes Mellitus with peripheral neuropathy on Metformin 500mg BD. Pathologist impression indicates acute coronary syndrome with high arrhythmia risk.`;
+      textInput.value = `CHIEF COMPLAINT:
+Severe retrosternal crushing chest pain radiating to left jaw for 45 minutes with acute diaphoresis.
+
+LABORATORY & PATHOLOGY FINDINGS:
+- High Sensitivity Cardiac Troponin I (hs-cTnI): elevated at 1.84 ng/mL (reference < 0.04 ng/mL) with severe delta surge.
+- Serum Potassium (K+): critical elevation at 6.4 mEq/L (reference 3.5 - 5.1 mEq/L) — peaked T-waves on ECG.
+- Serum Creatinine: elevated at 2.3 mg/dL (reference 0.7 - 1.3 mg/dL).
+
+CURRENT MEDICATIONS:
+Tab Metformin 500mg BD, Tab Atorvastatin 20mg OD, Tab Telmisartan 40mg OD.
+
+IMPRESSION:
+Acute ST-Elevation Myocardial Infarction (Anterior Wall STEMI) complicated by acute hyperkalemia and acute kidney injury. Denies gastrointestinal bleeding.`;
     }
   },
 
   setNlpSample(sampleType) {
-    const textInput = document.getElementById('nlpTextInput');
+    const textInput = document.getElementById('nlpTextInput') || document.getElementById('nlpInputText');
+    if (!textInput) return;
+
     if (sampleType === 'cardiac') {
-      textInput.value = `Patient Vikram Malhotra presented with acute coronary symptoms. Emergency cardiac panel reveals Troponin I at 1.84 ng/mL (CRITICAL HIGH) and Serum Potassium K+ at 6.4 mEq/L. High suspicion of Acute Myocardial Infarction. Urgent cardiologist consult required.`;
+      textInput.value = `CHIEF COMPLAINT:
+Severe retrosternal crushing chest pain radiating to left jaw for 45 minutes with acute diaphoresis.
+
+LABORATORY & PATHOLOGY FINDINGS:
+- High Sensitivity Cardiac Troponin I (hs-cTnI): elevated at 1.84 ng/mL (reference < 0.04 ng/mL) with severe delta surge.
+- Serum Potassium (K+): critical elevation at 6.4 mEq/L (reference 3.5 - 5.1 mEq/L) — peaked T-waves on ECG.
+- Serum Creatinine: elevated at 2.3 mg/dL (reference 0.7 - 1.3 mg/dL).
+
+CURRENT MEDICATIONS:
+Tab Metformin 500mg BD, Tab Atorvastatin 20mg OD, Tab Telmisartan 40mg OD.
+
+IMPRESSION:
+Acute ST-Elevation Myocardial Infarction (Anterior Wall STEMI) complicated by acute hyperkalemia and acute kidney injury. Denies gastrointestinal bleeding.`;
+    } else if (sampleType === 'sepsis') {
+      textInput.value = `CHIEF COMPLAINT:
+Altered sensorium, high-grade spiking fevers, and refractory hypotension admitted to ICU.
+
+INVESTIGATIONS:
+- Serum Procalcitonin (PCT): marked surge at 6.2 ng/mL (reference < 0.05 ng/mL).
+- Blood Lactic Acid: critical elevation at 4.6 mmol/L (reference 0.5 - 2.0 mmol/L).
+- Total Leukocytes (WBC): severe leukocytosis at 24.8 x10^3/uL.
+- Platelet Count: consumptive thrombocytopenia at 64 x10^3/uL.
+- Serum Creatinine: acute azotemia at 3.1 mg/dL.
+
+MEDICATIONS:
+IV Norepinephrine infusion, IV Piperacillin-Tazobactam 4.5g Q6H.
+
+ASSESSMENT:
+Urosepsis progressing to Septic Shock with Multi-Organ Dysfunction Syndrome (MODS). SOFA score 9.`;
     } else if (sampleType === 'diabetic') {
-      textInput.value = `Patient Meera Sharma, 46y female with 4-year history of Type 2 Diabetes Mellitus presenting with lethargy and burning sensation in feet. HbA1c observed at 8.6%, Fasting Blood Glucose 182 mg/dL, Triglycerides 245 mg/dL. Prescribed Metformin 500mg + Sitagliptin 50mg BD, Tab Atorvastatin 10mg.`;
-    } else if (sampleType === 'hematology') {
-      textInput.value = `Routine pre-operative CBC evaluation for patient Sunita Verma. Hemoglobin 12.8 g/dL, WBC 7,800 /cumm, Platelet Count 240,000 /cumm. All hematology cellular indices within biological reference intervals. Negative for acute inflammatory state.`;
+      textInput.value = `CHIEF COMPLAINT:
+71yo male with 18-year history of Type 2 Diabetes Mellitus presenting with bilateral lower extremity pitting edema and burning neuropathic feet sensations.
+
+LABORATORY FINDINGS:
+- Glycated Hemoglobin (HbA1c): elevated at 8.9% (reference < 5.7%).
+- Serum Creatinine: baseline progression to 3.2 mg/dL (eGFR 22 mL/min/1.73m2, Stage 4 CKD).
+- Urine Microalbumin: macroalbuminuria at 420 mg/L.
+- Serum Potassium: borderline high at 5.2 mEq/L.
+
+MEDICATIONS:
+Active prescriptions include Tab Metformin 1000mg BD, Tab Atorvastatin 20mg OD, Tab Ramipril 5mg OD.
+
+WARNING:
+High-dose Metformin contraindicated due to eGFR < 30 mL/min (MALA lactic acidosis risk). Discontinue Metformin immediately.`;
     }
     this.handleRunNlpAnalysis();
   },
 
+  handleNlpParse() {
+    this.handleRunNlpAnalysis();
+  },
+
   async handleRunNlpAnalysis() {
-    const text = document.getElementById('nlpTextInput').value;
-    if (!text) return;
+    const textInput = document.getElementById('nlpTextInput') || document.getElementById('nlpInputText');
+    const text = textInput ? textInput.value : '';
+    if (!text) {
+      showToast("Please enter clinical narrative text", 'warning');
+      return;
+    }
 
     try {
       const res = await fetch(`${this.baseUrl}/nlp/analyze`, {
@@ -469,66 +530,115 @@ const AiStudio = {
       });
       const json = await res.json();
       if (json.success) {
+        this.state.lastNlpResult = json.data;
         this.renderNlpResults(json.data);
+        showToast("Clinical NLP Analysis completed with international coding!", 'success');
       }
     } catch (e) {
-      showToast("NLP analysis failed", 'warning');
+      showToast("Clinical NLP analysis failed", 'warning');
     }
   },
 
+  downloadFhirJson() {
+    if (!this.state.lastNlpResult?.fhirR4Bundle) {
+      showToast("Please run analysis first to generate FHIR R4 bundle", 'warning');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(this.state.lastNlpResult.fhirR4Bundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `HL7_FHIR_R4_ClinicalBundle_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("HL7 FHIR R4 bundle exported successfully!", 'success');
+  },
+
   renderNlpResults(data) {
-    // Entities Cloud
+    // 1. Entities Cloud with pastel badges
     const entitiesBox = document.getElementById('nlpEntitiesOutput');
-    if (entitiesBox) {
+    if (entitiesBox && data.entities) {
       entitiesBox.innerHTML = data.entities.map(ent => {
-        let badgeColor = 'bg-sky-500/15 text-sky-300 border-sky-500/30';
-        if (ent.type === 'MEDICATION_PHARMA') badgeColor = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
-        if (ent.type === 'CLINICAL_SEVERITY') badgeColor = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
-        if (ent.type === 'ANATOMICAL_SITE') badgeColor = 'bg-purple-500/15 text-purple-300 border-purple-500/30';
+        let style = 'background:#F0F9FF; color:#0369A1; border:1px solid #BAE6FD;';
+        if (ent.type === 'MEDICATION_PHARMA') style = 'background:#ECFDF5; color:#047857; border:1px solid #A7F3D0;';
+        if (ent.type === 'CLINICAL_SEVERITY') style = 'background:#FFF1F2; color:#BE123C; border:1px solid #FECDD3;';
+        if (ent.type === 'ANATOMICAL_SITE') style = 'background:#F5F3FF; color:#6D28D9; border:1px solid #DDD6FE;';
+        if (ent.assertion === 'NEGATED') style = 'background:#F8FAFC; color:#64748B; border:1px solid #CBD5E1; text-decoration:line-through;';
 
         return `
-          <span class="px-2.5 py-1 rounded-lg text-xs font-semibold border ${badgeColor} inline-flex items-center gap-1.5">
+          <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; ${style}">
             <strong>${ent.entity}</strong>
-            <span class="text-[9px] opacity-75 uppercase font-mono">${ent.type.replace('_', ' ')}</span>
+            <span style="font-size:0.6rem; opacity:0.75; font-family:monospace; text-transform:uppercase;">${(ent.type || '').replace(/_/g, ' ')}</span>
+            ${ent.assertion === 'NEGATED' ? '<span style="font-size:0.55rem; background:#E2E8F0; padding:1px 4px; border-radius:4px;">NEGATED</span>' : ''}
           </span>
         `;
-      }).join('') || '<div class="text-slate-500 text-xs">No explicit clinical entities detected.</div>';
+      }).join('') || '<div style="font-size:0.74rem; color:#94A3B8;">No clinical entities detected.</div>';
     }
 
-    // ICD-10 suggestions
-    const icdBox = document.getElementById('nlpIcd10Output');
-    if (icdBox) {
-      icdBox.innerHTML = data.suggestedICD10.map(icd => `
-        <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <div class="font-bold text-xs text-purple-300 font-mono">${icd.code}</div>
-            <div class="text-[11px] text-slate-300 mt-0.5">${icd.description}</div>
+    // 2. LOINC Laboratory Analytes Table
+    const loincBox = document.getElementById('nlpLoincOutput');
+    if (loincBox && data.loincCodes) {
+      loincBox.innerHTML = data.loincCodes.map(loinc => `
+        <div style="background:#FFFFFF; border:1px solid ${loinc.isPanic ? '#FECDD3' : '#E2E8F0'}; border-radius:8px; padding:6px 10px; display:flex; align-items:center; justify-content:between;">
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-family:monospace; font-size:0.65rem; font-weight:800; color:#0284C7; background:#F0F9FF; padding:1px 5px; border-radius:4px; border:1px solid #BAE6FD;">LOINC ${loinc.code}</span>
+              <strong style="font-size:0.74rem; color:#0F172A;">${loinc.name.split('[')[0]}</strong>
+              ${loinc.isPanic ? '<span style="font-size:0.6rem; font-weight:800; background:#BE123C; color:white; padding:1px 5px; border-radius:4px;">PANIC</span>' : ''}
+            </div>
           </div>
-          <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+          <div style="text-align:right; font-family:monospace;">
+            <strong style="font-size:0.78rem; color:${loinc.isPanic ? '#BE123C' : '#0F172A'};">${loinc.extractedValue !== null ? loinc.extractedValue + ' ' + loinc.unit : 'Present'}</strong>
+            <div style="font-size:0.65rem; color:#64748B;">Ref: ${loinc.normalRange}</div>
+          </div>
+        </div>
+      `).join('') || '<div style="font-size:0.74rem; color:#94A3B8;">No LOINC analytes matched.</div>';
+    }
+
+    // 3. ICD-10-CM / ICD-11 & SNOMED CT suggestions
+    const icdBox = document.getElementById('nlpIcd10Output');
+    if (icdBox && data.suggestedICD10) {
+      icdBox.innerHTML = data.suggestedICD10.map(icd => `
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; padding:6px 10px; display:flex; align-items:center; justify-content:between;">
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-family:monospace; font-size:0.68rem; font-weight:800; color:#7C3AED; background:#F5F3FF; padding:1px 5px; border-radius:4px; border:1px solid #DDD6FE;">${icd.code}</span>
+              ${icd.icd11 ? `<span style="font-family:monospace; font-size:0.62rem; color:#64748B;">ICD-11: ${icd.icd11}</span>` : ''}
+            </div>
+            <div style="font-size:0.72rem; color:#334155; font-weight:600; margin-top:2px;">${icd.description}</div>
+          </div>
+          <span style="font-family:monospace; font-size:0.68rem; font-weight:800; color:#047857; background:#ECFDF5; padding:2px 6px; border-radius:4px; border:1px solid #A7F3D0;">
             ${(icd.confidence * 100).toFixed(0)}% Conf
           </span>
         </div>
-      `).join('') || '<div class="text-slate-500 text-xs">No ICD-10 matches found.</div>';
+      `).join('') || '<div style="font-size:0.74rem; color:#94A3B8;">No ICD-10 diagnostic codes mapped.</div>';
     }
 
-    // Urgency Meter & Impression
+    // 4. Urgency Meter & Impression Card
+    const urgencyCard = document.getElementById('nlpUrgencyCard');
     const urgencyBadge = document.getElementById('nlpUrgencyBadge');
-    if (urgencyBadge) {
-      urgencyBadge.innerText = data.urgency.level;
-      urgencyBadge.className = `px-3 py-1 rounded-full text-xs font-bold ${
-        data.urgency.level === 'CRITICAL_PANIC' ? 'badge-panic bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
-      }`;
-    }
+    const impressionText = document.getElementById('nlpImpressionText');
+    const actionText = document.getElementById('nlpActionText');
 
-    const summaryBox = document.getElementById('nlpSummaryText');
-    if (summaryBox) {
-      summaryBox.innerHTML = `
-        <div class="space-y-2 text-xs">
-          <div><strong class="text-slate-200">Impression:</strong> <span class="text-slate-300">${data.structuredSummary.clinicalImpression}</span></div>
-          <div><strong class="text-slate-200">Key Analytes:</strong> <span class="text-purple-300">${data.structuredSummary.keyAnalytesIdentified.join(', ')}</span></div>
-          <div><strong class="text-slate-200">Recommendation:</strong> <span class="text-amber-300">${data.structuredSummary.recommendedAction}</span></div>
-        </div>
-      `;
+    if (urgencyCard && data.urgency) {
+      urgencyCard.style.display = 'block';
+      const isPanic = data.urgency.level === 'CRITICAL_PANIC';
+      urgencyCard.style.background = isPanic ? '#FFF1F2' : '#F0FDF4';
+      urgencyCard.style.borderColor = isPanic ? '#FECDD3' : '#BBF7D0';
+
+      if (urgencyBadge) {
+        urgencyBadge.innerText = (data.urgency.level || 'ROUTINE').replace(/_/g, ' ');
+        urgencyBadge.style.background = isPanic ? '#BE123C' : '#059669';
+        urgencyBadge.style.color = 'white';
+      }
+
+      if (impressionText) {
+        impressionText.innerText = data.clinicalImpression || data.structuredSummary?.clinicalImpression || '';
+      }
+
+      if (actionText) {
+        actionText.innerText = data.recommendedAction || data.structuredSummary?.recommendedAction || '';
+      }
     }
   },
 
