@@ -3,6 +3,7 @@ import env from "../config/env";
 import prisma from "../config/database";
 import { WebSocketService } from "./lib/websocket";
 import { startAnalyzerTcpServer, defaultAnalyzerTcpService } from "./modules/analyzers/analyzer.tcp.service";
+import { BackupSchedulerService } from "./modules/backup/backup-scheduler.service";
 
 const PORT = Number(env.PORT) || 5000;
 const server = app.listen(PORT, "0.0.0.0", () => {
@@ -28,6 +29,12 @@ try {
   console.warn("[Analyzer TCP] Hardware listener startup notice:", err?.message);
 }
 
+// Day 16: Automated 02:00 AM Database Backup Scheduler (AES-256 GCM + GFS Retention)
+try {
+  BackupSchedulerService.startScheduler();
+} catch (err: any) {
+  console.warn("[BackupScheduler] Startup notice:", err?.message);
+}
 
 server.on("error", (err: any) => {
   if (err.code === "EADDRINUSE") {
@@ -41,6 +48,12 @@ server.on("error", (err: any) => {
 // Graceful Shutdown
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} received. Shutting down...`);
+
+  try {
+    BackupSchedulerService.stopScheduler();
+  } catch {
+    // Ignore scheduler stop error
+  }
 
   try {
     await defaultAnalyzerTcpService.stop();

@@ -12,6 +12,9 @@ import {
   list,
   getOne,
   addMovement,
+  getDaybook,
+  handoverShift,
+  calculateDenominations,
 } from "./cash-counter.controller";
 
 import {
@@ -26,6 +29,47 @@ import {
 const router = Router();
 
 router.use(authenticate);
+
+// =======================================================
+// DENOMINATIONS & CALCULATOR
+// =======================================================
+
+router.post(
+  "/calculate-denominations",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.ACCOUNTANT
+  ),
+  calculateDenominations
+);
+
+// =======================================================
+// SHIFT DAYBOOK & HANDOVER RECONCILIATION
+// =======================================================
+
+router.get(
+  "/sessions/:sessionId/daybook",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.ACCOUNTANT
+  ),
+  getDaybook
+);
+
+router.post(
+  "/sessions/:sessionId/handover",
+  authorize(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.FRONT_DESK,
+    UserRole.ACCOUNTANT
+  ),
+  handoverShift
+);
 
 // =======================================================
 // CREATE CASH COUNTER

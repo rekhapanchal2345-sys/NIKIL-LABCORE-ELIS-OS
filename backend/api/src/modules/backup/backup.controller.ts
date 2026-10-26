@@ -1,4 +1,6 @@
 import { Response } from 'express';
+import path from 'path';
+import fs from 'fs';
 import type { AuthenticatedRequest } from '../../../middleware/auth';
 import {
   createBackup,
@@ -7,6 +9,11 @@ import {
   getBackupStatistics,
   deleteBackup,
 } from './backup.service';
+import { BackupRetentionService, BackupMetadata } from './backup-retention.service';
+import { BackupSchedulerService } from './backup-scheduler.service';
+
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), 'backups');
+const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || '';
 
 /**
  * Create a new database backup
@@ -16,7 +23,6 @@ export const createBackupController = async (
   res: Response,
 ) => {
   try {
-    // Only admins can create backups
     if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
@@ -56,7 +62,6 @@ export const restoreBackupController = async (
   res: Response,
 ) => {
   try {
-    // Only admins can restore backups
     if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
@@ -105,7 +110,6 @@ export const getBackupsController = async (
   res: Response,
 ) => {
   try {
-    // Only admins can view backups
     if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
@@ -133,7 +137,6 @@ export const getBackupsController = async (
  */
 export const getBackupStatsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Only admins can view backup statistics
     if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
@@ -161,7 +164,6 @@ export const getBackupStatsController = async (req: AuthenticatedRequest, res: R
  */
 export const deleteBackupController = async (req: AuthenticatedRequest<{ fileName: string }>, res: Response) => {
   try {
-    // Only admins can delete backups
     if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({
         success: false,
@@ -195,6 +197,175 @@ export const deleteBackupController = async (req: AuthenticatedRequest<{ fileNam
     res.status(500).json({
       success: false,
       message: 'Failed to delete backup',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Apply GFS (Grandfather-Father-Son) 7 Daily + 4 Weekly + 3 Monthly retention pruning
+ */
+export const applyRetentionController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can trigger backup retention pruning',
+      });
+    }
+
+    const result = BackupRetentionService.applyRetention(BACKUP_DIR);
+
+    res.json({
+      success: true,
+      message: `GFS retention applied: ${result.retained} backups retained, ${result.deleted} pruned.`,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to apply backup retention policy',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Inspect GFS classification of existing backups
+ */
+export const getGfsStatusController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can view GFS backup classification',
+      });
+    }
+
+    if (!fs.existsSync(BACKUP_DIR)) {
+      return res.json({
+        success: true,
+        data: { keepDaily: [], keepWeekly: [], keepMonthly: [], toDelete: [] },
+      });
+    }
+
+    const files = fs.readdirSync(BACKUP_DIR);
+    const backupMetas: BackupMetadata[] = [];
+
+    for (const file of files) {
+      const filePath = path.join(BACKUP_DIR, file);
+      const stats = fs.statSync(filePath);
+      const parsedDate = BackupRetentionService.parseBackupDate(file) || stats.mtime;
+
+      backupMetas.push({
+        fileName: file,
+        filePath,
+        createdAt: parsedDate,
+        sizeBytes: stats.size,
+        isEncrypted: file.endsWith('.enc'),
+      });
+    }
+
+    const classification = BackupRetentionService.classifyGfs(backupMetas);
+
+    res.json({
+      success: true,
+      data: classification,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve GFS classification',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Verify Disaster Recovery (DR) integrity for a backup file
+ */
+export const verifyBackupController = async (req: AuthenticatedRequest<{ fileName: string }>, res: Response) => {
+  try {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can run disaster recovery integrity checks',
+      });
+    }
+
+    const { fileName } = req.params;
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Target backup fileName is required',
+      });
+    }
+
+    const targetPath = path.join(BACKUP_DIR, path.basename(fileName));
+    const result = BackupRetentionService.verifyBackupIntegrity(targetPath, ENCRYPTION_SECRET);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Disaster recovery verification failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Get automated backup scheduler status
+ */
+export const getSchedulerStatusController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can view scheduler status',
+      });
+    }
+
+    const status = BackupSchedulerService.getStatus();
+    res.json({
+      success: true,
+      data: status,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve scheduler status',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Run automated backup routine immediately on demand
+ */
+export const triggerScheduledBackupNowController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can trigger scheduled backup execution',
+      });
+    }
+
+    const result = await BackupSchedulerService.executeDailyBackupRoutine();
+    res.json({
+      success: true,
+      message: 'Daily backup routine executed successfully',
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to execute scheduled backup routine',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }

@@ -44,3 +44,6 @@ ts3.txt
 query
 *.tsbuildinfo
 .freebuff/
+
+storage/
+**/storage/

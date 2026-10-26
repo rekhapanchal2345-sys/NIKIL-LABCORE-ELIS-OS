@@ -8,51 +8,77 @@ import {
   getBackupsController,
   getBackupStatsController,
   deleteBackupController,
+  applyRetentionController,
+  getGfsStatusController,
+  verifyBackupController,
+  getSchedulerStatusController,
+  triggerScheduledBackupNowController,
 } from './backup.controller';
 
 const router = Router();
 
-// All backup routes require authentication
+// All backup routes require authentication and SUPER_ADMIN or ADMIN privileges
 router.use(authenticate);
-router.use(authorize(UserRole.SUPER_ADMIN));
+router.use(authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN));
 
 /**
  * @route   POST /api/backups
- * @desc    Create a new database backup
- * @access  SUPER_ADMIN, ADMIN
- * ISS-002: Router-level RBAC — controller-only checks are insufficient and
- *          previously locked SUPER_ADMIN out of backup operations.
+ * @desc    Create a new database backup with AES-256-GCM encryption
  */
-router.post('/', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), createBackupController);
+router.post('/', createBackupController);
 
 /**
  * @route   POST /api/backups/restore/:fileName
  * @desc    Restore database from backup
- * @access  SUPER_ADMIN, ADMIN
- * ISS-002: fileName path-traversal sanitisation applied in backup.service.ts
  */
-router.post('/restore/:fileName', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), restoreBackupController);
+router.post('/restore/:fileName', restoreBackupController);
 
 /**
  * @route   GET /api/backups
  * @desc    Get all available backups
- * @access  SUPER_ADMIN, ADMIN
  */
-router.get('/', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), getBackupsController);
+router.get('/', getBackupsController);
 
 /**
  * @route   GET /api/backups/stats
  * @desc    Get backup statistics
- * @access  SUPER_ADMIN, ADMIN
  */
-router.get('/stats', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), getBackupStatsController);
+router.get('/stats', getBackupStatsController);
+
+/**
+ * @route   POST /api/backups/retention/apply
+ * @desc    Apply GFS 7 Daily + 4 Weekly + 3 Monthly retention pruning
+ */
+router.post('/retention/apply', applyRetentionController);
+
+/**
+ * @route   GET /api/backups/gfs
+ * @desc    Get GFS retention classification breakdown
+ */
+router.get('/gfs', getGfsStatusController);
+
+/**
+ * @route   POST /api/backups/verify/:fileName
+ * @desc    Verify Disaster Recovery (DR) integrity (AES-256 decryption & SQL header check)
+ */
+router.post('/verify/:fileName', verifyBackupController);
+
+/**
+ * @route   GET /api/backups/scheduler/status
+ * @desc    Get 02:00 AM automated backup scheduler telemetry
+ */
+router.get('/scheduler/status', getSchedulerStatusController);
+
+/**
+ * @route   POST /api/backups/scheduler/trigger
+ * @desc    Trigger automated 02:00 AM backup routine on-demand
+ */
+router.post('/scheduler/trigger', triggerScheduledBackupNowController);
 
 /**
  * @route   DELETE /api/backups/:fileName
  * @desc    Delete a specific backup
- * @access  SUPER_ADMIN, ADMIN
- * ISS-002: path.basename sanitisation enforced in backup.service.ts before fs.unlinkSync
  */
-router.delete('/:fileName', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), deleteBackupController);
+router.delete('/:fileName', deleteBackupController);
 
 export default router;

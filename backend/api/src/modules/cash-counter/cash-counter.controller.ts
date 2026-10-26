@@ -13,6 +13,7 @@ import {
   getCashCounterById,
   addCashMovement,
 } from "./cash-counter.service";
+import { DaybookService } from "./daybook.service";
 
 // =======================================================
 // CREATE CASH COUNTER
@@ -99,31 +100,26 @@ export const close =
   };
 
 // =======================================================
-// LIST CASH COUNTERS
+// GET ALL CASH COUNTERS
 // =======================================================
 
 export const list =
   async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ) => {
     try {
       const query = (req as any).validated?.query || req.query;
-
+      
       const result =
-        await getCashCounters({
-          status: query.status,
-          branchId: query.branchId,
-          assignedUserId: query.assignedUserId,
-          page: Number(query.page) || 1,
-          limit: Number(query.limit) || 20,
-        });
+        await getCashCounters(query);
 
       res.status(200).json({
         success: true,
         message: "Cash counters fetched successfully",
-        data: result,
+        data: result.counters,
+        pagination: result.pagination,
       });
     } catch (error) {
       next(error);
@@ -136,7 +132,7 @@ export const list =
 
 export const getOne =
   async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ) => {
@@ -184,3 +180,73 @@ export const addMovement =
       next(error);
     }
   };
+
+// =======================================================
+// DAYBOOK & SHIFT HANDOVER
+// =======================================================
+
+export const getDaybook = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const rawSessionId = req.params.sessionId;
+    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : String(rawSessionId);
+    const daybook = await DaybookService.generateShiftDaybook(sessionId);
+
+    res.status(200).json({
+      success: true,
+      message: "Shift daybook generated successfully",
+      data: daybook,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handoverShift = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const rawSessionId = req.params.sessionId;
+    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : String(rawSessionId);
+    const { denominations, varianceReason, supervisorNotes, handoverToUserId } = req.body;
+
+    const result = await DaybookService.executeShiftHandover({
+      sessionId,
+      denominations,
+      varianceReason,
+      supervisorNotes,
+      handoverToUserId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Shift handover completed successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const calculateDenominations = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { denominations } = req.body;
+    const result = DaybookService.calculatePhysicalTotal(denominations || {});
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

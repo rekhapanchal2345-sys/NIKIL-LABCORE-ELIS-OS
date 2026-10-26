@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   IndianRupee, 
   CreditCard, 
@@ -9,7 +9,6 @@ import {
   Printer, 
   CheckCircle2, 
   AlertCircle, 
-  ShieldCheck, 
   Clock, 
   Users, 
   FileText, 
@@ -17,12 +16,27 @@ import {
   FileCheck2,
   Calendar,
   Building2,
-  UserCheck
+  Coins,
+  ShieldAlert,
+  SendHorizontal
 } from "lucide-react";
 
 interface ShiftHandoverProps {
   todayRevenue?: number;
   pendingPayments?: number;
+}
+
+interface DenominationsState {
+  notes_2000: number;
+  notes_500: number;
+  notes_200: number;
+  notes_100: number;
+  notes_50: number;
+  notes_20: number;
+  notes_10: number;
+  coins_5: number;
+  coins_2: number;
+  coins_1: number;
 }
 
 export default function ShiftHandoverReconciliation({
@@ -35,6 +49,24 @@ export default function ShiftHandoverReconciliation({
   const [incomingOfficer, setIncomingOfficer] = useState("Dr. Meera Iyer (Evening Pathologist)");
   const [incomingStaff, setIncomingStaff] = useState("Karan Joshi (Evening MLT)");
   const [shiftRemarks, setShiftRemarks] = useState("All 3 critical panic values verified and notified. 16 blood culture bottles handed over in BacT/ALERT incubator.");
+  
+  // Physical Denomination State (Day 16: Rs. 2000, 500, 200, 100, 50, 20, 10, 5, 2, 1)
+  const [denominations, setDenominations] = useState<DenominationsState>({
+    notes_2000: 0,
+    notes_500: 32,
+    notes_200: 8,
+    notes_100: 7,
+    notes_50: 3,
+    notes_20: 0,
+    notes_10: 0,
+    coins_5: 0,
+    coins_2: 0,
+    coins_1: 0,
+  });
+
+  const [varianceReason, setVarianceReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [handoverSuccess, setHandoverSuccess] = useState(false);
 
   const formatCurrency = (amt: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -44,16 +76,62 @@ export default function ShiftHandoverReconciliation({
     }).format(amt || 0);
   };
 
-  const cashBreakdown = [
-    { note: "₹500 Notes", count: 32, total: 16000 },
-    { note: "₹200 Notes", count: 8, total: 1600 },
-    { note: "₹100 Notes", count: 7, total: 700 },
-    { note: "₹50 Notes", count: 3, total: 150 },
+  const DENOM_CONFIG = [
+    { key: "notes_2000" as const, label: "₹2000 Note", value: 2000, isCoin: false },
+    { key: "notes_500" as const, label: "₹500 Note", value: 500, isCoin: false },
+    { key: "notes_200" as const, label: "₹200 Note", value: 200, isCoin: false },
+    { key: "notes_100" as const, label: "₹100 Note", value: 100, isCoin: false },
+    { key: "notes_50" as const, label: "₹50 Note", value: 50, isCoin: false },
+    { key: "notes_20" as const, label: "₹20 Note", value: 20, isCoin: false },
+    { key: "notes_10" as const, label: "₹10 Note", value: 10, isCoin: false },
+    { key: "coins_5" as const, label: "₹5 Coin", value: 5, isCoin: true },
+    { key: "coins_2" as const, label: "₹2 Coin", value: 2, isCoin: true },
+    { key: "coins_1" as const, label: "₹1 Coin", value: 1, isCoin: true },
   ];
 
-  const totalCashCounted = cashBreakdown.reduce((sum, item) => sum + item.total, 0);
+  // Dynamic calculations
+  const { totalCashCounted, breakdown } = useMemo(() => {
+    let sum = 0;
+    const b = DENOM_CONFIG.map((cfg) => {
+      const count = Math.max(0, Number(denominations[cfg.key]) || 0);
+      const subtotal = count * cfg.value;
+      sum += subtotal;
+      return { ...cfg, count, subtotal };
+    });
+    return { totalCashCounted: sum, breakdown: b };
+  }, [denominations]);
+
   const totalCashBilled = 18450;
   const cashVariance = totalCashCounted - totalCashBilled;
+
+  const discrepancyStatus = useMemo(() => {
+    if (Math.abs(cashVariance) < 0.01) {
+      return {
+        type: "BALANCED",
+        level: "INFO",
+        title: "Balanced",
+        message: "Physical cash matches expected digital ledger balance.",
+        requiresReason: false,
+      };
+    }
+    if (cashVariance < 0) {
+      const diff = Math.abs(cashVariance);
+      return {
+        type: "SHORTAGE",
+        level: diff >= 500 ? "CRITICAL" : "WARNING",
+        title: `Shortage: -${formatCurrency(diff)}`,
+        message: `Physical drawer is ₹${diff} short of ledger balance. Mandatory justification required.`,
+        requiresReason: true,
+      };
+    }
+    return {
+      type: "SURPLUS",
+      level: cashVariance >= 500 ? "WARNING" : "INFO",
+      title: `Surplus: +${formatCurrency(cashVariance)}`,
+      message: `Physical drawer has ₹${cashVariance} surplus over ledger balance. Justification required.`,
+      requiresReason: true,
+    };
+  }, [cashVariance]);
 
   const paymentChannels = [
     { name: "Cash Desk (Physical In Drawer)", amount: 18450, count: 18, icon: Banknote, color: "text-amber-600 bg-amber-50" },
@@ -63,6 +141,30 @@ export default function ShiftHandoverReconciliation({
   ];
 
   const grandTotal = paymentChannels.reduce((sum, c) => sum + c.amount, 0);
+
+  const handleDenominationChange = (key: keyof DenominationsState, val: string) => {
+    const parsed = parseInt(val, 10);
+    setDenominations((prev) => ({
+      ...prev,
+      [key]: isNaN(parsed) || parsed < 0 ? 0 : parsed,
+    }));
+  };
+
+  const handleHandoverSubmit = async () => {
+    if (discrepancyStatus.requiresReason && !varianceReason.trim()) {
+      alert("Variance reason is mandatory before handing over a shift with cash discrepancy!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Simulate/trigger shift handover call
+      await new Promise((r) => setTimeout(r, 600));
+      setHandoverSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -83,18 +185,38 @@ export default function ShiftHandoverReconciliation({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Physical cash drawer verification against LIS ledger, digital settlement batch audit, and clinical specimen handover certification.
+            Physical cash drawer verification against LIS ledger (₹2000 to ₹1 denominations), digital settlement batch audit, and DR integrity certification.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsPrintModalOpen(true)}
-          className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2"
-        >
-          <Printer className="h-4 w-4" />
-          <span>Print Shift Handover Voucher</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsPrintModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2"
+          >
+            <Printer className="h-4 w-4" />
+            <span>Print Shift Handover Voucher</span>
+          </button>
+        </div>
       </div>
+
+      {handoverSuccess && (
+        <div className="mx-5 mt-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-emerald-900">Shift Handover Certified Successfully</p>
+              <p className="text-[11px] text-emerald-700">Digital ledger locked. Shift voucher signed and archived for audit.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setHandoverSuccess(false)}
+            className="text-xs font-semibold text-emerald-800 hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Grid: Financial Channel Breakdown + Cash Drawer Balancing */}
       <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -145,42 +267,9 @@ export default function ShiftHandoverReconciliation({
               </span>
             </div>
           </div>
-        </div>
-
-        {/* Right: Cash Drawer Physical Balancing (5 cols) */}
-        <div className="lg:col-span-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Cash Drawer Physical Count Audit
-            </h4>
-            {cashVariance === 0 ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                <CheckCircle2 className="h-3 w-3" /> ₹0.00 Variance (Balanced)
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                <AlertCircle className="h-3 w-3" /> Variance: {formatCurrency(cashVariance)}
-              </span>
-            )}
-          </div>
-
-          <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
-            {cashBreakdown.map((row, i) => (
-              <div key={i} className="flex items-center justify-between py-1 border-b border-slate-100 last:border-none">
-                <span className="font-semibold text-slate-700">{row.note}</span>
-                <span className="font-mono text-slate-500">× {row.count} pcs</span>
-                <span className="font-mono font-bold text-slate-900">{formatCurrency(row.total)}</span>
-              </div>
-            ))}
-
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between font-bold">
-              <span className="text-slate-800">Counted Total in Drawer:</span>
-              <span className="text-emerald-700 font-mono text-sm">{formatCurrency(totalCashCounted)}</span>
-            </div>
-          </div>
 
           {/* Clinical Shift Handover Memo */}
-          <div className="p-3 bg-white rounded-xl border border-slate-200/80 text-xs space-y-1.5">
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 text-xs space-y-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
               Clinical Shift Handover Notes:
             </span>
@@ -188,6 +277,107 @@ export default function ShiftHandoverReconciliation({
               {shiftRemarks}
             </p>
           </div>
+        </div>
+
+        {/* Right: Cash Drawer Physical Balancing & Denominations (5 cols) */}
+        <div className="lg:col-span-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+              Cash Drawer Physical Count Audit
+            </h4>
+            {discrepancyStatus.type === "BALANCED" ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <CheckCircle2 className="h-3 w-3" /> ₹0.00 Variance (Balanced)
+              </span>
+            ) : discrepancyStatus.type === "SHORTAGE" ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                <AlertCircle className="h-3 w-3" /> {discrepancyStatus.title}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                <AlertCircle className="h-3 w-3" /> {discrepancyStatus.title}
+              </span>
+            )}
+          </div>
+
+          {/* Denominations Input Counter (Day 16) */}
+          <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/90 space-y-2 text-xs">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 text-[11px] font-bold text-slate-600">
+              <span>Denomination</span>
+              <span className="text-center w-20">Pieces</span>
+              <span className="text-right w-24">Subtotal</span>
+            </div>
+
+            <div className="max-h-48 overflow-y-auto pr-1 space-y-1.5">
+              {breakdown.map((row) => (
+                <div key={row.key} className="flex items-center justify-between py-0.5">
+                  <div className="flex items-center gap-1.5 w-24">
+                    {row.isCoin ? (
+                      <Coins className="h-3 w-3 text-amber-600" />
+                    ) : (
+                      <Banknote className="h-3 w-3 text-emerald-600" />
+                    )}
+                    <span className="font-semibold text-slate-700 text-[11px]">{row.label}</span>
+                  </div>
+
+                  <div className="w-20 text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      value={denominations[row.key] || ""}
+                      placeholder="0"
+                      onChange={(e) => handleDenominationChange(row.key, e.target.value)}
+                      className="w-16 px-1.5 py-0.5 text-center text-xs font-mono font-bold bg-white border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <span className="font-mono font-bold text-slate-900 text-[11px] text-right w-24">
+                    {formatCurrency(row.subtotal)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between font-bold">
+              <span className="text-slate-800">Physical Cash in Drawer:</span>
+              <span className="text-emerald-700 font-mono text-sm">{formatCurrency(totalCashCounted)}</span>
+            </div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-500">Expected Digital Cash:</span>
+              <span className="text-slate-700 font-mono">{formatCurrency(totalCashBilled)}</span>
+            </div>
+          </div>
+
+          {/* Variance Reason Input if not balanced */}
+          {discrepancyStatus.requiresReason && (
+            <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-amber-900 text-[11px] font-bold">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                <span>Mandatory Variance Justification</span>
+              </div>
+              <textarea
+                value={varianceReason}
+                onChange={(e) => setVarianceReason(e.target.value)}
+                placeholder="Explain the reason for discrepancy (e.g., small change shortage, cash refund given)..."
+                rows={2}
+                className="w-full text-xs p-2 bg-white border border-amber-300 rounded-lg outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 placeholder:text-slate-400"
+              />
+            </div>
+          )}
+
+          {/* Shift Handover Action Button */}
+          <button
+            onClick={handleHandoverSubmit}
+            disabled={isSubmitting}
+            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
+              discrepancyStatus.requiresReason && !varianceReason.trim()
+                ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+            }`}
+          >
+            <SendHorizontal className="h-4 w-4" />
+            <span>{isSubmitting ? "Submitting Handover..." : "Certify & Close Shift Handover"}</span>
+          </button>
         </div>
       </div>
 
@@ -271,10 +461,29 @@ export default function ShiftHandoverReconciliation({
                 </table>
               </div>
 
+              {/* Physical Denominations Summary in Voucher */}
+              <div className="space-y-2">
+                <h5 className="font-bold uppercase tracking-wider text-[11px] text-slate-700">
+                  2. Cash Drawer Denomination Audit (Physical Count)
+                </h5>
+                <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
+                  {breakdown.filter(b => b.count > 0).map(b => (
+                    <div key={b.key} className="flex justify-between">
+                      <span>{b.label} × {b.count}</span>
+                      <span className="font-bold">{formatCurrency(b.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[11px] font-bold px-1">
+                  <span>Counted Physical Cash:</span>
+                  <span className="text-emerald-700">{formatCurrency(totalCashCounted)} (Variance: {formatCurrency(cashVariance)})</span>
+                </div>
+              </div>
+
               {/* Clinical Specimen Handover Details */}
               <div className="space-y-2">
                 <h5 className="font-bold uppercase tracking-wider text-[11px] text-slate-700">
-                  2. Clinical Specimen & Quality Handover
+                  3. Clinical Specimen & Quality Handover
                 </h5>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] space-y-1">
                   <p>• <strong>Samples Accessioned:</strong> 148 Vacutainers (132 Completed, 16 In Progress / Incubating)</p>

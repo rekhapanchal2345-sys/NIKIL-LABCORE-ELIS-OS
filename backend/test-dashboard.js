@@ -38,9 +38,13 @@ async function testDashboardEndpoints() {
   
   const endpoints = [
     { name: 'Dashboard Stats', path: '/dashboard/stats' },
+    { name: 'Unified Hospital Metrics', path: '/dashboard/metrics' },
     { name: 'Order Stats', path: '/dashboard/orders' },
     { name: 'Approval Queue', path: '/dashboard/approvals/queue?limit=5' },
     { name: 'Attention Results', path: '/dashboard/results/attention?limit=5' },
+    { name: 'Sample Stats', path: '/dashboard/samples' },
+    { name: 'Payment Analytics', path: '/dashboard/payments' },
+    { name: 'Test Analytics', path: '/dashboard/tests' },
   ];
 
   for (const endpoint of endpoints) {

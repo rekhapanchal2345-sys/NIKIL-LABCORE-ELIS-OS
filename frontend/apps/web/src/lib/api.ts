@@ -5954,6 +5954,144 @@ export const cashCounterApi = {
       throw error;
     }
   },
+
+  getDaybook: async (sessionId: string) => {
+    try {
+      return await apiCall(`/api/cash-counter/sessions/${sessionId}/daybook`);
+    } catch (error) {
+      console.error('Cash counter getDaybook error:', error);
+      throw error;
+    }
+  },
+
+  handover: async (sessionId: string, data: any) => {
+    try {
+      return await apiCall(`/api/cash-counter/sessions/${sessionId}/handover`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error('Cash counter handover error:', error);
+      throw error;
+    }
+  },
+
+  calculateDenominations: async (denominations: Record<string, number>) => {
+    try {
+      return await apiCall('/api/cash-counter/calculate-denominations', {
+        method: 'POST',
+        body: JSON.stringify({ denominations }),
+      });
+    } catch (error) {
+      console.error('Calculate denominations error:', error);
+      throw error;
+    }
+  },
+};
+
+// Database Automated Backup & Disaster Recovery (DR) API (Day 16)
+export const backupApi = {
+  getAll: async () => {
+    try {
+      return await apiCall('/api/backups');
+    } catch (error) {
+      console.error('Backup getAll error:', error);
+      throw error;
+    }
+  },
+
+  getStats: async () => {
+    try {
+      return await apiCall('/api/backups/stats');
+    } catch (error) {
+      console.error('Backup getStats error:', error);
+      throw error;
+    }
+  },
+
+  create: async () => {
+    try {
+      return await apiCall('/api/backups', {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Backup create error:', error);
+      throw error;
+    }
+  },
+
+  restore: async (fileName: string) => {
+    try {
+      return await apiCall(`/api/backups/restore/${encodeURIComponent(fileName)}`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Backup restore error:', error);
+      throw error;
+    }
+  },
+
+  delete: async (fileName: string) => {
+    try {
+      return await apiCall(`/api/backups/${encodeURIComponent(fileName)}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Backup delete error:', error);
+      throw error;
+    }
+  },
+
+  applyRetention: async () => {
+    try {
+      return await apiCall('/api/backups/retention/apply', {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Backup applyRetention error:', error);
+      throw error;
+    }
+  },
+
+  getGfsStatus: async () => {
+    try {
+      return await apiCall('/api/backups/gfs');
+    } catch (error) {
+      console.error('Backup getGfsStatus error:', error);
+      throw error;
+    }
+  },
+
+  verify: async (fileName: string) => {
+    try {
+      return await apiCall(`/api/backups/verify/${encodeURIComponent(fileName)}`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Backup verify error:', error);
+      throw error;
+    }
+  },
+
+  getSchedulerStatus: async () => {
+    try {
+      return await apiCall('/api/backups/scheduler/status');
+    } catch (error) {
+      console.error('Backup getSchedulerStatus error:', error);
+      throw error;
+    }
+  },
+
+  triggerSchedulerNow: async () => {
+    try {
+      return await apiCall('/api/backups/scheduler/trigger', {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Backup triggerSchedulerNow error:', error);
+      throw error;
+    }
+  },
 };
 
 // Settlements & Reconciliation API
