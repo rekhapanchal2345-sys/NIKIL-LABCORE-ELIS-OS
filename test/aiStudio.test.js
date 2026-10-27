@@ -36,6 +36,27 @@ function runTest(name, fn) {
 }
 
 // 1. MathEngine & Westgard QC Tests
+runTest("MathEngine - Matrix Multiply & Edge Cases", () => {
+  const A = [[1, 2], [3, 4]];
+  const B = [[5, 6], [7, 8]];
+  const result = MathEngine.matrixMultiply(A, B);
+  assert.strictEqual(result[0][0], 19);
+  assert.strictEqual(result[0][1], 22);
+  assert.strictEqual(result[1][0], 43);
+  assert.strictEqual(result[1][1], 50);
+
+  const C = [[1, 2, 3]];
+  const D = [[4, 5]]; // Mismatched dimensions (colsA=3, rowsB=1)
+
+  assert.throws(
+    () => MathEngine.matrixMultiply(C, D),
+    /Matrix dimensions mismatch/
+  );
+
+  // Empty inputs check
+  assert.deepStrictEqual(MathEngine.matrixMultiply([], B), []);
+});
+
 runTest("MathEngine - Mean, StdDev, Z-Score", () => {
   const vals = [10, 20, 30, 40, 50];
   assert.strictEqual(MathEngine.mean(vals), 30);
