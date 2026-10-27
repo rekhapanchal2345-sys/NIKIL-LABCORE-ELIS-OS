@@ -21,6 +21,7 @@ import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { createAuditLog } from "../audit/audit.service";
 import { generateUHID } from "./patient.service";
+import { WebSocketService } from "../../lib/websocket";
 import {
   ConfidentialityLevel,
   EmpiDecision,
@@ -750,7 +751,7 @@ export const setConfidentialityLevel = async (
 /**
  * Records a Break-Glass Emergency Access event.
  * Opens a 30-minute unmasked window and emits audit log.
- * TODO: also send WebSocket alert to Chief Pathologist (Module 26).
+ * Also sends WebSocket alert to Chief Pathologist (Module 26).
  */
 export const breakGlassAccess = async (
   patientId: string,
@@ -780,7 +781,15 @@ export const breakGlassAccess = async (
     ipAddress,
   });
 
-  // TODO: wsServer.emit('break_glass_alert', { patientId, accessedById, clinicalReason, timestamp: new Date() });
+  const wsServer = WebSocketService.getIO();
+  if (wsServer) {
+    wsServer.to('role:PATHOLOGIST').emit('break_glass_alert', {
+      patientId,
+      accessedById,
+      clinicalReason,
+      timestamp: new Date()
+    });
+  }
 
   return { accessLogId: log.id, expiresAt, patient };
 };
