@@ -732,89 +732,93 @@ export const collectSample =
 
       // 2. Ensure Samples exist and update them to COLLECTED
       if (order.samples && order.samples.length > 0) {
-        for (const sample of order.samples) {
-          const sampleBarcode = sample.barcode || `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
-          await tx.sample.update({
-            where: { id: sample.id },
-            data: {
-              barcode: sampleBarcode,
-              status: "COLLECTED",
-              collectedAt: collectionTime,
-              collectedById: performerId || null,
-              collectionType: metadata?.collectionType || "WALK_IN",
-              priority: metadata?.priority || "ROUTINE",
-            },
-          });
-
-          // Create tracking history event
-          await tx.sampleTrackingHistory.create({
-            data: {
-              sampleId: sample.id,
-              orderId: order.id,
-              patientId: order.patientId,
-              eventType: "SAMPLE_COLLECTED",
-              status: "COLLECTED",
-              location: metadata?.location || "Phlebotomy Station",
-              notes: metadata?.notes || `Sample ${sample.sampleNumber} collected (${metadata?.collectionType || 'Walk-in'})`,
-              performedById: performerId || null,
-              performedAt: collectionTime,
-              metadata: {
+        await Promise.all(
+          order.samples.map(async (sample) => {
+            const sampleBarcode = sample.barcode || `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
+            await tx.sample.update({
+              where: { id: sample.id },
+              data: {
                 barcode: sampleBarcode,
-                orderBarcode: finalBarcode,
+                status: "COLLECTED",
+                collectedAt: collectionTime,
+                collectedById: performerId || null,
                 collectionType: metadata?.collectionType || "WALK_IN",
                 priority: metadata?.priority || "ROUTINE",
-                sampleQuality: metadata?.sampleQuality || "Adequate",
-                sampleVolume: metadata?.sampleVolume || "Adequate",
               },
-            },
-          });
-        }
+            });
+
+            // Create tracking history event
+            await tx.sampleTrackingHistory.create({
+              data: {
+                sampleId: sample.id,
+                orderId: order.id,
+                patientId: order.patientId,
+                eventType: "SAMPLE_COLLECTED",
+                status: "COLLECTED",
+                location: metadata?.location || "Phlebotomy Station",
+                notes: metadata?.notes || `Sample ${sample.sampleNumber} collected (${metadata?.collectionType || 'Walk-in'})`,
+                performedById: performerId || null,
+                performedAt: collectionTime,
+                metadata: {
+                  barcode: sampleBarcode,
+                  orderBarcode: finalBarcode,
+                  collectionType: metadata?.collectionType || "WALK_IN",
+                  priority: metadata?.priority || "ROUTINE",
+                  sampleQuality: metadata?.sampleQuality || "Adequate",
+                  sampleVolume: metadata?.sampleVolume || "Adequate",
+                },
+              },
+            });
+          })
+        );
       } else {
         // If order had no sample records created yet, create them from items
-        for (const item of order.items) {
-          // Package rows have no individual test, so they never yield a sample.
-          if (!item.testId || !item.test) continue;
+        await Promise.all(
+          order.items.map(async (item) => {
+            // Package rows have no individual test, so they never yield a sample.
+            if (!item.testId || !item.test) return;
 
-          const sampleNumber = `SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
-          const sampleBarcode = `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
+            const sampleNumber = `SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
+            const sampleBarcode = `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
 
-          const newSample = await tx.sample.create({
-            data: {
-              sampleNumber,
-              barcode: sampleBarcode,
-              patientId: order.patientId,
-              orderId: order.id,
-              testId: item.testId,
-              sampleType: item.test.sampleType,
-              status: "COLLECTED",
-              collectedAt: collectionTime,
-              collectedById: performerId || null,
-              collectionType: metadata?.collectionType || "WALK_IN",
-              priority: metadata?.priority || "ROUTINE",
-            },
-          });
-
-          await tx.sampleTrackingHistory.create({
-            data: {
-              sampleId: newSample.id,
-              orderId: order.id,
-              patientId: order.patientId,
-              eventType: "SAMPLE_COLLECTED",
-              status: "COLLECTED",
-              location: metadata?.location || "Phlebotomy Station",
-              notes: metadata?.notes || `Sample ${sampleNumber} collected (${item.test.testName})`,
-              performedById: performerId || null,
-              performedAt: collectionTime,
-              metadata: {
+            const newSample = await tx.sample.create({
+              data: {
+                sampleNumber,
                 barcode: sampleBarcode,
-                orderBarcode: finalBarcode,
+                patientId: order.patientId,
+                orderId: order.id,
+                testId: item.testId,
+                sampleType: item.test.sampleType,
+                status: "COLLECTED",
+                collectedAt: collectionTime,
+                collectedById: performerId || null,
                 collectionType: metadata?.collectionType || "WALK_IN",
                 priority: metadata?.priority || "ROUTINE",
-                testName: item.test.testName,
               },
-            },
-          });
-        }
+            });
+
+            await tx.sampleTrackingHistory.create({
+              data: {
+                sampleId: newSample.id,
+                orderId: order.id,
+                patientId: order.patientId,
+                eventType: "SAMPLE_COLLECTED",
+                status: "COLLECTED",
+                location: metadata?.location || "Phlebotomy Station",
+                notes: metadata?.notes || `Sample ${sampleNumber} collected (${item.test.testName})`,
+                performedById: performerId || null,
+                performedAt: collectionTime,
+                metadata: {
+                  barcode: sampleBarcode,
+                  orderBarcode: finalBarcode,
+                  collectionType: metadata?.collectionType || "WALK_IN",
+                  priority: metadata?.priority || "ROUTINE",
+                  testName: item.test.testName,
+                },
+              },
+            });
+          })
+        );
       }
 
       return updatedOrder;
