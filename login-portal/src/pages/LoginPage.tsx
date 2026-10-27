@@ -216,6 +216,8 @@ export default function LoginPage() {
                 className="input-icon-right"
                 onClick={() => setShowPw(!showPw)}
                 tabIndex={-1}
+                aria-label={showPw ? "Hide password" : "Show password"}
+                title={showPw ? "Hide password" : "Show password"}
               >
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
