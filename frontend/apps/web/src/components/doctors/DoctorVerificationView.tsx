@@ -15,10 +15,14 @@ import {
   Clock,
   Sparkles,
   ChevronRight,
+  PhoneCall,
 } from "lucide-react";
 import PathologistReviewModal, {
   VerificationReportItem,
 } from "./PathologistReviewModal";
+import CriticalPanicCallLogModal, {
+  CriticalCallLogEntry,
+} from "./CriticalPanicCallLogModal";
 import { showSuccess, showInfo } from "@/lib/notifications";
 
 const INITIAL_REPORTS: VerificationReportItem[] = [
@@ -131,6 +135,34 @@ export default function DoctorVerificationView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterFilter, setFilterFilter] = useState<"ALL" | "PANIC" | "PENDING" | "APPROVED">("ALL");
   const [selectedReportForReview, setSelectedReportForReview] = useState<VerificationReportItem | null>(null);
+  const [selectedReportForCallLog, setSelectedReportForCallLog] = useState<VerificationReportItem | null>(null);
+  const [callLogs, setCallLogs] = useState<Record<string, CriticalCallLogEntry>>({
+    "REP-2026-88022": {
+      id: "call-log-init-1",
+      reportId: "REP-2026-88022",
+      accessionNumber: "ACC-88022-02",
+      patientName: "Smt. Sunita Devi",
+      uhid: "UHID-2026-8812",
+      criticalParameters: "hs-Troponin I: 840.5 pg/mL (PANIC_HIGH)",
+      recipientName: "Dr. Rajesh Sharma",
+      recipientDesignation: "Chief Interventional Cardiologist",
+      recipientPhone: "+91 98231 44512",
+      wardOrClinic: "Cardiology Daycare / Emergency Chamber 102",
+      callerName: "Dr. Rajiv Nair (Consultant Pathologist)",
+      callerRole: "Pathologist On-Duty / Laboratory Director",
+      timestamp: "09:02 AM (Today)",
+      callOutcome: "INFORMED_READ_BACK_CONFIRMED",
+      readBackConfirmed: true,
+      clinicalInstructions: "Dr. Sharma informed. Patient shifted to Cath Lab for emergency coronary angiogram.",
+    },
+  });
+
+  const handleSaveCallLog = (entry: CriticalCallLogEntry) => {
+    setCallLogs((prev) => ({
+      ...prev,
+      [entry.reportId]: entry,
+    }));
+  };
 
   const handleSignOff = (reportId: string, remarks: string) => {
     setReports((prev) =>
@@ -204,16 +236,28 @@ export default function DoctorVerificationView() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setFilterFilter("PANIC");
-              setSelectedReportForReview(panicReports[0]);
-            }}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition active:scale-95 whitespace-nowrap self-start sm:self-auto cursor-pointer"
-          >
-            Review STAT Alert Now
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedReportForCallLog(panicReports[0]);
+              }}
+              className="px-3 py-2 rounded-xl border border-rose-300 bg-white hover:bg-rose-100 text-rose-800 font-bold text-xs shadow-2xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-rose-600" />
+              <span>Record NABL Call Log</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFilterFilter("PANIC");
+                setSelectedReportForReview(panicReports[0]);
+              }}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition active:scale-95 whitespace-nowrap cursor-pointer"
+            >
+              Review STAT Alert Now
+            </button>
+          </div>
         </div>
       )}
 
@@ -411,6 +455,28 @@ export default function DoctorVerificationView() {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">
+                          {r.isPanic && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReportForCallLog(r)}
+                              title={
+                                callLogs[r.reportId]
+                                  ? `Call logged: ${callLogs[r.reportId].recipientName}`
+                                  : "Record Telephonic Alert Call Log"
+                              }
+                              className={`p-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 ${
+                                callLogs[r.reportId]
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                                  : "border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-800"
+                              }`}
+                            >
+                              <PhoneCall className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">
+                                {callLogs[r.reportId] ? "Called" : "Call Log"}
+                              </span>
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => setSelectedReportForReview(r)}
@@ -442,6 +508,14 @@ export default function DoctorVerificationView() {
         onClose={() => setSelectedReportForReview(null)}
         onSignOff={handleSignOff}
         onOrderReRun={handleOrderReRun}
+      />
+
+      {/* ── Critical Panic Alert Call Log Modal (NABL ISO 15189) ── */}
+      <CriticalPanicCallLogModal
+        isOpen={Boolean(selectedReportForCallLog)}
+        onClose={() => setSelectedReportForCallLog(null)}
+        report={selectedReportForCallLog}
+        onSaveLog={handleSaveCallLog}
       />
 
     </div>

@@ -144,16 +144,16 @@ export default function DoctorModalForm({
       <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-900 px-6 py-4 text-white flex items-center justify-between">
+        <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <User className="w-5 h-5 text-indigo-100" />
+            <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 shadow-2xs">
+              <User className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white leading-tight">
+              <h3 className="text-base font-bold text-slate-900 leading-tight">
                 {isEditing ? "Edit Medical Practitioner Profile" : "Register New Medical Practitioner"}
               </h3>
-              <p className="text-xs text-indigo-200">
+              <p className="text-xs text-slate-500">
                 Referring Physician, Consulting Specialist or In-House Pathologist
               </p>
             </div>
@@ -161,7 +161,7 @@ export default function DoctorModalForm({
 
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-indigo-200 hover:text-white hover:bg-white/10 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -181,11 +181,11 @@ export default function DoctorModalForm({
             }
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               formData.doctorType === "REFERRING_DOCTOR"
-                ? "bg-white text-indigo-900 shadow-sm border border-slate-300"
+                ? "bg-white text-slate-900 shadow-xs border border-slate-300"
                 : "text-slate-600 hover:bg-white/50"
             }`}
           >
-            <User className="w-3.5 h-3.5 text-blue-600" />
+            <User className="w-3.5 h-3.5 text-sky-600" />
             Referring Physician (B2B)
           </button>
 
@@ -202,11 +202,11 @@ export default function DoctorModalForm({
             }
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               formData.doctorType === "IN_HOUSE_PATHOLOGIST"
-                ? "bg-white text-purple-900 shadow-sm border border-slate-300"
+                ? "bg-white text-teal-900 shadow-xs border border-teal-300"
                 : "text-slate-600 hover:bg-white/50"
             }`}
           >
-            <Award className="w-3.5 h-3.5 text-purple-600" />
+            <Award className="w-3.5 h-3.5 text-teal-600" />
             In-House Pathologist (Sign-off)
           </button>
         </div>
@@ -224,7 +224,7 @@ export default function DoctorModalForm({
                 required
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-bold text-slate-900 focus:border-sky-600 focus:outline-none"
                 placeholder="Dr. Rajesh Patel"
               />
             </div>
@@ -237,7 +237,7 @@ export default function DoctorModalForm({
                 type="text"
                 value={formData.doctorCode}
                 onChange={(e) => setFormData({ ...formData, doctorCode: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-sky-600 focus:outline-none"
                 placeholder="DOC-001"
               />
             </div>
@@ -252,7 +252,7 @@ export default function DoctorModalForm({
               <select
                 value={formData.specialization}
                 onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold focus:border-indigo-600 focus:outline-none bg-white"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold focus:border-sky-600 focus:outline-none bg-white"
               >
                 <option value="General Medicine">General Medicine</option>
                 <option value="Pathology">Pathology</option>
@@ -273,7 +273,7 @@ export default function DoctorModalForm({
                 type="text"
                 value={formData.qualification}
                 onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
                 placeholder="MBBS, MD, DNB"
               />
             </div>
@@ -287,7 +287,7 @@ export default function DoctorModalForm({
                 required
                 value={formData.registrationNumber}
                 onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold focus:border-sky-600 focus:outline-none"
                 placeholder="e.g. GMC-38491"
               />
             </div>
@@ -304,7 +304,7 @@ export default function DoctorModalForm({
                 required
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
                 placeholder="+91 9876543210"
               />
             </div>
@@ -317,7 +317,7 @@ export default function DoctorModalForm({
                 type="text"
                 value={formData.whatsappNumber}
                 onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
                 placeholder="+91 9876543210"
               />
             </div>
@@ -330,7 +330,7 @@ export default function DoctorModalForm({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
                 placeholder="doctor@clinic.com"
               />
             </div>
@@ -346,7 +346,7 @@ export default function DoctorModalForm({
                 type="text"
                 value={formData.clinicName}
                 onChange={(e) => setFormData({ ...formData, clinicName: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
                 placeholder="e.g. Apex Health Clinic"
               />
             </div>
@@ -359,7 +359,7 @@ export default function DoctorModalForm({
                 type="text"
                 value={formData.clinicAddress}
                 onChange={(e) => setFormData({ ...formData, clinicAddress: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
                 placeholder="e.g. Ring Road, Ahmedabad"
               />
             </div>
@@ -368,8 +368,8 @@ export default function DoctorModalForm({
           {/* Referral Commission & Banking (for Referring Doctors) */}
           {formData.doctorType === "REFERRING_DOCTOR" && (
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-              <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-teal-600" />
                 Referral Incentive & Payout Settlement
               </h4>
 
@@ -384,7 +384,7 @@ export default function DoctorModalForm({
                     max={50}
                     value={formData.commissionRate}
                     onChange={(e) => setFormData({ ...formData, commissionRate: Number(e.target.value) })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold focus:border-indigo-600 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold focus:border-sky-600 focus:outline-none"
                   />
                 </div>
 
@@ -396,7 +396,7 @@ export default function DoctorModalForm({
                     type="text"
                     value={formData.bankAccountNumber}
                     onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono focus:border-indigo-600 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono focus:border-sky-600 focus:outline-none"
                     placeholder="doctor@upi or Account #"
                   />
                 </div>
@@ -409,7 +409,7 @@ export default function DoctorModalForm({
                     type="text"
                     value={formData.bankIfscCode}
                     onChange={(e) => setFormData({ ...formData, bankIfscCode: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono uppercase focus:border-indigo-600 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono uppercase focus:border-sky-600 focus:outline-none"
                     placeholder="SBIN0001234"
                   />
                 </div>
@@ -424,7 +424,7 @@ export default function DoctorModalForm({
               id="isActiveDoctor"
               checked={formData.isActive}
               onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-              className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500"
+              className="w-4 h-4 rounded text-sky-600 border-slate-300 focus:ring-sky-500"
             />
             <label htmlFor="isActiveDoctor" className="text-xs font-bold text-slate-700 cursor-pointer">
               Active Medical Practitioner (Permit test booking & referrals)
@@ -436,7 +436,7 @@ export default function DoctorModalForm({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+              className="flex-1 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -444,7 +444,7 @@ export default function DoctorModalForm({
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 disabled:opacity-50"
+              className="flex-1 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               {submitting ? "Saving Practitioner..." : isEditing ? "Update Doctor" : "Register Doctor"}
             </button>

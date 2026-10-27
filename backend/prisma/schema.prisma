@@ -2847,6 +2847,8 @@ enum UserRole {
   BRANCH_ADMIN
   ACCOUNTANT
   AUDITOR
+  PHLEBOTOMIST
+  RECEPTIONIST
 }
 
 enum DoctorType {

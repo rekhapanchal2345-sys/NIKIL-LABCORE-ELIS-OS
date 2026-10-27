@@ -21,7 +21,9 @@ import type { UserRole } from "../../lib/auth";
 
 // Role-specific concurrency policy
 const CONCURRENCY_LIMITS: Record<UserRole, number> = {
-  FRONT_DESK: 1,   // Shared front-desk cash counter: strictly single-workstation
+  FRONT_DESK: 1,
+  RECEPTIONIST: 1,
+  PHLEBOTOMIST: 1,   // Shared front-desk cash counter: strictly single-workstation
   LAB_TECH: 2,     // Instrument bench + sample accessioning desk
   DOCTOR: 2,       // Consultation desk + OPD terminal
   PATHOLOGIST: 2,  // Reporting station + verification workstation

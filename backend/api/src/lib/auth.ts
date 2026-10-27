@@ -12,8 +12,10 @@ export type UserRole =
   | "SUPER_ADMIN"
   | "BRANCH_ADMIN"
   | "FRONT_DESK"
+  | "RECEPTIONIST"
   | "LAB_TECH"
   | "PATHOLOGIST"
+  | "PHLEBOTOMIST"
   | "DOCTOR"
   | "ACCOUNTANT"
   | "AUDITOR";
@@ -54,13 +56,15 @@ export interface JwtPayload {
   aud?: string | string[];
 }
 
-const VALID_ROLES: UserRole[] = [
+export const VALID_ROLES: UserRole[] = [
   "ADMIN",
   "SUPER_ADMIN",
   "BRANCH_ADMIN",
   "FRONT_DESK",
+  "RECEPTIONIST",
   "LAB_TECH",
   "PATHOLOGIST",
+  "PHLEBOTOMIST",
   "DOCTOR",
   "ACCOUNTANT",
   "AUDITOR",

@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Volume2,
   VolumeX,
+  QrCode,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleLabel } from "@/lib/auth";

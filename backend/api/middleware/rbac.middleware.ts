@@ -207,6 +207,20 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "payments:view", "payments:create",
     "reports:view",
   ],
+  RECEPTIONIST: [
+    "patients:view", "patients:create", "patients:edit",
+    "orders:view", "orders:create", "orders:edit",
+    "samples:view", "samples:collect",
+    "invoices:view", "invoices:create",
+    "payments:view", "payments:create",
+    "reports:view",
+  ],
+  PHLEBOTOMIST: [
+    "patients:view", "patients:create",
+    "orders:view",
+    "samples:view", "samples:create", "samples:edit", "samples:collect",
+    "tests:view",
+  ],
   ACCOUNTANT: [
     // Financial operations
     "invoices:view", "invoices:create", "invoices:edit",

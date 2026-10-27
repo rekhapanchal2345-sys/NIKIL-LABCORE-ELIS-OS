@@ -145,3 +145,10 @@ export function requirePermissionAndAbac(
 
   return [rbacMw, abacMw];
 }
+
+
+export {
+  requireRole,
+  requireModuleAction,
+  requireMinimumHierarchy,
+} from "./rbac.middleware";

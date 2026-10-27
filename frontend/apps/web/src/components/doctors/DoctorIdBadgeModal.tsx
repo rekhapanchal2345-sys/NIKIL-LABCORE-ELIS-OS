@@ -208,7 +208,7 @@ export default function DoctorIdBadgeModal({
         {/* Header Bar - Light White Clinical Design */}
         <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 shadow-xs">
               <FileBadge className="w-5 h-5" />
             </div>
             <div>
@@ -216,7 +216,7 @@ export default function DoctorIdBadgeModal({
                 <h3 className="text-base font-black text-slate-900">
                   Doctor Privilege ID Badge & Accreditation
                 </h3>
-                <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                <span className="font-mono text-[11px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full">
                   {doctorCode}
                 </span>
               </div>
@@ -233,7 +233,7 @@ export default function DoctorIdBadgeModal({
                 onClick={() => setActiveView("card")}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
                   activeView === "card"
-                    ? "bg-white text-indigo-700 shadow-xs"
+                    ? "bg-white text-sky-700 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
@@ -243,7 +243,7 @@ export default function DoctorIdBadgeModal({
                 onClick={() => setActiveView("certificate")}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
                   activeView === "certificate"
-                    ? "bg-white text-indigo-700 shadow-xs"
+                    ? "bg-white text-sky-700 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
@@ -263,7 +263,7 @@ export default function DoctorIdBadgeModal({
             <button
               onClick={handleDownloadPdf}
               disabled={pdfGenerating}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50"
               title="Download PDF"
             >
               <Download className="w-3.5 h-3.5" />
@@ -292,8 +292,7 @@ export default function DoctorIdBadgeModal({
               style={{ minHeight: "280px" }}
             >
               {/* Card Top Header Band */}
-              <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 flex items-center justify-between relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+              <div className="bg-slate-900 text-white p-5 flex items-center justify-between relative border-b border-slate-800">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center font-black text-sky-400 text-base">
                     L
@@ -320,10 +319,10 @@ export default function DoctorIdBadgeModal({
                 <div className="flex items-start gap-4">
                   {/* Doctor Avatar / Badge */}
                   <div className="flex flex-col items-center gap-1.5 shrink-0">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-50 to-sky-100 border-2 border-indigo-200 flex items-center justify-center text-indigo-700 text-2xl font-black shadow-xs">
+                    <div className="w-20 h-20 rounded-2xl bg-sky-50 border-2 border-sky-200 flex items-center justify-center text-sky-700 text-2xl font-black shadow-xs">
                       {cleanDocName.replace(/^Dr\.\s*/i, "").charAt(0)}
                     </div>
-                    <span className="text-[9px] font-mono font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    <span className="text-[9px] font-mono font-black text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
                       {doctorCode}
                     </span>
                   </div>
@@ -337,7 +336,7 @@ export default function DoctorIdBadgeModal({
                       <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                     </div>
 
-                    <p className="text-xs font-bold text-indigo-600 mt-0.5">
+                    <p className="text-xs font-bold text-sky-700 mt-0.5">
                       {specialization} {qualification && `• ${qualification}`}
                     </p>
 
@@ -387,18 +386,14 @@ export default function DoctorIdBadgeModal({
                ======================================================== */
             <div
               ref={certRef}
-              className="w-full max-w-[720px] bg-white rounded-3xl border-4 border-slate-200 shadow-2xl p-8 relative overflow-hidden"
+              className="w-full max-w-[720px] bg-white rounded-3xl border-2 border-slate-300 shadow-xl p-8 relative overflow-hidden"
               style={{ minHeight: "440px" }}
             >
-              {/* Corner Watermarks */}
-              <div className="absolute top-0 left-0 w-36 h-36 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-br-full pointer-events-none"></div>
-              <div className="absolute bottom-0 right-0 w-36 h-36 bg-gradient-to-tl from-sky-500/10 to-transparent rounded-tl-full pointer-events-none"></div>
-
               {/* Certificate Border Inset */}
-              <div className="border border-indigo-200 rounded-2xl p-6 relative bg-white/80">
+              <div className="border border-slate-200 rounded-2xl p-6 relative bg-white">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-xl shadow-md">
+                    <div className="w-12 h-12 rounded-2xl bg-sky-700 text-white flex items-center justify-center font-black text-xl shadow-xs">
                       L
                     </div>
                     <div>
@@ -412,14 +407,14 @@ export default function DoctorIdBadgeModal({
                   </div>
 
                   <div className="text-right">
-                    <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                    <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                       CERT #{doctorCode}-2026
                     </span>
                   </div>
                 </div>
 
                 <div className="text-center my-6 space-y-2">
-                  <span className="text-[10px] font-black tracking-widest text-indigo-600 uppercase">
+                  <span className="text-[10px] font-black tracking-widest text-sky-700 uppercase">
                     CERTIFICATE OF CLINICAL LIAISON ACCREDITATION
                   </span>
                   <p className="text-xs text-slate-500">
@@ -436,9 +431,9 @@ export default function DoctorIdBadgeModal({
                   </div>
 
                   <div className="inline-flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-700">
-                    <span>MCI / State Council Reg: <strong className="text-indigo-700 font-mono">{regNumber}</strong></span>
+                    <span>MCI / State Council Reg: <strong className="text-sky-800 font-mono">{regNumber}</strong></span>
                     <span>•</span>
-                    <span>LIS Clinician ID: <strong className="text-indigo-700 font-mono">{doctorCode}</strong></span>
+                    <span>LIS Clinician ID: <strong className="text-sky-800 font-mono">{doctorCode}</strong></span>
                     <span>•</span>
                     <span>Chamber: <strong className="text-slate-900">{clinic}</strong></span>
                   </div>
@@ -499,7 +494,7 @@ export default function DoctorIdBadgeModal({
               href={portalUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-indigo-600 hover:text-indigo-800 text-xs font-bold hover:underline"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sky-700 hover:text-sky-900 text-xs font-bold hover:underline"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Preview Portal</span>

@@ -327,21 +327,21 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       {/* Top Compliance Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-emerald-950 px-6 py-4 text-white flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-slate-50/80 border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300">
+          <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-100 text-teal-700">
             <FileSignature className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold tracking-tight">
+              <h3 className="text-base font-bold tracking-tight text-slate-900">
                 Digital Signature &amp; NABL ISO 15189:2022 Electronic Doctor Seal
               </h3>
-              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-400/30">
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-teal-50 text-teal-800 rounded-full border border-teal-200">
                 Clause 7.4.2 Compliant
               </span>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               {doctorName} • {qualification} • Reg No: {registrationNumber}
             </p>
           </div>
@@ -353,9 +353,9 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
             fetchDoctorSealPreview();
             setIsSealModalOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
         >
-          <Eye className="w-4 h-4 text-emerald-300" />
+          <Eye className="w-4 h-4 text-teal-600" />
           Preview Official NABL Seal
         </button>
       </div>
@@ -568,7 +568,7 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
               </div>
 
               {sha256Checksum && (
-                <div className="mt-2.5 p-2 rounded bg-slate-900 text-emerald-400 font-mono text-[10px] truncate">
+                <div className="mt-2.5 p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] truncate">
                   SHA-256: {sha256Checksum}
                 </div>
               )}
@@ -602,14 +602,16 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
       {isSealModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-slate-50/80 border-b border-slate-200 text-slate-900 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Award className="w-5 h-5 text-emerald-400" />
+                <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700">
+                  <Award className="w-4 h-4 text-teal-700" />
+                </div>
                 <div>
-                  <h4 className="text-sm font-bold">
+                  <h4 className="text-sm font-bold text-slate-900">
                     Official NABL ISO 15189:2022 Electronic Doctor Seal
                   </h4>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-500 font-medium">
                     High-DPI Vector SVG rendered on signed patient diagnostic reports
                   </p>
                 </div>
@@ -617,7 +619,7 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
               <button
                 type="button"
                 onClick={() => setIsSealModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -679,7 +681,7 @@ export const DoctorSignatureManager: React.FC<DoctorSignatureManagerProps> = ({
               <button
                 type="button"
                 onClick={() => setIsSealModalOpen(false)}
-                className="px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white hover:bg-slate-800"
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition"
               >
                 Close Preview
               </button>

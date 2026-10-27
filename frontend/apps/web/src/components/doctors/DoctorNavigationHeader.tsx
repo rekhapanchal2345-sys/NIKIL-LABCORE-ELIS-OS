@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -21,6 +21,9 @@ import {
   Sparkles,
   ShieldCheck,
   ChevronRight,
+  Building2,
+  MapPin,
+  UserCheck,
 } from "lucide-react";
 
 export type DoctorModuleTab =
@@ -138,8 +141,17 @@ export default function DoctorNavigationHeader({
     },
   ];
 
+  const [selectedFacility, setSelectedFacility] = useState("Main Hospital Campus (OPD Block A)");
+  const [selectedChamber, setSelectedChamber] = useState("Chamber 102 - Cardiology & Echo Lab");
+  const [activeDoctorContext, setActiveDoctorContext] = useState({
+    name: "Dr. Rajesh Sharma, MD",
+    regNo: "MCI/NMC-2012-78941",
+    department: "Cardiology",
+    status: "Chamber Active",
+  });
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* ── Top Clinical Header (Ultra Light White Theme) ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 transition-all">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
@@ -276,6 +288,58 @@ export default function DoctorNavigationHeader({
             );
           })}
         </div>
+
+        {/* ── Real-World Enterprise Facility, Chamber & On-Duty Doctor Sub-Strip ── */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/60">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Facility Selector */}
+            <div className="flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-[11px] font-bold text-slate-500">Unit:</span>
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white py-1 px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="Main Hospital Campus (OPD Block A)">Main Hospital Campus (OPD Block A)</option>
+                <option value="Cardiac & Critical Care Tower">Cardiac & Critical Care Tower</option>
+                <option value="Central Diagnostic & Pathology Hub">Central Diagnostic & Pathology Hub</option>
+                <option value="City Satellite Polyclinic (West Wing)">City Satellite Polyclinic (West Wing)</option>
+              </select>
+            </div>
+
+            {/* Chamber Selector */}
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-[11px] font-bold text-slate-500">Chamber:</span>
+              <select
+                value={selectedChamber}
+                onChange={(e) => setSelectedChamber(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white py-1 px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="Chamber 102 - Cardiology & Echo Lab">Chamber 102 - Cardiology & Echo Lab</option>
+                <option value="Chamber 105 - Endocrinology & Diabetes Care">Chamber 105 - Endocrinology & Diabetes Care</option>
+                <option value="Chamber 108 - Pediatrics & Child Wellness">Chamber 108 - Pediatrics & Child Wellness</option>
+                <option value="Chamber 101 - General Medicine & Triage">Chamber 101 - General Medicine & Triage</option>
+                <option value="Pathology Review Desk - Grossing & Verification">Pathology Review Desk - Grossing & Verification</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Active Clinician Badge */}
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-medium">
+              <UserCheck className="w-3.5 h-3.5 text-teal-600" />
+              <strong className="text-slate-900">{activeDoctorContext.name}</strong>
+              <span className="text-[10px] text-slate-500 font-mono">({activeDoctorContext.regNo})</span>
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Chamber Live
+            </span>
+          </div>
+        </div>
+
       </div>
     </div>
   );

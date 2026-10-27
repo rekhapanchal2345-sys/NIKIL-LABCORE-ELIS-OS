@@ -94,6 +94,49 @@ const COMMON_LAB_PANELS = [
   { code: "VIT_D_B12", name: "Vitamin D3 (25-OH) & Vitamin B12 Duo Panel", dept: "Immunology" },
 ];
 
+const CLINICAL_ORDER_SETS = [
+  {
+    name: "Acute Febrile Illness / Dengue Protocol",
+    badge: "Fever / Infection",
+    diagnosis: "Acute Febrile Illness, Rule out Dengue / Malaria",
+    icd10: "R50.9 / A90",
+    notes: "High grade fever with retro-orbital headache and generalized myalgia. Hydration advised.",
+    advice: "Strict bed rest, oral rehydration salts (ORS) 2-3 liters/day. Avoid NSAIDs/Aspirin.",
+    meds: [
+      { drugName: "Tab. Paracetamol 650 mg", form: "Tablet", dosage: "1 Tab", frequency: "1-1-1 (TID)", duration: "5 Days", foodTiming: "After Meals", instructions: "SOS for temp > 100°F" },
+      { drugName: "Tab. Pantoprazole 40 mg", form: "Tablet", dosage: "1 Tab", frequency: "1-0-0 (Morning)", duration: "5 Days", foodTiming: "Empty Stomach", instructions: "30 mins before breakfast" },
+      { drugName: "Oral Rehydration Salts (ORS) Sachet", form: "Powder", dosage: "1 Sachet in 1L Water", frequency: "As required", duration: "5 Days", foodTiming: "Any time", instructions: "Sip throughout day" },
+    ],
+    labs: ["CBC", "URINE_RM"],
+  },
+  {
+    name: "Type 2 Diabetes & Hypertension Workup",
+    badge: "Metabolic / Chronic",
+    diagnosis: "Type 2 Diabetes Mellitus with Essential Hypertension",
+    icd10: "E11.9 / I10",
+    notes: "Follow-up review of glycemic control, target organ screening, and BP optimization.",
+    advice: "Diabetic renal diet, low sodium, avoid refined sugars, 30 min daily brisk walk.",
+    meds: [
+      { drugName: "Tab. Metformin 500 mg (SR)", form: "Tablet", dosage: "1 Tab", frequency: "1-0-1", duration: "30 Days", foodTiming: "With Meals", instructions: "Post breakfast & dinner" },
+      { drugName: "Tab. Telmisartan 40 mg", form: "Tablet", dosage: "1 Tab", frequency: "1-0-0 (Morning)", duration: "30 Days", foodTiming: "After Breakfast", instructions: "Check BP weekly" },
+    ],
+    labs: ["HBA1C", "KFT", "LIPID"],
+  },
+  {
+    name: "Dyspepsia / Acid Peptic Protocol",
+    badge: "Gastroenterology",
+    diagnosis: "Gastro-esophageal Reflux Disease (GERD) with Non-ulcer Dyspepsia",
+    icd10: "K21.9",
+    notes: "Epigastric burning, retrosternal heartburn, postprandial heaviness.",
+    advice: "Avoid spicy, fried foods and caffeine. Do not lie down within 2 hours of eating.",
+    meds: [
+      { drugName: "Cap. Rabeprazole 20mg + Domperidone 30mg (SR)", form: "Capsule", dosage: "1 Cap", frequency: "1-0-0", duration: "14 Days", foodTiming: "Empty Stomach", instructions: "Early morning with water" },
+      { drugName: "Syp. Sucralfate + Oxetacaine", form: "Suspension", dosage: "10 mL", frequency: "1-1-1", duration: "7 Days", foodTiming: "Before Meals", instructions: "Shake well before use" },
+    ],
+    labs: ["CBC"],
+  },
+];
+
 export default function PrescriptionBuilderModal({
   isOpen,
   onClose,
@@ -151,8 +194,46 @@ export default function PrescriptionBuilderModal({
 
   const [advice, setAdvice] = useState("Low sodium & diabetic renal diet. 30 mins brisk walking daily. Maintain hydration.");
   const [followUpDate, setFollowUpDate] = useState("2026-11-26 (After 4 Weeks)");
+  const [patientAllergies, setPatientAllergies] = useState<string[]>(
+    prefillPatient?.allergies || ["Penicillin", "Sulfa drugs"]
+  );
 
   if (!isOpen) return null;
+
+  const handleApplyOrderSet = (orderSet: typeof CLINICAL_ORDER_SETS[0]) => {
+    setDiagnosis(orderSet.diagnosis);
+    setIcd10(orderSet.icd10);
+    setClinicalNotes(orderSet.notes);
+    setAdvice(orderSet.advice);
+    setMedications(orderSet.meds);
+    const newLabs = COMMON_LAB_PANELS.filter((p) => orderSet.labs.includes(p.code)).map((p) => ({
+      code: p.code,
+      name: p.name,
+      dept: p.dept,
+      priority: "ROUTINE" as const,
+    }));
+    setLabOrders(newLabs);
+    showSuccess(`Applied Clinical Protocol: "${orderSet.name}"`);
+  };
+
+  const allergyWarnings = medications
+    .map((m) => {
+      const name = m.drugName.toLowerCase();
+      if (
+        patientAllergies.some((a) => a.toLowerCase().includes("penicillin")) &&
+        (name.includes("amox") || name.includes("penicil") || name.includes("augmentin") || name.includes("ampicil"))
+      ) {
+        return { med: m.drugName, allergy: "Penicillin / Beta-Lactams" };
+      }
+      if (
+        patientAllergies.some((a) => a.toLowerCase().includes("sulfa")) &&
+        (name.includes("sulfa") || name.includes("bactrim") || name.includes("septran") || name.includes("cotrim"))
+      ) {
+        return { med: m.drugName, allergy: "Sulphonamides (Sulfa)" };
+      }
+      return null;
+    })
+    .filter(Boolean) as Array<{ med: string; allergy: string }>;
 
   const handleAddMedication = () => {
     setMedications((prev) => [
@@ -285,6 +366,59 @@ export default function PrescriptionBuilderModal({
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-6 flex-1 text-xs">
           
+          {/* Clinical Protocols / Order Sets Quick Select */}
+          <div className="bg-sky-50/70 border border-sky-200/80 rounded-2xl p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-sky-950 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-sky-700" />
+                Fast Clinical Protocols (1-Click Order Sets):
+              </span>
+              <span className="text-[10px] text-sky-800 font-semibold">
+                Auto-fills Diagnosis, Meds & Diagnostic Labs
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {CLINICAL_ORDER_SETS.map((set, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleApplyOrderSet(set)}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-sky-100 text-sky-900 font-bold text-xs border border-sky-300 shadow-2xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>{set.name}</span>
+                  <span className="px-1.5 py-0.2 rounded bg-sky-100 text-sky-800 text-[9px] uppercase font-bold">
+                    {set.badge}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Clinical Decision Support: Drug-Allergy Warning Alert */}
+          {allergyWarnings.length > 0 && (
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 flex items-start gap-3 shadow-2xs">
+              <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold flex-shrink-0">
+                <AlertCircle className="w-4 h-4 text-rose-600 animate-pulse" />
+              </div>
+              <div className="flex-1">
+                <span className="font-bold text-rose-950 text-xs block">
+                  ⚠️ Clinical Decision Support (CDS) Drug-Allergy Interaction Alert
+                </span>
+                <p className="text-[11px] text-rose-800 mt-0.5">
+                  The prescribed medication list contains potential cross-reactive allergens:
+                </p>
+                <div className="mt-1 space-y-0.5">
+                  {allergyWarnings.map((w, idx) => (
+                    <div key={idx} className="font-bold text-rose-900 text-[11px]">
+                      • <strong>{w.med}</strong> is contraindicated with recorded allergy:{" "}
+                      <span className="underline">{w.allergy}</span>.
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Section 1: Patient Identity & Vitals */}
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
             <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -626,8 +760,18 @@ export default function PrescriptionBuilderModal({
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition flex items-center gap-1.5"
+                title="Print prescription pad preview"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-500" />
+                <span>Print Pad</span>
+              </button>
+
+              <button
                 type="submit"
-                className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-2 cursor-pointer"
               >
                 <FileSignature className="w-4 h-4 text-white" />
                 <span>Issue & Sign E-Prescription</span>

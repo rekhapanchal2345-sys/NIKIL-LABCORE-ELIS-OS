@@ -9,7 +9,7 @@
 ## 📊 EXECUTIVE SPRINT SUMMARY & PROGRESS TRACKER
 
 ```
-[████████████████████████████████████████████████] 80.0% COMPLETED (24 / 30 HOURS)
+[████████████████████████████████████████████████] 83.3% COMPLETED (25 / 30 HOURS)
 ```
 
 | Phase / Hour Block | Focus | Status | Deliverables Certified |
@@ -19,7 +19,7 @@
 | **Hour 15 (Day 15)** | Multi-Branch Architecture & Tenancy | ✅ **100% COMPLETE** | Branch Model, Context Injection, Blr/Mum Tenant Isolation, HQ Aggregated Analytics (39/39 Asserts) |
 | **Hour 16 (Day 16)** | Cash Shift Daybook & Automated DR | ✅ **100% COMPLETE** | Physical Denominations (₹2000-₹1), Variance Triage, AES-256 DB Backup & GFS Retention (51/51 Asserts) |
 | **Hours 17–21 (Days 17–21)** | Enterprise UI, Security & Testing | ✅ **100% COMPLETE** | Hours 17–21 Certified (Week 3 Milestone Passed: 27/27 Tests, 100% Coverage, Formal Certification) |
-| **Hours 22–28 (Days 22–28)** | Production Deploy, RBAC & Load Test | 🔄 **IN PROGRESS (3/7)** | Hours 22–24 Certified (Docker Compose, Nginx TLS 1.3, DB Migration, Super Admin, Observability, Concurrency Smoke & ASTM TCP Simulator: 50/50 Tests, 298/298 Asserts) |
+| **Hours 22–28 (Days 22–28)** | Production Deploy, RBAC & Load Test | 🔄 **IN PROGRESS (4/7)** | Hours 22–25 Certified (Docker Compose, Nginx TLS 1.3, DB Migration, Super Admin, Observability, Concurrency Smoke, ASTM Simulator & Enterprise RBAC 7-Roles Matrix: 83/83 Tests, 533/533 Asserts) |
 | **Hours 29–30 (Days 29–30)** | Final Quality Audit & Go-Live | ⏳ **QUEUED** | Zero-Defect Bug Bash, 12/12 Automated Production Checklist, Hospital Operational Sign-Off |
 
 ---
@@ -281,13 +281,16 @@
   - ASTM E1381 / E1394 TCP analyzer simulator: loopback socket with ENQ-ACK handshake, multi-frame transmission (H, P, O, R, L) and automated clinical results package emission.
 - **Verification Script:** `backend/test-day24-production-smoke.ts` — **Certified 100% (10/10 Tests, 74/74 Assertions Passed, 0 Failures)**.
 
-#### 🔷 HOUR 25 (Day 25) — Enterprise RBAC Matrix & Granular Permission Guards
-- **Objective:** Strict 7-tier role-based access control protecting clinical and financial domains.
+#### 🔷 HOUR 25 (Day 25) — Enterprise RBAC Matrix & Granular Permission Guards ✅
+- **Objective:** Strict 7-tier role-based access control protecting clinical and financial domains, preventing privilege escalation.
 - **Architectural Deliverables:**
-  - 7 Roles configured: `SUPER_ADMIN`, `ADMIN`, `PATHOLOGIST`, `LAB_TECH`, `PHLEBOTOMIST`, `RECEPTIONIST`, `ACCOUNTANT`.
-  - Dynamic navigation sidebar reflecting role permissions.
-  - Backend route middleware blocking unauthorized action attempts with HTTP 403.
-- **Verification Script:** `test-day25-rbac-permissions.ts`.
+  - 7 Canonical Hospital Roles & Role Normalization (`SUPER_ADMIN`, `ADMIN`, `PATHOLOGIST`, `LAB_TECH`, `PHLEBOTOMIST`, `RECEPTIONIST`, `ACCOUNTANT`) with alias mappings (`FRONT_DESK` <-> `RECEPTIONIST`).
+  - Granular Module-Action Matrix across 17 clinical and financial domains (`patients`, `orders`, `samples`, `results`, `approvals`, `reports`, `analyzers`, `qc`, `ai`, `invoices`, `payments`, `cash-counter`, `advances`, `refunds`, `settlements`, `doctors`, `settings`).
+  - Strict Express RBAC authorization middleware (`requireRole`, `requirePermission`, `requireModuleAction`, `requireMinimumHierarchy`).
+  - Dynamic user-level permission overrides (`GRANT`, `DENY`, and automatic expiration).
+  - Production database seeding (`seedRbacUsers`) with Bcrypt 12 + HMAC-SHA256 peppered passwords and JWT access token issuance across all 7 operational roles.
+  - Dynamic frontend sidebar role filtering (`isAllowedForRole`) and RouteGuard redirect to `/unauthorized` with role badges.
+- **Verification Script:** `backend/test-day25-rbac-permissions.ts` — **Certified 100% (7/7 Suites, 33/33 Tests, 235/235 Assertions Passed, 0 Failures)**.
 
 #### 🔷 HOUR 26 (Day 26) — Hospital Role User Manuals & Interactive OpenAPI/Swagger
 - **Objective:** Comprehensive documentation suite for all hospital operational personnel and developers.

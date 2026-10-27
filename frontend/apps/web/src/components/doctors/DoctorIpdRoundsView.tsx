@@ -154,25 +154,39 @@ export default function DoctorIpdRoundsView({
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
 
   const [activeModalPatient, setActiveModalPatient] = useState<IpdPatient | null>(null);
-  const [roundNoteText, setRoundNoteText] = useState("");
+  const [soapSubjective, setSoapSubjective] = useState("");
+  const [soapObjective, setSoapObjective] = useState("");
+  const [soapAssessment, setSoapAssessment] = useState("");
+  const [soapPlan, setSoapPlan] = useState("");
+  const [isDischargeApproved, setIsDischargeApproved] = useState(false);
 
   const wardsList = Array.from(new Set(patients.map((p) => p.wardName)));
 
   const handleMarkRoundDone = (p: IpdPatient) => {
     setActiveModalPatient(p);
-    setRoundNoteText(p.clinicalNote || "");
+    setSoapSubjective("Patient reports feeling better, pain well controlled, afebrile overnight.");
+    setSoapObjective(`Vitals: BP ${p.latestVitals.bloodPressure}, Pulse ${p.latestVitals.pulseRate} bpm, SpO2 ${p.latestVitals.spO2}%, Temp ${p.latestVitals.temperature}. Systemic exam unremarkable.`);
+    setSoapAssessment(p.roundStatus === "CRITICAL_REVIEW" ? "Under intensive hemodynamic stabilization, pending repeat labs" : "Satisfactory clinical recovery, hemodynamically stable");
+    setSoapPlan(p.clinicalNote || "Continue IV hydration and monitor urine output. Step down to oral meds tomorrow.");
+    setIsDischargeApproved(p.dischargePlanned);
   };
 
   const handleSaveRoundNote = () => {
     if (!activeModalPatient) return;
+    const combinedSoap = `[S]: ${soapSubjective} | [O]: ${soapObjective} | [A]: ${soapAssessment} | [P]: ${soapPlan}`;
     setPatients((prev) =>
       prev.map((p) =>
         p.id === activeModalPatient.id
-          ? { ...p, roundStatus: "COMPLETED", clinicalNote: roundNoteText }
+          ? {
+              ...p,
+              roundStatus: "COMPLETED",
+              dischargePlanned: isDischargeApproved,
+              clinicalNote: combinedSoap,
+            }
           : p
       )
     );
-    showSuccess(`Daily round note recorded for Bed ${activeModalPatient.bedNumber}.`);
+    showSuccess(`Daily SOAP round note and treatment directive recorded for Bed ${activeModalPatient.bedNumber}.`);
     setActiveModalPatient(null);
   };
 
@@ -432,63 +446,131 @@ export default function DoctorIpdRoundsView({
         </div>
       </div>
 
-      {/* ── Daily Round Progress Note Modal ── */}
+      {/* ── Structured Daily SOAP Round Progress Note Modal ── */}
       {activeModalPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-xl w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-                  <Stethoscope className="w-4 h-4" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center font-bold">
+                  <Stethoscope className="w-5 h-5 text-sky-600" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">
-                    Daily Inpatient Progress Note
+                    Inpatient Bed Round & SOAP Progress Note
                   </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Bed: {activeModalPatient.bedNumber} • {activeModalPatient.patientName} ({activeModalPatient.uhid})
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Bed: <strong className="text-slate-800">{activeModalPatient.bedNumber}</strong> ({activeModalPatient.wardName}) • {activeModalPatient.patientName} ({activeModalPatient.uhid})
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveModalPatient(null)}
-                className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+                className="text-slate-400 hover:text-slate-600 p-1"
               >
                 ✕
               </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Clinical Observation & Treatment Directive (SOAP):
+            <div className="space-y-3 text-xs max-h-[65vh] overflow-y-auto pr-1">
+              {/* S: Subjective */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded bg-sky-100 text-sky-800 flex items-center justify-center text-[10px] font-black">S</span>
+                  Subjective (Patient's Symptoms & Night Events)
+                </label>
+                <input
+                  type="text"
+                  value={soapSubjective}
+                  onChange={(e) => setSoapSubjective(e.target.value)}
+                  placeholder="e.g. Patient feels better, no fever, pain score 2/10"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
+                />
+              </div>
+
+              {/* O: Objective */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded bg-teal-100 text-teal-800 flex items-center justify-center text-[10px] font-black">O</span>
+                  Objective (Vitals, Physical Exam & Fluid Balance)
+                </label>
+                <input
+                  type="text"
+                  value={soapObjective}
+                  onChange={(e) => setSoapObjective(e.target.value)}
+                  placeholder="e.g. BP 120/78, Chest clear, surgical dressing clean"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
+                />
+              </div>
+
+              {/* A: Assessment */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded bg-amber-100 text-amber-800 flex items-center justify-center text-[10px] font-black">A</span>
+                  Assessment (Clinical Impression & Trajectory)
+                </label>
+                <input
+                  type="text"
+                  value={soapAssessment}
+                  onChange={(e) => setSoapAssessment(e.target.value)}
+                  placeholder="e.g. Recovering well, sepsis resolved, hemodynamically stable"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium focus:border-sky-600 focus:outline-none"
+                />
+              </div>
+
+              {/* P: Plan */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded bg-indigo-100 text-indigo-800 flex items-center justify-center text-[10px] font-black">P</span>
+                  Plan (Medications, IV fluids, Lab Orders & Discharge Directive)
+                </label>
+                <textarea
+                  rows={2}
+                  value={soapPlan}
+                  onChange={(e) => setSoapPlan(e.target.value)}
+                  placeholder="e.g. Switch IV to Tab Amoxiclav, remove cannula, monitor temp SOS"
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-medium focus:border-sky-600 focus:outline-none"
+                />
+              </div>
+
+              {/* Discharge Clearance Checkbox */}
+              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isDischargeApproved}
+                  onChange={(e) => setIsDischargeApproved(e.target.checked)}
+                  className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-900 block">
+                    Authorize Medical Discharge Clearance
+                  </span>
+                  <span className="text-slate-500 text-[11px]">
+                    Patient is clinically stable and ready for summary generation and billing discharge
+                  </span>
+                </div>
               </label>
-              <textarea
-                rows={4}
-                value={roundNoteText}
-                onChange={(e) => setRoundNoteText(e.target.value)}
-                placeholder="Enter subjective status, objective findings, hemodynamic stability, and treatment revisions..."
-                className="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium focus:border-sky-600 focus:outline-none"
-              />
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
               <span className="text-[11px] text-slate-500 font-medium">
-                Saves timestamped medical note under physician credentials
+                Timestamped under physician login
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setActiveModalPatient(null)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveRoundNote}
-                  className="px-4 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition shadow-xs"
+                  className="px-4 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
                 >
-                  Save Round Note
+                  Save SOAP Note
                 </button>
               </div>
             </div>

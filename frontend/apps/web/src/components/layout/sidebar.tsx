@@ -200,6 +200,7 @@ const menuSections: MenuSection[] = [
         name: "nexus",
         href: "/nexus",
         icon: Sparkles,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST"],
         accent: ACCENTS.indigo,
         children: [
           { label: "Nexus Command Center", href: "/nexus", badge: "Live", badgeVariant: "emerald" },
@@ -218,6 +219,7 @@ const menuSections: MenuSection[] = [
         name: "lndt-x",
         href: "/lndt-x",
         icon: Activity,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST"],
         accent: ACCENTS.rose,
         children: [
           { label: "12-Stage Pipeline State", href: "/lndt-x?tab=OVERVIEW", badge: "Live", badgeVariant: "emerald" },
@@ -271,6 +273,7 @@ const menuSections: MenuSection[] = [
         name: "doctors",
         href: "/doctors",
         icon: Stethoscope,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST", "RECEPTIONIST", "FRONT_DESK", "ACCOUNTANT"],
         accent: ACCENTS.teal,
         children: [
           { label: "Doctor & Specialist Directory", href: "/doctors", badge: "Roster", badgeVariant: "blue" },
@@ -290,18 +293,25 @@ const menuSections: MenuSection[] = [
       },
       {
         id: "abdm",
-        label: "ABDM / ABHA",
+        label: "ABDM / ADM Digital Health",
         name: "abdm",
         href: "/abdm",
         icon: ShieldCheck,
         accent: ACCENTS.emerald,
         children: [
-          { label: "Overview & Milestones", href: "/abdm" },
-          { label: "Create New ABHA", href: "/abdm?action=create" },
-          { label: "Scan & Share Desk", href: "/abdm#scan-share" },
-          { label: "ABHA Lookup & Verify", href: "/abdm#verify" },
-          { label: "FHIR R4 Inspector", href: "/abdm#fhir" },
-          { label: "Gateway Webhook Simulator", href: "/abdm#simulator" },
+          { label: "Executive Gateway Hub", href: "/abdm?tab=overview", badge: "Live Hub", badgeVariant: "emerald" },
+          { isDivider: true, dividerLabel: "FRONT DESK & ENROLLMENT", label: "", href: "#" },
+          { label: "Scan & Share Token Desk", href: "/abdm?tab=scan-share", badge: "FastTrack", badgeVariant: "emerald" },
+          { label: "ABHA Enrollment & KYC (M1)", href: "/abdm?tab=abha-m1&mode=enroll", badge: "Aadhaar", badgeVariant: "purple" },
+          { label: "ABHA Verification & Demographics", href: "/abdm?tab=abha-m1&mode=verify", badge: "KYC", badgeVariant: "blue" },
+          { isDivider: true, dividerLabel: "CARE CONTEXTS & DATA SHARING", label: "", href: "#" },
+          { label: "Care Context Linker (M2)", href: "/abdm?tab=care-context-m2", badge: "OPD/IPD/Lab", badgeVariant: "teal" },
+          { label: "Patient Consents & HIU (M3)", href: "/abdm?tab=consents-hiu", badge: "HIU", badgeVariant: "amber" },
+          { label: "FHIR R4 Diagnostic Bundle (M3)", href: "/abdm?tab=fhir-m3", badge: "LOINC", badgeVariant: "blue" },
+          { isDivider: true, dividerLabel: "AUDIT, BULK & COMPLIANCE", label: "", href: "#" },
+          { label: "Mega-Camp & Batch Verifier", href: "/abdm?tab=bulk-verify", badge: "Bulk", badgeVariant: "purple" },
+          { label: "Report Stamping & ABDM Seal", href: "/abdm?tab=report-stamp", badge: "NABL", badgeVariant: "teal" },
+          { label: "NHA Gateway & Webhook Audit", href: "/abdm?tab=simulator", badge: "v0.5 HIG", badgeVariant: "amber" },
         ],
       },
     ],
@@ -352,6 +362,7 @@ const menuSections: MenuSection[] = [
         href: "/invoices",
         icon: FileText,
         badgeKey: "invoices",
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "FRONT_DESK", "RECEPTIONIST", "ACCOUNTANT"],
         accent: ACCENTS.sapphire,
         children: [
           { label: "All Invoices (Register)", href: "/invoices" },
@@ -369,6 +380,7 @@ const menuSections: MenuSection[] = [
         name: "payments",
         href: "/payments",
         icon: DollarSign,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "FRONT_DESK", "RECEPTIONIST", "ACCOUNTANT"],
         accent: ACCENTS.emerald,
         children: [
           { label: "Cashier Command Desk", href: "/payments" },
@@ -415,6 +427,7 @@ const menuSections: MenuSection[] = [
         name: "analyzers",
         href: "/analyzers",
         icon: Cpu,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "LAB_TECH", "PATHOLOGIST"],
         accent: ACCENTS.teal,
         children: [
           { label: "Fleet Dashboard", href: "/analyzers", badge: "Live", badgeVariant: "emerald" },
@@ -500,6 +513,7 @@ const menuSections: MenuSection[] = [
         href: "/approvals",
         icon: FileCheck,
         badgeKey: "approvals",
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST"],
         accent: ACCENTS.rose,
         children: [
           { label: "Approval Queue (Ready)", href: "/approvals", badge: "Sign", badgeVariant: "red" },
@@ -545,6 +559,7 @@ const menuSections: MenuSection[] = [
         name: "inventory",
         href: "/inventory",
         icon: Boxes,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "LAB_TECH"],
         accent: ACCENTS.sapphire,
         children: [
           { label: "Reagent Register", href: "/inventory", badge: "Live", badgeVariant: "blue" },
@@ -592,6 +607,7 @@ const menuSections: MenuSection[] = [
         name: "ai-studio",
         href: "/ai-studio",
         icon: Brain,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST"],
         accent: ACCENTS.teal,
         children: [
           { isDivider: true, dividerLabel: "DIAGNOSTIC & RISK ENGINES", label: "", href: "#" },
@@ -927,6 +943,10 @@ export default function Sidebar({
 
     if (hrefQuery) {
       const targetParams = new URLSearchParams(hrefQuery);
+      const tabParam = targetParams.get("tab");
+      if (hrefPath === "/doctors" && tabParam && pathname === `/doctors/${tabParam}`) {
+        return true;
+      }
       return pathname === hrefPath && Array.from(targetParams.entries()).every(([k, v]) => searchParams.get(k) === v);
     }
 
@@ -950,6 +970,11 @@ export default function Sidebar({
     if (hrefPath === "/doctors" && !hrefQuery) {
       const tab = searchParams.get("tab");
       return pathname === "/doctors" && (!tab || tab === "directory");
+    }
+
+    if (hrefPath === "/abdm" && !hrefQuery) {
+      const tab = searchParams.get("tab");
+      return pathname === "/abdm" && (!tab || tab === "overview");
     }
 
     // /settings owns its tabs through ?tab=, and /settings/communications is a
@@ -985,7 +1010,12 @@ export default function Sidebar({
       // No restriction declared, or the session has not resolved a role yet.
       if (!allowedRoles || allowedRoles.length === 0) return true;
       if (!currentRole) return false;
-      return allowedRoles.includes(currentRole);
+      if (currentRole === "SUPER_ADMIN") return true;
+      const normCurrent = currentRole === "RECEPTIONIST" ? "FRONT_DESK" : currentRole;
+      return allowedRoles.some((r) => {
+        const normR = r.toUpperCase() === "RECEPTIONIST" ? "FRONT_DESK" : r.toUpperCase();
+        return normR === normCurrent;
+      });
     },
     [currentRole]
   );

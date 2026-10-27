@@ -1,9 +1,22 @@
 "use client";
 
-import React, {
-  FormEvent,
-  useState,
-} from "react";
+import React, { FormEvent, useState } from "react";
+import {
+  User,
+  Award,
+  Phone,
+  Mail,
+  Building2,
+  Bell,
+  CreditCard,
+  FileSignature,
+  ShieldCheck,
+  Check,
+  X,
+  Upload,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 
 export interface DoctorFormData {
   firstName: string;
@@ -15,7 +28,6 @@ export interface DoctorFormData {
   phone: string;
   email: string;
   signatureUrl?: string;
-  // New LIMS-specific fields
   doctorType?: "REFERRING_DOCTOR" | "INTERNAL_PATHOLOGIST" | "CONSULTANT_PATHOLOGIST";
   clinicName?: string;
   clinicAddress?: string;
@@ -35,9 +47,7 @@ interface DoctorFormProps {
   initialData?: Partial<DoctorFormData>;
   loading?: boolean;
   submitLabel?: string;
-  onSubmit: (
-    data: DoctorFormData
-  ) => Promise<void> | void;
+  onSubmit: (data: DoctorFormData) => Promise<void> | void;
   onCancel?: () => void;
 }
 
@@ -51,7 +61,6 @@ const defaultForm: DoctorFormData = {
   phone: "",
   email: "",
   signatureUrl: "",
-  // New LIMS-specific fields
   doctorType: "REFERRING_DOCTOR",
   clinicName: "",
   clinicAddress: "",
@@ -70,18 +79,16 @@ const defaultForm: DoctorFormData = {
 export default function DoctorForm({
   initialData,
   loading = false,
-  submitLabel = "Save Doctor",
+  submitLabel = "Save Doctor Credentials",
   onSubmit,
   onCancel,
 }: DoctorFormProps) {
-  const [form, setForm] =
-    useState<DoctorFormData>({
-      ...defaultForm,
-      ...initialData,
-    });
+  const [form, setForm] = useState<DoctorFormData>({
+    ...defaultForm,
+    ...initialData,
+  });
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function updateField(
     field: keyof DoctorFormData,
@@ -93,9 +100,7 @@ export default function DoctorForm({
     }));
   }
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
@@ -115,127 +120,100 @@ export default function DoctorForm({
     }
 
     if (!form.qualification.trim()) {
-      setError("Qualification is required.");
+      setError("Medical qualification (e.g. MBBS, MD) is required.");
       return;
     }
 
     if (!form.registrationNumber.trim()) {
-      setError("Registration number is required.");
+      setError("Medical Council Registration Number (NMC / State) is required.");
       return;
     }
 
-    // Clean registration number by removing spaces and special characters
-    const cleanedRegistrationNumber = form.registrationNumber.replace(/\s/g, '').replace(/[^\w]/g, '');
+    const cleanedRegistrationNumber = form.registrationNumber.replace(/\s/g, "").replace(/[^\w-]/g, "");
 
     if (!form.phone || !form.phone.trim()) {
-      setError("Phone number is required.");
+      setError("Contact phone number is required.");
       return;
     }
 
     try {
-      // Clean phone numbers by removing spaces
-      const cleanedPhone = form.phone.replace(/\s/g, '');
+      const cleanedPhone = form.phone.replace(/\s/g, "");
       if (cleanedPhone.length < 10) {
-        setError("Phone number must be at least 10 digits.");
+        setError("Phone number must contain at least 10 digits.");
         return;
       }
 
       const cleanedForm = {
         ...form,
         phone: cleanedPhone,
-        whatsappNumber: form.whatsappNumber?.replace(/\s/g, '') || '',
+        whatsappNumber: form.whatsappNumber?.replace(/\s/g, "") || "",
         registrationNumber: cleanedRegistrationNumber,
-        email: form.email?.trim() || '', // Ensure email is empty string if not provided
+        email: form.email?.trim() || "",
       };
       await onSubmit(cleanedForm);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to save doctor."
-      );
+      setError(err instanceof Error ? err.message : "Unable to save doctor profile.");
     }
   }
 
   const inputClass =
-    "w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-100 shadow-sm hover:border-gray-300";
+    "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-sky-600 focus:outline-none transition-all disabled:bg-slate-50";
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-8"
-    >
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="rounded-2xl bg-gradient-to-r from-red-50 to-red-100 border border-red-200 px-6 py-4 text-sm text-red-700 shadow-lg">
-          <div className="flex items-center gap-3">
-            <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {error}
-          </div>
+        <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs font-semibold text-rose-800 flex items-center gap-2.5 shadow-2xs">
+          <AlertCircle className="h-4 w-4 text-rose-600 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Personal Information */}
-      <section className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-5">
+      {/* ── Section 1: Doctor Demographics & Identity ── */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+              <User className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Personal Information</h2>
-              <p className="text-sm text-gray-500">Basic details about the doctor</p>
+              <h2 className="text-sm font-bold text-slate-900">Doctor Demographics & Identity</h2>
+              <p className="text-[11px] text-slate-500 font-medium">Full clinical name and doctor designation</p>
             </div>
           </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+            Mandatory
+          </span>
         </div>
 
-        <div className="grid gap-6 p-6 md:grid-cols-3">
+        <div className="grid gap-4 p-5 md:grid-cols-3">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              First Name *
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">First Name *</label>
             <input
               value={form.firstName}
-              onChange={(e) =>
-                updateField("firstName", e.target.value)
-              }
-              placeholder="First name"
+              onChange={(e) => updateField("firstName", e.target.value)}
+              placeholder="e.g. Rajesh"
               disabled={loading}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Middle Name
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Middle Name</label>
             <input
               value={form.middleName}
-              onChange={(e) =>
-                updateField("middleName", e.target.value)
-              }
-              placeholder="Middle name"
+              onChange={(e) => updateField("middleName", e.target.value)}
+              placeholder="e.g. Kumar"
               disabled={loading}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Last Name *
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Last Name *</label>
             <input
               value={form.lastName}
-              onChange={(e) =>
-                updateField("lastName", e.target.value)
-              }
-              placeholder="Last name"
+              onChange={(e) => updateField("lastName", e.target.value)}
+              placeholder="e.g. Sharma"
               disabled={loading}
               className={inputClass}
             />
@@ -243,97 +221,67 @@ export default function DoctorForm({
         </div>
       </section>
 
-      {/* Professional Information */}
-      <section className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-5">
+      {/* ── Section 2: Clinical Credentials & Specialization ── */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
+              <Award className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Professional Information</h2>
-              <p className="text-sm text-gray-500">Medical credentials and specialization</p>
+              <h2 className="text-sm font-bold text-slate-900">Medical Licensing & Clinical Specialization</h2>
+              <p className="text-[11px] text-slate-500 font-medium">NMC registration, medical degrees, and institutional role</p>
             </div>
           </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1">
+            <ShieldCheck className="w-3 h-3 text-teal-600" />
+            NMC Verified
+          </span>
         </div>
 
-        <div className="grid gap-6 p-6 md:grid-cols-2">
+        <div className="grid gap-4 p-5 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Doctor Type *
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Doctor Practice Type *</label>
             <select
               value={form.doctorType}
-              onChange={(e) =>
-                updateField(
-                  "doctorType",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("doctorType", e.target.value)}
               disabled={loading}
               className={inputClass}
             >
-              <option value="REFERRING_DOCTOR">Referring Doctor</option>
-              <option value="INTERNAL_PATHOLOGIST">Internal Pathologist</option>
-              <option value="CONSULTANT_PATHOLOGIST">Consultant Pathologist</option>
+              <option value="REFERRING_DOCTOR">External Referring Clinician / B2B Partner</option>
+              <option value="INTERNAL_PATHOLOGIST">In-House Authorized Signatory Pathologist</option>
+              <option value="CONSULTANT_PATHOLOGIST">Visiting Consultant Pathologist / Specialist</option>
             </select>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Specialization *
-            </label>
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Medical Council Reg. Number *</label>
+            <input
+              value={form.registrationNumber}
+              onChange={(e) => updateField("registrationNumber", e.target.value)}
+              placeholder="e.g. MCI/NMC-2012-78941"
+              disabled={loading}
+              className={`${inputClass} font-mono`}
+            />
+          </div>
 
+          <div>
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Clinical Specialization *</label>
             <input
               value={form.specialization}
-              onChange={(e) =>
-                updateField(
-                  "specialization",
-                  e.target.value
-                )
-              }
-              placeholder="e.g. Pathology"
+              onChange={(e) => updateField("specialization", e.target.value)}
+              placeholder="e.g. Consultant Cardiologist & Physician"
               disabled={loading}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Qualification *
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Degrees & Qualifications *</label>
             <input
               value={form.qualification}
-              onChange={(e) =>
-                updateField(
-                  "qualification",
-                  e.target.value
-                )
-              }
-              placeholder="e.g. MBBS, MD"
-              disabled={loading}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Registration Number *
-            </label>
-
-            <input
-              value={form.registrationNumber}
-              onChange={(e) =>
-                updateField(
-                  "registrationNumber",
-                  e.target.value
-                )
-              }
-              placeholder="Medical registration number"
+              onChange={(e) => updateField("qualification", e.target.value)}
+              placeholder="e.g. MBBS, MD (Med), DM (Cardiology), FACC"
               disabled={loading}
               className={inputClass}
             />
@@ -341,69 +289,52 @@ export default function DoctorForm({
         </div>
       </section>
 
-      {/* Contact Information */}
-      <section className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-5">
+      {/* ── Section 3: Contact & Report Dispatch Communication ── */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+              <Phone className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Contact Information</h2>
-              <p className="text-sm text-gray-500">Phone, email and communication details</p>
+              <h2 className="text-sm font-bold text-slate-900">Communication & Alert Dispatch Channels</h2>
+              <p className="text-[11px] text-slate-500 font-medium">Emergency panic alerts, patient reports, and clinical updates</p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 p-6 md:grid-cols-2">
+        <div className="grid gap-4 p-5 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Phone *
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Direct Contact Phone *</label>
             <input
               type="tel"
               value={form.phone}
-              onChange={(e) =>
-                updateField("phone", e.target.value)
-              }
-              placeholder="Phone number"
+              onChange={(e) => updateField("phone", e.target.value)}
+              placeholder="+91 98200 XXXXX"
               disabled={loading}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Email
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Official Clinical Email</label>
             <input
               type="email"
               value={form.email}
-              onChange={(e) =>
-                updateField("email", e.target.value)
-              }
-              placeholder="doctor@example.com (for automated report dispatch)"
+              onChange={(e) => updateField("email", e.target.value)}
+              placeholder="doctor@hospital.org"
               disabled={loading}
               className={inputClass}
             />
           </div>
 
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              WhatsApp Number (Optional)
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">WhatsApp Notification Number</label>
             <input
               type="tel"
               value={form.whatsappNumber}
-              onChange={(e) =>
-                updateField("whatsappNumber", e.target.value)
-              }
-              placeholder="WhatsApp number for PDF report notifications"
+              onChange={(e) => updateField("whatsappNumber", e.target.value)}
+              placeholder="+91 98200 XXXXX (for automated critical lab result & PDF delivery)"
               disabled={loading}
               className={inputClass}
             />
@@ -411,50 +342,38 @@ export default function DoctorForm({
         </div>
       </section>
 
-      {/* Affiliation & Clinic Details */}
-      <section className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-5">
+      {/* ── Section 4: Affiliation & Clinic Information ── */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1h4m4 4h2m-2 0h-5" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+              <Building2 className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Affiliation & Clinic Details</h2>
-              <p className="text-sm text-gray-500">Clinic or hospital information</p>
+              <h2 className="text-sm font-bold text-slate-900">Clinic / Hospital Affiliation</h2>
+              <p className="text-[11px] text-slate-500 font-medium">Chamber location, polyclinic name, and sample collection address</p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 p-6 md:grid-cols-2">
+        <div className="grid gap-4 p-5 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Clinic / Hospital Name
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Clinic / Hospital / Center Name</label>
             <input
               value={form.clinicName}
-              onChange={(e) =>
-                updateField("clinicName", e.target.value)
-              }
-              placeholder="Clinic or hospital name"
+              onChange={(e) => updateField("clinicName", e.target.value)}
+              placeholder="e.g. Apex Heart & Multispecialty Clinic"
               disabled={loading}
               className={inputClass}
             />
           </div>
 
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Clinic / Hospital Address
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Chamber Physical Address</label>
             <input
               value={form.clinicAddress}
-              onChange={(e) =>
-                updateField("clinicAddress", e.target.value)
-              }
-              placeholder="Address for report delivery"
+              onChange={(e) => updateField("clinicAddress", e.target.value)}
+              placeholder="e.g. Suite 204, MedCity Complex, Sector 12"
               disabled={loading}
               className={inputClass}
             />
@@ -462,207 +381,148 @@ export default function DoctorForm({
         </div>
       </section>
 
-      {/* Communication & Digital Preferences */}
-      <section className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-5">
+      {/* ── Section 5: Report Delivery & Digital Preferences ── */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+              <Bell className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Communication & Digital Preferences</h2>
-              <p className="text-sm text-gray-500">Report delivery and portal access settings</p>
+              <h2 className="text-sm font-bold text-slate-900">Diagnostic Delivery & Portal Permissions</h2>
+              <p className="text-[11px] text-slate-500 font-medium">Automatic multi-channel report dispatch preferences</p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 p-6 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className="mb-3 block text-sm font-semibold text-gray-700">
-              Report Delivery Mode
-            </label>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 hover:border-indigo-300 hover:bg-indigo-50 transition-all cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.reportDeliveryEmail}
-                  onChange={(e) =>
-                    updateField("reportDeliveryEmail", e.target.checked)
-                  }
-                  disabled={loading}
-                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">Email</span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 hover:border-green-300 hover:bg-green-50 transition-all cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.reportDeliveryWhatsApp}
-                  onChange={(e) =>
-                    updateField("reportDeliveryWhatsApp", e.target.checked)
-                  }
-                  disabled={loading}
-                  className="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                />
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">WhatsApp</span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 hover:border-amber-300 hover:bg-amber-50 transition-all cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.reportDeliveryHardCopy}
-                  onChange={(e) =>
-                    updateField("reportDeliveryHardCopy", e.target.checked)
-                  }
-                  disabled={loading}
-                  className="h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-                />
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">Hard Copy</span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 hover:border-purple-300 hover:bg-purple-50 transition-all cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.reportDeliveryPortal}
-                  onChange={(e) =>
-                    updateField("reportDeliveryPortal", e.target.checked)
-                  }
-                  disabled={loading}
-                  className="h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                />
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">Portal</span>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 cursor-pointer">
+        <div className="p-5 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition cursor-pointer">
               <input
                 type="checkbox"
-                checked={form.enablePortalAccess}
-                onChange={(e) =>
-                  updateField("enablePortalAccess", e.target.checked)
-                }
+                checked={form.reportDeliveryEmail}
+                onChange={(e) => updateField("reportDeliveryEmail", e.target.checked)}
                 disabled={loading}
-                className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
               />
-              <div className="flex items-center gap-2">
-                <svg className="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm font-semibold text-gray-900">
-                  Enable Doctor Portal Access (Auto-generate credentials)
-                </span>
-              </div>
+              <span className="text-xs font-semibold text-slate-700">Email Dispatch</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.reportDeliveryWhatsApp}
+                onChange={(e) => updateField("reportDeliveryWhatsApp", e.target.checked)}
+                disabled={loading}
+                className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              <span className="text-xs font-semibold text-slate-700">WhatsApp Alert</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.reportDeliveryHardCopy}
+                onChange={(e) => updateField("reportDeliveryHardCopy", e.target.checked)}
+                disabled={loading}
+                className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+              />
+              <span className="text-xs font-semibold text-slate-700">Hard Copy Print</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.reportDeliveryPortal}
+                onChange={(e) => updateField("reportDeliveryPortal", e.target.checked)}
+                disabled={loading}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-xs font-semibold text-slate-700">Doctor EMR Portal</span>
             </label>
           </div>
+
+          <label className="flex items-center gap-3 rounded-xl border border-sky-200 bg-sky-50/60 p-3.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.enablePortalAccess}
+              onChange={(e) => updateField("enablePortalAccess", e.target.checked)}
+              disabled={loading}
+              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">
+                Provision Electronic Doctor Portal Account
+              </span>
+              <span className="text-[11px] text-slate-600 font-medium">
+                Allows practitioner to log in, review longitudinal patient trends, and order computerized tests directly.
+              </span>
+            </div>
+          </label>
         </div>
       </section>
 
-      {/* Financial / Referral Setup */}
-      <section className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-5">
+      {/* ── Section 6: Financial Settlement & B2B Accounting (TDS 194J) ── */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <CreditCard className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Financial / Referral Setup</h2>
-              <p className="text-sm text-gray-500">Commission and bank account details</p>
+              <h2 className="text-sm font-bold text-slate-900">B2B Financial Terms & Payout Bank Ledger</h2>
+              <p className="text-[11px] text-slate-500 font-medium">Contracted incentive percentages, NEFT bank routing, and TDS 194J compliance</p>
             </div>
           </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono">
+            TDS 194J (10%)
+          </span>
         </div>
 
-        <div className="grid gap-6 p-6 md:grid-cols-2">
+        <div className="grid gap-4 p-5 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Referral Commission / Incentive (%)
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Contracted Referral Incentive (%)</label>
             <input
               type="number"
               min="0"
               max="100"
-              step="0.01"
+              step="0.1"
               value={form.commissionRate}
-              onChange={(e) =>
-                updateField("commissionRate", parseFloat(e.target.value) || 0)
-              }
-              placeholder="0"
+              onChange={(e) => updateField("commissionRate", parseFloat(e.target.value) || 0)}
+              placeholder="e.g. 15.0"
               disabled={loading}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Bank Account Number
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Bank Account Number</label>
             <input
               value={form.bankAccountNumber}
-              onChange={(e) =>
-                updateField("bankAccountNumber", e.target.value)
-              }
-              placeholder="Bank account number"
+              onChange={(e) => updateField("bankAccountNumber", e.target.value)}
+              placeholder="e.g. 50100412891230"
               disabled={loading}
-              className={inputClass}
+              className={`${inputClass} font-mono`}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              IFSC Code
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Bank IFSC Code</label>
             <input
               value={form.bankIfscCode}
-              onChange={(e) =>
-                updateField("bankIfscCode", e.target.value)
-              }
-              placeholder="Bank IFSC code"
+              onChange={(e) => updateField("bankIfscCode", e.target.value)}
+              placeholder="e.g. HDFC0001024"
               disabled={loading}
-              className={inputClass}
+              className={`${inputClass} font-mono uppercase`}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Account Holder Name
-            </label>
-
+            <label className="mb-1 block text-[11px] font-bold text-slate-700">Account Beneficiary Name</label>
             <input
               value={form.bankAccountHolderName}
-              onChange={(e) =>
-                updateField("bankAccountHolderName", e.target.value)
-              }
-              placeholder="Account holder name"
+              onChange={(e) => updateField("bankAccountHolderName", e.target.value)}
+              placeholder="As per bank passbook"
               disabled={loading}
               className={inputClass}
             />
@@ -670,96 +530,86 @@ export default function DoctorForm({
         </div>
       </section>
 
-      {/* Digital Signature */}
-      <section className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 bg-gradient-to-r from-pink-50 to-rose-50 px-6 py-5">
+      {/* ── Section 7: Cryptographic Digital Signature & Institutional Seal ── */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-lg">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+              <FileSignature className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Digital Signature</h2>
-              <p className="text-sm text-gray-500">Upload signature for report approval</p>
+              <h2 className="text-sm font-bold text-slate-900">Digital Signature & Report Authorization Seal</h2>
+              <p className="text-[11px] text-slate-500 font-medium">Applied to verified diagnostic reports and digital prescriptions</p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 p-6">
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Doctor Signature (for report approval/printing)
-            </label>
-            <div className="relative">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      updateField("signatureUrl", reader.result as string);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                disabled={loading}
-                className="hidden"
-                id="signature-upload"
-              />
-              {form.signatureUrl ? (
-                <div className="relative">
-                  <img 
-                    src={form.signatureUrl} 
-                    alt="Signature" 
-                    className="h-32 border border-gray-300 rounded-xl object-contain bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => updateField("signatureUrl", "")}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                    disabled={loading}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <label
-                  htmlFor="signature-upload"
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+        <div className="p-5">
+          <label className="mb-2 block text-[11px] font-bold text-slate-700">
+            Official Specimen Signature (Transparent PNG or JPG)
+          </label>
+          <div className="relative">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    updateField("signatureUrl", reader.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              disabled={loading}
+              className="hidden"
+              id="signature-upload"
+            />
+            {form.signatureUrl ? (
+              <div className="relative inline-block border border-slate-200 rounded-xl p-3 bg-slate-50">
+                <img
+                  src={form.signatureUrl}
+                  alt="Doctor Signature"
+                  className="h-24 max-w-xs object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateField("signatureUrl", "")}
+                  className="absolute -top-2 -right-2 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 transition"
+                  disabled={loading}
+                  title="Remove signature"
                 >
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg className="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <p className="mb-2 text-sm text-gray-500">
-                      <span className="font-semibold">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                  </div>
-                </label>
-              )}
-            </div>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="signature-upload"
+                className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-sky-500 hover:bg-sky-50/40 transition-all"
+              >
+                <div className="flex flex-col items-center justify-center">
+                  <Upload className="w-6 h-6 text-slate-400 mb-1" />
+                  <p className="text-xs font-bold text-slate-700">
+                    Click to upload signature image
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">PNG, JPG format up to 5MB</p>
+                </div>
+              </label>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Premium Actions */}
-      <div className="flex flex-col sm:flex-row sm:justify-end gap-4 pt-6 border-t border-gray-200">
+      {/* ── Form Actions ── */}
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50"
           >
-            <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
             Cancel
           </button>
         )}
@@ -767,22 +617,17 @@ export default function DoctorForm({
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-3 text-sm font-bold text-white shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none"
+          className="px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
         >
           {loading ? (
             <>
-              <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Saving...
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Saving Doctor...</span>
             </>
           ) : (
             <>
-              <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              {submitLabel}
+              <Check className="w-4 h-4" />
+              <span>{submitLabel}</span>
             </>
           )}
         </button>

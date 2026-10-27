@@ -2004,21 +2004,21 @@ export default function DoctorRequisitionSlipModal({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 no-print animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[94vh]">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 px-6 py-4 text-white flex items-center justify-between shadow-sm">
+            <div className="bg-white px-6 py-4 text-slate-900 border-b border-slate-200 flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
-                  <MessageCircle className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center shadow-xs">
+                  <MessageCircle className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold tracking-tight">Doctor WhatsApp Dispatcher</h3>
-                  <p className="text-xs text-emerald-100 font-medium">
-                    Sending Official Requisition Slip & PDF to <span className="font-semibold text-white">Dr. {docName}</span> ({doctorCode})
+                  <p className="text-xs text-slate-500 font-medium">
+                    Sending Official Requisition Slip & PDF to <span className="font-semibold text-slate-800">Dr. {docName}</span> ({doctorCode})
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowWhatsAppModal(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2256,15 +2256,15 @@ export default function DoctorRequisitionSlipModal({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 no-print animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[94vh]">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-700 via-sky-700 to-indigo-800 px-6 py-4 text-white flex items-center justify-between shadow-sm">
+            <div className="bg-white px-6 py-4 text-slate-900 border-b border-slate-200 flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
+                <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center shadow-xs">
                   <Mail className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold tracking-tight">Doctor Email Dispatcher</h3>
                   <p className="text-xs text-sky-100 font-medium">
-                    Sending Official Requisition Slip & PDF to <span className="font-semibold text-white">Dr. {docName}</span> ({doctorCode})
+                    Sending Official Requisition Slip & PDF to <span className="font-semibold text-slate-800">Dr. {docName}</span> ({doctorCode})
                   </p>
                 </div>
               </div>
@@ -2282,7 +2282,7 @@ export default function DoctorRequisitionSlipModal({
                 </button>
                 <button
                   onClick={() => setShowEmailModal(false)}
-                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>

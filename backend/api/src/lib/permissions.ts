@@ -22,6 +22,8 @@ export const PERMISSIONS = {
 
   SAMPLE_READ: "sample:read",
   SAMPLE_COLLECT: "sample:collect",
+  SAMPLE_ACCESSION: "sample:accession",
+  SAMPLE_REJECT: "sample:reject",
 
   RESULT_READ: "result:read",
   RESULT_ENTER: "result:enter",
@@ -49,9 +51,18 @@ export const PERMISSIONS = {
   REPORT_READ: "report:read",
   REPORT_CREATE: "report:create",
   REPORT_EXPORT: "report:export",
+  REPORT_SIGN: "report:sign",
 
   ANALYZER_READ: "analyzer:read",
   ANALYZER_CREATE: "analyzer:create",
+  ANALYZER_SIMULATE: "analyzer:simulate",
+
+  QC_READ: "qc:read",
+  QC_RUN: "qc:run",
+  QC_APPROVE: "qc:approve",
+
+  AI_READ: "ai:read",
+  AI_OVERRIDE: "ai:override",
 
   AUDIT_READ: "audit:read",
 
@@ -63,6 +74,12 @@ export const PERMISSIONS = {
 
   SETTINGS_READ: "settings:read",
   SETTINGS_UPDATE: "settings:update",
+
+  BRANCH_READ: "branch:read",
+  BRANCH_MANAGE: "branch:manage",
+
+  BACKUP_READ: "backup:read",
+  BACKUP_CREATE: "backup:create",
 } as const;
 
 export type Permission =
@@ -70,10 +87,11 @@ export type Permission =
 
 const ALL_PERMISSIONS: Permission[] = Object.values(PERMISSIONS);
 
-const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.AUDIT_READ),
+export const ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
   SUPER_ADMIN: ALL_PERMISSIONS,
+  ADMIN: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.AUDIT_READ),
   BRANCH_ADMIN: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.USER_UNLOCK),
+  
   FRONT_DESK: [
     PERMISSIONS.PATIENT_READ,
     PERMISSIONS.PATIENT_CREATE,
@@ -84,15 +102,58 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.ORDER_CREATE,
     PERMISSIONS.ORDER_UPDATE,
     PERMISSIONS.SAMPLE_READ,
+    PERMISSIONS.RESULT_READ,
+    PERMISSIONS.REPORT_READ,
+    PERMISSIONS.REPORT_EXPORT,
     PERMISSIONS.INVOICE_READ,
     PERMISSIONS.INVOICE_CREATE,
+    PERMISSIONS.INVOICE_EXPORT,
     PERMISSIONS.PAYMENT_READ,
     PERMISSIONS.PAYMENT_CREATE,
     PERMISSIONS.PAYMENT_VERIFY,
     PERMISSIONS.PAYMENT_ADVANCE,
     PERMISSIONS.PAYMENT_COUNTER_OPEN,
     PERMISSIONS.PAYMENT_COUNTER_CLOSE,
+    PERMISSIONS.BRANCH_READ,
   ],
+
+  RECEPTIONIST: [
+    PERMISSIONS.PATIENT_READ,
+    PERMISSIONS.PATIENT_CREATE,
+    PERMISSIONS.PATIENT_UPDATE,
+    PERMISSIONS.DOCTOR_READ,
+    PERMISSIONS.TEST_READ,
+    PERMISSIONS.ORDER_READ,
+    PERMISSIONS.ORDER_CREATE,
+    PERMISSIONS.ORDER_UPDATE,
+    PERMISSIONS.SAMPLE_READ,
+    PERMISSIONS.RESULT_READ,
+    PERMISSIONS.REPORT_READ,
+    PERMISSIONS.REPORT_EXPORT,
+    PERMISSIONS.INVOICE_READ,
+    PERMISSIONS.INVOICE_CREATE,
+    PERMISSIONS.INVOICE_EXPORT,
+    PERMISSIONS.PAYMENT_READ,
+    PERMISSIONS.PAYMENT_CREATE,
+    PERMISSIONS.PAYMENT_VERIFY,
+    PERMISSIONS.PAYMENT_ADVANCE,
+    PERMISSIONS.PAYMENT_COUNTER_OPEN,
+    PERMISSIONS.PAYMENT_COUNTER_CLOSE,
+    PERMISSIONS.BRANCH_READ,
+  ],
+
+  PHLEBOTOMIST: [
+    PERMISSIONS.PATIENT_READ,
+    PERMISSIONS.PATIENT_CREATE,
+    PERMISSIONS.DOCTOR_READ,
+    PERMISSIONS.TEST_READ,
+    PERMISSIONS.ORDER_READ,
+    PERMISSIONS.SAMPLE_READ,
+    PERMISSIONS.SAMPLE_COLLECT,
+    PERMISSIONS.SAMPLE_ACCESSION,
+    PERMISSIONS.SAMPLE_REJECT,
+  ],
+
   LAB_TECH: [
     PERMISSIONS.PATIENT_READ,
     PERMISSIONS.DOCTOR_READ,
@@ -100,12 +161,20 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.ORDER_READ,
     PERMISSIONS.SAMPLE_READ,
     PERMISSIONS.SAMPLE_COLLECT,
+    PERMISSIONS.SAMPLE_ACCESSION,
+    PERMISSIONS.SAMPLE_REJECT,
     PERMISSIONS.RESULT_READ,
     PERMISSIONS.RESULT_ENTER,
+    PERMISSIONS.REPORT_READ,
     PERMISSIONS.ANALYZER_READ,
+    PERMISSIONS.ANALYZER_SIMULATE,
+    PERMISSIONS.QC_READ,
+    PERMISSIONS.QC_RUN,
   ],
+
   PATHOLOGIST: [
     PERMISSIONS.PATIENT_READ,
+    PERMISSIONS.PATIENT_EXPORT,
     PERMISSIONS.DOCTOR_READ,
     PERMISSIONS.TEST_READ,
     PERMISSIONS.ORDER_READ,
@@ -113,9 +182,21 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.RESULT_READ,
     PERMISSIONS.RESULT_ENTER,
     PERMISSIONS.RESULT_APPROVE,
+    PERMISSIONS.RESULT_EXPORT,
     PERMISSIONS.REPORT_READ,
     PERMISSIONS.REPORT_CREATE,
+    PERMISSIONS.REPORT_SIGN,
+    PERMISSIONS.REPORT_EXPORT,
+    PERMISSIONS.ANALYZER_READ,
+    PERMISSIONS.QC_READ,
+    PERMISSIONS.QC_RUN,
+    PERMISSIONS.QC_APPROVE,
+    PERMISSIONS.AI_READ,
+    PERMISSIONS.AI_OVERRIDE,
+    PERMISSIONS.SETTINGS_READ,
+    PERMISSIONS.BRANCH_READ,
   ],
+
   DOCTOR: [
     PERMISSIONS.PATIENT_READ,
     PERMISSIONS.DOCTOR_READ,
@@ -124,6 +205,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.RESULT_READ,
     PERMISSIONS.REPORT_READ,
   ],
+
   ACCOUNTANT: [
     PERMISSIONS.PATIENT_READ,
     PERMISSIONS.ORDER_READ,
@@ -142,7 +224,10 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.PAYMENT_RECONCILE,
     PERMISSIONS.PAYMENT_EXPORT,
     PERMISSIONS.PAYMENT_AUDIT,
+    PERMISSIONS.SETTINGS_READ,
+    PERMISSIONS.BRANCH_READ,
   ],
+
   AUDITOR: [
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.PATIENT_READ,
@@ -155,48 +240,61 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   ],
 };
 
+export const normalizeRoleString = (role?: string | null): string => {
+  if (!role) return "FRONT_DESK";
+  const upper = role.trim().toUpperCase();
+  if (upper === "RECEPTIONIST") return "RECEPTIONIST";
+  if (upper === "PHLEB") return "PHLEBOTOMIST";
+  if (upper === "LAB_TECHNICIAN" || upper === "TECHNICIAN") return "LAB_TECH";
+  return upper;
+};
+
 export const getPermissionsForRole = (
-  role: UserRole
+  role: string
 ): readonly Permission[] => {
-  return ROLE_PERMISSIONS[role] ?? [];
+  const norm = normalizeRoleString(role);
+  if (norm === "SUPER_ADMIN") return ALL_PERMISSIONS;
+  return ROLE_PERMISSIONS[norm] ?? ROLE_PERMISSIONS.FRONT_DESK ?? [];
 };
 
 export const hasPermission = (
-  role: UserRole,
+  role: string,
   permission: Permission
 ): boolean => {
-  if (role === "SUPER_ADMIN") {
+  const norm = normalizeRoleString(role);
+  if (norm === "SUPER_ADMIN") {
     return true;
   }
-  return getPermissionsForRole(role).includes(permission);
+  return getPermissionsForRole(norm).includes(permission);
 };
 
 export const hasAnyPermission = (
-  role: UserRole,
+  role: string,
   permissions: Permission[]
 ): boolean => {
   return permissions.some((permission) => hasPermission(role, permission));
 };
 
 export const hasAllPermissions = (
-  role: UserRole,
+  role: string,
   permissions: Permission[]
 ): boolean => {
   return permissions.every((permission) => hasPermission(role, permission));
 };
 
 const MFA_REQUIRED_ROLES = new Set(
-  String(process.env.MFA_REQUIRED_ROLES || "")
+  String(process.env.MFA_REQUIRED_ROLES || "ADMIN,SUPER_ADMIN,BRANCH_ADMIN")
     .split(",")
     .map((role) => role.trim().toUpperCase())
     .filter(Boolean)
 );
 
-export const mfaRequiredForRole = (role: UserRole): boolean =>
-  MFA_REQUIRED_ROLES.has(role);
+export const mfaRequiredForRole = (role: string): boolean =>
+  MFA_REQUIRED_ROLES.has(normalizeRoleString(role));
 
-export const idleTimeoutMinutesForRole = (role: UserRole): number => {
-  if (role === "ADMIN" || role === "SUPER_ADMIN" || role === "BRANCH_ADMIN") {
+export const idleTimeoutMinutesForRole = (role: string): number => {
+  const norm = normalizeRoleString(role);
+  if (norm === "ADMIN" || norm === "SUPER_ADMIN" || norm === "BRANCH_ADMIN") {
     return Number(process.env.IDLE_TIMEOUT_ADMIN_MINUTES || 20);
   }
   return Number(process.env.IDLE_TIMEOUT_MINUTES || 30);
