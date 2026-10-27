@@ -229,14 +229,65 @@ export const DEFAULT_ENTERPRISE_ANALYZER_TOPOLOGY: AnalyzerTwinNode[] = [
     },
 ];
 
+// Batch DataLoader style optimization for user validation
+// This gathers all getValidUserId requests within the same event loop tick
+// and executes a single findMany query, preventing N+1 problems in loops.
+// It also correctly handles duplicate user IDs within the same batch.
+const dataLoaders = new WeakMap<any, {
+    batch: Map<string, Array<{ resolve: (val: string | null) => void; reject: (err: any) => void }>>;
+    timeout: NodeJS.Immediate | null;
+}>();
+
 async function getValidUserId(userId?: string | null, txOrPrisma: any = prisma): Promise<string | null> {
     if (!userId) return null;
-    try {
-        const u = await txOrPrisma.user.findUnique({ where: { id: userId }, select: { id: true } });
-        return u ? u.id : null;
-    } catch {
-        return null;
+
+    let loader = dataLoaders.get(txOrPrisma);
+    if (!loader) {
+        loader = { batch: new Map(), timeout: null };
+        dataLoaders.set(txOrPrisma, loader);
     }
+
+    return new Promise((resolve) => {
+        let callbacks = loader.batch.get(userId);
+        if (!callbacks) {
+            callbacks = [];
+            loader.batch.set(userId, callbacks);
+        }
+
+        // Original code returned null on error, we replicate this by not using reject.
+        callbacks.push({ resolve, reject: () => resolve(null) });
+
+        if (!loader.timeout) {
+            loader.timeout = setImmediate(async () => {
+                const currentBatch = new Map(loader.batch);
+                loader.batch.clear();
+                loader.timeout = null;
+
+                try {
+                    const userIdsToFetch = Array.from(currentBatch.keys());
+                    const users = await txOrPrisma.user.findMany({
+                        where: { id: { in: userIdsToFetch } },
+                        select: { id: true }
+                    });
+
+                    const validIds = new Set(users.map((u: any) => u.id));
+
+                    for (const [id, callbackArray] of currentBatch.entries()) {
+                        const result = validIds.has(id) ? id : null;
+                        for (const cb of callbackArray) {
+                            cb.resolve(result);
+                        }
+                    }
+                } catch (error) {
+                    for (const callbackArray of currentBatch.values()) {
+                        for (const cb of callbackArray) {
+                            cb.reject(error);
+                        }
+                    }
+                }
+            });
+        }
+    });
 }
 
 /**
