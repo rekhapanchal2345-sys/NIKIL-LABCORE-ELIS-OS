@@ -21,6 +21,7 @@ import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { createAuditLog } from "../audit/audit.service";
 import { generateUHID } from "./patient.service";
+import { WebSocketService } from "../../lib/websocket";
 import {
   ConfidentialityLevel,
   EmpiDecision,
@@ -61,7 +62,7 @@ export interface EmpiMatchResult {
 
 export interface AbdmScanSharePayload {
   name: string;
-  dob?: string;        // ISO date string
+  dob?: string; // ISO date string
   gender?: string;
   abhaAddress: string;
   abhaNumber?: string;
@@ -73,7 +74,7 @@ export interface AbdmScanSharePayload {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SCORE_PHONE_EXACT = 35;
-const SCORE_PHONETIC_MAX = 30;   // Jaro-Winkler >= 0.88 -> full 30 pts, else proportional
+const SCORE_PHONETIC_MAX = 30; // Jaro-Winkler >= 0.88 -> full 30 pts, else proportional
 const SCORE_DOB_EXACT = 20;
 const SCORE_GENDER = 10;
 const SCORE_PINCODE = 5;
@@ -94,7 +95,8 @@ export const normalisePhone = (raw?: string | null): string | null => {
   const digits = raw.replace(/\D/g, "");
   if (digits.length === 10) return `91${digits}`;
   if (digits.length === 12 && digits.startsWith("91")) return digits;
-  if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+  if (digits.length === 11 && digits.startsWith("0"))
+    return `91${digits.slice(1)}`;
   return digits.length >= 10 ? digits : null;
 };
 
@@ -140,7 +142,10 @@ export function jaroWinkler(s1: string, s2: string): number {
   }
 
   const jaro =
-    (matches / len1 + matches / len2 + (matches - transpositions / 2) / matches) / 3;
+    (matches / len1 +
+      matches / len2 +
+      (matches - transpositions / 2) / matches) /
+    3;
 
   // Winkler prefix bonus (max 4 chars)
   let prefix = 0;
@@ -191,7 +196,12 @@ export function doubleMetaphone(word: string): [string, string] {
   while (i < s.length && primary.length < 6) {
     const c = s[i];
     switch (c) {
-      case "A": case "E": case "I": case "O": case "U": case "Y":
+      case "A":
+      case "E":
+      case "I":
+      case "O":
+      case "U":
+      case "Y":
         if (i === 0) add("A");
         i++;
         break;
@@ -200,61 +210,142 @@ export function doubleMetaphone(word: string): [string, string] {
         i += s[i + 1] === "B" ? 2 : 1;
         break;
       case "C":
-        if (contains(i, "CH")) { add("X", "S"); i += 2; }
-        else if (contains(i, "CK")) { add("K"); i += 2; }
-        else if (/[EI]/.test(s[i + 1] ?? "")) { add("S"); i += 1; }
-        else { add("K"); i++; }
+        if (contains(i, "CH")) {
+          add("X", "S");
+          i += 2;
+        } else if (contains(i, "CK")) {
+          add("K");
+          i += 2;
+        } else if (/[EI]/.test(s[i + 1] ?? "")) {
+          add("S");
+          i += 1;
+        } else {
+          add("K");
+          i++;
+        }
         break;
       case "D":
-        if (contains(i, "DG")) { add("J"); i += 2; }
-        else if (contains(i, "DH")) { add("T"); i += 2; }  // Indian: Dhar->T
-        else { add("T"); i++; }
+        if (contains(i, "DG")) {
+          add("J");
+          i += 2;
+        } else if (contains(i, "DH")) {
+          add("T");
+          i += 2;
+        } // Indian: Dhar->T
+        else {
+          add("T");
+          i++;
+        }
         break;
-      case "F": add("F"); i++; break;
-      case "G":
-        if (contains(i, "GH")) { add("K"); i += 2; }
-        else if (contains(i, "GN")) { i += 2; }
-        else if (/[EI]/.test(s[i + 1] ?? "")) { add("K", "J"); i++; }
-        else { add("K"); i++; }
-        break;
-      case "H":
-        if (/[AEIOU]/.test(s[i + 1] ?? "")) { add("H"); }
+      case "F":
+        add("F");
         i++;
         break;
-      case "J": add("J", "H"); i++; break;
+      case "G":
+        if (contains(i, "GH")) {
+          add("K");
+          i += 2;
+        } else if (contains(i, "GN")) {
+          i += 2;
+        } else if (/[EI]/.test(s[i + 1] ?? "")) {
+          add("K", "J");
+          i++;
+        } else {
+          add("K");
+          i++;
+        }
+        break;
+      case "H":
+        if (/[AEIOU]/.test(s[i + 1] ?? "")) {
+          add("H");
+        }
+        i++;
+        break;
+      case "J":
+        add("J", "H");
+        i++;
+        break;
       case "K":
-        if (contains(i, "KH")) { add("K"); i += 2; }   // Indian: Khan->K
-        else { add("K"); i += s[i + 1] === "K" ? 2 : 1; }
+        if (contains(i, "KH")) {
+          add("K");
+          i += 2;
+        } // Indian: Khan->K
+        else {
+          add("K");
+          i += s[i + 1] === "K" ? 2 : 1;
+        }
         break;
-      case "L": add("L"); i++; break;
-      case "M": add("M"); i += s[i + 1] === "M" ? 2 : 1; break;
-      case "N": add("N"); i += s[i + 1] === "N" ? 2 : 1; break;
+      case "L":
+        add("L");
+        i++;
+        break;
+      case "M":
+        add("M");
+        i += s[i + 1] === "M" ? 2 : 1;
+        break;
+      case "N":
+        add("N");
+        i += s[i + 1] === "N" ? 2 : 1;
+        break;
       case "P":
-        if (contains(i, "PH")) { add("F"); i += 2; }
-        else { add("P"); i += s[i + 1] === "P" ? 2 : 1; }
+        if (contains(i, "PH")) {
+          add("F");
+          i += 2;
+        } else {
+          add("P");
+          i += s[i + 1] === "P" ? 2 : 1;
+        }
         break;
-      case "Q": add("K"); i++; break;
+      case "Q":
+        add("K");
+        i++;
+        break;
       case "R":
         add("R");
         i += s[i + 1] === "R" ? 2 : 1;
         break;
       case "S":
-        if (contains(i, "SH")) { add("X"); i += 2; }
-        else if (contains(i, "SCH")) { add("SK"); i += 3; }
-        else { add("S"); i += s[i + 1] === "S" ? 2 : 1; }
+        if (contains(i, "SH")) {
+          add("X");
+          i += 2;
+        } else if (contains(i, "SCH")) {
+          add("SK");
+          i += 3;
+        } else {
+          add("S");
+          i += s[i + 1] === "S" ? 2 : 1;
+        }
         break;
       case "T":
-        if (contains(i, "TH")) { add("0", "T"); i += 2; }  // theta sound
-        else { add("T"); i++; }
+        if (contains(i, "TH")) {
+          add("0", "T");
+          i += 2;
+        } // theta sound
+        else {
+          add("T");
+          i++;
+        }
         break;
-      case "V": add("F"); i++; break;
-      case "W":
-        if (/[AEIOU]/.test(s[i + 1] ?? "")) { add("A"); }
+      case "V":
+        add("F");
         i++;
         break;
-      case "X": add("S"); i++; break;
-      case "Z": add("S"); i++; break;
-      default: i++;
+      case "W":
+        if (/[AEIOU]/.test(s[i + 1] ?? "")) {
+          add("A");
+        }
+        i++;
+        break;
+      case "X":
+        add("S");
+        i++;
+        break;
+      case "Z":
+        add("S");
+        i++;
+        break;
+      default:
+        i++;
     }
   }
 
@@ -277,7 +368,7 @@ export function computeEmpiScore(
     pincode: string | null;
   },
   incomingPhoneHash: string | null,
-  incomingPhonetic: [string, string]
+  incomingPhonetic: [string, string],
 ): EmpiScoreBreakdown {
   let phone = 0;
   let phonetic = 0;
@@ -286,22 +377,34 @@ export function computeEmpiScore(
   let pincode = 0;
 
   // 1. Exact phone blind-index match (+35)
-  if (incomingPhoneHash && candidate.phoneHash && incomingPhoneHash === candidate.phoneHash) {
+  if (
+    incomingPhoneHash &&
+    candidate.phoneHash &&
+    incomingPhoneHash === candidate.phoneHash
+  ) {
     phone = SCORE_PHONE_EXACT;
   }
 
   // 2. Phonetic / Jaro-Winkler name similarity
-  const incomingFullName = `${incoming.firstName} ${incoming.lastName}`.toLowerCase();
-  const candidateFullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
+  const incomingFullName =
+    `${incoming.firstName} ${incoming.lastName}`.toLowerCase();
+  const candidateFullName =
+    `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
   const jw = jaroWinkler(incomingFullName, candidateFullName);
 
   if (jw >= 0.88) {
     phonetic = SCORE_PHONETIC_MAX;
-  } else if (jw >= 0.70) {
+  } else if (jw >= 0.7) {
     const phoneticMatch =
-      (incomingPhonetic[0] && candidate.phoneticPrimary && incomingPhonetic[0] === candidate.phoneticPrimary) ||
-      (incomingPhonetic[1] && candidate.phoneticAlternate && incomingPhonetic[1] === candidate.phoneticAlternate) ||
-      (incomingPhonetic[0] && candidate.phoneticAlternate && incomingPhonetic[0] === candidate.phoneticAlternate);
+      (incomingPhonetic[0] &&
+        candidate.phoneticPrimary &&
+        incomingPhonetic[0] === candidate.phoneticPrimary) ||
+      (incomingPhonetic[1] &&
+        candidate.phoneticAlternate &&
+        incomingPhonetic[1] === candidate.phoneticAlternate) ||
+      (incomingPhonetic[0] &&
+        candidate.phoneticAlternate &&
+        incomingPhonetic[0] === candidate.phoneticAlternate);
 
     phonetic = phoneticMatch
       ? Math.round(SCORE_PHONETIC_MAX * jw)
@@ -312,23 +415,33 @@ export function computeEmpiScore(
   if (incoming.dateOfBirth && candidate.dateOfBirth) {
     const inDob = new Date(incoming.dateOfBirth);
     const canDob = new Date(candidate.dateOfBirth);
-    const diffDays = Math.abs(inDob.getTime() - canDob.getTime()) / (1000 * 60 * 60 * 24);
+    const diffDays =
+      Math.abs(inDob.getTime() - canDob.getTime()) / (1000 * 60 * 60 * 24);
     if (diffDays <= 1) {
       dob = SCORE_DOB_EXACT;
     } else if (diffDays <= 366) {
       dob = Math.round(SCORE_DOB_EXACT * 0.5);
     }
   } else if (incoming.age != null && candidate.age != null) {
-    if (Math.abs(incoming.age - candidate.age) <= 1) dob = Math.round(SCORE_DOB_EXACT * 0.5);
+    if (Math.abs(incoming.age - candidate.age) <= 1)
+      dob = Math.round(SCORE_DOB_EXACT * 0.5);
   }
 
   // 4. Biological gender match (+10)
-  if (incoming.gender && candidate.gender && incoming.gender === candidate.gender) {
+  if (
+    incoming.gender &&
+    candidate.gender &&
+    incoming.gender === candidate.gender
+  ) {
     gender = SCORE_GENDER;
   }
 
   // 5. Pincode / address locality match (+5)
-  if (incoming.pincode && candidate.pincode && incoming.pincode === candidate.pincode) {
+  if (
+    incoming.pincode &&
+    candidate.pincode &&
+    incoming.pincode === candidate.pincode
+  ) {
     pincode = SCORE_PINCODE;
   }
 
@@ -338,7 +451,8 @@ export function computeEmpiScore(
 
 export function scoreToDecision(score: number): EmpiDecision {
   if (score >= THRESHOLD_AUTO_BLOCK) return EmpiDecision.AUTO_BLOCK_DUPLICATE;
-  if (score >= THRESHOLD_POTENTIAL) return EmpiDecision.POTENTIAL_DUPLICATE_QUEUE;
+  if (score >= THRESHOLD_POTENTIAL)
+    return EmpiDecision.POTENTIAL_DUPLICATE_QUEUE;
   return EmpiDecision.DISTINCT_PATIENT;
 }
 
@@ -352,7 +466,7 @@ export function scoreToDecision(score: number): EmpiDecision {
  */
 export const runEmpiMatch = async (
   input: EmpiMatchInput,
-  excludePatientId?: string
+  excludePatientId?: string,
 ): Promise<EmpiMatchResult[]> => {
   const normPhone = normalisePhone(input.phone);
   const phoneHash = normPhone ? phoneBlindIndex(normPhone) : null;
@@ -369,7 +483,12 @@ export const runEmpiMatch = async (
             ...(phoneHash ? [{ phoneHash }] : []),
             ...(phonPrimary ? [{ phoneticPrimary: phonPrimary }] : []),
             ...(phonAlternate ? [{ phoneticAlternate: phonAlternate }] : []),
-            { lastName: { startsWith: input.lastName.slice(0, 3), mode: "insensitive" as const } },
+            {
+              lastName: {
+                startsWith: input.lastName.slice(0, 3),
+                mode: "insensitive" as const,
+              },
+            },
           ],
         },
       ],
@@ -395,9 +514,13 @@ export const runEmpiMatch = async (
     .map((cand) => {
       const breakdown = computeEmpiScore(
         input,
-        { ...cand, dateOfBirth: cand.dateOfBirth, gender: cand.gender as string },
+        {
+          ...cand,
+          dateOfBirth: cand.dateOfBirth,
+          gender: cand.gender as string,
+        },
         phoneHash,
-        [phonPrimary, phonAlternate]
+        [phonPrimary, phonAlternate],
       );
       return {
         candidatePatientId: cand.id,
@@ -421,12 +544,12 @@ export const runEmpiMatch = async (
  */
 export const computeAndSaveEmpiFields = async (
   patientId: string,
-  data: { phone?: string | null; firstName: string; lastName: string }
+  data: { phone?: string | null; firstName: string; lastName: string },
 ) => {
   const normPhone = normalisePhone(data.phone);
   const phoneHash = normPhone ? phoneBlindIndex(normPhone) : null;
   const [phoneticPrimary, phoneticAlternate] = doubleMetaphone(
-    `${data.firstName} ${data.lastName}`
+    `${data.firstName} ${data.lastName}`,
   );
 
   await prisma.patient.update({
@@ -447,10 +570,19 @@ export const computeAndSaveEmpiFields = async (
 export const resolveHouseholdGroup = async (
   phone: string,
   newPatientId: string,
-  relation: FamilyRelation = FamilyRelation.SELF
-): Promise<{ groupId: string; isNew: boolean; primaryHolderUhid: string | null }> => {
+  relation: FamilyRelation = FamilyRelation.SELF,
+): Promise<{
+  groupId: string;
+  isNew: boolean;
+  primaryHolderUhid: string | null;
+}> => {
   const normPhone = normalisePhone(phone);
-  if (!normPhone) throw new HttpError("Invalid phone number for household resolution", 400, "INVALID_PHONE");
+  if (!normPhone)
+    throw new HttpError(
+      "Invalid phone number for household resolution",
+      400,
+      "INVALID_PHONE",
+    );
 
   const hash = phoneBlindIndex(normPhone);
 
@@ -489,7 +621,11 @@ export const resolveHouseholdGroup = async (
     data: { familyRelation: FamilyRelation.SELF },
   });
 
-  return { groupId: group.id, isNew: true, primaryHolderUhid: patient?.uhid ?? null };
+  return {
+    groupId: group.id,
+    isNew: true,
+    primaryHolderUhid: patient?.uhid ?? null,
+  };
 };
 
 /** Returns all members of a patient's household group */
@@ -535,12 +671,18 @@ export const upsertClinicalProfile = async (
     isTransplantRecipient?: boolean;
     knownAllergies?: string[];
     chronicConditions?: string[];
-  }
+  },
 ) => {
-  const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { id: true } });
-  if (!patient) throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  const patient = await prisma.patient.findUnique({
+    where: { id: patientId },
+    select: { id: true },
+  });
+  if (!patient)
+    throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
 
-  const bloodGroupVerifiedAt = data.bloodGroupVerifiedBy ? new Date() : undefined;
+  const bloodGroupVerifiedAt = data.bloodGroupVerifiedBy
+    ? new Date()
+    : undefined;
 
   return prisma.patientClinicalProfile.upsert({
     where: { patientId },
@@ -571,23 +713,41 @@ export const mergePatients = async (
   targetPatientId: string,
   mergedByUserId: string,
   mergeReason?: string,
-  actorIp = "::1"
+  actorIp = "::1",
 ) => {
   if (sourcePatientId === targetPatientId)
-    throw new HttpError("Cannot merge a patient with itself", 400, "SAME_PATIENT_MERGE");
+    throw new HttpError(
+      "Cannot merge a patient with itself",
+      400,
+      "SAME_PATIENT_MERGE",
+    );
 
   const [source, target] = await Promise.all([
     prisma.patient.findUnique({ where: { id: sourcePatientId } }),
     prisma.patient.findUnique({ where: { id: targetPatientId } }),
   ]);
-  if (!source) throw new HttpError("Source patient not found", 404, "SOURCE_NOT_FOUND");
-  if (!target) throw new HttpError("Target patient not found", 404, "TARGET_NOT_FOUND");
+  if (!source)
+    throw new HttpError("Source patient not found", 404, "SOURCE_NOT_FOUND");
+  if (!target)
+    throw new HttpError("Target patient not found", 404, "TARGET_NOT_FOUND");
 
   const [orders, samples, invoices, wallet] = await Promise.all([
-    prisma.order.findMany({ where: { patientId: sourcePatientId }, select: { id: true } }),
-    prisma.sample.findMany({ where: { patientId: sourcePatientId }, select: { id: true } }),
-    prisma.invoice.findMany({ where: { order: { patientId: sourcePatientId } }, select: { id: true } }),
-    prisma.patientWallet.findUnique({ where: { patientId: sourcePatientId }, select: { balance: true } }),
+    prisma.order.findMany({
+      where: { patientId: sourcePatientId },
+      select: { id: true },
+    }),
+    prisma.sample.findMany({
+      where: { patientId: sourcePatientId },
+      select: { id: true },
+    }),
+    prisma.invoice.findMany({
+      where: { order: { patientId: sourcePatientId } },
+      select: { id: true },
+    }),
+    prisma.patientWallet.findUnique({
+      where: { patientId: sourcePatientId },
+      select: { balance: true },
+    }),
   ]);
 
   const migratedOrderIds = orders.map((o) => o.id);
@@ -597,9 +757,15 @@ export const mergePatients = async (
 
   await prisma.$transaction(async (tx) => {
     if (migratedOrderIds.length)
-      await tx.order.updateMany({ where: { patientId: sourcePatientId }, data: { patientId: targetPatientId } });
+      await tx.order.updateMany({
+        where: { patientId: sourcePatientId },
+        data: { patientId: targetPatientId },
+      });
     if (migratedSampleIds.length)
-      await tx.sample.updateMany({ where: { patientId: sourcePatientId }, data: { patientId: targetPatientId } });
+      await tx.sample.updateMany({
+        where: { patientId: sourcePatientId },
+        data: { patientId: targetPatientId },
+      });
 
     if (wallet && Number(transferredWalletAmt) > 0) {
       await tx.patientWallet.update({
@@ -614,7 +780,10 @@ export const mergePatients = async (
 
     await tx.patient.update({
       where: { id: sourcePatientId },
-      data: { isActive: false, notes: `[MERGED => ${target.uhid}] ${source.notes ?? ""}` },
+      data: {
+        isActive: false,
+        notes: `[MERGED => ${target.uhid}] ${source.notes ?? ""}`,
+      },
     });
 
     const mergeLog = await tx.patientMergeLog.create({
@@ -643,7 +812,9 @@ export const mergePatients = async (
     ipAddress: actorIp,
   });
 
-  return { message: `Patient ${source.uhid} successfully merged into ${target.uhid}` };
+  return {
+    message: `Patient ${source.uhid} successfully merged into ${target.uhid}`,
+  };
 };
 
 /**
@@ -653,15 +824,21 @@ export const mergePatients = async (
 export const unmergePatients = async (
   mergeLogId: string,
   revertedByUserId: string,
-  actorIp = "::1"
+  actorIp = "::1",
 ) => {
   const snapshot = await prisma.patientMergeSnapshot.findUnique({
     where: { mergeLogId },
     include: { mergeLog: true },
   });
 
-  if (!snapshot) throw new HttpError("Merge log not found", 404, "MERGE_LOG_NOT_FOUND");
-  if (snapshot.isReverted) throw new HttpError("This merge has already been reverted", 409, "ALREADY_REVERTED");
+  if (!snapshot)
+    throw new HttpError("Merge log not found", 404, "MERGE_LOG_NOT_FOUND");
+  if (snapshot.isReverted)
+    throw new HttpError(
+      "This merge has already been reverted",
+      409,
+      "ALREADY_REVERTED",
+    );
 
   const { sourcePatientId } = snapshot.mergeLog;
   const backup = snapshot.sourcePatientBackup as Record<string, unknown>;
@@ -710,7 +887,9 @@ export const unmergePatients = async (
     ipAddress: actorIp,
   });
 
-  return { message: `Merge ${mergeLogId} successfully reverted. Patient ${sourcePatientId} restored.` };
+  return {
+    message: `Merge ${mergeLogId} successfully reverted. Patient ${sourcePatientId} restored.`,
+  };
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -720,16 +899,19 @@ export const unmergePatients = async (
 export const setConfidentialityLevel = async (
   patientId: string,
   level: ConfidentialityLevel,
-  setByUserId: string
+  setByUserId: string,
 ) => {
   const patient = await prisma.patient.findUnique({
     where: { id: patientId },
     select: { uhid: true },
   });
-  if (!patient) throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  if (!patient)
+    throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
 
   const confidentialAlias =
-    level !== ConfidentialityLevel.STANDARD ? `CONFIDENTIAL-${patient.uhid}` : null;
+    level !== ConfidentialityLevel.STANDARD
+      ? `CONFIDENTIAL-${patient.uhid}`
+      : null;
 
   await prisma.patient.update({
     where: { id: patientId },
@@ -756,16 +938,23 @@ export const breakGlassAccess = async (
   patientId: string,
   accessedById: string,
   clinicalReason: string,
-  ipAddress: string
+  ipAddress: string,
 ): Promise<{ accessLogId: string; expiresAt: Date; patient: object }> => {
   const patient = await prisma.patient.findUnique({ where: { id: patientId } });
-  if (!patient) throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  if (!patient)
+    throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
 
   if (patient.confidentialityLevel === ConfidentialityLevel.STANDARD) {
-    throw new HttpError("Patient is not marked confidential; break-glass is not required", 400, "NOT_CONFIDENTIAL");
+    throw new HttpError(
+      "Patient is not marked confidential; break-glass is not required",
+      400,
+      "NOT_CONFIDENTIAL",
+    );
   }
 
-  const expiresAt = new Date(Date.now() + BREAK_GLASS_WINDOW_MINUTES * 60 * 1000);
+  const expiresAt = new Date(
+    Date.now() + BREAK_GLASS_WINDOW_MINUTES * 60 * 1000,
+  );
 
   const log = await prisma.breakGlassAccessLog.create({
     data: { patientId, accessedById, clinicalReason, ipAddress, expiresAt },
@@ -780,7 +969,12 @@ export const breakGlassAccess = async (
     ipAddress,
   });
 
-  // TODO: wsServer.emit('break_glass_alert', { patientId, accessedById, clinicalReason, timestamp: new Date() });
+  WebSocketService.broadcastBreakGlassAlert({
+    patientId,
+    accessedById,
+    clinicalReason,
+    timestamp: new Date(),
+  });
 
   return { accessLogId: log.id, expiresAt, patient };
 };
@@ -791,12 +985,14 @@ export const breakGlassAccess = async (
  */
 export const getPatientWithConfidentialityMask = async (
   patientId: string,
-  accessedById: string
+  accessedById: string,
 ) => {
   const patient = await prisma.patient.findUnique({ where: { id: patientId } });
-  if (!patient) throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  if (!patient)
+    throw new HttpError("Patient not found", 404, "PATIENT_NOT_FOUND");
 
-  if (patient.confidentialityLevel === ConfidentialityLevel.STANDARD) return patient;
+  if (patient.confidentialityLevel === ConfidentialityLevel.STANDARD)
+    return patient;
 
   const activeToken = await prisma.breakGlassAccessLog.findFirst({
     where: { patientId, accessedById, expiresAt: { gt: new Date() } },
@@ -827,7 +1023,7 @@ export const getPatientWithConfidentialityMask = async (
  */
 export const handleAbdmScanShare = async (
   payload: AbdmScanSharePayload,
-  createdById: string
+  createdById: string,
 ): Promise<{
   action: "EXISTING_PATIENT" | "NEW_PATIENT" | "REVIEW_REQUIRED";
   uhid: string;
@@ -866,14 +1062,19 @@ export const handleAbdmScanShare = async (
 
   const normPhone = normalisePhone(payload.phone);
   const phoneHash = normPhone ? phoneBlindIndex(normPhone) : null;
-  const [phoneticPrimary, phoneticAlternate] = doubleMetaphone(`${firstName} ${lastName}`);
+  const [phoneticPrimary, phoneticAlternate] = doubleMetaphone(
+    `${firstName} ${lastName}`,
+  );
 
   const newPatient = await prisma.patient.create({
     data: {
       uhid,
       firstName,
       lastName,
-      gender: (payload.gender?.toUpperCase() ?? "OTHER") as "MALE" | "FEMALE" | "OTHER",
+      gender: (payload.gender?.toUpperCase() ?? "OTHER") as
+        | "MALE"
+        | "FEMALE"
+        | "OTHER",
       dateOfBirth: dob,
       phone: payload.phone,
       abhaAddress: payload.abhaAddress,
@@ -891,7 +1092,11 @@ export const handleAbdmScanShare = async (
   });
 
   if (payload.phone) {
-    await resolveHouseholdGroup(payload.phone, newPatient.id, FamilyRelation.SELF).catch(() => {
+    await resolveHouseholdGroup(
+      payload.phone,
+      newPatient.id,
+      FamilyRelation.SELF,
+    ).catch(() => {
       // Non-fatal: household resolution failure does not block registration
     });
   }
@@ -936,7 +1141,13 @@ export const listEmpiReviewQueue = async (onlyUnresolved = true) => {
     orderBy: [{ empiScore: "desc" }, { createdAt: "asc" }],
     include: {
       incomingPatient: {
-        select: { uhid: true, firstName: true, lastName: true, phone: true, dateOfBirth: true },
+        select: {
+          uhid: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          dateOfBirth: true,
+        },
       },
     },
   });
@@ -946,15 +1157,24 @@ export const resolveEmpiReview = async (
   reviewId: string,
   reviewedById: string,
   resolution: "MERGE" | "DISMISS",
-  resolutionNotes?: string
+  resolutionNotes?: string,
 ) => {
-  const review = await prisma.empiReviewQueue.findUnique({ where: { id: reviewId } });
-  if (!review) throw new HttpError("Review item not found", 404, "REVIEW_NOT_FOUND");
-  if (review.isResolved) throw new HttpError("Already resolved", 409, "ALREADY_RESOLVED");
+  const review = await prisma.empiReviewQueue.findUnique({
+    where: { id: reviewId },
+  });
+  if (!review)
+    throw new HttpError("Review item not found", 404, "REVIEW_NOT_FOUND");
+  if (review.isResolved)
+    throw new HttpError("Already resolved", 409, "ALREADY_RESOLVED");
 
   await prisma.empiReviewQueue.update({
     where: { id: reviewId },
-    data: { isResolved: true, reviewedById, reviewedAt: new Date(), resolutionNotes },
+    data: {
+      isResolved: true,
+      reviewedById,
+      reviewedAt: new Date(),
+      resolutionNotes,
+    },
   });
 
   if (resolution === "MERGE") {
@@ -962,7 +1182,7 @@ export const resolveEmpiReview = async (
       review.incomingPatientId,
       review.candidatePatientId,
       reviewedById,
-      resolutionNotes ?? "EMPI steward merge"
+      resolutionNotes ?? "EMPI steward merge",
     );
   }
 
