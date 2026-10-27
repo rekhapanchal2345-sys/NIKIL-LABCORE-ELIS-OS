@@ -19,6 +19,7 @@
 import crypto from "crypto";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
+import { WebSocketService } from "../../lib/websocket";
 import { createAuditLog } from "../audit/audit.service";
 import { generateUHID } from "./patient.service";
 import { WebSocketService } from "../../lib/websocket";
@@ -861,14 +862,20 @@ export const handleAbdmScanShare = async (
   const topMatch = matches[0];
 
   if (topMatch?.decision === EmpiDecision.AUTO_BLOCK_DUPLICATE) {
-    // TODO: emit WebSocket to reception UI
-    return {
+    const responsePayload = {
       action: "EXISTING_PATIENT",
       uhid: topMatch.candidateUhid,
       patientId: topMatch.candidatePatientId,
       empiScore: topMatch.score,
       tokenNumber: payload.tokenNumber,
     };
+
+    WebSocketService.broadcastToRole("FRONT_DESK", "empi_match_alert", {
+      ...responsePayload,
+      name: payload.name,
+    });
+
+    return responsePayload;
   }
 
   const uhid = await generateUHID();
@@ -916,23 +923,37 @@ export const handleAbdmScanShare = async (
       },
     });
 
-    // TODO: emit WebSocket to Data Steward dashboard
-    return {
+    const responsePayload = {
       action: "REVIEW_REQUIRED",
       uhid: newPatient.uhid,
       patientId: newPatient.id,
       empiScore: topMatch.score,
       tokenNumber: payload.tokenNumber,
     };
+
+    WebSocketService.broadcastToRole("ADMIN", "empi_review_required", {
+      ...responsePayload,
+      name: payload.name,
+    });
+
+    return responsePayload;
   }
 
-  // TODO: emit WebSocket to reception: { action: 'ABDM_SCAN_SHARE', uhid, name, tokenNumber }
-  return {
+  const responsePayload = {
     action: "NEW_PATIENT",
     uhid: newPatient.uhid,
     patientId: newPatient.id,
     tokenNumber: payload.tokenNumber,
   };
+
+  WebSocketService.broadcastToRole("FRONT_DESK", "empi_match_alert", {
+    action: "ABDM_SCAN_SHARE",
+    uhid: newPatient.uhid,
+    name: payload.name,
+    tokenNumber: payload.tokenNumber,
+  });
+
+  return responsePayload;
 };
 
 // ════════════════════════════════════════════════════════════════════════════
