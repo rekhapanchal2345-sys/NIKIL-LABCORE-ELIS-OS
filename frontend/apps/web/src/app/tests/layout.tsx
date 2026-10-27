@@ -11,7 +11,6 @@ import {
   Scale,
   Package,
   ShieldCheck,
-  GraduationCap,
 } from "lucide-react";
 
 export default function TestsLayout({
@@ -28,7 +27,6 @@ export default function TestsLayout({
     { href: "/tests/packages", label: "Packages & profiles", icon: Package },
     { href: "/tests/parameters", label: "Analytes & units", icon: Sliders },
     { href: "/tests/reference-ranges", label: "Reference intervals", icon: Scale },
-    { href: "/tests/training", label: "Staff training", icon: GraduationCap },
   ];
 
   return (

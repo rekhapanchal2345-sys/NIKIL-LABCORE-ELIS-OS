@@ -14,7 +14,6 @@ import AnalyzerQCTracker from "@/components/tests/AnalyzerQCTracker";
 import BulkPriceModal from "@/components/tests/BulkPriceModal";
 import CloneTestModal from "@/components/tests/CloneTestModal";
 import QuickOrderRequisitionModal from "@/components/tests/QuickOrderRequisitionModal";
-import ClinicalTrainingEngine from "@/components/tests/ClinicalTrainingEngine";
 import AnalyzerInterfacingEngine from "@/components/tests/AnalyzerInterfacingEngine";
 import B2BTariffCommissionStudio from "@/components/tests/B2BTariffCommissionStudio";
 import PanicValueAlertMatrix from "@/components/tests/PanicValueAlertMatrix";
@@ -57,7 +56,6 @@ import {
   X,
   Sliders,
   Check,
-  Brain,
   Cpu,
   ShieldAlert,
   Thermometer,
@@ -88,8 +86,7 @@ export default function TestsPage() {
     | "interfacing"
     | "b2b-tariff"
     | "panic-alerts"
-    | "phlebotomy-sop"
-    | "training";
+    | "phlebotomy-sop";
 
   const [workstationTab, setWorkstationTab] = useState<WorkstationTabType>("catalog");
 
@@ -449,7 +446,6 @@ export default function TestsPage() {
               { id: "b2b-tariff" as const, label: "Tariffs", icon: TrendingUp },
               { id: "panic-alerts" as const, label: "Critical values", icon: ShieldAlert },
               { id: "phlebotomy-sop" as const, label: "Specimen collection", icon: FlaskConical },
-              { id: "training" as const, label: "Staff training", icon: Brain },
             ].map((tab) => {
               const isActive = workstationTab === tab.id;
               const Icon = tab.icon;
@@ -1008,11 +1004,6 @@ export default function TestsPage() {
             TAB 9: PRE-ANALYTICAL PHLEBOTOMY & DRAW SOP (NEW ENTERPRISE FEATURE)
         ========================================================================= */}
         {workstationTab === "phlebotomy-sop" && <PreAnalyticalPhlebotomyGuide />}
-
-        {/* =========================================================================
-            TAB 10: CLINICAL AI DIAGNOSTIC TRAINING & REFLEX ENGINE
-        ========================================================================= */}
-        {workstationTab === "training" && <ClinicalTrainingEngine />}
 
         {/* =========================================================================
             MODALS & DRAWERS

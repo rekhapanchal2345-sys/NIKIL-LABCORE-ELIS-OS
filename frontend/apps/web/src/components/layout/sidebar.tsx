@@ -339,7 +339,6 @@ const menuSections: MenuSection[] = [
           { label: "Packages & profiles", href: "/tests/packages" },
           { label: "Analytes & units", href: "/tests/parameters" },
           { label: "Reference intervals", href: "/tests/reference-ranges" },
-          { label: "Staff training", href: "/tests/training" },
         ],
       },
       {
