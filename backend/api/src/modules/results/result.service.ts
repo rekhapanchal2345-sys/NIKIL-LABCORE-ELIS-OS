@@ -378,14 +378,15 @@ export const createResult = async (
     );
   }
 
-  const parameterIds =
+  const parameterIdSet = new Set(
     test.parameters.map(
       (parameter) => parameter.id
-    );
+    )
+  );
 
   for (const value of data.values) {
     if (
-      !parameterIds.includes(
+      !parameterIdSet.has(
         value.parameterId
       )
     ) {
