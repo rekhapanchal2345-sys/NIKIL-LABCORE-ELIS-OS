@@ -236,70 +236,77 @@ export const createOrder = async (
     });
 
     // Create samples and initial result records for each test with tracking events
-    for (const item of order.items) {
-      // Package rows have no individual test, so they never yield a sample.
-      if (!item.testId || !item.test) continue;
+    const sampleCreationPromises = order.items
+      .filter((item) => item.testId && item.test)
+      .map(async (item) => {
+        const timestamp = Date.now();
 
-      const timestamp = Date.now();
-      const sample = await tx.sample.create({
-        data: {
-          sampleNumber: `SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`,
-          barcode: `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`,
-          patientId: order.patientId,
-          orderId: order.id,
-          testId: item.testId,
-          sampleType: item.test.sampleType,
-          status: "PENDING",
-        },
-      });
+        const sampleNumber = `SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
+        const barcode = `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
 
-      // Auto-create initial Result record so patient appears immediately in tracking & pipeline
-      const existingResult = await tx.result.findUnique({
-        where: {
-          orderId_testId: {
-            orderId: order.id,
-            testId: item.testId,
-          },
-        },
-      });
-
-      if (!existingResult) {
-        await tx.result.create({
+        const sample = await tx.sample.create({
           data: {
-            orderId: order.id,
-            testId: item.testId,
+            sampleNumber,
+            barcode,
             patientId: order.patientId,
+            orderId: order.id,
+            testId: item.testId!,
+            sampleType: item.test!.sampleType,
             status: "PENDING",
-            enteredAt: new Date(),
-            values: {
-              create: (item.test.parameters || []).map((p: any) => ({
-                parameterId: p.id,
-                value: "",
-                flag: "NORMAL",
-              })),
+          },
+        });
+
+        // Check for existing result (this usually wouldn't exist on a new order, but keeping for safety)
+        const existingResult = await tx.result.findUnique({
+          where: {
+            orderId_testId: {
+              orderId: order.id,
+              testId: item.testId!,
             },
           },
         });
-      }
 
-      // Create initial tracking event for order registration
-      await tx.sampleTrackingHistory.create({
-        data: {
-          sampleId: sample.id,
-          orderId: order.id,
-          patientId: order.patientId,
-          eventType: "ORDER_REGISTERED",
-          status: "REGISTERED",
-          notes: `Order ${orderNumber} registered for ${item.test.testName}`,
-          performedById: userId,
-          metadata: {
-            orderNumber,
-            sampleNumber: sample.sampleNumber,
-            barcode: sample.barcode,
+        const resultPromise = existingResult
+          ? Promise.resolve()
+          : tx.result.create({
+              data: {
+                orderId: order.id,
+                testId: item.testId!,
+                patientId: order.patientId,
+                status: "PENDING",
+                enteredAt: new Date(),
+                values: {
+                  create: (item.test!.parameters || []).map((p: any) => ({
+                    parameterId: p.id,
+                    value: "",
+                    flag: "NORMAL",
+                  })),
+                },
+              },
+            });
+
+        // Create initial tracking event for order registration
+        const trackingPromise = tx.sampleTrackingHistory.create({
+          data: {
+            sampleId: sample.id,
+            orderId: order.id,
+            patientId: order.patientId,
+            eventType: "ORDER_REGISTERED",
+            status: "REGISTERED",
+            notes: `Order ${orderNumber} registered for ${item.test!.testName}`,
+            performedById: userId,
+            metadata: {
+              orderNumber,
+              sampleNumber: sample.sampleNumber,
+              barcode: sample.barcode,
+            },
           },
-        },
+        });
+
+        await Promise.all([resultPromise, trackingPromise]);
       });
-    }
+
+    await Promise.all(sampleCreationPromises);
 
     // Auto-create Invoice for the order
     const invoiceNumber = await getNextSequenceNumber("INV", "MAIN", tx);
@@ -771,50 +778,51 @@ export const collectSample =
         }
       } else {
         // If order had no sample records created yet, create them from items
-        for (const item of order.items) {
-          // Package rows have no individual test, so they never yield a sample.
-          if (!item.testId || !item.test) continue;
+        const sampleCreationPromises = order.items
+          .filter((item) => item.testId && item.test)
+          .map(async (item) => {
+            const sampleNumber = `SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
+            const sampleBarcode = `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
 
-          const sampleNumber = `SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
-          const sampleBarcode = `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
-
-          const newSample = await tx.sample.create({
-            data: {
-              sampleNumber,
-              barcode: sampleBarcode,
-              patientId: order.patientId,
-              orderId: order.id,
-              testId: item.testId,
-              sampleType: item.test.sampleType,
-              status: "COLLECTED",
-              collectedAt: collectionTime,
-              collectedById: performerId || null,
-              collectionType: metadata?.collectionType || "WALK_IN",
-              priority: metadata?.priority || "ROUTINE",
-            },
-          });
-
-          await tx.sampleTrackingHistory.create({
-            data: {
-              sampleId: newSample.id,
-              orderId: order.id,
-              patientId: order.patientId,
-              eventType: "SAMPLE_COLLECTED",
-              status: "COLLECTED",
-              location: metadata?.location || "Phlebotomy Station",
-              notes: metadata?.notes || `Sample ${sampleNumber} collected (${item.test.testName})`,
-              performedById: performerId || null,
-              performedAt: collectionTime,
-              metadata: {
+            const newSample = await tx.sample.create({
+              data: {
+                sampleNumber,
                 barcode: sampleBarcode,
-                orderBarcode: finalBarcode,
+                patientId: order.patientId,
+                orderId: order.id,
+                testId: item.testId!,
+                sampleType: item.test!.sampleType,
+                status: "COLLECTED",
+                collectedAt: collectionTime,
+                collectedById: performerId || null,
                 collectionType: metadata?.collectionType || "WALK_IN",
                 priority: metadata?.priority || "ROUTINE",
-                testName: item.test.testName,
               },
-            },
+            });
+
+            await tx.sampleTrackingHistory.create({
+              data: {
+                sampleId: newSample.id,
+                orderId: order.id,
+                patientId: order.patientId,
+                eventType: "SAMPLE_COLLECTED",
+                status: "COLLECTED",
+                location: metadata?.location || "Phlebotomy Station",
+                notes: metadata?.notes || `Sample ${sampleNumber} collected (${item.test!.testName})`,
+                performedById: performerId || null,
+                performedAt: collectionTime,
+                metadata: {
+                  barcode: sampleBarcode,
+                  orderBarcode: finalBarcode,
+                  collectionType: metadata?.collectionType || "WALK_IN",
+                  priority: metadata?.priority || "ROUTINE",
+                  testName: item.test!.testName,
+                },
+              },
+            });
           });
-        }
+
+        await Promise.all(sampleCreationPromises);
       }
 
       return updatedOrder;
