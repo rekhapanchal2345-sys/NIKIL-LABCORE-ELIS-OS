@@ -548,7 +548,7 @@ export default function RegisterOrderWizard({
                   Register New Requisition
                 </h2>
                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">
-                  CPOE • NABL ISO 15189
+                  Clinical order entry
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
@@ -830,7 +830,7 @@ export default function RegisterOrderWizard({
                       <Sparkles size={13} className="text-sky-600" />
                       1-CLICK CLINICAL DISEASE PROFILES (QUICK-PACKS)
                     </label>
-                    <span className="text-[10px] text-slate-400">Pre-configured NABL Panels</span>
+                    <span className="text-[10px] text-slate-400">Configured test panels</span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -1395,7 +1395,7 @@ export default function RegisterOrderWizard({
           {/* ---------- Footer Bar (Light Slate-50) ---------- */}
           <div className="flex items-center justify-between px-7 py-4 bg-[#f8fafc] border-t border-slate-200">
             <div>
-              <span className="text-[11px] text-slate-400 font-medium">LabCore Enterprise LIS</span>
+              <span className="text-[11px] text-slate-400 font-medium">Order entry</span>
             </div>
             <div className="flex items-center gap-2">
               <button

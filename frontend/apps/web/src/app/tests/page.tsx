@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { testApi } from "@/lib/api";
 import TubeGuideModal from "@/components/tests/TubeGuideModal";
@@ -68,7 +69,23 @@ import {
   Info
 } from "lucide-react";
 
+const VALID_WORKSPACE_TABS = [
+  "catalog",
+  "packages",
+  "parameters",
+  "formulas",
+  "qc",
+  "interfacing",
+  "b2b-tariff",
+  "panic-alerts",
+  "phlebotomy-sop",
+] as const;
+
+type WorkstationTabType = (typeof VALID_WORKSPACE_TABS)[number];
+
 export default function TestsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tests, setTests] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,19 +93,24 @@ export default function TestsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  // Master Workstation Tabs
-  type WorkstationTabType =
-    | "catalog"
-    | "packages"
-    | "parameters"
-    | "formulas"
-    | "qc"
-    | "interfacing"
-    | "b2b-tariff"
-    | "panic-alerts"
-    | "phlebotomy-sop";
-
   const [workstationTab, setWorkstationTab] = useState<WorkstationTabType>("catalog");
+
+  useEffect(() => {
+    const requestedWorkspace = searchParams.get("workspace") as WorkstationTabType | null;
+    setWorkstationTab(
+      requestedWorkspace && VALID_WORKSPACE_TABS.includes(requestedWorkspace)
+        ? requestedWorkspace
+        : "catalog",
+    );
+  }, [searchParams]);
+
+  const changeWorkspace = (workspace: WorkstationTabType) => {
+    setWorkstationTab(workspace);
+    router.push(
+      workspace === "catalog" ? "/tests" : `/tests?workspace=${workspace}`,
+      { scroll: false },
+    );
+  };
 
   // View Mode: Table vs Grid Cards
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -343,6 +365,21 @@ export default function TestsPage() {
           </div>
         )}
 
+        {error && (
+          <div role="alert" className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+              <div>
+                <p className="font-bold">Test catalogue could not be refreshed</p>
+                <p className="mt-0.5 text-rose-700">{error}</p>
+              </div>
+            </div>
+            <button type="button" onClick={fetchInitialData} className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 font-bold text-rose-800 hover:bg-rose-100 sm:self-auto">
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* =========================================================================
             1. TEST CATALOGUE HEADER
         ========================================================================= */}
@@ -452,7 +489,9 @@ export default function TestsPage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setWorkstationTab(tab.id)}
+                  type="button"
+                  onClick={() => changeWorkspace(tab.id)}
+                  aria-pressed={isActive}
                   className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all cursor-pointer ${
                       isActive
                         ? "bg-sky-700 text-white shadow-sm"

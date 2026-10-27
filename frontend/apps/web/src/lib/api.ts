@@ -5026,107 +5026,11 @@ export const testsApi = testApi;
 export const orderApi = {
   getAll: async (params = '') => {
     const queryString = params ? `?${params}` : '';
-    try {
-      return await apiCall(`/api/orders${queryString}`);
-    } catch (error) {
-      console.error('Orders API error, using fallback:', error);
-      return getFallbackData(`/api/orders${queryString}`);
-    }
+    return apiCall(`/api/orders${queryString}`);
   },
 
   getById: async (id: string) => {
-    try {
-      return await apiCall(`/api/orders/${id}`);
-    } catch (error) {
-      console.warn('Order detail API call failed, falling back to local/synthetic requisition data:', error);
-      const fallbackList = getFallbackData('/api/orders') as any;
-      const matched = fallbackList?.data?.orders?.find(
-        (o: any) => o.id === id || o.orderNumber === id || o.barcode === id
-      );
-      if (matched) {
-        return { success: true, data: { order: matched } };
-      }
-      // Generate deterministic fallback requisition for this ID
-      const orderNum = id.startsWith('ORD-') ? id : `ORD-${id.slice(-6).toUpperCase()}`;
-      const uhidNum = `UHID-${id.slice(-6).toUpperCase()}`;
-      const barcodeNum = id.startsWith('SMP-') ? id : `SMP-${Math.abs(id.split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0))}`;
-      const fallbackOrder = {
-        id,
-        orderNumber: orderNum,
-        barcode: barcodeNum,
-        patient: {
-          id: `pat-${id.slice(0, 8)}`,
-          uhid: uhidNum,
-          firstName: "Rahul",
-          lastName: "Sharma",
-          phone: "+91 98765 43210",
-          gender: "MALE",
-          age: 38,
-          bloodGroup: "B+",
-          address: "Flat 402, Green Avenue, Medical Enclave",
-          email: "patient.record@elis-health.org",
-        },
-        doctor: {
-          id: "doc-1",
-          doctorCode: "DOC-101",
-          fullName: "Dr. Ananya Roy",
-          specialization: "General Physician / Internal Medicine",
-          clinicName: "Apex Specialty Clinic",
-          phone: "+91 98200 12345",
-          email: "dr.ananya@apexclinic.in",
-          regNo: "MCI-482910",
-        },
-        items: [
-          {
-            id: `item-${id}-1`,
-            test: {
-              id: "test-cbc",
-              testCode: "CBC",
-              testName: "Complete Blood Count (CBC with ESR)",
-              sampleType: "Whole Blood (EDTA)",
-              sampleContainer: "EDTA Tube",
-              tatHours: 4,
-              department: "Hematology",
-              category: { department: "Hematology", name: "Routine Blood" }
-            },
-            price: 550,
-            discount: 50,
-            finalPrice: 500
-          },
-          {
-            id: `item-${id}-2`,
-            test: {
-              id: "test-lft",
-              testCode: "LFT",
-              testName: "Liver Function Test Profile",
-              sampleType: "Serum",
-              sampleContainer: "SST Gel / Plain Tube",
-              tatHours: 6,
-              department: "Biochemistry",
-              category: { department: "Biochemistry", name: "Organ Function" }
-            },
-            price: 850,
-            discount: 50,
-            finalPrice: 800
-          }
-        ],
-        orderStatus: "SAMPLE_COLLECTED",
-        paymentStatus: "PAID",
-        paymentMode: "UPI / QR",
-        priority: "ROUTINE",
-        collectionType: "WALK_IN",
-        sampleCollected: true,
-        subtotal: 1400,
-        discount: 100,
-        gstAmount: 0,
-        grandTotal: 1300,
-        paidAmount: 1300,
-        dueAmount: 0,
-        notes: "Routine medical checkup requisition.",
-        createdAt: new Date().toISOString()
-      };
-      return { success: true, data: { order: fallbackOrder } };
-    }
+    return apiCall(`/api/orders/${id}`);
   },
 
   create: async (data: any) => {

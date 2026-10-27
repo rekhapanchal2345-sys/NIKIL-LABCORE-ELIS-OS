@@ -73,9 +73,9 @@ export function verifyTotp(secret: string, token: string): boolean {
 export function totpOtpauthUrl(
   secret: string,
   email: string,
-  issuer = "LabCore ELIS"
+  issuer = "LabCore"
 ): string {
   return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(
     email
-  )}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+  )}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
 }

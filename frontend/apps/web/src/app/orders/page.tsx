@@ -46,10 +46,6 @@ import SpecimenAccessioningModal from "@/components/orders/SpecimenAccessioningM
 import RegisterOrderWizard from "@/components/orders/RegisterOrderWizard";
 import PhlebotomyBarcodeGeneratorModal from "@/components/orders/PhlebotomyBarcodeGeneratorModal";
 
-// Orders Integration Engine Modules
-import OrdersIntegrationEngine from "@/components/orders/OrdersIntegrationEngine";
-import OrdersIntegrationWidget from "@/components/orders/OrdersIntegrationWidget";
-
 import {
   Barcode,
   Search,
@@ -68,6 +64,8 @@ import {
   FileText,
   Copy,
   ExternalLink,
+  ClipboardList,
+  Server,
   Timer,
   BarChart3,
   SlidersHorizontal,
@@ -88,9 +86,6 @@ import {
   PackageCheck,
   Receipt,
   Phone,
-  Server,
-  Award,
-  QrCode,
   MapPin,
   Split
 } from "lucide-react";
@@ -186,12 +181,12 @@ export default function OrdersPage() {
 
   // Master Workstation Tab
   const [workstationTab, setWorkstationTab] = useState<"worklist" | "kanban" | "tat" | "analytics" | "comms" | "integration">("worklist");
-  const [activeBranch, setActiveBranch] = useState("Main Hospital Central Lab (Block A - Level 1)");
 
   // Data states
   const [orders, setOrders] = useState<Order[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
@@ -256,10 +251,14 @@ export default function OrdersPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('tab')) setWorkstationTab(urlParams.get('tab') as any);
+      if (urlParams.has('tab')) {
+        const requestedTab = urlParams.get('tab');
+        setWorkstationTab(requestedTab === "integration" ? "integration" : requestedTab as any);
+      }
       if (urlParams.has('status')) setStatusFilter(urlParams.get('status') || "all");
       if (urlParams.has('payment')) setPaymentFilter(urlParams.get('payment') || "all");
       if (urlParams.has('priority')) setPriorityFilter(urlParams.get('priority') || "all");
+      if (urlParams.has('type')) setCollectionTypeFilter(urlParams.get('type') || "");
       if (urlParams.has('dateFrom')) setDateFrom(urlParams.get('dateFrom') || "");
       if (urlParams.has('dateTo')) setDateTo(urlParams.get('dateTo') || "");
       if (urlParams.has('search')) setSearchTerm(urlParams.get('search') || "");
@@ -275,8 +274,14 @@ export default function OrdersPage() {
       if (statusFilter !== "all") url.searchParams.set("status", statusFilter);
       else url.searchParams.delete("status");
 
+      if (priorityFilter !== "all") url.searchParams.set("priority", priorityFilter);
+      else url.searchParams.delete("priority");
+
       if (paymentFilter !== "all") url.searchParams.set("payment", paymentFilter);
       else url.searchParams.delete("payment");
+
+      if (collectionTypeFilter) url.searchParams.set("type", collectionTypeFilter);
+      else url.searchParams.delete("type");
 
       if (dateFrom) url.searchParams.set("dateFrom", dateFrom);
       else url.searchParams.delete("dateFrom");
@@ -289,7 +294,11 @@ export default function OrdersPage() {
 
       window.history.replaceState(null, '', url.toString());
     }
-  }, [workstationTab, statusFilter, paymentFilter, dateFrom, dateTo, searchTerm]);
+  }, [workstationTab, statusFilter, paymentFilter, priorityFilter, collectionTypeFilter, dateFrom, dateTo, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, paymentFilter, priorityFilter, collectionTypeFilter, selectedDepartment, dateFrom, dateTo, itemsPerPage]);
 
   const handleNotifyOrder = (order: Order) => {
     setOrderNotifyPayload({
@@ -337,6 +346,7 @@ export default function OrdersPage() {
         const list = ordersRes.data?.orders || ordersRes.data || [];
         setOrders(Array.isArray(list) ? list : []);
       }
+      setDataState("ready");
 
       if (doctorsRes && doctorsRes.data) {
         const docList = doctorsRes.data?.doctors || doctorsRes.data || [];
@@ -344,6 +354,7 @@ export default function OrdersPage() {
       }
     } catch (err: any) {
       console.error("Error fetching orders:", err);
+      setDataState("error");
       showToastRef.current(err.message || "Failed to fetch orders", "error");
     } finally {
       setLoading(false);
@@ -434,6 +445,16 @@ export default function OrdersPage() {
       result = result.filter((o) => o.collectionType === collectionTypeFilter);
     }
 
+    if (dateFrom) {
+      const from = new Date(`${dateFrom}T00:00:00`).getTime();
+      result = result.filter((o) => new Date(o.createdAt).getTime() >= from);
+    }
+
+    if (dateTo) {
+      const to = new Date(`${dateTo}T23:59:59.999`).getTime();
+      result = result.filter((o) => new Date(o.createdAt).getTime() <= to);
+    }
+
     if (selectedDepartment !== "ALL") {
       result = result.filter((o) =>
         (o.items || []).some((i) => {
@@ -465,7 +486,7 @@ export default function OrdersPage() {
     });
 
     return result;
-  }, [orders, searchTerm, statusFilter, paymentFilter, priorityFilter, collectionTypeFilter, selectedDepartment, sortBy, sortOrder]);
+  }, [orders, searchTerm, statusFilter, paymentFilter, priorityFilter, collectionTypeFilter, selectedDepartment, dateFrom, dateTo, sortBy, sortOrder]);
 
   // Metrics
   const computedMetrics = useMemo(() => {
@@ -552,10 +573,11 @@ export default function OrdersPage() {
   };
 
   const handleSelectAllCurrentPage = () => {
-    if (selectedOrders.size === currentOrders.length && currentOrders.length > 0) {
+    const allCurrentPageSelected = currentOrders.length > 0 && currentOrders.every((order) => selectedOrders.has(order.id));
+    if (allCurrentPageSelected) {
       setSelectedOrders(new Set());
     } else {
-      setSelectedOrders(new Set(currentOrders.map((o) => o.id)));
+      setSelectedOrders((previous) => new Set([...previous, ...currentOrders.map((o) => o.id)]));
     }
   };
 
@@ -621,92 +643,41 @@ export default function OrdersPage() {
         <ToastContainer toasts={toasts} onRemove={removeToast} />
 
         <div className="space-y-6 pb-12">
-          {/* ========================================================
-              EXECUTIVE CLINICAL HOSPITAL REQUISITIONS COMMAND HEADER
-              (Light White Medical Aesthetic with Hospital Emblem & Accreditation)
-              ======================================================== */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 relative overflow-hidden transition-all duration-300">
-            {/* Subtle medical ambient accent glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-100/40 via-teal-50/30 to-transparent rounded-full pointer-events-none -mr-24 -mt-24 blur-3xl" />
-
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
-              
-              {/* Left Column: Hospital Emblem Logo, Institution Name, Accreditations */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 relative overflow-hidden">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 relative z-10">
               <div className="flex items-start gap-4">
-                {/* Official Medical Heraldic Logo Emblem */}
-                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-sky-500 p-0.5 shadow-md flex-shrink-0">
-                  <div className="h-full w-full bg-white rounded-[14px] flex flex-col items-center justify-center p-1 text-center shadow-inner relative overflow-hidden">
-                    <div className="absolute -top-3 -right-3 h-8 w-8 bg-sky-100 rounded-full blur-xs pointer-events-none" />
-                    <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-10 sm:w-10 text-sky-600" fill="currentColor">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z" />
-                      <circle cx="18" cy="6" r="2" fill="#0d9488" />
-                    </svg>
-                    <span className="text-[8px] font-black uppercase tracking-wider text-slate-800 leading-none mt-0.5">
-                      LABCORE
-                    </span>
-                    <span className="text-[6.5px] font-bold text-sky-700 tracking-tighter">
-                      CPOE ORDERS
-                    </span>
-                  </div>
+                <div className="h-12 w-12 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 flex-shrink-0">
+                  <ClipboardList className="h-6 w-6" />
                 </div>
-
-                {/* Institution Identity & Accreditations */}
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Order Bus Online • 0 Loss Ingest
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 border border-slate-200 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                      Clinical operations
                     </span>
-
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
-                      <Award className="h-3 w-3 text-sky-600" />
-                      NABL ISO 15189:2022 (MC-5421)
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                      dataState === "error" ? "bg-rose-50 border border-rose-200 text-rose-700" :
+                      dataState === "loading" || isRefreshing ? "bg-amber-50 border border-amber-200 text-amber-700" :
+                      "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${
+                        dataState === "error" ? "bg-rose-500" : dataState === "loading" || isRefreshing ? "bg-amber-500" : "bg-emerald-500"
+                      }`} />
+                      {dataState === "error" ? "Unavailable" : dataState === "loading" || isRefreshing ? "Updating" : "Current data"}
                     </span>
-
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                      <QrCode className="h-3 w-3 text-indigo-600" />
-                      ABDM e-Prescription (FHIR R4)
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => setWorkstationTab("integration")}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-300 hover:bg-sky-100 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <Server className="h-3 w-3 text-sky-600" />
-                      Integration Engine: 6 Feeds Active &rarr;
-                    </button>
                   </div>
-
-                  <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                      APEX MULTI-SPECIALTY HOSPITAL &amp; REFERENCE DIAGNOSTICS
-                    </h1>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Centralized clinical test requisition hub with automated phlebotomy dispatch, diagnostic analyzer routing, real-time SLA breach alarms, and billing ledger.
-                    </p>
-                  </div>
-
-                  {/* Branch Location Selector */}
-                  <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
-                    <span className="flex items-center gap-1 font-bold text-slate-800">
-                      <MapPin className="h-3.5 w-3.5 text-rose-500" /> Ordering Unit:
-                    </span>
-                    <select
-                      value={activeBranch}
-                      onChange={(e) => setActiveBranch(e.target.value)}
-                      className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:border-sky-500 cursor-pointer"
-                    >
-                      <option value="Main Hospital Central Lab (Block A - Level 1)">Main Hospital Central Lab (Block A - Level 1)</option>
-                      <option value="OPD Phlebotomy & Day-Care Collection Centre">OPD Phlebotomy & Day-Care Collection Centre</option>
-                      <option value="Emergency / Casualty STAT Satellite Unit">Emergency / Casualty STAT Satellite Unit</option>
-                      <option value="North City B2B Referral Annex">North City B2B Referral Annex</option>
-                    </select>
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    Orders &amp; Requisitions
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium max-w-2xl">
+                    Register investigations, coordinate specimen collection, monitor processing, and maintain a complete patient order record.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1 text-xs text-slate-600">
+                    <MapPin className="h-3.5 w-3.5 text-sky-600" />
+                    <span>Order intake and specimen operations</span>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Actions Hub */}
               <div className="flex flex-wrap items-center gap-2 xl:flex-col xl:items-end justify-between flex-shrink-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -722,23 +693,6 @@ export default function OrdersPage() {
                   </button>
 
                   <button
-                    onClick={() => setShowRunSheetModal(true)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 px-3 py-2 text-xs font-bold text-purple-700 transition-all shadow-2xs"
-                  >
-                    <FlaskConical className="h-3.5 w-3.5 text-purple-600" /> Phlebotomy Run-Sheet
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setPhlebotomyBarcodeOrder(null);
-                      setShowPhlebotomyBarcodeModal(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 text-xs font-bold text-indigo-700 transition-all shadow-2xs"
-                  >
-                    <Barcode className="h-3.5 w-3.5 text-indigo-600" /> Phlebotomy Tube Barcodes
-                  </button>
-
-                  <button
                     onClick={handleExportCSV}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition-all shadow-2xs"
                   >
@@ -751,14 +705,14 @@ export default function OrdersPage() {
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>New Requisition</span>
+                    <span>New order</span>
                     <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.2 text-[9px] font-mono bg-white/20 rounded">N</kbd>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Real-Time Light Professional KPI Strip */}
+            {/* Operational KPI strip */}
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 border-t border-slate-100 pt-5">
               <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 shadow-2xs">
                 <div className="flex items-center justify-between">
@@ -818,7 +772,7 @@ export default function OrdersPage() {
                 }`}
               >
                 <TableIcon className="h-3.5 w-3.5 text-sky-600" />
-                <span>1. Requisitions Worklist</span>
+                <span>Worklist</span>
                 <span className="rounded-full bg-slate-200/80 text-slate-700 px-2 py-0.2 text-[10px] font-mono">
                   {filteredOrders.length}
                 </span>
@@ -833,7 +787,7 @@ export default function OrdersPage() {
                 }`}
               >
                 <LayoutGrid className="h-3.5 w-3.5 text-indigo-600" />
-                <span>2. Clinical Pipeline Kanban</span>
+                <span>Workflow board</span>
               </button>
 
               <button
@@ -845,7 +799,7 @@ export default function OrdersPage() {
                 }`}
               >
                 <Timer className="h-3.5 w-3.5 text-teal-600" />
-                <span>3. TAT &amp; SLA Breach Watch</span>
+                <span>Turnaround time</span>
                 {tatData && tatData.breached > 0 && (
                   <span className="rounded-full bg-rose-600 px-1.5 py-0.2 text-[9px] font-bold text-white animate-pulse">
                     {tatData.breached} Breached
@@ -862,7 +816,7 @@ export default function OrdersPage() {
                 }`}
               >
                 <BarChart3 className="h-3.5 w-3.5 text-cyan-600" />
-                <span>4. Analytics</span>
+                <span>Performance</span>
               </button>
 
               <button
@@ -874,7 +828,7 @@ export default function OrdersPage() {
                 }`}
               >
                 <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
-                <span>5. WhatsApp &amp; SMS</span>
+                <span>Patient communication</span>
               </button>
 
               <button
@@ -886,8 +840,7 @@ export default function OrdersPage() {
                 }`}
               >
                 <Server className="h-3.5 w-3.5 text-sky-600" />
-                <span>6. Orders Integration Engine</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Order interfaces</span>
               </button>
             </div>
           </div>
@@ -994,7 +947,7 @@ export default function OrdersPage() {
                 </div>
 
                 {/* Filter Inputs Grid */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
                   <div className="relative lg:col-span-2">
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
@@ -1040,6 +993,18 @@ export default function OrdersPage() {
 
                   <div>
                     <select
+                      value={collectionTypeFilter || "all"}
+                      onChange={(e) => setCollectionTypeFilter(e.target.value === "all" ? "" : e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 transition-all font-medium cursor-pointer"
+                    >
+                      <option value="all">All collection types</option>
+                      <option value="WALK_IN">In-house collection</option>
+                      <option value="HOME_COLLECTION">Home collection</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 transition-all font-medium cursor-pointer"
@@ -1051,13 +1016,44 @@ export default function OrdersPage() {
                     </select>
                   </div>
                 </div>
-              </div>
 
-              {/* Orders Integration Engine Telemetry Card Widget */}
-              <OrdersIntegrationWidget
-                onOpenEngine={() => setWorkstationTab("integration")}
-                ordersToday={computedMetrics.totalOrders}
-              />
+                <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedFilters((visible) => !visible)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-sky-700"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    {showAdvancedFilters ? "Hide date filters" : "More filters"}
+                  </button>
+                  {(dateFrom || dateTo || collectionTypeFilter) && (
+                    <span className="text-[11px] font-medium text-slate-500">Additional filters applied</span>
+                  )}
+                </div>
+
+                {showAdvancedFilters && (
+                  <div className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <label className="text-[11px] font-bold text-slate-600">
+                      From date
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-800 outline-none focus:border-sky-500"
+                      />
+                    </label>
+                    <label className="text-[11px] font-bold text-slate-600">
+                      To date
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-800 outline-none focus:border-sky-500"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
 
               {/* Bulk Operations Toolbar */}
               {selectedOrders.size > 0 && (
@@ -1118,7 +1114,7 @@ export default function OrdersPage() {
                 {loading ? (
                   <OrdersTableSkeleton />
                 ) : filteredOrders.length === 0 ? (
-                  <OrdersEmptyState hasFilters={Boolean(searchTerm || statusFilter !== "all" || paymentFilter !== "all" || priorityFilter !== "all")} onResetFilters={() => { setSearchTerm(""); setStatusFilter("all"); setPaymentFilter("all"); setPriorityFilter("all"); }} />
+                  <OrdersEmptyState hasFilters={Boolean(searchTerm || statusFilter !== "all" || paymentFilter !== "all" || priorityFilter !== "all" || collectionTypeFilter || dateFrom || dateTo)} onResetFilters={() => { setSearchTerm(""); setStatusFilter("all"); setPaymentFilter("all"); setPriorityFilter("all"); setCollectionTypeFilter(""); setDateFrom(""); setDateTo(""); }} />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
@@ -1127,7 +1123,7 @@ export default function OrdersPage() {
                           <th className="px-5 py-4 w-10">
                             <input
                               type="checkbox"
-                              checked={selectedOrders.size === currentOrders.length && currentOrders.length > 0}
+                              checked={currentOrders.length > 0 && currentOrders.every((order) => selectedOrders.has(order.id))}
                               onChange={handleSelectAllCurrentPage}
                               className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                             />
@@ -1202,12 +1198,9 @@ export default function OrdersPage() {
                                     <UserRound className="h-3.5 w-3.5 text-sky-600" />
                                     {order.patient.firstName} {order.patient.lastName}
                                   </p>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap">
-                                    <span>UHID: <strong className="font-mono text-slate-800">{order.patient.uhid}</strong></span>
-                                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                                      ABDM Linked ✓
-                                    </span>
-                                  </div>
+                                   <div className="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap">
+                                     <span>UHID: <strong className="font-mono text-slate-800">{order.patient.uhid}</strong></span>
+                                   </div>
                                   <p className="text-[10px] text-slate-400">
                                     {order.patient.age || "—"} yrs · {order.patient.gender} · {order.patient.phone || "No phone"}
                                   </p>
@@ -1467,7 +1460,7 @@ export default function OrdersPage() {
                     <Timer className="h-5 w-5 text-cyan-600" /> Real-time Turnaround Time (TAT) Telemetry
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
-                    Continuous monitoring of requisition test delivery against NABL / CAP SLA targets.
+                     Continuous monitoring of order delivery against configured laboratory turnaround targets.
                   </p>
                 </div>
                 <button
@@ -1592,13 +1585,36 @@ export default function OrdersPage() {
 
           {/* TAB 6: ORDERS INTEGRATION ENGINE */}
           {workstationTab === "integration" && (
-            <div className="space-y-6">
-              <OrdersIntegrationEngine
-                onInjectOrderToWorklist={() => {
-                  fetchOrders();
-                  fetchAnalytics();
-                }}
-              />
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-slate-100 pb-5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">Order interfaces</p>
+                  <h2 className="mt-1 text-xl font-bold text-slate-900">Connected systems and message review</h2>
+                  <p className="mt-1 max-w-2xl text-xs text-slate-500">
+                    Review configured hospital, clinic, laboratory and analyzer interfaces in the Integration workspace. Orders are added to this worklist only after the configured interface has acknowledged them.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/integrations")}
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-sky-700"
+                >
+                  Open interface workspace
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                {[
+                  ["Inbound orders", "Orders received through configured sources"],
+                  ["Validation", "Patient, test and ordering details checked before worklist entry"],
+                  ["Exceptions", "Messages requiring staff review before release"],
+                ].map(([label, description]) => (
+                  <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                    <p className="text-xs font-bold text-slate-800">{label}</p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-500">{description}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1793,4 +1809,3 @@ export default function OrdersPage() {
     </ProtectedRoute>
   );
 }
-

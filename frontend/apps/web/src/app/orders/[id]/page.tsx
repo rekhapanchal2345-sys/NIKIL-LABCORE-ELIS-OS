@@ -51,7 +51,6 @@ import {
   ArrowRight,
   Loader2,
   Check,
-  Award,
   TestTube,
 } from "lucide-react";
 
@@ -179,10 +178,6 @@ export default function OrderDetailPage({
                     {order?.orderStatus && (
                       <StatusBadge status={order.orderStatus as any} />
                     )}
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200">
-                      <Award className="h-3 w-3 text-sky-600" />
-                      NABL ISO 15189
-                    </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 font-mono">
                     <button

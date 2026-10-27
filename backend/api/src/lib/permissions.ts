@@ -289,8 +289,16 @@ const MFA_REQUIRED_ROLES = new Set(
     .filter(Boolean)
 );
 
-export const mfaRequiredForRole = (role: string): boolean =>
-  MFA_REQUIRED_ROLES.has(normalizeRoleString(role));
+export const mfaRequiredForRole = (role: string): boolean => {
+  if (
+    process.env.MFA_ENABLED === "false" ||
+    process.env.MFA_REQUIRED_ROLES === "NONE" ||
+    process.env.MFA_REQUIRED_ROLES === ""
+  ) {
+    return false;
+  }
+  return MFA_REQUIRED_ROLES.has(normalizeRoleString(role));
+};
 
 export const idleTimeoutMinutesForRole = (role: string): number => {
   const norm = normalizeRoleString(role);

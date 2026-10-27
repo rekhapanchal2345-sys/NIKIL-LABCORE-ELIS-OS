@@ -521,9 +521,6 @@ export default function OrderReceiptPage({
               {(order.items || []).length} Prescribed Assay{(order.items || []).length !== 1 ? "s" : ""}
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold bg-sky-50 text-sky-800 border border-sky-200">
-              <Award className="h-3.5 w-3.5 text-sky-700" /> NABL Accredited (ISO 15189:2022)
-            </span>
           </div>
         </div>
 
@@ -564,32 +561,14 @@ export default function OrderReceiptPage({
 
                   <div className="space-y-0.5">
                     <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
-                      LABCORE DIAGNOSTICS &amp; HOSPITALS
+                      Diagnostic Services
                     </h1>
                     <p className="text-xs font-bold text-sky-900 uppercase tracking-wide">
-                      Institute of Laboratory Medicine, Pathology &amp; Molecular Research
+                      Patient order receipt
                     </p>
                     <p className="text-[11px] text-slate-600 font-medium">
-                      1204 Healthcare Tower, Medicity Central, Mumbai, Maharashtra - 400001
+                      Facility contact and tax details are maintained in the organisation settings.
                     </p>
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-slate-500 font-mono">
-                      <span>24×7 Central Helpline: 1800-200-5222 / +91-22-1234-5678</span>
-                      <span>•</span>
-                      <span>Email: billing@labcore.com</span>
-                      <span>•</span>
-                      <span>Web: portal.labcore.com</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-semibold text-slate-700">
-                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-300 font-mono">
-                        GSTIN: 27AABCL1234M1Z8
-                      </span>
-                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-300 font-mono">
-                        CEA Reg: MH-BOM-LAB-2024-998
-                      </span>
-                      <span className="bg-sky-50 text-sky-900 px-2 py-0.5 rounded border border-sky-300 font-bold">
-                        NABL ISO 15189:2022 Certified (MC-4892)
-                      </span>
-                    </div>
                   </div>
                 </div>
 
@@ -687,8 +666,8 @@ export default function OrderReceiptPage({
                         <strong className="font-mono text-slate-900">{order.patient?.phone || "N/A"}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-500">ABHA Health ID:</span>{" "}
-                        <span className="text-emerald-700 font-bold">ABDM Linked ✓</span>
+                         <span className="text-slate-500">ABHA Health ID:</span>{" "}
+                         <span className="text-slate-700 font-bold">Not recorded</span>
                       </div>
                     </div>
 
@@ -926,17 +905,17 @@ export default function OrderReceiptPage({
                 </div>
               </div>
 
-              {/* ── 5. NABL QR CODE & DIGITAL AUTHENTICATION STRIP ── */}
+               {/* ── 5. QR CODE & DIGITAL DOCUMENT STRIP ── */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 rounded-xl border border-slate-300 bg-slate-50/70 page-break-inside-avoid">
                 <div className="flex items-center gap-3">
                   {qrCodeUrl && (
                     <div className="bg-white p-1 rounded-lg border border-slate-300 shadow-2xs shrink-0">
-                      <img src={qrCodeUrl} alt="NABL Verification QR" className="h-16 w-16" />
+                       <img src={qrCodeUrl} alt="Document verification QR" className="h-16 w-16" />
                     </div>
                   )}
                   <div>
                     <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <ShieldCheck className="h-4 w-4 text-emerald-700" /> Digital NABL Verification &amp; Report Download
+                       <ShieldCheck className="h-4 w-4 text-emerald-700" /> Document verification &amp; report access
                     </p>
                     <p className="text-[11px] text-slate-600 mt-0.5">
                       Scan this secure QR code using any smartphone camera to verify this invoice and download pathology reports.
@@ -947,16 +926,6 @@ export default function OrderReceiptPage({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {["NABL ISO 15189:2022", "ICMR Recognized", "CAP Certified", "ABDM Ready"].map((badge) => (
-                    <span
-                      key={badge}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-white text-slate-700 border border-slate-300 shadow-2xs"
-                    >
-                      <BadgeCheck className="h-3 w-3 text-sky-700" /> {badge}
-                    </span>
-                  ))}
-                </div>
               </div>
 
               {/* ── 6. OFFICIAL SIGNATORIES & CLINICAL STAMP SEAL ── */}
@@ -988,12 +957,12 @@ export default function OrderReceiptPage({
                           ✓ DIGITALLY AUTHENTICATED
                         </span>
                         <span className="block text-[7px] text-slate-600">
-                          NABL ACCREDITED • MC-4892
+                           DIGITAL DOCUMENT RECORD
                         </span>
                       </div>
                     </div>
                     <p className="text-xs font-bold text-slate-900">Chief of Laboratory Medicine / Pathologist</p>
-                    <p className="text-[10px] text-slate-500">For LabCore Diagnostics &amp; Hospitals Pvt. Ltd.</p>
+                     <p className="text-[10px] text-slate-500">Authorised clinical record</p>
                   </div>
                 </div>
 
@@ -1022,10 +991,9 @@ export default function OrderReceiptPage({
               {/* Thermal Header */}
               <div className="bg-slate-50 text-slate-900 text-center py-4 px-3 border-b-2 border-dashed border-slate-300 space-y-0.5">
                 <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-                  LABCORE DIAGNOSTICS &amp; HOSPITALS
+                  DIAGNOSTIC SERVICES
                 </h2>
-                <p className="text-[10px] text-slate-600">1204 Healthcare Tower, Mumbai 400001</p>
-                <p className="text-[10px] text-slate-500">GSTIN: 27AABCL1234M1Z8 • 1800-200-5222</p>
+                 <p className="text-[10px] text-slate-600">Patient order receipt</p>
                 <div className="mt-1.5 inline-block px-3 py-1 rounded bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider">
                   TAX INVOICE / RECEIPT
                 </div>
@@ -1067,7 +1035,7 @@ export default function OrderReceiptPage({
               <div className="py-2.5 px-4 border-b border-dashed border-slate-300 space-y-0.5">
                 <ThermalRow label="Subtotal" value={fmt(subtotal)} mono />
                 {discount > 0 && <ThermalRow label="Concession" value={`-${fmt(discount)}`} mono />}
-                <ThermalRow label="GST (0%)" value="₹0.00" mono />
+                 <ThermalRow label="GST" value={fmt(order.gstAmount || 0)} mono />
                 <div className="flex justify-between pt-1.5 font-black text-sm border-t border-slate-300 mt-1">
                   <span>NET TOTAL</span>
                   <span className="font-mono">{fmt(grandTotal)}</span>
@@ -1091,14 +1059,14 @@ export default function OrderReceiptPage({
                   <div className="inline-block p-1 bg-white border border-slate-200 rounded-lg shadow-2xs">
                     <img src={qrCodeUrl} alt="Verify QR" className="h-20 w-20 mx-auto" />
                   </div>
-                  <p className="text-[9px] mt-1 text-slate-500">Scan to download NABL report</p>
+                   <p className="text-[9px] mt-1 text-slate-500">Scan to access the document</p>
                 </div>
               )}
 
               {/* Footer */}
               <div className="text-center pb-4 px-4 text-[9px] text-slate-500 space-y-0.5 pt-2">
-                <p className="font-bold text-slate-700">Thank you for choosing LabCore Diagnostics!</p>
-                <p>NABL Accredited • ISO 15189:2022</p>
+                 <p className="font-bold text-slate-700">Please retain this receipt for your records.</p>
+                 <p>Retain this receipt with the patient record</p>
                 <p className="font-mono text-[8px] text-slate-400 pt-0.5">{order.id}</p>
               </div>
             </div>
