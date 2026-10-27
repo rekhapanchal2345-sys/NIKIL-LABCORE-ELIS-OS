@@ -238,6 +238,15 @@ export default function DoctorNavigationHeader({
               </button>
             )}
 
+            <Link
+              href="/abdm?tab=care-context-m2"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              title="ABDM National Digital Health & Care Contexts"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>ABDM Desk</span>
+            </Link>
+
             {onExportCSV && (
               <button
                 type="button"

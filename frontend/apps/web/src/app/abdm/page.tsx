@@ -82,6 +82,7 @@ import {
   Share,
   Smartphone,
 } from "lucide-react";
+import AbdmNavigationHeader from "@/components/abdm/AbdmNavigationHeader";
 import AbhaLinkModal from "@/components/abdm/AbhaLinkModal";
 import AbhaCardModal from "@/components/abdm/AbhaCardModal";
 import { getAccessToken } from "@/lib/auth-storage";
@@ -1487,233 +1488,33 @@ function AbdmPageContent() {
         )}
 
         {/* ==================================================================== */}
-        {/* TOP HEALTHCARE FACILITY BANNER & ABDM GATEWAY TELEMETRY              */}
+        {/* PROFESSIONAL CLINICAL ULTRA-LIGHT WHITE ABDM NAVIGATION HEADER        */}
         {/* ==================================================================== */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 md:p-6 transition-all">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-            {/* Left: Facility Identity & Classification */}
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-blue-500/10 shrink-0">
-                <ShieldCheck className="w-6 h-6 text-white" />
-              </div>
-
-              <div>
-                <div className="flex flex-wrap items-center gap-2.5 mb-1">
-                  <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-                    ABDM / ADM Digital Health Mission
-                  </h1>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Central Gateway: ONLINE
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                    <Award className="w-3.5 h-3.5" />
-                    {status.accreditation}
-                  </span>
-                </div>
-
-                <div className="text-xs text-slate-600 leading-relaxed flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="font-bold text-slate-900">{status.facilityName}</span>
-                  <span className="text-slate-300">•</span>
-                  <span>
-                    Facility Category: <strong className="text-slate-800">{currentProfile.category}</strong>
-                  </span>
-                  <span className="text-slate-300">•</span>
-                  <span>
-                    HFR ID: <strong className="font-mono text-slate-700">{status.hfrId}</strong>
-                  </span>
-                  <span className="text-slate-300">•</span>
-                  <span>
-                    HIP ID: <strong className="font-mono text-emerald-700">{status.hipId}</strong>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Facility Switcher, Latency Ping, Token Countdown & Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Enterprise Facility Selector */}
-              <div className="relative">
-                <select
-                  value={facilityProfileKey}
-                  onChange={(e) => handleFacilityProfileChange(e.target.value as FacilityProfileType)}
-                  className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3.5 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition-all"
-                  title="Switch between Hospital, Diagnostic Lab, Clinic, or Pharmacy"
-                >
-                  <option value="HOSPITAL">🏢 Multi-Specialty Hospital</option>
-                  <option value="LAB">🔬 NABL Diagnostic Laboratory</option>
-                  <option value="CLINIC">🩺 Family Health Polyclinic</option>
-                  <option value="PHARMACY">💊 Hospital & Retail Pharmacy</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-
-              {/* Edit Facility Registry Button */}
-              <button
-                type="button"
-                onClick={() => setShowFacilityModal(true)}
-                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 transition-all shadow-2xs"
-                title="Edit Facility Registry & HIP Credentials"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-
-              {/* Ping Gateway Latency */}
-              <button
-                type="button"
-                onClick={handlePingGateway}
-                disabled={pinging}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-all shadow-2xs active:scale-95"
-                title="Click to ping NHA Central Gateway"
-              >
-                <Radio className={`w-3.5 h-3.5 ${pinging ? "animate-spin text-blue-600" : "text-emerald-600"}`} />
-                <span>
-                  Gateway: <strong className="font-mono text-slate-900">{gatewayPing}ms</strong>
-                </span>
-              </button>
-
-              {/* Bearer Token Countdown */}
-              <div
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 font-medium"
-                title="ABDM Gateway Bearer Token Expiration"
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                <span>
-                  Token:{" "}
-                  <strong className="font-mono font-bold text-amber-800">
-                    {Math.floor(tokenTtlSeconds / 60)}m {tokenTtlSeconds % 60}s
-                  </strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleRefreshToken}
-                  className="ml-1 text-[11px] font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer"
-                >
-                  Renew
-                </button>
-              </div>
-
-              {/* Fast ABHA Creation Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("abha-m1");
-                  setM1Mode("enroll");
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Enroll ABHA</span>
-              </button>
-
-              {/* Sync Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setLoadingStatus(true);
-                  setTimeout(() => {
-                    setLoadingStatus(false);
-                    showToast("ABDM operational telemetry synchronized");
-                  }, 500);
-                }}
-                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-all active:scale-95 cursor-pointer"
-                title="Sync Status with NHA Gateway"
-              >
-                <RefreshCw className={`w-4 h-4 ${loadingStatus ? "animate-spin text-blue-600" : ""}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Operational Health KPIs */}
-          <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">ABDM Interop Mode</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-xs font-bold text-slate-800">{status.environment}</span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Verified ABHA Holders</span>
-              <p className="text-base font-black text-slate-900 mt-0.5">{stats.totalAbhaPatients}</p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Linked Care Contexts</span>
-              <p className="text-base font-black text-indigo-700 mt-0.5">{stats.totalCareContexts}</p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Today's OPD Scan Footfall</span>
-              <p className="text-base font-black text-emerald-700 mt-0.5">{stats.todayScanFootfall} Patients</p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70 col-span-2 md:col-span-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">M3 Encryption Engine</span>
-              <div className="flex items-center gap-1 mt-0.5">
-                <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-xs font-bold text-emerald-700">AES-256-GCM / ECDH</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ==================================================================== */}
-        {/* PURE ULTRA-LIGHT WHITE HORIZONTAL TAB NAVIGATION                     */}
-        {/* ==================================================================== */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-1.5 overflow-x-auto">
-          <div className="flex gap-1 min-w-max">
-            {[
-              { id: "overview" as const, label: "Command Center & Milestones", icon: Activity },
-              { id: "scan-share" as const, label: "OPD & Lab Scan & Share Kiosk", icon: QrCode, badge: "FastTrack" },
-              { id: "abha-m1" as const, label: "ABHA Creation & KYC (M1)", icon: Shield, badge: "M1" },
-              { id: "care-context-m2" as const, label: "Care Context Linker (M2)", icon: LinkIcon, count: careContexts.length },
-              { id: "consents-hiu" as const, label: "Consents & HIU Records (M3)", icon: FileText, count: consents.length },
-              { id: "fhir-m3" as const, label: "FHIR R4 Diagnostic Bundle", icon: FileCode, badge: "LOINC" },
-              { id: "bulk-verify" as const, label: "Camp & Bulk Verifier", icon: Users, badge: "Batch" },
-              { id: "report-stamp" as const, label: "Report Stamping & Seal", icon: Award, badge: "NABL" },
-              { id: "simulator" as const, label: "Gateway Simulator & Webhooks", icon: Terminal, badge: "v0.5 HIG" },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-slate-900 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-sky-400" : "text-slate-500"}`} />
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-md font-extrabold ${
-                        isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
-                      }`}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                  {tab.count !== undefined && (
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-md font-extrabold ${
-                        isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
-                      }`}
-                    >
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
+        <AbdmNavigationHeader
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          facilityProfileKey={facilityProfileKey}
+          onFacilityProfileChange={handleFacilityProfileChange}
+          facilityProfiles={FACILITY_PROFILES}
+          currentProfile={currentProfile}
+          gatewayPing={gatewayPing}
+          pinging={pinging}
+          onPingGateway={handlePingGateway}
+          tokenTtlSeconds={tokenTtlSeconds}
+          onRefreshToken={handleRefreshToken}
+          stats={stats}
+          checkedInWaitingCount={checkedInQueue.filter((p) => p.status === "WAITING").length}
+          onOpenSettings={() => setShowFacilityModal(true)}
+          onOpenScanQrModal={() => {
+            setActiveTab("scan-share");
+            handleGenerateQr();
+          }}
+          onOpenNewEnrollment={() => {
+            setActiveTab("abha-m1");
+            setM1Mode("enroll");
+          }}
+          onOpenNewConsent={() => setShowNewConsentModal(true)}
+        />
 
         {/* ==================================================================== */}
         {/* TAB 1: EXECUTIVE COMMAND CENTER & NHA MILESTONES                     */}

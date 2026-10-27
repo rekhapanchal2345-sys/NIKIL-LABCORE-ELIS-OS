@@ -83,6 +83,7 @@ import {
   Barcode,
   Info,
   Ticket,
+  QrCode,
   Bed,
   Truck,
   CheckCheck,
@@ -1514,6 +1515,15 @@ export default function PixelPerfectPatientsPage() {
                 <Download className="h-3.5 w-3.5 text-slate-500" />
                 <span>Export CSV</span>
               </button>
+
+              <Link
+                href="/abdm?tab=scan-share"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3.5 py-2 text-xs font-bold shadow-2xs active:scale-95 transition-all"
+                title="ABDM Scan & Share Fast-Track Token Desk"
+              >
+                <QrCode className="h-3.5 w-3.5 text-purple-600" />
+                <span>ABDM Scan &amp; Share</span>
+              </Link>
 
               <button
                 onClick={() => setIsQuickTokenOpen(true)}
