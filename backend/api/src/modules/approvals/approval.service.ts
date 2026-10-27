@@ -955,31 +955,42 @@ export const batchApprove = async (
     });
     const orderIds = Array.from(new Set(batchResults.map((r) => r.orderId).filter(Boolean))) as string[];
 
-    for (const ordId of orderIds) {
-      const remaining = await prisma.result.count({
-        where: {
-          orderId: ordId,
-          status: { notIn: ["APPROVED", "PUBLISHED"] },
-        },
-      });
+    // Group remaining results count by orderId
+    const remainingCounts = await prisma.result.groupBy({
+      by: ['orderId'],
+      where: {
+        orderId: { in: orderIds },
+        status: { notIn: ["APPROVED", "PUBLISHED"] },
+      },
+      _count: { _all: true },
+    });
 
-      if (remaining === 0) {
-        await prisma.order.update({
-          where: { id: ordId },
+    const remainingCountsMap = new Map<string, number>();
+    for (const item of remainingCounts) {
+      if (item.orderId) {
+        remainingCountsMap.set(item.orderId, item._count._all);
+      }
+    }
+
+    const completedOrderIds = orderIds.filter(ordId => !remainingCountsMap.get(ordId) || remainingCountsMap.get(ordId) === 0);
+
+    if (completedOrderIds.length > 0) {
+      await prisma.$transaction([
+        prisma.order.updateMany({
+          where: { id: { in: completedOrderIds } },
           data: {
             orderStatus: "COMPLETED" as any,
             reportedAt: new Date(),
           },
-        });
-
-        await prisma.sample.updateMany({
-          where: { orderId: ordId },
+        }),
+        prisma.sample.updateMany({
+          where: { orderId: { in: completedOrderIds } },
           data: {
             status: "COMPLETED" as any,
             completedAt: new Date(),
           },
-        });
-      }
+        })
+      ]);
     }
   } catch (batchLifecycleErr) {
     console.warn("[Approvals] Batch lifecycle advance non-fatal:", batchLifecycleErr);
