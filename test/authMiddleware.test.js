@@ -40,7 +40,7 @@ function createMocks(headers = {}) {
 }
 
 runTest("authenticateUser - Valid Token (ADMIN)", () => {
-  const { req, res, next } = createMocks({ authorization: 'Bearer some_token' });
+  const { req, res, next } = createMocks({ authorization: 'Bearer admin_token' });
   authenticateUser(req, res, next);
 
   assert.strictEqual(req.nextCalled, true);

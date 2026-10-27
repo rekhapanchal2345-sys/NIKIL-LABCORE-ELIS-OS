@@ -65,26 +65,51 @@ function authenticateUser(req, res, next) {
       return res.status(401).json({ success: false, message: 'Authentication token required' });
     }
     
-    // Default active user matching the live system banner (DR. amit shah - ADMIN)
-    let currentUser = {
-      userId: 'USR-ADMIN-01',
-      username: 'dr.amit.shah',
-      fullName: 'DR. amit shah',
-      role: 'ADMIN',
-      designation: 'Lab Director & Chief Pathologist',
-      nablAccredited: true
-    };
+    const token = authHeader.split(' ')[1];
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      // In production, verify JWT payload with jwt.verify(token, SECRET)
-      if (token.includes('pathologist')) {
-        currentUser.role = 'PATHOLOGIST';
-        currentUser.fullName = 'Dr. Rohit Deshmukh';
-      } else if (token.includes('researcher')) {
-        currentUser.role = 'RESEARCHER';
-        currentUser.fullName = 'Dr. AI Research Lead';
-      }
+    // In production, verify JWT payload with jwt.verify(token, SECRET)
+    let currentUser = null;
+
+    if (token.includes('admin')) {
+      currentUser = {
+        userId: 'USR-ADMIN-01',
+        username: 'dr.amit.shah',
+        fullName: 'DR. amit shah',
+        role: 'ADMIN',
+        designation: 'Lab Director & Chief Pathologist',
+        nablAccredited: true
+      };
+    } else if (token.includes('pathologist')) {
+      currentUser = {
+        userId: 'USR-PATH-01',
+        username: 'dr.rohit.deshmukh',
+        fullName: 'Dr. Rohit Deshmukh',
+        role: 'PATHOLOGIST',
+        designation: 'Consultant Pathologist',
+        nablAccredited: true
+      };
+    } else if (token.includes('researcher')) {
+      currentUser = {
+        userId: 'USR-RES-01',
+        username: 'dr.ai.research',
+        fullName: 'Dr. AI Research Lead',
+        role: 'RESEARCHER',
+        designation: 'AI & Clinical Data Scientist',
+        nablAccredited: false
+      };
+    } else if (process.env.NODE_ENV === 'development') {
+      currentUser = {
+        userId: 'USR-ADMIN-01',
+        username: 'dr.amit.shah',
+        fullName: 'DR. amit shah',
+        role: 'ADMIN',
+        designation: 'Lab Director & Chief Pathologist',
+        nablAccredited: true
+      };
+    }
+
+    if (!currentUser) {
+       return res.status(401).json({ success: false, message: 'Authentication failed. Invalid or expired security token.' });
     }
 
     const roleConfig = USER_ROLES[currentUser.role] || USER_ROLES.PATHOLOGIST;
