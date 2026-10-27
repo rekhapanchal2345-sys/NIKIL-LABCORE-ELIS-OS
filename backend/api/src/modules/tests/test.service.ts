@@ -1297,27 +1297,49 @@ export const importCatalog = async (data: any) => {
           },
         });
 
-        if (pkg.items && Array.isArray(pkg.items)) {
-          for (const item of pkg.items) {
-            try {
-              const test = await prisma.test.findFirst({
-                where: { testCode: item.test?.testCode },
+        if (pkg.items && Array.isArray(pkg.items) && pkg.items.length > 0) {
+          try {
+            // Extract all test codes to fetch them in bulk
+            const testCodes = pkg.items
+              .map((item: any) => item.test?.testCode)
+              .filter((code: any): code is string => Boolean(code));
+
+            if (testCodes.length > 0) {
+              // Bulk lookup tests
+              const tests = await prisma.test.findMany({
+                where: { testCode: { in: testCodes } },
+                select: { id: true, testCode: true },
               });
 
-              if (test) {
-                await prisma.testPackageItem.create({
-                  data: {
+              // Create a fast lookup map
+              const testMap = new Map(tests.map(t => [t.testCode, t.id]));
+
+              // Prepare bulk insert data
+              const packageItemsData = pkg.items
+                .map((item: any) => {
+                  const testCode = item.test?.testCode;
+                  const testId = testCode ? testMap.get(testCode) : undefined;
+
+                  if (!testId) return null;
+
+                  return {
                     packageId: createdPackage.id,
-                    testId: test.id,
+                    testId: testId,
                     testPrice: item.testPrice,
                     discount: item.discount,
                     displayOrder: item.displayOrder,
-                  },
+                  };
+                })
+                .filter(Boolean) as any[]; // Filter out nulls
+
+              if (packageItemsData.length > 0) {
+                await prisma.testPackageItem.createMany({
+                  data: packageItemsData,
                 });
               }
-            } catch (error: any) {
-              console.error("Error importing package item:", error);
             }
+          } catch (error: any) {
+            console.error("Error importing package items in bulk:", error);
           }
         }
 
