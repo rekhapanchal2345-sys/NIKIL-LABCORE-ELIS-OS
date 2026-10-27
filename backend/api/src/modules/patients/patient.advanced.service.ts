@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { createAuditLog } from "../audit/audit.service";
-import { sendSMS } from "../../lib/communication-providers";
+import { sendSMS, sendEmail } from "../../lib/communication-providers";
 
 /**
  * Advanced Patient Service
@@ -192,9 +192,16 @@ export const sendEmailVerification = async (patientId: string) => {
     ? `${frontendUrl.replace(/\/+$/, "")}/verify-email?token=${token}`
     : null;
 
-  // TODO: send the link through the email provider instead of logging it.
-  if (verificationLink && process.env.NODE_ENV !== "production") {
-    console.log(`Email verification link for ${patient.firstName}: ${verificationLink}`);
+  if (verificationLink) {
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`Email verification link for ${patient.firstName}: ${verificationLink}`);
+    }
+
+    await sendEmail({
+      to: patient.email,
+      subject: "Verify your email address",
+      body: `Hello ${patient.firstName},\n\nPlease verify your email address by clicking on the following link:\n${verificationLink}\n\nThis link will expire in 24 hours.`,
+    });
   }
 
   return {
