@@ -1,0 +1,4 @@
+## 2025-01-20 - Insecure Randomness in Password Generation
+**Vulnerability:** Use of `Math.random()` to generate secure random passwords and insecure array shuffling in `generateSecurePassword` (`backend/api/src/utils/security.ts`).
+**Learning:** The implementation used `Math.random()` which is a PRNG and predictable, instead of a cryptographically secure random number generator. Also, using `.sort(() => Math.random() - 0.5)` for shuffling arrays is not unbiased and leads to predictable permutations.
+**Prevention:** Always use `crypto.randomInt` or `crypto.randomBytes` for security-sensitive random number generation, such as passwords or tokens. When shuffling arrays in a security context, implement a proper Fisher-Yates shuffle using cryptographically secure random numbers instead of relying on Array.prototype.sort with a random comparator.
