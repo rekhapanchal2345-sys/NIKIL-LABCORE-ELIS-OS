@@ -732,7 +732,7 @@ export const collectSample =
 
       // 2. Ensure Samples exist and update them to COLLECTED
       if (order.samples && order.samples.length > 0) {
-        for (const sample of order.samples) {
+        await Promise.all(order.samples.map(async (sample) => {
           const sampleBarcode = sample.barcode || `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
           await tx.sample.update({
             where: { id: sample.id },
@@ -768,12 +768,12 @@ export const collectSample =
               },
             },
           });
-        }
+        }));
       } else {
         // If order had no sample records created yet, create them from items
-        for (const item of order.items) {
+        await Promise.all(order.items.map(async (item) => {
           // Package rows have no individual test, so they never yield a sample.
-          if (!item.testId || !item.test) continue;
+          if (!item.testId || !item.test) return;
 
           const sampleNumber = `SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
           const sampleBarcode = `BC-SMP-${timestamp}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
@@ -814,7 +814,7 @@ export const collectSample =
               },
             },
           });
-        }
+        }));
       }
 
       return updatedOrder;
