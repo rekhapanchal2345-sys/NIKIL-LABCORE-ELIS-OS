@@ -1197,78 +1197,118 @@ export const importCatalog = async (data: any) => {
   }
 
   if (parameters && Array.isArray(parameters)) {
+    // Collect all test codes needed
+    const testCodes = [...new Set(parameters.map(p => p.test?.testCode || p.testCode))].filter(Boolean);
+
+    // Fetch all related tests in a single query
+    const existingTests = await prisma.test.findMany({
+      where: { testCode: { in: testCodes } },
+      select: { id: true, testCode: true }
+    });
+
+    const testCodeToId = new Map(existingTests.map(t => [t.testCode, t.id]));
+
+    const validParametersToCreate = [];
+
     for (const param of parameters) {
+      const tCode = param.test?.testCode || param.testCode;
+      const testId = testCodeToId.get(tCode);
+
+      if (!testId) {
+        results.parameters.errors.push(`${param.parameterName}: Test not found`);
+        continue;
+      }
+
+      validParametersToCreate.push({
+        testId,
+        parameterName: param.parameterName,
+        shortName: param.shortName,
+        loincCode: param.loincCode,
+        unit: param.unit,
+        dataType: param.dataType,
+        measurementMethod: param.measurementMethod,
+        dropdownOptions: param.dropdownOptions,
+        allowRichText: param.allowRichText,
+        decimalPrecision: param.decimalPrecision,
+        displayOrder: param.displayOrder,
+        isRequired: param.isRequired,
+        isActive: true,
+      });
+    }
+
+    if (validParametersToCreate.length > 0) {
       try {
-        const test = await prisma.test.findFirst({
-          where: { testCode: param.test?.testCode || param.testCode },
+        const created = await prisma.testParameter.createMany({
+          data: validParametersToCreate,
+          skipDuplicates: true, // Handle potential duplicates gracefully depending on DB constraints
         });
-
-        if (!test) {
-          throw new Error("Test not found");
-        }
-
-        await prisma.testParameter.create({
-          data: {
-            testId: test.id,
-            parameterName: param.parameterName,
-            shortName: param.shortName,
-            loincCode: param.loincCode,
-            unit: param.unit,
-            dataType: param.dataType,
-            measurementMethod: param.measurementMethod,
-            dropdownOptions: param.dropdownOptions,
-            allowRichText: param.allowRichText,
-            decimalPrecision: param.decimalPrecision,
-            displayOrder: param.displayOrder,
-            isRequired: param.isRequired,
-            isActive: true,
-          },
-        });
-        results.parameters.created++;
+        results.parameters.created += created.count;
       } catch (error: any) {
-        results.parameters.errors.push(`${param.parameterName}: ${error.message}`);
+        results.parameters.errors.push(`Bulk create error: ${error.message}`);
       }
     }
   }
 
   if (referenceRanges && Array.isArray(referenceRanges)) {
+    const validReferenceRangesToCreate = [];
+
+    // Since referenceRanges often map to many parameters, fetch all possibly involved parameters
+    const paramNames = [...new Set(referenceRanges.map((r: any) => r.parameter?.parameterName))].filter(Boolean) as string[];
+    const testCodes = [...new Set(referenceRanges.map((r: any) => r.parameter?.test?.testCode))].filter(Boolean) as string[];
+
+    const existingParameters = await prisma.testParameter.findMany({
+      where: {
+        parameterName: { in: paramNames },
+        test: { testCode: { in: testCodes } }
+      },
+      include: {
+        test: { select: { testCode: true } }
+      }
+    });
+
+    const paramMap = new Map(
+      existingParameters.map(p => [`${p.test.testCode}_${p.parameterName}`, p.id])
+    );
+
     for (const range of referenceRanges) {
+      const pName = range.parameter?.parameterName;
+      const tCode = range.parameter?.test?.testCode;
+
+      const parameterId = paramMap.get(`${tCode}_${pName}`);
+
+      if (!parameterId) {
+        results.referenceRanges.errors.push(`${pName}: Parameter not found`);
+        continue;
+      }
+
+      validReferenceRangesToCreate.push({
+        parameterId: parameterId,
+        ageGroup: range.ageGroup,
+        gender: range.gender,
+        minAge: range.minAge,
+        maxAge: range.maxAge,
+        minAgeUnit: range.minAgeUnit,
+        maxAgeUnit: range.maxAgeUnit,
+        criticalLow: range.criticalLow,
+        normalLow: range.normalLow,
+        normalHigh: range.normalHigh,
+        criticalHigh: range.criticalHigh,
+        interpretation: range.interpretation,
+        notes: range.notes,
+        displayOrder: range.displayOrder,
+        isActive: true,
+      });
+    }
+
+    if (validReferenceRangesToCreate.length > 0) {
       try {
-        const parameter = await prisma.testParameter.findFirst({
-          where: {
-            parameterName: range.parameter?.parameterName,
-            test: {
-              testCode: range.parameter?.test?.testCode,
-            },
-          },
+        const created = await prisma.referenceRange.createMany({
+          data: validReferenceRangesToCreate,
+          skipDuplicates: true,
         });
-
-        if (!parameter) {
-          throw new Error("Parameter not found");
-        }
-
-        await prisma.referenceRange.create({
-          data: {
-            parameterId: parameter.id,
-            ageGroup: range.ageGroup,
-            gender: range.gender,
-            minAge: range.minAge,
-            maxAge: range.maxAge,
-            minAgeUnit: range.minAgeUnit,
-            maxAgeUnit: range.maxAgeUnit,
-            criticalLow: range.criticalLow,
-            normalLow: range.normalLow,
-            normalHigh: range.normalHigh,
-            criticalHigh: range.criticalHigh,
-            interpretation: range.interpretation,
-            notes: range.notes,
-            displayOrder: range.displayOrder,
-            isActive: true,
-          },
-        });
-        results.referenceRanges.created++;
+        results.referenceRanges.created += created.count;
       } catch (error: any) {
-        results.referenceRanges.errors.push(`${range.parameter?.parameterName}: ${error.message}`);
+        results.referenceRanges.errors.push(`Bulk create error: ${error.message}`);
       }
     }
   }
