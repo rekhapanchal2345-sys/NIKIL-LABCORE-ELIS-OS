@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { createAuditLog } from "../audit/audit.service";
+import { sendSMS } from "../../lib/communication-providers";
 
 /**
  * Advanced Patient Service
@@ -89,8 +90,22 @@ export const sendPhoneVerificationOTP = async (patientId: string) => {
 
   const code = await issueCode(patientId, "PHONE", OTP_TTL_MS);
 
-  // TODO: hand the OTP to the SMS gateway; only the recipient should ever see it.
-  console.log(`[PATIENT_VERIFICATION] OTP issued for patient ${patient.id}`);
+  const expiresInMinutes = Math.floor(OTP_TTL_MS / 60000);
+
+  const smsResult = await sendSMS({
+    to: patient.phone,
+    message: `Your verification code is ${code}. It expires in ${expiresInMinutes} minutes.`
+  });
+
+  if (!smsResult.success) {
+    console.error(`[PATIENT_VERIFICATION] Failed to send OTP SMS to patient ${patient.id}: ${smsResult.error}`);
+    // Decide whether to throw or not based on project conventions.
+    // Typically throwing is better if delivery fails, but some systems might fall back or just log.
+    // Let's throw so the frontend knows it failed.
+    throw new HttpError(`Failed to send SMS: ${smsResult.error || 'Unknown error'}`, 500, "SMS_SEND_FAILED");
+  }
+
+  console.log(`[PATIENT_VERIFICATION] OTP sent via SMS to patient ${patient.id}`);
 
   return {
     message: "OTP sent successfully",

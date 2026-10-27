@@ -36,6 +36,21 @@ function runTest(name, fn) {
 }
 
 // 1. MathEngine & Westgard QC Tests
+runTest("MathEngine - Mean edge cases and error conditions", () => {
+  // Empty or invalid arrays should return 0
+  assert.strictEqual(MathEngine.mean([]), 0);
+  assert.strictEqual(MathEngine.mean(null), 0);
+  assert.strictEqual(MathEngine.mean(undefined), 0);
+
+  // Mixed types should be cast to numbers
+  assert.strictEqual(MathEngine.mean(["10", 20, "30"]), 20);
+
+  // Normal cases
+  assert.strictEqual(MathEngine.mean([5, 5, 5]), 5);
+  assert.strictEqual(MathEngine.mean([-10, 0, 10]), 0);
+  assert.strictEqual(MathEngine.mean([1.5, 2.5]), 2);
+});
+
 runTest("MathEngine - Mean, StdDev, Z-Score", () => {
   const vals = [10, 20, 30, 40, 50];
   assert.strictEqual(MathEngine.mean(vals), 30);

@@ -19,6 +19,7 @@
 import crypto from "crypto";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
+import { WebSocketService } from "../../lib/websocket";
 import { createAuditLog } from "../audit/audit.service";
 import { generateUHID } from "./patient.service";
 import {
@@ -750,7 +751,7 @@ export const setConfidentialityLevel = async (
 /**
  * Records a Break-Glass Emergency Access event.
  * Opens a 30-minute unmasked window and emits audit log.
- * TODO: also send WebSocket alert to Chief Pathologist (Module 26).
+ * Also sends WebSocket alert to Chief Pathologist (Module 26).
  */
 export const breakGlassAccess = async (
   patientId: string,
@@ -780,7 +781,15 @@ export const breakGlassAccess = async (
     ipAddress,
   });
 
-  // TODO: wsServer.emit('break_glass_alert', { patientId, accessedById, clinicalReason, timestamp: new Date() });
+  const wsServer = WebSocketService.getIO();
+  if (wsServer) {
+    wsServer.to('role:PATHOLOGIST').emit('break_glass_alert', {
+      patientId,
+      accessedById,
+      clinicalReason,
+      timestamp: new Date()
+    });
+  }
 
   return { accessLogId: log.id, expiresAt, patient };
 };
@@ -852,14 +861,20 @@ export const handleAbdmScanShare = async (
   const topMatch = matches[0];
 
   if (topMatch?.decision === EmpiDecision.AUTO_BLOCK_DUPLICATE) {
-    // TODO: emit WebSocket to reception UI
-    return {
-      action: "EXISTING_PATIENT",
+    const responsePayload = {
+      action: "EXISTING_PATIENT" as "EXISTING_PATIENT",
       uhid: topMatch.candidateUhid,
       patientId: topMatch.candidatePatientId,
       empiScore: topMatch.score,
       tokenNumber: payload.tokenNumber,
     };
+
+    WebSocketService.broadcastToRole("FRONT_DESK", "empi_match_alert", {
+      ...responsePayload,
+      name: payload.name,
+    });
+
+    return responsePayload;
   }
 
   const uhid = await generateUHID();
@@ -907,23 +922,37 @@ export const handleAbdmScanShare = async (
       },
     });
 
-    // TODO: emit WebSocket to Data Steward dashboard
-    return {
-      action: "REVIEW_REQUIRED",
+    const responsePayload = {
+      action: "REVIEW_REQUIRED" as "REVIEW_REQUIRED",
       uhid: newPatient.uhid,
       patientId: newPatient.id,
       empiScore: topMatch.score,
       tokenNumber: payload.tokenNumber,
     };
+
+    WebSocketService.broadcastToRole("ADMIN", "empi_review_required", {
+      ...responsePayload,
+      name: payload.name,
+    });
+
+    return responsePayload;
   }
 
-  // TODO: emit WebSocket to reception: { action: 'ABDM_SCAN_SHARE', uhid, name, tokenNumber }
-  return {
-    action: "NEW_PATIENT",
+  const responsePayload = {
+    action: "NEW_PATIENT" as "NEW_PATIENT",
     uhid: newPatient.uhid,
     patientId: newPatient.id,
     tokenNumber: payload.tokenNumber,
   };
+
+  WebSocketService.broadcastToRole("FRONT_DESK", "empi_match_alert", {
+    action: "ABDM_SCAN_SHARE",
+    uhid: newPatient.uhid,
+    name: payload.name,
+    tokenNumber: payload.tokenNumber,
+  });
+
+  return responsePayload;
 };
 
 // ════════════════════════════════════════════════════════════════════════════
