@@ -24,8 +24,8 @@ export const pool =
   globalForDb.pool ??
   new pg.Pool({
     connectionString,
-    max: Number(process.env.DB_POOL_MAX || 20),
-    min: Number(process.env.DB_POOL_MIN || 2),
+    max: Number(process.env.DB_POOL_MAX || 30),
+    min: Number(process.env.DB_POOL_MIN || 5),
     idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS || 30000),
     connectionTimeoutMillis: Number(process.env.DB_CONNECT_TIMEOUT_MS || 5000),
   });

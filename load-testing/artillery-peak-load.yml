@@ -1,0 +1,56 @@
+config:
+  target: "http://127.0.0.1:5000/api"
+  phases:
+    - duration: 20
+      arrivalRate: 5
+      rampTo: 50
+      name: "Warm-up & Morning Clinic Rush"
+    - duration: 40
+      arrivalRate: 50
+      name: "Sustained Hospital Morning Peak (50 Concurrent Ops)"
+  plugins:
+    metrics-by-endpoint: {}
+  ensure:
+    p95: 200
+    maxErrorRate: 1
+
+scenarios:
+  - name: "Receptionist Patient Intake & Order Search"
+    weight: 25
+    flow:
+      - get:
+          url: "/patients?q=Sharma&limit=10"
+      - get:
+          url: "/tests?limit=20"
+
+  - name: "Phlebotomy Sample Accessioning & Barcodes"
+    weight: 20
+    flow:
+      - get:
+          url: "/samples?status=COLLECTED&limit=20"
+      - get:
+          url: "/search?q=SMP-2026"
+
+  - name: "Lab Technician Result Worklist & Westgard QC"
+    weight: 30
+    flow:
+      - get:
+          url: "/results?status=PENDING&limit=25"
+      - get:
+          url: "/analyzers/qc-runs?limit=30"
+
+  - name: "Pathologist Workstation & Panic Triaging"
+    weight: 15
+    flow:
+      - get:
+          url: "/approvals?limit=15"
+      - get:
+          url: "/reports/verify/REP-2026-0001"
+
+  - name: "Accountant Sales Daybook & Till Balance"
+    weight: 10
+    flow:
+      - get:
+          url: "/invoices?limit=20"
+      - get:
+          url: "/cash-counter/current"

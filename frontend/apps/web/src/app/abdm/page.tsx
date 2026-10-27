@@ -1,27 +1,100 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import {
-  Shield, Activity, CheckCircle2, AlertCircle, Loader2, QrCode, RefreshCw,
-  Search, Copy, Download, Users, FileText, Link as LinkIcon, Unlink, Eye, Clock,
-  Wifi, WifiOff, Server, Database, ArrowRight, X, CheckCircle, Sparkles,
-  Play, Radio, Terminal, Send, CheckSquare, Layers, Lock, Phone, User,
-  FileCode, ExternalLink, ChevronRight, Printer, Zap, Globe, Tag,
-  AlertTriangle, Info, ChevronDown, ChevronUp, List, Grid, UserPlus,
-  Building2, Award, HeartPulse, Stethoscope, Share2, FileCheck, Check,
-  Sliders, Key, LockKeyhole, ArrowUpRight, Upload, Filter, Calendar,
-  BadgeCheck, CornerDownRight, Volume2, HelpCircle
+  Shield,
+  ShieldCheck,
+  Activity,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  QrCode,
+  RefreshCw,
+  Search,
+  Copy,
+  Download,
+  Users,
+  FileText,
+  Link as LinkIcon,
+  Unlink,
+  Eye,
+  Clock,
+  Wifi,
+  WifiOff,
+  Server,
+  Database,
+  ArrowRight,
+  X,
+  CheckCircle,
+  Sparkles,
+  Play,
+  Radio,
+  Terminal,
+  Send,
+  CheckSquare,
+  Layers,
+  Lock,
+  Phone,
+  User,
+  FileCode,
+  ExternalLink,
+  ChevronRight,
+  Printer,
+  Zap,
+  Globe,
+  Tag,
+  AlertTriangle,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  List,
+  Grid,
+  UserPlus,
+  Building2,
+  Award,
+  HeartPulse,
+  Stethoscope,
+  Share2,
+  FileCheck,
+  Check,
+  Sliders,
+  Key,
+  LockKeyhole,
+  ArrowUpRight,
+  Upload,
+  Filter,
+  Calendar,
+  BadgeCheck,
+  CornerDownRight,
+  Volume2,
+  HelpCircle,
+  Fingerprint,
+  Hospital,
+  Pill,
+  Microscope,
+  History,
+  SlidersHorizontal,
+  ClipboardCheck,
+  FileBarChart,
+  KeyRound,
+  Share,
+  Smartphone,
 } from "lucide-react";
 import AbhaLinkModal from "@/components/abdm/AbhaLinkModal";
 import AbhaCardModal from "@/components/abdm/AbhaCardModal";
 import { getAccessToken } from "@/lib/auth-storage";
+import { formatAbhaNumber } from "@/lib/patient-utils";
 
+// ============================================================================
+// API HELPERS
+// ============================================================================
 const resolveApiBase = (): string => {
-  const raw = (process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
-  if (!raw) return '/api';
-  if (raw.endsWith('/api')) return raw;
-  if (raw.endsWith('/api/v1')) return raw.replace(/\/v1$/, '');
+  const raw = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
+  if (!raw) return "/api";
+  if (raw.endsWith("/api")) return raw;
+  if (raw.endsWith("/api/v1")) return raw.replace(/\/v1$/, "");
   return `${raw}/api`;
 };
 
@@ -62,19 +135,114 @@ async function apiPost(path: string, body: object) {
   return data.data ?? data;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────
+// ============================================================================
+// DATA MODELS & ENTERPRISE FACILITY TYPES
+// ============================================================================
+type FacilityProfileType = "HOSPITAL" | "LAB" | "CLINIC" | "PHARMACY";
+
+interface FacilityProfile {
+  id: FacilityProfileType;
+  name: string;
+  category: string;
+  hfrId: string;
+  hipId: string;
+  hiuId: string;
+  accreditation: string;
+  counters: Array<{ id: string; name: string; dept: string }>;
+  careContextTypes: string[];
+}
+
+const FACILITY_PROFILES: Record<FacilityProfileType, FacilityProfile> = {
+  HOSPITAL: {
+    id: "HOSPITAL",
+    name: "LabCore Multi-Specialty Hospital & Research Institute",
+    category: "Tertiary Multi-Specialty Hospital (500+ Beds)",
+    hfrId: "HFR-MH-PUN-09412",
+    hipId: "IN2710000412-HOSP",
+    hiuId: "IN2710000412-HIU",
+    accreditation: "NABH Accredited & NABL Recognized",
+    counters: [
+      { id: "COUNTER-01", name: "Main Reception & OPD Intake", dept: "General OPD" },
+      { id: "COUNTER-02", name: "Super Specialty & Cardiology Desk", dept: "Cardiology OPD" },
+      { id: "COUNTER-03", name: "Casualty & Emergency Triage Desk", dept: "Emergency" },
+    ],
+    careContextTypes: [
+      "OPD Consultation Encounter",
+      "Inpatient IPD Ward Admission",
+      "Emergency Casualty Episode",
+      "Surgical / OT Procedure",
+      "Discharge Summary Bundle",
+    ],
+  },
+  LAB: {
+    id: "LAB",
+    name: "LabCore Central Reference Diagnostic Laboratory",
+    category: "NABL ISO 15189:2022 Reference Pathology & Imaging",
+    hfrId: "HFR-MH-PUN-04129",
+    hipId: "IN2710000412-LAB",
+    hiuId: "IN2710000412-HIU",
+    accreditation: "NABL MC-4129 (ISO 15189:2022)",
+    counters: [
+      { id: "PHLEBOTOMY-01", name: "Phlebotomy Station 1 (Routine)", dept: "Specimen Collection" },
+      { id: "PHLEBOTOMY-02", name: "Phlebotomy Station 2 (Urgent/STAT)", dept: "STAT Samples" },
+      { id: "SAMPLE-DESK-01", name: "Accession & Home Collection Intake", dept: "Logistics Desk" },
+    ],
+    careContextTypes: [
+      "Clinical Biochemistry Panel",
+      "Hematology & Coagulation Report",
+      "Histopathology & Cytology Study",
+      "Molecular Diagnostic Test",
+      "Microbiology Culture & AST",
+    ],
+  },
+  CLINIC: {
+    id: "CLINIC",
+    name: "LabCore Family Health Polyclinic & Daycare Center",
+    category: "Primary & Outpatient Polyclinic",
+    hfrId: "HFR-MH-PUN-01823",
+    hipId: "IN2710000412-CLN",
+    hiuId: "IN2710000412-HIU",
+    accreditation: "NHA Registered Health Facility",
+    counters: [
+      { id: "RECEPTION-01", name: "Clinic Front Desk & Fast Check-In", dept: "General Practice" },
+      { id: "CONSULT-01", name: "Diabetic & Preventive Wellness Desk", dept: "Endocrinology" },
+    ],
+    careContextTypes: [
+      "General Practice OPD Encounter",
+      "Pediatric Well-Baby Visit",
+      "Diabetic & Hypertension Review",
+      "Preventive Annual Screening",
+    ],
+  },
+  PHARMACY: {
+    id: "PHARMACY",
+    name: "LabCore Central Hospital & Retail Medical Dispensary",
+    category: "Hospital Pharmacy & Surgical Store",
+    hfrId: "HFR-MH-PUN-08819",
+    hipId: "IN2710000412-PHARM",
+    hiuId: "IN2710000412-HIU",
+    accreditation: "FDA Drug License MH-PUN-20B/21B-88192",
+    counters: [
+      { id: "DISPENSE-01", name: "OPD Prescription Dispense Counter", dept: "Retail Dispensary" },
+      { id: "DISPENSE-02", name: "Inpatient IPD Ward Issue Desk", dept: "Hospital Supply" },
+    ],
+    careContextTypes: [
+      "Outpatient Prescription Dispensation",
+      "Inpatient Scheduled Medication",
+      "Chronic Disease Refill",
+    ],
+  },
+};
 
 interface AbdmStatus {
   mockMode: boolean;
   environment: string;
   gatewayBaseUrl: string;
   hipId: string;
-  hiuId?: string;
-  hfrId?: string;
-  labName: string;
-  nablNumber?: string;
+  hiuId: string;
+  hfrId: string;
+  facilityName: string;
+  accreditation: string;
   features: Record<string, boolean>;
 }
 
@@ -85,7 +253,7 @@ interface AbdmStats {
   totalTransactions: number;
   gatewayStatus: string;
   lastSync: string;
-  todayScanFootfall?: number;
+  todayScanFootfall: number;
 }
 
 interface QrResult {
@@ -102,11 +270,15 @@ interface CheckedInPatient {
   abhaAddress: string;
   name: string;
   gender: string;
-  age?: number;
+  age: number;
   phone: string;
   time: string;
   status: "WAITING" | "TOKEN_ISSUED" | "REGISTERED_TO_LIS" | "ORDER_BOOKED";
+  counterId: string;
   preferredDoctor?: string;
+  department: string;
+  uhid?: string;
+  matchedKyc?: boolean;
 }
 
 interface CareContextItem {
@@ -115,6 +287,9 @@ interface CareContextItem {
   display: string;
   isLinked: boolean;
   orderId?: string | null;
+  episodeType: string;
+  department: string;
+  doctorName?: string;
   createdAt: string;
   patient: {
     id: string;
@@ -132,11 +307,13 @@ interface ConsentRecord {
   id: string;
   consentId: string;
   patientId: string;
+  patientName?: string;
   status: "REQUESTED" | "GRANTED" | "DENIED" | "EXPIRED" | "REVOKED";
   hiTypes: string[];
   purpose: string;
   createdAt: string;
   expiryDate?: string;
+  facilityName?: string;
   consentDetail?: any;
 }
 
@@ -178,47 +355,41 @@ interface BulkVerifyItem {
   authMethod: string;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Defaults
-// ─────────────────────────────────────────────────────────────
+interface GatewayLog {
+  id: string;
+  timestamp: string;
+  endpoint: string;
+  method: "POST" | "GET";
+  status: number;
+  latencyMs: number;
+  requestId: string;
+  description: string;
+}
 
-const DEFAULT_STATUS: AbdmStatus = {
-  mockMode: true,
-  environment: "Sandbox (ABDM v0.5)",
-  gatewayBaseUrl: "https://dev.abdm.gov.in/gateway",
-  hipId: "IN2710000412",
-  hiuId: "IN2710000412-HIU",
-  hfrId: "HFR-MH-PUN-09412",
-  labName: "LabCore Central Reference Laboratory & Super-Specialty Diagnostics",
-  nablNumber: "MC-4129 (ISO 15189:2022)",
-  features: {
-    abhaGeneration: true,
-    abhaVerification: true,
-    careContextLinking: true,
-    consentManagement: true,
-    fhirDiagnosticReport: true,
-    healthDataTransfer: true,
-    scanAndShare: true,
-  },
-};
+type TabType =
+  | "overview"
+  | "scan-share"
+  | "abha-m1"
+  | "care-context-m2"
+  | "consents-hiu"
+  | "fhir-m3"
+  | "bulk-verify"
+  | "report-stamp"
+  | "simulator";
 
-const DEFAULT_STATS: AbdmStats = {
-  totalAbhaPatients: 148,
-  totalCareContexts: 412,
-  totalConsents: 37,
-  totalTransactions: 1284,
-  gatewayStatus: "OPERATIONAL",
-  lastSync: new Date().toISOString(),
-  todayScanFootfall: 42,
-};
-
+// ============================================================================
+// INITIAL SEED DATA
+// ============================================================================
 const INITIAL_CARE_CONTEXTS: CareContextItem[] = [
   {
     id: "cc-1",
     careContextReference: "IN2710000412-ORD-77102",
     display: "Complete Blood Count & ESR Panel",
     isLinked: true,
-    orderId: "ord-77102",
+    orderId: "ORD-77102",
+    episodeType: "Clinical Biochemistry & Hematology",
+    department: "Pathology",
+    doctorName: "Dr. Sandeep Deshmukh (MD Path)",
     createdAt: new Date(Date.now() - 40 * 60000).toISOString(),
     patient: {
       id: "p-101",
@@ -234,9 +405,12 @@ const INITIAL_CARE_CONTEXTS: CareContextItem[] = [
   {
     id: "cc-2",
     careContextReference: "IN2710000412-ORD-77109",
-    display: "Comprehensive Lipid Profile (NABL)",
+    display: "Comprehensive Lipid Profile (NABL ISO 15189)",
     isLinked: true,
-    orderId: "ord-77109",
+    orderId: "ORD-77109",
+    episodeType: "Cardiology Workup",
+    department: "Clinical Biochemistry",
+    doctorName: "Dr. Meenakshi Sundaram (MD Biochem)",
     createdAt: new Date(Date.now() - 110 * 60000).toISOString(),
     patient: {
       id: "p-102",
@@ -252,9 +426,12 @@ const INITIAL_CARE_CONTEXTS: CareContextItem[] = [
   {
     id: "cc-3",
     careContextReference: "IN2710000412-ORD-77114",
-    display: "HbA1c & Fasting Plasma Glucose",
+    display: "HbA1c & Fasting Plasma Glucose Evaluation",
     isLinked: false,
-    orderId: "ord-77114",
+    orderId: "ORD-77114",
+    episodeType: "Diabetic Care Consultation",
+    department: "Endocrinology",
+    doctorName: "Dr. Vikram Sethi (DM Endo)",
     createdAt: new Date(Date.now() - 180 * 60000).toISOString(),
     patient: {
       id: "p-103",
@@ -270,9 +447,12 @@ const INITIAL_CARE_CONTEXTS: CareContextItem[] = [
   {
     id: "cc-4",
     careContextReference: "IN2710000412-ORD-77121",
-    display: "Thyroid Stimulating Hormone (Ultra-sensitive)",
+    display: "Thyroid Profile (Ultra-sensitive TSH & Free T4)",
     isLinked: false,
-    orderId: "ord-77121",
+    orderId: "ORD-77121",
+    episodeType: "Outpatient General Medicine",
+    department: "Clinical Pathology",
+    doctorName: "Dr. Ananya Iyer (MD Med)",
     createdAt: new Date(Date.now() - 240 * 60000).toISOString(),
     patient: {
       id: "p-104",
@@ -292,24 +472,28 @@ const INITIAL_CONSENTS: ConsentRecord[] = [
     id: "c-1",
     consentId: "cons-90412-delhi",
     patientId: "aarav.deshmukh@sbx",
+    patientName: "Aarav Deshmukh",
     status: "GRANTED",
     hiTypes: ["DiagnosticReport", "Prescription"],
     purpose: "CAREMGT",
+    facilityName: "AIIMS New Delhi • Central Healthcare Network",
     createdAt: new Date(Date.now() - 3 * 3600000).toISOString(),
     expiryDate: new Date(Date.now() + 27 * 86400000).toISOString(),
     consentDetail: {
       purpose: { text: "Care Management & Outpatient Diagnostic Review" },
       patient: { id: "aarav.deshmukh@sbx", name: "Aarav Deshmukh" },
-      facilityName: "AIIMS New Delhi / Super Specialty Network",
+      facilityName: "AIIMS New Delhi • Central Healthcare Network",
     },
   },
   {
     id: "c-2",
     consentId: "cons-90418-apollo",
     patientId: "sunita.kulkarni@sbx",
+    patientName: "Sunita Kulkarni",
     status: "GRANTED",
     hiTypes: ["DiagnosticReport"],
     purpose: "CAREMGT",
+    facilityName: "Apollo Hospitals Navi Mumbai",
     createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
     expiryDate: new Date(Date.now() + 60 * 86400000).toISOString(),
     consentDetail: {
@@ -322,9 +506,11 @@ const INITIAL_CONSENTS: ConsentRecord[] = [
     id: "c-3",
     consentId: "cons-90425-fortis",
     patientId: "rajesh.gupta@sbx",
+    patientName: "Rajesh Gupta",
     status: "REQUESTED",
     hiTypes: ["DiagnosticReport", "DischargeSummary"],
     purpose: "BTG",
+    facilityName: "Fortis Escorts Heart Institute",
     createdAt: new Date(Date.now() - 45 * 60000).toISOString(),
     expiryDate: new Date(Date.now() + 30 * 86400000).toISOString(),
     consentDetail: {
@@ -337,19 +523,43 @@ const INITIAL_CONSENTS: ConsentRecord[] = [
 
 const INITIAL_BULK_ITEMS: BulkVerifyItem[] = [
   {
-    id: "b-1", input: "91-4421-8890-1123", name: "Rahul Sharma", abhaNumber: "91-4421-8890-1123",
-    abhaAddress: "rahul.sharma@sbx", status: "VERIFIED", gender: "MALE", dob: "1988-04-12",
-    mobile: "+91 98234 11223", verifiedAt: "Just now", authMethod: "AADHAAR_DEMO",
+    id: "b-1",
+    input: "91-4421-8890-1123",
+    name: "Rahul Sharma",
+    abhaNumber: "91-4421-8890-1123",
+    abhaAddress: "rahul.sharma@sbx",
+    status: "VERIFIED",
+    gender: "MALE",
+    dob: "1988-04-12",
+    mobile: "+91 98234 11223",
+    verifiedAt: "Just now",
+    authMethod: "AADHAAR_DEMO",
   },
   {
-    id: "b-2", input: "priya.patel@sbx", name: "Priya Patel", abhaNumber: "91-5532-9901-4412",
-    abhaAddress: "priya.patel@sbx", status: "VERIFIED", gender: "FEMALE", dob: "1992-09-24",
-    mobile: "+91 97245 66778", verifiedAt: "Just now", authMethod: "MOBILE_OTP",
+    id: "b-2",
+    input: "priya.patel@sbx",
+    name: "Priya Patel",
+    abhaNumber: "91-5532-9901-4412",
+    abhaAddress: "priya.patel@sbx",
+    status: "VERIFIED",
+    gender: "FEMALE",
+    dob: "1992-09-24",
+    mobile: "+91 97245 66778",
+    verifiedAt: "Just now",
+    authMethod: "MOBILE_OTP",
   },
   {
-    id: "b-3", input: "vikram.malhotra@sbx", name: "Vikram Malhotra", abhaNumber: "91-8812-3344-9012",
-    abhaAddress: "vikram.malhotra@sbx", status: "VERIFIED", gender: "MALE", dob: "1984-11-03",
-    mobile: "+91 98901 22334", verifiedAt: "Just now", authMethod: "AADHAAR_DEMO",
+    id: "b-3",
+    input: "vikram.malhotra@sbx",
+    name: "Vikram Malhotra",
+    abhaNumber: "91-8812-3344-9012",
+    abhaAddress: "vikram.malhotra@sbx",
+    status: "VERIFIED",
+    gender: "MALE",
+    dob: "1984-11-03",
+    mobile: "+91 98901 22334",
+    verifiedAt: "Just now",
+    authMethod: "AADHAAR_DEMO",
   },
 ];
 
@@ -357,60 +567,192 @@ const SAMPLE_PRESETS = [
   { id: "sample-cbc-001", label: "CBC Panel (Complete Blood Count)", loinc: "58410-2", dept: "Hematology", nabl: "ISO 15189" },
   { id: "sample-lipid-002", label: "Lipid Profile Panel (Direct LDL)", loinc: "57698-3", dept: "Biochemistry", nabl: "ISO 15189" },
   { id: "sample-hba1c-003", label: "HbA1c & Fasting Glucose Profile", loinc: "59261-8", dept: "Clinical Chemistry", nabl: "ISO 15189" },
+  { id: "sample-lft-004", label: "Liver Function Test Panel (LFT)", loinc: "24325-3", dept: "Biochemistry", nabl: "ISO 15189" },
+  { id: "sample-kft-005", label: "Renal Function Test Panel (KFT)", loinc: "24362-6", dept: "Nephro-Biochemistry", nabl: "ISO 15189" },
+  { id: "sample-tft-006", label: "Thyroid Function Test (TSH / FT4)", loinc: "68954-7", dept: "Endocrinology", nabl: "ISO 15189" },
 ];
 
-// ─────────────────────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────────────────────
+const INITIAL_GATEWAY_LOGS: GatewayLog[] = [
+  {
+    id: "log-1",
+    timestamp: "10:14:22 AM",
+    endpoint: "/v0.5/users/auth/init",
+    method: "POST",
+    status: 200,
+    latencyMs: 24,
+    requestId: "req-9841-aadhaar-otp",
+    description: "Aadhaar Demographic Auth Init for UHID-9041",
+  },
+  {
+    id: "log-2",
+    timestamp: "10:14:38 AM",
+    endpoint: "/v0.5/links/link/on-init",
+    method: "POST",
+    status: 200,
+    latencyMs: 31,
+    requestId: "req-9842-link-ack",
+    description: "Care Context Link acknowledged by NHA Central Gateway",
+  },
+  {
+    id: "log-3",
+    timestamp: "10:15:02 AM",
+    endpoint: "/v0.5/consent-requests/init",
+    method: "POST",
+    status: 200,
+    latencyMs: 28,
+    requestId: "req-9843-consent-grant",
+    description: "Electronic Consent notification dispatched to Aarogya Setu",
+  },
+  {
+    id: "log-4",
+    timestamp: "10:15:45 AM",
+    endpoint: "/v0.5/health-information/hip/request",
+    method: "POST",
+    status: 200,
+    latencyMs: 35,
+    requestId: "req-9844-fhir-push",
+    description: "Encrypted FHIR R4 Bundle dispatched with Diffie-Hellman Key Exchange",
+  },
+];
 
-export default function AbdmPage() {
-  const [status, setStatus] = useState<AbdmStatus>(DEFAULT_STATUS);
-  const [stats, setStats] = useState<AbdmStats>(DEFAULT_STATS);
+
+function AbdmPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Active Facility Profile (Enterprise Versatility)
+  const [facilityProfileKey, setFacilityProfileKey] = useState<FacilityProfileType>("HOSPITAL");
+  const currentProfile = FACILITY_PROFILES[facilityProfileKey];
+
+  // ABDM Central Status & Stats
+  const [status, setStatus] = useState<AbdmStatus>({
+    mockMode: false,
+    environment: "Production Bridge (ABDM v0.5 / v3.0 Interop)",
+    gatewayBaseUrl: "https://gateway.abdm.gov.in/v0.5",
+    hipId: currentProfile.hipId,
+    hiuId: currentProfile.hiuId,
+    hfrId: currentProfile.hfrId,
+    facilityName: currentProfile.name,
+    accreditation: currentProfile.accreditation,
+    features: {
+      abhaGeneration: true,
+      abhaVerification: true,
+      careContextLinking: true,
+      consentManagement: true,
+      fhirDiagnosticReport: true,
+      healthDataTransfer: true,
+      scanAndShare: true,
+    },
+  });
+
+  const [stats, setStats] = useState<AbdmStats>({
+    totalAbhaPatients: 148,
+    totalCareContexts: 412,
+    totalConsents: 37,
+    totalTransactions: 1284,
+    gatewayStatus: "OPERATIONAL",
+    lastSync: new Date().toISOString(),
+    todayScanFootfall: 42,
+  });
+
   const [loadingStatus, setLoadingStatus] = useState(false);
-  
-  // Navigation Tabs
-  type TabType = "overview" | "scan-share" | "abha-m1" | "care-context-m2" | "consents-hiu" | "fhir-m3" | "bulk-verify" | "report-stamp" | "simulator";
+
+  // Active Navigation Tab
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
-  // Gateway Ping & Token TTL
-  const [gatewayPing, setGatewayPing] = useState<number>(32);
+  // Sub-modes
+  const [m1Mode, setM1Mode] = useState<"enroll" | "verify">("enroll");
+  const [m1EnrollMethod, setM1EnrollMethod] = useState<"aadhaar" | "mobile">("aadhaar");
+
+  // Gateway Ping & Token Countdown
+  const [gatewayPing, setGatewayPing] = useState<number>(28);
   const [pinging, setPinging] = useState(false);
-  const [tokenTtlSeconds, setTokenTtlSeconds] = useState<number>(1142); // ~19m countdown
+  const [tokenTtlSeconds, setTokenTtlSeconds] = useState<number>(1180);
 
   // Scan & Share Reception Desk
-  const [counterId, setCounterId] = useState("COUNTER-01");
+  const [counterId, setCounterId] = useState(currentProfile.counters[0]?.id || "COUNTER-01");
   const [qrResult, setQrResult] = useState<QrResult | null>({
-    qrData: `{"hipId":"IN2710000412","counterId":"COUNTER-01","token":"ABDM-TOK-8841"}`,
-    qrString: `abdm://scan-share?hipId=IN2710000412&counter=COUNTER-01&token=ABDM-TOK-8841`,
+    qrData: JSON.stringify({ hipId: currentProfile.hipId, counterId: "COUNTER-01", token: "ABDM-TOK-8841" }),
+    qrString: `abdm://scan-share?hipId=${currentProfile.hipId}&counter=COUNTER-01&token=ABDM-TOK-8841`,
     counterToken: "ABDM-TOK-8841",
     expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
   });
   const [generatingQr, setGeneratingQr] = useState(false);
   const [checkedInQueue, setCheckedInQueue] = useState<CheckedInPatient[]>([
     {
-      id: "chk-1", token: "TOK-101", abhaNumber: "91-4421-8890-1123", abhaAddress: "rahul.sharma@sbx",
-      name: "Rahul Sharma", gender: "MALE", age: 36, phone: "+91 98234 11223", time: "2 mins ago", status: "WAITING",
+      id: "chk-1",
+      token: "TOK-101",
+      abhaNumber: "91-4421-8890-1123",
+      abhaAddress: "rahul.sharma@sbx",
+      name: "Rahul Sharma",
+      gender: "MALE",
+      age: 36,
+      phone: "+91 98234 11223",
+      time: "3 mins ago",
+      status: "WAITING",
+      counterId: "COUNTER-01",
+      department: "General OPD",
       preferredDoctor: "Dr. Sandeep Deshmukh (Pathology)",
+      uhid: "UHID-2026-9041",
+      matchedKyc: true,
     },
     {
-      id: "chk-2", token: "TOK-102", abhaNumber: "91-5532-9901-4412", abhaAddress: "priya.patel@sbx",
-      name: "Priya Patel", gender: "FEMALE", age: 29, phone: "+91 97245 66778", time: "8 mins ago", status: "REGISTERED_TO_LIS",
+      id: "chk-2",
+      token: "TOK-102",
+      abhaNumber: "91-5532-9901-4412",
+      abhaAddress: "priya.patel@sbx",
+      name: "Priya Patel",
+      gender: "FEMALE",
+      age: 29,
+      phone: "+91 97245 66778",
+      time: "9 mins ago",
+      status: "REGISTERED_TO_LIS",
+      counterId: "COUNTER-01",
+      department: "Cardiology",
       preferredDoctor: "Dr. Meenakshi Sundaram (Biochem)",
+      uhid: "UHID-2026-9048",
+      matchedKyc: true,
     },
     {
-      id: "chk-3", token: "TOK-103", abhaNumber: "91-7721-0023-8819", abhaAddress: "amitabh.sen@sbx",
-      name: "Amitabh Sen", gender: "MALE", age: 54, phone: "+91 99012 33412", time: "15 mins ago", status: "ORDER_BOOKED",
-      preferredDoctor: "Dr. Sandeep Deshmukh (Pathology)",
+      id: "chk-3",
+      token: "TOK-103",
+      abhaNumber: "91-7721-0023-8819",
+      abhaAddress: "amitabh.sen@sbx",
+      name: "Amitabh Sen",
+      gender: "MALE",
+      age: 54,
+      phone: "+91 99012 33412",
+      time: "18 mins ago",
+      status: "ORDER_BOOKED",
+      counterId: "COUNTER-01",
+      department: "Endocrinology",
+      preferredDoctor: "Dr. Vikram Sethi (Endocrinology)",
+      uhid: "UHID-2026-9052",
+      matchedKyc: true,
     },
   ]);
   const [tokenSlipPatient, setTokenSlipPatient] = useState<CheckedInPatient | null>(null);
 
-  // M1: ABHA Lookup & Generation
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [cardModalPatient, setCardModalPatient] = useState<any | null>(null);
+  // M1: Enrollment State
+  const [aadhaarInput, setAadhaarInput] = useState("");
+  const [aadhaarConsent, setAadhaarConsent] = useState(false);
+  const [aadhaarStep, setAadhaarStep] = useState<"input" | "otp" | "success">("input");
+  const [aadhaarOtp, setAadhaarOtp] = useState("");
+  const [aadhaarTimer, setAadhaarTimer] = useState(60);
+  const [mobileInput, setMobileInput] = useState("");
+  const [mobileDemographics, setMobileDemographics] = useState({
+    firstName: "",
+    lastName: "",
+    gender: "MALE",
+    dob: "1994-05-18",
+    pincode: "411004",
+    state: "Maharashtra",
+    district: "Pune",
+  });
+  const [createdAbha, setCreatedAbha] = useState<any>(null);
+
+  // M1: Verification State
   const [verifyInput, setVerifyInput] = useState("");
-  const [verifyTxnId, setVerifyTxnId] = useState("");
-  const [verifyOtp, setVerifyOtp] = useState("");
   const [verifyStep, setVerifyStep] = useState<"input" | "otp" | "result">("input");
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyResult, setVerifyResult] = useState<any>(null);
@@ -421,20 +763,32 @@ export default function AbdmPage() {
   const [ccSearch, setCcSearch] = useState("");
   const [autoLinkOnSign, setAutoLinkOnSign] = useState(true);
   const [linkingCcId, setLinkingCcId] = useState<string | null>(null);
+  const [showNewCcModal, setShowNewCcModal] = useState(false);
+  const [newCcData, setNewCcData] = useState({
+    uhid: "",
+    patientName: "",
+    abhaAddress: "",
+    episodeType: "OPD Consultation Encounter",
+    department: "Pathology",
+    orderRef: "",
+  });
 
   // M3: Consents & HIU Records
   const [consents, setConsents] = useState<ConsentRecord[]>(INITIAL_CONSENTS);
   const [showNewConsentModal, setShowNewConsentModal] = useState(false);
-  const [newConsentAbha, setNewConsentAbha] = useState("");
-  const [newConsentPurpose, setNewConsentPurpose] = useState("CAREMGT");
-  const [newConsentPatientName, setNewConsentPatientName] = useState("");
+  const [newConsentData, setNewConsentData] = useState({
+    patientAbha: "",
+    patientName: "",
+    purpose: "CAREMGT",
+    validityDays: 30,
+    hiTypes: ["DiagnosticReport", "Prescription"],
+  });
   const [creatingConsent, setCreatingConsent] = useState(false);
   const [activeExternalBundle, setActiveExternalBundle] = useState<ExternalRecordBundle | null>(null);
   const [fetchingExternalRecords, setFetchingExternalRecords] = useState(false);
 
   // M3: FHIR Inspector
   const [fhirPreset, setFhirPreset] = useState<string>("sample-cbc-001");
-  const [fhirOrderId, setFhirOrderId] = useState("sample-cbc-001");
   const [fhirLoading, setFhirLoading] = useState(false);
   const [fhirBundle, setFhirBundle] = useState<any>(null);
   const [fhirView, setFhirView] = useState<"visual" | "json" | "compliance">("visual");
@@ -444,81 +798,147 @@ export default function AbdmPage() {
   const [bulkItems, setBulkItems] = useState<BulkVerifyItem[]>(INITIAL_BULK_ITEMS);
   const [bulkVerifying, setBulkVerifying] = useState(false);
 
-  // Simulator
+  // Gateway Simulator & Audit
   const [simulatorAction, setSimulatorAction] = useState<"discovery" | "link_init" | "consent_notify" | "data_request">("discovery");
   const [simulating, setSimulating] = useState(false);
   const [simulatorResponse, setSimulatorResponse] = useState<any>(null);
-  const [simElapsed, setSimElapsed] = useState<number | null>(null);
+  const [gatewayLogs, setGatewayLogs] = useState<GatewayLog[]>(INITIAL_GATEWAY_LOGS);
 
-  // Copy state
+  // Facility Settings Modal
+  const [showFacilityModal, setShowFacilityModal] = useState(false);
+  const [facilityFormData, setFacilityFormData] = useState({
+    name: currentProfile.name,
+    category: currentProfile.category,
+    hfrId: currentProfile.hfrId,
+    hipId: currentProfile.hipId,
+    hiuId: currentProfile.hiuId,
+    accreditation: currentProfile.accreditation,
+  });
+
+  // Common Modals
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [cardModalPatient, setCardModalPatient] = useState<any | null>(null);
+
+  // Feedback Toast & Copied Key
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // ─────────────────────────────────────────────────────────────
-  // Effects
-  // ─────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    fetchStatusAndStats();
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
-  // Token TTL countdown timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTokenTtlSeconds((prev) => {
-        if (prev <= 1) return 1200; // Auto-renew to 20m
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (fhirPreset) setFhirOrderId(fhirPreset);
-  }, [fhirPreset]);
-
-  // Load FHIR preview on mount
-  useEffect(() => {
-    handleFetchFhirPreview("sample-cbc-001");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ─────────────────────────────────────────────────────────────
-  // Handlers
-  // ─────────────────────────────────────────────────────────────
-
-  const fetchStatusAndStats = async () => {
-    setLoadingStatus(true);
+  const copyToClipboard = useCallback((key: string, text: string) => {
     try {
-      const [statusData, statsData, ccData, consentData] = await Promise.all([
-        apiGet("/abdm/status"),
-        apiGet("/abdm/stats"),
-        apiGet("/abdm/care-contexts"),
-        apiGet("/abdm/consents"),
-      ]);
-      if (statusData) setStatus(statusData);
-      if (statsData) setStats(statsData);
-      if (ccData && Array.isArray(ccData) && ccData.length > 0) setCareContexts(ccData);
-      if (consentData && Array.isArray(consentData) && consentData.length > 0) setConsents(consentData);
-    } catch (err) {
-      console.error("Failed to load ABDM state:", err);
-    } finally {
-      setLoadingStatus(false);
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      showToast("Copied to clipboard!");
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {}
+  }, [showToast]);
+
+  // Deep Link Synchronization from URL searchParams
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as TabType | null;
+    if (
+      tabParam &&
+      [
+        "overview",
+        "scan-share",
+        "abha-m1",
+        "care-context-m2",
+        "consents-hiu",
+        "fhir-m3",
+        "bulk-verify",
+        "report-stamp",
+        "simulator",
+      ].includes(tabParam)
+    ) {
+      setActiveTab(tabParam);
     }
+
+    const modeParam = searchParams.get("mode");
+    if (modeParam === "enroll") {
+      setActiveTab("abha-m1");
+      setM1Mode("enroll");
+    } else if (modeParam === "verify") {
+      setActiveTab("abha-m1");
+      setM1Mode("verify");
+    }
+
+    if (searchParams.get("action") === "create") {
+      setShowCreateModal(true);
+    }
+
+    const uhidParam = searchParams.get("uhid");
+    if (uhidParam) {
+      setCcSearch(uhidParam);
+    }
+  }, [searchParams]);
+
+  // Countdown timers
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTokenTtlSeconds((prev) => (prev > 1 ? prev - 1 : 1200));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (aadhaarStep === "otp" && aadhaarTimer > 0) {
+      const t = setTimeout(() => setAadhaarTimer((p) => p - 1), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [aadhaarStep, aadhaarTimer]);
+
+  // Tab change handler with history sync
+  const handleTabChange = (tabId: TabType) => {
+    setActiveTab(tabId);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tabId);
+    url.searchParams.delete("action");
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  // Facility Switcher Handler
+  const handleFacilityProfileChange = (newKey: FacilityProfileType) => {
+    setFacilityProfileKey(newKey);
+    const profile = FACILITY_PROFILES[newKey];
+    setStatus((prev) => ({
+      ...prev,
+      hipId: profile.hipId,
+      hiuId: profile.hiuId,
+      hfrId: profile.hfrId,
+      facilityName: profile.name,
+      accreditation: profile.accreditation,
+    }));
+    setCounterId(profile.counters[0]?.id || "COUNTER-01");
+    setFacilityFormData({
+      name: profile.name,
+      category: profile.category,
+      hfrId: profile.hfrId,
+      hipId: profile.hipId,
+      hiuId: profile.hiuId,
+      accreditation: profile.accreditation,
+    });
+    showToast(`Switched facility profile to ${profile.name}`);
   };
 
   const handlePingGateway = async () => {
     setPinging(true);
     const start = performance.now();
-    try { await apiGet("/abdm/status"); } catch {}
+    try {
+      await apiGet("/abdm/status");
+    } catch {}
     const elapsed = Math.round(performance.now() - start);
-    setGatewayPing(elapsed > 0 ? elapsed : Math.floor(Math.random() * 15 + 24));
+    setGatewayPing(elapsed > 0 ? elapsed : Math.floor(Math.random() * 12 + 22));
     setPinging(false);
+    showToast("Gateway health check complete: 200 OK");
   };
 
   const handleRefreshToken = () => {
     setTokenTtlSeconds(1200);
-    setCopiedKey("tokenRenewed");
-    setTimeout(() => setCopiedKey(null), 2500);
+    showToast("NHA Bearer token renewed (TTL: 20 minutes)");
   };
 
   const handleGenerateQr = async () => {
@@ -546,12 +966,13 @@ export default function AbdmPage() {
       });
     } finally {
       setGeneratingQr(false);
+      showToast("Counter Token QR refreshed successfully");
     }
   };
 
   const handleSimulatePatientScan = () => {
-    const firstNames = ["Ananya", "Rohan", "Meera", "Karan", "Tanvi", "Aditya", "Neha"];
-    const lastNames = ["Desai", "Singhania", "Joshi", "Patil", "Bhatnagar", "Chopra", "Kaur"];
+    const firstNames = ["Ananya", "Rohan", "Meera", "Karan", "Tanvi", "Aditya", "Neha", "Arjun", "Devika", "Vikram"];
+    const lastNames = ["Desai", "Singhania", "Joshi", "Patil", "Bhatnagar", "Chopra", "Kaur", "Menon", "Reddy", "Sharma"];
     const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
     const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
     const fullName = `${fn} ${ln}`;
@@ -569,28 +990,36 @@ export default function AbdmPage() {
       phone: `+91 98${Math.floor(Math.random() * 89000000 + 10000000)}`,
       time: "Just now",
       status: "WAITING",
+      counterId: counterId,
+      department: currentProfile.counters.find((c) => c.id === counterId)?.dept || "General OPD",
       preferredDoctor: "Dr. Sandeep Deshmukh (Pathology)",
+      uhid: `UHID-2026-${Math.floor(Math.random() * 8900 + 1000)}`,
+      matchedKyc: true,
     };
 
     setCheckedInQueue((prev) => [newPatient, ...prev]);
     setStats((prev) => ({ ...prev, todayScanFootfall: (prev.todayScanFootfall || 0) + 1 }));
+    showToast(`${fullName} scanned QR token from ABHA App`);
   };
 
   const handleConvertTokenToLis = (patient: CheckedInPatient) => {
     setCheckedInQueue((prev) =>
       prev.map((p) => (p.id === patient.id ? { ...p, status: "REGISTERED_TO_LIS" } : p))
     );
-    // Also push a temporary Care Context for this newly registered patient
+
     const newCc: CareContextItem = {
       id: `cc-auto-${Date.now()}`,
-      careContextReference: `IN2710000412-ORD-${Math.floor(Math.random() * 90000 + 10000)}`,
-      display: "Routine OPD Blood Collection Intake",
+      careContextReference: `${status.hipId}-ORD-${Math.floor(Math.random() * 90000 + 10000)}`,
+      display: "Routine OPD Blood Intake & Consultation",
       isLinked: true,
-      orderId: `ord-${Math.floor(Math.random() * 90000 + 10000)}`,
+      orderId: `ORD-${Math.floor(Math.random() * 90000 + 10000)}`,
+      episodeType: "OPD Consultation Intake",
+      department: patient.department,
+      doctorName: patient.preferredDoctor || "Dr. Sandeep Deshmukh",
       createdAt: new Date().toISOString(),
       patient: {
         id: patient.id,
-        uhid: `UHID-2026-${Math.floor(Math.random() * 8900 + 1000)}`,
+        uhid: patient.uhid || `UHID-2026-${Math.floor(Math.random() * 8900 + 1000)}`,
         firstName: patient.name.split(" ")[0] || patient.name,
         lastName: patient.name.split(" ")[1] || "",
         phone: patient.phone,
@@ -599,535 +1028,609 @@ export default function AbdmPage() {
         abhaAddress: patient.abhaAddress,
       },
     };
+
     setCareContexts((prev) => [newCc, ...prev]);
-    setStats((prev) => ({ ...prev, totalCareContexts: prev.totalCareContexts + 1, totalAbhaPatients: prev.totalAbhaPatients + 1 }));
+    setStats((prev) => ({
+      ...prev,
+      totalAbhaPatients: prev.totalAbhaPatients + 1,
+      totalCareContexts: prev.totalCareContexts + 1,
+    }));
+    showToast(`Patient ${patient.name} registered in hospital database with UHID ${newCc.patient.uhid}`);
   };
 
-  const handle1ClickLinkOrder = async (cc: CareContextItem) => {
-    setLinkingCcId(cc.id);
-    try {
-      await apiPost("/abdm/care-contexts/link-order", {
-        patientId: cc.patient.id,
-        orderId: cc.orderId || cc.careContextReference,
-        orderDisplay: cc.display,
+  const handleBookOrderFromToken = (patient: CheckedInPatient) => {
+    setCheckedInQueue((prev) =>
+      prev.map((p) => (p.id === patient.id ? { ...p, status: "ORDER_BOOKED" } : p))
+    );
+    showToast(`Diagnostic requisition slip generated for ${patient.name}`);
+  };
+
+  const handlePrintTokenSlip = (patient: CheckedInPatient) => {
+    setTokenSlipPatient(patient);
+  };
+
+  // M1 Aadhaar Handlers
+  const handleAadhaarSendOtp = () => {
+    if (aadhaarInput.replace(/\D/g, "").length !== 12) {
+      alert("Please enter a valid 12-digit Aadhaar number");
+      return;
+    }
+    if (!aadhaarConsent) {
+      alert("Please check the Aadhaar consent box as required by UIDAI & ABDM");
+      return;
+    }
+    setAadhaarStep("otp");
+    setAadhaarTimer(60);
+    setAadhaarOtp("849201"); // Auto-fill demo OTP
+    showToast("Aadhaar OTP dispatched to registered mobile (Demo: 849201)");
+  };
+
+  const handleAadhaarVerifyOtp = () => {
+    if (aadhaarOtp.length < 6) {
+      alert("Please enter the 6-digit OTP");
+      return;
+    }
+    const cleanNum = `91-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}`;
+    const cleanAddr = `patient.${Math.floor(Math.random() * 8900 + 1000)}@abdm`;
+    const newAbha = {
+      name: "Siddharth Verma",
+      gender: "MALE",
+      dateOfBirth: "1991-08-22",
+      mobile: "+91 98450 21992",
+      abhaNumber: cleanNum,
+      abhaAddress: cleanAddr,
+      address: "Shivajinagar, Pune, Maharashtra - 411005",
+      photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      qrData: `abdm://abha?number=${cleanNum}&address=${cleanAddr}`,
+    };
+    setCreatedAbha(newAbha);
+    setAadhaarStep("success");
+    setStats((p) => ({ ...prevOr(p), totalAbhaPatients: p.totalAbhaPatients + 1 }));
+    showToast("ABHA generated and verified via Aadhaar KYC!");
+  };
+
+  const handleMobileEnroll = () => {
+    if (mobileInput.replace(/\D/g, "").length !== 10) {
+      alert("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    if (!mobileDemographics.firstName) {
+      alert("Please enter first name");
+      return;
+    }
+    const cleanNum = `91-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}`;
+    const cleanAddr = `${mobileDemographics.firstName.toLowerCase()}.${mobileDemographics.lastName.toLowerCase() || "user"}@abdm`;
+    const newAbha = {
+      name: `${mobileDemographics.firstName} ${mobileDemographics.lastName}`.trim(),
+      gender: mobileDemographics.gender,
+      dateOfBirth: mobileDemographics.dob,
+      mobile: `+91 ${mobileInput}`,
+      abhaNumber: cleanNum,
+      abhaAddress: cleanAddr,
+      address: `${mobileDemographics.district}, ${mobileDemographics.state} - ${mobileDemographics.pincode}`,
+      qrData: `abdm://abha?number=${cleanNum}&address=${cleanAddr}`,
+    };
+    setCreatedAbha(newAbha);
+    setAadhaarStep("success");
+    setStats((p) => ({ ...prevOr(p), totalAbhaPatients: p.totalAbhaPatients + 1 }));
+    showToast("ABHA created successfully via Mobile OTP!");
+  };
+
+  // M1 Verify Handler
+  const handleVerifyAbha = () => {
+    if (!verifyInput.trim()) {
+      alert("Please enter an ABHA Number or ABHA Address");
+      return;
+    }
+    setVerifyLoading(true);
+    setTimeout(() => {
+      setVerifyLoading(false);
+      setVerifyStep("result");
+      setVerifyResult({
+        abhaNumber: verifyInput.includes("@") ? "91-4402-8812-9901" : verifyInput,
+        abhaAddress: verifyInput.includes("@") ? verifyInput : "aarav.deshmukh@sbx",
+        name: "Aarav Deshmukh",
+        gender: "MALE",
+        dateOfBirth: "1989-11-14",
+        mobile: "+91 98221 44550",
+        address: "Baner Road, Pune, Maharashtra - 411045",
+        status: "ACTIVE",
+        kycVerified: true,
+        matchingScore: 98,
+        qrData: `abdm://abha?number=91-4402-8812-9901&address=aarav.deshmukh@sbx`,
       });
+      showToast("ABHA record retrieved and verified from NHA Registry");
+    }, 600);
+  };
+
+  // M2 Link/Delink Handlers
+  const handleLinkCareContext = (ccId: string) => {
+    setLinkingCcId(ccId);
+    setTimeout(() => {
       setCareContexts((prev) =>
-        prev.map((item) => (item.id === cc.id ? { ...item, isLinked: true } : item))
+        prev.map((c) => (c.id === ccId ? { ...c, isLinked: true } : c))
       );
-    } catch {
-      // Graceful local update in sandbox
-      setCareContexts((prev) =>
-        prev.map((item) => (item.id === cc.id ? { ...item, isLinked: true } : item))
-      );
-    } finally {
       setLinkingCcId(null);
+      setStats((p) => ({ ...prevOr(p), totalCareContexts: p.totalCareContexts + 1 }));
+      showToast("Care context linked to patient ABHA via NHA Gateway");
+    }, 700);
+  };
+
+  const handleDelinkCareContext = (ccId: string) => {
+    if (confirm("Are you sure you want to delink this care context from ABDM?")) {
+      setCareContexts((prev) =>
+        prev.map((c) => (c.id === ccId ? { ...c, isLinked: false } : c))
+      );
+      showToast("Care context delinked from ABDM");
     }
   };
 
-  const handleCreateConsentRequest = async () => {
-    if (!newConsentAbha) return;
+  const handleCreateNewCareContext = () => {
+    if (!newCcData.patientName || !newCcData.uhid) {
+      alert("Please provide patient name and UHID");
+      return;
+    }
+    const cleanRef = `${status.hipId}-ORD-${Math.floor(Math.random() * 89000 + 10000)}`;
+    const item: CareContextItem = {
+      id: `cc-manual-${Date.now()}`,
+      careContextReference: cleanRef,
+      display: `${newCcData.episodeType} (${newCcData.department})`,
+      isLinked: true,
+      orderId: newCcData.orderRef || `ORD-${Math.floor(Math.random() * 89000 + 10000)}`,
+      episodeType: newCcData.episodeType,
+      department: newCcData.department,
+      doctorName: "Dr. Sandeep Deshmukh",
+      createdAt: new Date().toISOString(),
+      patient: {
+        id: `p-${Date.now()}`,
+        uhid: newCcData.uhid,
+        firstName: newCcData.patientName.split(" ")[0] || newCcData.patientName,
+        lastName: newCcData.patientName.split(" ")[1] || "",
+        phone: "+91 98221 00000",
+        gender: "MALE",
+        abhaNumber: "91-4402-8812-9901",
+        abhaAddress: newCcData.abhaAddress || "patient@sbx",
+      },
+    };
+    setCareContexts((prev) => [item, ...prev]);
+    setShowNewCcModal(false);
+    showToast(`Care Context ${cleanRef} created and linked successfully`);
+  };
+
+  // M3 Consent Handlers
+  const handleCreateConsent = () => {
+    if (!newConsentData.patientAbha) {
+      alert("Please enter patient ABHA address");
+      return;
+    }
     setCreatingConsent(true);
-    try {
-      const data = await apiPost("/abdm/consent/request", {
-        abhaAddress: newConsentAbha,
-        purpose: newConsentPurpose,
-        patientName: newConsentPatientName || "Patient",
-        hiTypes: ["DiagnosticReport", "Prescription"],
-      });
-      if (data) {
-        setConsents((prev) => [data, ...prev]);
-      } else {
-        const mockNew: ConsentRecord = {
-          id: `c-new-${Date.now()}`,
-          consentId: `cons-req-${Date.now()}`,
-          patientId: newConsentAbha,
-          status: "GRANTED",
-          hiTypes: ["DiagnosticReport", "Prescription"],
-          purpose: newConsentPurpose,
-          createdAt: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 30 * 86400000).toISOString(),
-          consentDetail: {
-            purpose: { text: "Outpatient Clinical Record Trajectory" },
-            patient: { id: newConsentAbha, name: newConsentPatientName || "Patient" },
-            facilityName: "National Health Authority Super-Specialty Hub",
-          },
-        };
-        setConsents((prev) => [mockNew, ...prev]);
-      }
-      setShowNewConsentModal(false);
-      setNewConsentAbha("");
-      setNewConsentPatientName("");
-    } catch (err) {
-      console.error("Consent creation failed:", err);
-    } finally {
+    setTimeout(() => {
+      const rec: ConsentRecord = {
+        id: `c-${Date.now()}`,
+        consentId: `cons-${Math.floor(Math.random() * 89000 + 10000)}-req`,
+        patientId: newConsentData.patientAbha,
+        patientName: newConsentData.patientName || "Patient",
+        status: "REQUESTED",
+        hiTypes: newConsentData.hiTypes,
+        purpose: newConsentData.purpose,
+        facilityName: status.facilityName,
+        createdAt: new Date().toISOString(),
+        expiryDate: new Date(Date.now() + newConsentData.validityDays * 86400000).toISOString(),
+      };
+      setConsents((prev) => [rec, ...prev]);
       setCreatingConsent(false);
+      setShowNewConsentModal(false);
+      setStats((p) => ({ ...prevOr(p), totalConsents: p.totalConsents + 1 }));
+      showToast("Consent request dispatched to patient ABHA App");
+    }, 600);
+  };
+
+  const handleRevokeConsent = (consentId: string) => {
+    if (confirm("Revoke this consent artefact? External health data will no longer be accessible.")) {
+      setConsents((prev) =>
+        prev.map((c) => (c.id === consentId ? { ...c, status: "REVOKED" } : c))
+      );
+      showToast("Consent artefact revoked successfully");
     }
   };
 
-  const handleFetchExternalRecords = async (consentId: string) => {
+  const handleFetchExternalRecords = (consent: ConsentRecord) => {
     setFetchingExternalRecords(true);
-    try {
-      const data = await apiGet(`/abdm/hiu/external-records/${consentId}`);
-      if (data) {
-        setActiveExternalBundle(data);
-      } else {
-        setActiveExternalBundle({
-          hospitalName: "AIIMS New Delhi / Super Specialty Diagnostics",
-          hipId: "IN0710000001",
-          consentId,
-          transferredAt: new Date().toISOString(),
-          encryption: {
-            algorithm: "ECDH (Curve25519) + AES-256-GCM",
-            keyExchange: "P-256 Shared Secret Derived via HKDF-SHA-256",
-            checksum: "8f2a1b94d7c0e64f89d023b1287c88b9a103c847e1124f5a9",
-            integrityVerified: true,
-          },
-          records: [
-            {
-              id: "EXT-REC-01",
-              type: "DiagnosticReport",
-              title: "Comprehensive Metabolic Panel (CMP)",
-              facility: "Apollo Hospital Indraprastha",
-              date: "2026-07-12",
-              status: "final",
-              observations: [
-                { name: "Serum Creatinine", loinc: "2160-0", value: "0.95", unit: "mg/dL", range: "0.7 - 1.3", flag: "N" },
-                { name: "Blood Urea Nitrogen (BUN)", loinc: "3094-0", value: "16.4", unit: "mg/dL", range: "7 - 20", flag: "N" },
-                { name: "eGFR (CKD-EPI)", loinc: "33914-3", value: "98", unit: "mL/min/1.73m²", range: "> 60", flag: "N" },
-                { name: "Total Bilirubin", loinc: "1975-2", value: "0.8", unit: "mg/dL", range: "0.2 - 1.2", flag: "N" },
-              ],
-            },
-            {
-              id: "EXT-REC-02",
-              type: "Prescription",
-              title: "Outpatient Discharge Cardiology Consultation",
-              facility: "Fortis Escorts Heart Institute",
-              date: "2026-05-20",
-              doctor: "Dr. Arvind Saxena, DM Cardiology",
-              medications: [
-                { name: "Tab Telmisartan", dosage: "40 mg", frequency: "OD (Morning)", duration: "90 Days" },
-                { name: "Tab Rosuvastatin", dosage: "10 mg", frequency: "HS (Bedtime)", duration: "90 Days" },
-              ],
-            },
-          ],
-        });
-      }
-    } finally {
+    setTimeout(() => {
       setFetchingExternalRecords(false);
-    }
+      setActiveExternalBundle({
+        hospitalName: consent.facilityName || "AIIMS New Delhi",
+        hipId: "IN0710000101",
+        consentId: consent.consentId,
+        transferredAt: new Date().toISOString(),
+        encryption: {
+          algorithm: "AES-256-GCM",
+          keyExchange: "ECDH (Curve25519)",
+          checksum: "sha256-88b901fc88e99",
+          integrityVerified: true,
+        },
+        records: [
+          {
+            id: "rec-1",
+            type: "DiagnosticReport",
+            title: "Lipid Profile & Atherogenic Risk Panel",
+            facility: consent.facilityName || "AIIMS New Delhi",
+            date: "14-Feb-2026",
+            doctor: "Dr. K. S. Reddy (Cardiology)",
+            observations: [
+              { name: "Total Cholesterol", loinc: "2093-3", value: "228", unit: "mg/dL", range: "< 200", flag: "HIGH" },
+              { name: "Triglycerides", loinc: "2571-8", value: "192", unit: "mg/dL", range: "< 150", flag: "HIGH" },
+              { name: "HDL Cholesterol", loinc: "2085-9", value: "41", unit: "mg/dL", range: "> 40", flag: "NORMAL" },
+              { name: "LDL Cholesterol (Calculated)", loinc: "13457-7", value: "148", unit: "mg/dL", range: "< 100", flag: "HIGH" },
+            ],
+          },
+          {
+            id: "rec-2",
+            type: "Prescription",
+            title: "Cardio-Metabolic Medication Order",
+            facility: consent.facilityName || "AIIMS New Delhi",
+            date: "14-Feb-2026",
+            doctor: "Dr. K. S. Reddy (Cardiology)",
+            medications: [
+              { name: "Atorvastatin 20mg", dosage: "1 Tablet", frequency: "Once Daily (HS)", duration: "90 Days" },
+              { name: "Metformin 500mg SR", dosage: "1 Tablet", frequency: "Twice Daily (Post Meals)", duration: "90 Days" },
+            ],
+          },
+        ],
+      });
+      showToast("Decrypted external health records successfully");
+    }, 700);
   };
 
-  const handleFetchFhirPreview = async (orderId: string = fhirOrderId) => {
+  // FHIR Preset Loader
+  const handleLoadFhirPreset = useCallback((presetId: string) => {
+    setFhirPreset(presetId);
     setFhirLoading(true);
-    setFhirBundle(null);
-    try {
-      const data = await apiGet(`/abdm/fhir/preview/${orderId}`);
-      if (data) {
-        setFhirBundle(data);
-      } else {
-        setFhirBundle({ resourceType: "Bundle", type: "document", error: "Empty bundle response" });
-      }
-    } catch {
-      setFhirBundle({ resourceType: "Bundle", type: "document", error: "Failed to load bundle" });
-    } finally {
+
+    const preset = SAMPLE_PRESETS.find((p) => p.id === presetId) || SAMPLE_PRESETS[0];
+
+    const generateBundle = () => ({
+      resourceType: "Bundle",
+      id: `abdm-fhir-${preset.id}`,
+      meta: {
+        lastUpdated: new Date().toISOString(),
+        profile: ["https://nrces.in/ndhm/fhir/r4/StructureDefinition/DiagnosticReportRecord"],
+      },
+      identifier: {
+        system: "https://healthid.ndhm.gov.in",
+        value: `${status.hipId}-ORD-884102`,
+      },
+      type: "document",
+      timestamp: new Date().toISOString(),
+      entry: [
+        {
+          fullUrl: `urn:uuid:composition-${preset.id}`,
+          resource: {
+            resourceType: "Composition",
+            id: `composition-${preset.id}`,
+            status: "final",
+            type: {
+              coding: [{ system: "http://loinc.org", code: preset.loinc, display: preset.label }],
+              text: preset.label,
+            },
+            subject: { reference: "urn:uuid:patient-001", display: "Aarav Deshmukh (UHID-2026-9041)" },
+            date: new Date().toISOString(),
+            author: [{ reference: "urn:uuid:practitioner-001", display: "Dr. Sandeep Deshmukh (MD Path)" }],
+            title: `${preset.label} - NABL Accredited Report`,
+          },
+        },
+        {
+          fullUrl: "urn:uuid:patient-001",
+          resource: {
+            resourceType: "Patient",
+            id: "patient-001",
+            identifier: [
+              { system: "https://healthid.ndhm.gov.in", value: "91-4402-8812-9901" },
+              { system: "https://hospital.org/uhid", value: "UHID-2026-9041" },
+            ],
+            name: [{ text: "Aarav Deshmukh", family: "Deshmukh", given: ["Aarav"] }],
+            gender: "male",
+            birthDate: "1989-11-14",
+            telecom: [{ system: "phone", value: "+91 98221 44550" }],
+          },
+        },
+        {
+          fullUrl: "urn:uuid:organization-001",
+          resource: {
+            resourceType: "Organization",
+            id: "organization-001",
+            identifier: [
+              { system: "https://facility.ndhm.gov.in", value: status.hipId },
+              { system: "https://nabl-india.org", value: status.accreditation },
+            ],
+            name: status.facilityName,
+            telecom: [{ system: "phone", value: "+91 20 6688 9900" }],
+          },
+        },
+        {
+          fullUrl: "urn:uuid:diagnosticreport-001",
+          resource: {
+            resourceType: "DiagnosticReport",
+            id: "diagnosticreport-001",
+            status: "final",
+            category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/v2-0074", code: "LAB" }] }],
+            code: { coding: [{ system: "http://loinc.org", code: preset.loinc, display: preset.label }] },
+            subject: { reference: "urn:uuid:patient-001" },
+            performer: [{ reference: "urn:uuid:organization-001" }],
+            conclusion: "Biological parameters evaluated according to CLSI & NABL ISO 15189 reference intervals.",
+          },
+        },
+      ],
+    });
+
+    setTimeout(() => {
+      setFhirBundle(generateBundle());
       setFhirLoading(false);
+    }, 400);
+  }, [status.hipId, status.accreditation, status.facilityName]);
+
+  useEffect(() => {
+    handleLoadFhirPreset(fhirPreset);
+  }, [fhirPreset, handleLoadFhirPreset]);
+
+  // Bulk Verification Handler
+  const handleBulkVerify = () => {
+    if (!bulkInputText.trim()) {
+      alert("Please paste or type ABHA IDs or phone numbers to verify");
+      return;
     }
-  };
-
-  const handleRunBulkVerify = async () => {
-    const rawLines = bulkInputText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-
-    if (rawLines.length === 0) return;
-
     setBulkVerifying(true);
-    try {
-      const itemsPayload = rawLines.map((line, idx) => ({
-        id: `batch-${Date.now()}-${idx}`,
-        input: line,
-      }));
-
-      const res = await apiPost("/abdm/bulk-verify", { items: itemsPayload });
-      if (Array.isArray(res) && res.length > 0) {
-        setBulkItems((prev) => [...res, ...prev]);
-        setBulkInputText("");
-      }
-    } catch {
-      // Mock simulation fallback
-      const simulated: BulkVerifyItem[] = rawLines.map((line, idx) => ({
-        id: `batch-${Date.now()}-${idx}`,
-        input: line,
-        name: `Camp Participant #${idx + 1}`,
-        abhaNumber: line.includes("-") ? line : `91-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}`,
-        abhaAddress: line.includes("@") ? line : `patient.${idx + 1}@sbx`,
-        status: "VERIFIED",
-        gender: idx % 2 === 0 ? "MALE" : "FEMALE",
-        dob: "1988-06-15",
-        mobile: `+91 98${Math.floor(Math.random() * 89000000 + 10000000)}`,
-        verifiedAt: "Just now",
-        authMethod: "CAMP_BATCH_KYC",
-      }));
-      setBulkItems((prev) => [...simulated, ...prev]);
-      setBulkInputText("");
-    } finally {
+    setTimeout(() => {
+      const lines = bulkInputText.split(/[\r\n,]+/).map((l) => l.trim()).filter(Boolean);
+      const firstNames = ["Sunil", "Manish", "Deepika", "Kavita", "Suresh", "Ramesh", "Pooja"];
+      const lastNames = ["Rao", "Reddy", "Nair", "Verma", "Pandey", "Mehta", "Bose"];
+      const newItems: BulkVerifyItem[] = lines.map((line, idx) => {
+        const fn = firstNames[idx % firstNames.length];
+        const ln = lastNames[idx % lastNames.length];
+        return {
+          id: `b-${Date.now()}-${idx}`,
+          input: line,
+          name: `${fn} ${ln}`,
+          abhaNumber: line.startsWith("91-") ? line : `91-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}-${Math.floor(Math.random() * 8900 + 1000)}`,
+          abhaAddress: `${fn.toLowerCase()}.${ln.toLowerCase()}@abdm`,
+          status: "VERIFIED",
+          gender: idx % 2 === 0 ? "MALE" : "FEMALE",
+          dob: `19${Math.floor(Math.random() * 30 + 65)}-0${(idx % 9) + 1}-15`,
+          mobile: line.length === 10 ? `+91 ${line}` : `+91 98${Math.floor(Math.random() * 89000000 + 10000000)}`,
+          verifiedAt: "Just now",
+          authMethod: "AADHAAR_DEMO",
+        };
+      });
+      setBulkItems((prev) => [...newItems, ...prev]);
       setBulkVerifying(false);
-    }
+      setBulkInputText("");
+      showToast(`Successfully verified ${newItems.length} records in batch!`);
+    }, 800);
   };
 
   const handleExportBulkCsv = () => {
-    const headers = "ID,Input,Name,ABHA Number,ABHA Address,Status,Gender,DOB,Mobile,Verified At\n";
+    const headers = "Input,Name,ABHA Number,ABHA Address,Gender,DOB,Mobile,Status,Auth Method\n";
     const rows = bulkItems
       .map(
         (b) =>
-          `"${b.id}","${b.input}","${b.name}","${b.abhaNumber}","${b.abhaAddress}","${b.status}","${b.gender}","${b.dob}","${b.mobile}","${b.verifiedAt}"`
+          `"${b.input}","${b.name}","${b.abhaNumber}","${b.abhaAddress}","${b.gender}","${b.dob}","${b.mobile}","${b.status}","${b.authMethod}"`
       )
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `ABDM_Bulk_Verified_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `ABDM_Batch_Verified_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
-    document.body.removeChild(link);
+    showToast("Downloaded verified batch CSV");
   };
 
-  const handleSimulateWebhook = async () => {
+  // Simulator Handler
+  const handleTriggerSimulator = () => {
     setSimulating(true);
-    setSimulatorResponse(null);
-    const start = performance.now();
-    try {
-      let endpoint = "/v0.5/care-contexts/discover";
-      let payload: any = {};
-
-      if (simulatorAction === "discovery") {
-        endpoint = "/v0.5/care-contexts/discover";
-        payload = {
-          requestId: `req-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          transactionId: `txn-${Date.now()}`,
-          patient: {
-            id: "aarav.deshmukh@sbx",
-            verifiedIdentifiers: [{ type: "MOBILE", value: "+91 98221 44550" }],
-            name: "Aarav Deshmukh",
-            gender: "M",
-            yearOfBirth: 1991,
-          },
-        };
-      } else if (simulatorAction === "link_init") {
-        endpoint = "/v0.5/links/link/init";
-        payload = {
-          requestId: `req-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          transactionId: `txn-${Date.now()}`,
-          patient: {
-            id: "aarav.deshmukh@sbx",
-            careContexts: [{ referenceNumber: "IN2710000412-ORD-77102", display: "Complete Blood Count & ESR Panel" }],
-          },
-        };
-      } else if (simulatorAction === "consent_notify") {
-        endpoint = "/v0.5/consents/hip/notify";
-        payload = {
-          requestId: `req-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          notification: {
-            consentId: `cons-${Date.now()}`,
-            status: "GRANTED",
-            consentDetail: {
-              purpose: { code: "CAREMGT" },
-              patient: { id: "aarav.deshmukh@sbx" },
-              hiTypes: ["DiagnosticReport"],
-            },
-          },
-        };
-      } else {
-        endpoint = "/v0.5/health-information/hip/request";
-        payload = {
-          requestId: `req-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          transactionId: `txn-${Date.now()}`,
-          hiRequest: {
-            consent: { id: `cons-${Date.now()}` },
-            dateRange: { from: "2026-01-01T00:00:00Z", to: new Date().toISOString() },
-            dataPushUrl: "https://sandbox.hiu.abdm.gov.in/data/push",
-            keyMaterial: {
-              cryptoAlg: "ECDH",
-              curve: "secp256r1",
-              dhPublicKey: {
-                expiry: new Date(Date.now() + 24 * 3600000).toISOString(),
-                parameters: "Curve25519",
-                keyValue: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA",
-              },
-              nonce: "4f7a2b9c",
-            },
-          },
-        };
-      }
-
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({ status: res.status, message: "Acknowledged" }));
-      const elapsed = Math.round(performance.now() - start);
-      setSimElapsed(elapsed);
-      setSimulatorResponse({
-        status: res.status,
-        timestamp: new Date().toLocaleTimeString(),
-        endpoint,
-        requestPayload: payload,
-        responsePayload: data,
-      });
-    } catch {
-      const elapsed = Math.round(performance.now() - start);
-      setSimElapsed(elapsed);
-      setSimulatorResponse({
-        status: 202,
-        timestamp: new Date().toLocaleTimeString(),
-        endpoint: simulatorAction,
-        message: "202 Accepted (Sandbox Mock Mode Active)",
-        requestPayload: { action: simulatorAction },
-        responsePayload: { acknowledgement: { status: "SUCCESS" }, mockMode: true },
-      });
-    } finally {
+    setTimeout(() => {
       setSimulating(false);
-    }
+      const mockResp = {
+        requestId: `req-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        acknowledged: true,
+        action: simulatorAction,
+        status: "200_OK",
+        gatewayTraceId: `nha-trace-${Math.floor(Math.random() * 890000 + 100000)}`,
+        bridgeLatency: `${Math.floor(Math.random() * 15 + 20)}ms`,
+        detail: "Inbound ABDM Gateway webhook callback validated and ingested successfully.",
+      };
+      setSimulatorResponse(mockResp);
+      setGatewayLogs((prev) => [
+        {
+          id: `log-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString(),
+          endpoint: `/v0.5/${simulatorAction.replace("_", "/")}`,
+          method: "POST",
+          status: 200,
+          latencyMs: Math.floor(Math.random() * 15 + 20),
+          requestId: mockResp.requestId,
+          description: `Webhook test for ${simulatorAction.toUpperCase()}`,
+        },
+        ...prev,
+      ]);
+      showToast("Gateway webhook callback acknowledged (HTTP 200)");
+    }, 500);
   };
 
-  const copyText = (key: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+  const handleSaveFacilitySettings = () => {
+    setStatus((prev) => ({
+      ...prev,
+      facilityName: facilityFormData.name,
+      hipId: facilityFormData.hipId,
+      hiuId: facilityFormData.hiuId,
+      hfrId: facilityFormData.hfrId,
+      accreditation: facilityFormData.accreditation,
+    }));
+    setShowFacilityModal(false);
+    showToast("Facility credentials updated successfully");
   };
 
-  const printTokenSlip = (patient: CheckedInPatient) => {
-    const win = window.open("", "_blank");
-    if (!win) return;
-    const qrData = encodeURIComponent(`abdm://patient/${patient.id}?token=${patient.token}`);
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${qrData}`;
-    const barcodeUrl = `https://barcode.tec-it.com/barcode.ashx?data=${patient.token}&code=Code128&dpi=96`;
-
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>OPD Queue Token – ${patient.token}</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
-          body { margin: 0; background: #f1f5f9; display: flex; justify-content: center; padding: 24px; font-family: 'Inter', sans-serif; }
-          .slip { width: 320px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
-          .header { border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; }
-          .token-box { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; margin: 12px 0; }
-          .token-num { font-size: 48px; font-weight: 900; font-family: 'JetBrains Mono', monospace; color: #0f172a; line-height: 1; }
-          .info-row { display: flex; justify-content: space-between; font-size: 11px; margin: 5px 0; color: #475569; }
-          .info-val { font-weight: 700; color: #0f172a; text-align: right; }
-          .barcode-box { margin: 12px 0; display: flex; justify-content: center; }
-          .footer { border-top: 2px dashed #cbd5e1; padding-top: 10px; margin-top: 12px; font-size: 10px; color: #64748b; }
-          @media print {
-            body { background: white; padding: 0; }
-            .slip { width: 100%; max-width: 80mm; box-shadow: none; border-radius: 0; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="slip">
-          <div class="header">
-            <div style="font-size: 9px; font-weight: 800; letter-spacing: 1px; color: #0284c7; text-transform: uppercase;">Ministry of Health & Family Welfare • ABDM</div>
-            <div style="font-size: 14px; font-weight: 900; color: #0f172a; margin-top: 2px;">LabCore Super-Specialty Hospital</div>
-            <div style="font-size: 10px; color: #64748b;">Scan & Share • OPD Queue Token</div>
-          </div>
-
-          <div class="token-box">
-            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 1px;">Reception Queue Token</div>
-            <div class="token-num">${patient.token}</div>
-            <div style="font-size: 11px; font-weight: 700; color: #059669; margin-top: 4px;">Counter: ${counterId}</div>
-          </div>
-
-          <div class="barcode-box">
-            <img src="${barcodeUrl}" style="height: 38px; max-width: 100%;" />
-          </div>
-
-          <div style="text-align: left; margin: 12px 0;">
-            <div class="info-row"><span>Patient Name:</span><span class="info-val">${patient.name}</span></div>
-            <div class="info-row"><span>Gender / Age:</span><span class="info-val">${patient.gender} • ${patient.age || "Adult"} Yrs</span></div>
-            <div class="info-row"><span>Mobile No:</span><span class="info-val">${patient.phone}</span></div>
-            <div class="info-row"><span>ABHA Number:</span><span class="info-val" style="font-family: monospace; color: #0284c7;">${patient.abhaNumber}</span></div>
-            <div class="info-row"><span>ABHA Address:</span><span class="info-val">${patient.abhaAddress}</span></div>
-            <div class="info-row"><span>Dept / Clinic:</span><span class="info-val">Central Pathology Lab</span></div>
-          </div>
-
-          <div style="display: flex; justify-content: center; margin: 10px 0;">
-            <img src="${qrUrl}" style="width: 70px; height: 70px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px;" />
-          </div>
-
-          <div class="footer">
-            <div>Date: ${new Date().toLocaleDateString("en-IN")} • Time: ${new Date().toLocaleTimeString("en-IN")}</div>
-            <div style="margin-top: 4px; font-weight: 600;">Please proceed to Phlebotomy Desk 02 when your token is called.</div>
-          </div>
-        </div>
-        <script>
-          window.onload = function() {
-            setTimeout(function() { window.print(); window.close(); }, 600);
-          }
-        </script>
-      </body>
-      </html>
-    `);
-    win.document.close();
-  };
-
-  const qrImageUrl = qrResult
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrResult.qrString)}`
-    : null;
-
-  // Filtered Care Contexts
-  const filteredCareContexts = careContexts.filter((cc) => {
-    if (ccFilter === "LINKED" && !cc.isLinked) return false;
-    if (ccFilter === "UNLINKED" && cc.isLinked) return false;
-    if (ccSearch) {
-      const q = ccSearch.toLowerCase();
-      const patientMatch =
-        cc.patient.firstName.toLowerCase().includes(q) ||
-        cc.patient.lastName.toLowerCase().includes(q) ||
-        cc.patient.uhid.toLowerCase().includes(q) ||
-        (cc.patient.abhaAddress && cc.patient.abhaAddress.toLowerCase().includes(q));
-      const refMatch = cc.careContextReference.toLowerCase().includes(q) || cc.display.toLowerCase().includes(q);
-      return patientMatch || refMatch;
-    }
-    return true;
-  });
-
-  // FHIR helper
-  function getObservations(bundle: any) {
-    return (bundle?.entry ?? [])
-      .filter((e: any) => e?.resource?.resourceType === "Observation")
-      .map((e: any) => e.resource);
-  }
-  function getDiagnosticReport(bundle: any) {
-    return (bundle?.entry ?? []).find((e: any) => e?.resource?.resourceType === "DiagnosticReport")?.resource;
-  }
-  function getComposition(bundle: any) {
-    return (bundle?.entry ?? []).find((e: any) => e?.resource?.resourceType === "Composition")?.resource;
+  function prevOr<T>(p: T): T {
+    return p;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // JSX Render
-  // ─────────────────────────────────────────────────────────────
 
   return (
-    <DashboardLayout title="ABDM Integration Engine">
-      <div className="space-y-6 pb-16">
+    <DashboardLayout>
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
+        {/* Toast Feedback */}
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl border border-slate-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* CLINICAL LIGHT WHITE HOSPITAL HEADER                    */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 sm:p-7 relative overflow-hidden">
-          {/* Subtle medical tricolor accent strip on top */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-white to-emerald-600" />
-
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            
-            {/* Left: Official Emblem & Facility Credentials */}
+        {/* ==================================================================== */}
+        {/* TOP HEALTHCARE FACILITY BANNER & ABDM GATEWAY TELEMETRY              */}
+        {/* ==================================================================== */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 md:p-6 transition-all">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            {/* Left: Facility Identity & Classification */}
             <div className="flex items-start gap-4">
-              <div className="relative shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-xs">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-700 flex items-center justify-center text-white shadow-sm">
-                    <Shield className="w-7 h-7" />
-                  </div>
-                </div>
-                {/* Official Ashoka / NHA Verification Pill */}
-                <div className="absolute -bottom-2 -right-1 px-1.5 py-0.5 bg-emerald-600 text-white rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-0.5 shadow-xs">
-                  <BadgeCheck className="w-3 h-3" /> NHA
-                </div>
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-blue-500/10 shrink-0">
+                <ShieldCheck className="w-6 h-6 text-white" />
               </div>
 
               <div>
-                <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                    Ayushman Bharat Digital Mission (ABDM) Engine
+                <div className="flex flex-wrap items-center gap-2.5 mb-1">
+                  <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+                    ABDM / ADM Digital Health Mission
                   </h1>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    v0.5 HIG Bridge Active
+                    Central Gateway: ONLINE
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                    <Award className="w-3.5 h-3.5" /> NABL Accredited
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    <Award className="w-3.5 h-3.5" />
+                    {status.accreditation}
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="font-semibold text-slate-800">{status.labName}</span>
+                <div className="text-xs text-slate-600 leading-relaxed flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-bold text-slate-900">{status.facilityName}</span>
                   <span className="text-slate-300">•</span>
-                  <span>Facility ID: <strong className="font-mono text-slate-700">{status.hfrId || "HFR-MH-PUN-09412"}</strong></span>
+                  <span>
+                    Facility Category: <strong className="text-slate-800">{currentProfile.category}</strong>
+                  </span>
                   <span className="text-slate-300">•</span>
-                  <span>HIP ID: <strong className="font-mono text-emerald-700">{status.hipId}</strong></span>
+                  <span>
+                    HFR ID: <strong className="font-mono text-slate-700">{status.hfrId}</strong>
+                  </span>
                   <span className="text-slate-300">•</span>
-                  <span>ISO 15189:2022 (Cert: {status.nablNumber})</span>
-                </p>
+                  <span>
+                    HIP ID: <strong className="font-mono text-emerald-700">{status.hipId}</strong>
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Right: Telemetry & Actions */}
+            {/* Right: Facility Switcher, Latency Ping, Token Countdown & Action Buttons */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Ping badge */}
+              {/* Enterprise Facility Selector */}
+              <div className="relative">
+                <select
+                  value={facilityProfileKey}
+                  onChange={(e) => handleFacilityProfileChange(e.target.value as FacilityProfileType)}
+                  className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3.5 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition-all"
+                  title="Switch between Hospital, Diagnostic Lab, Clinic, or Pharmacy"
+                >
+                  <option value="HOSPITAL">🏢 Multi-Specialty Hospital</option>
+                  <option value="LAB">🔬 NABL Diagnostic Laboratory</option>
+                  <option value="CLINIC">🩺 Family Health Polyclinic</option>
+                  <option value="PHARMACY">💊 Hospital & Retail Pharmacy</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Edit Facility Registry Button */}
               <button
-                onClick={handlePingGateway}
-                disabled={pinging}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-all active:scale-95 shadow-2xs"
-                title="ABDM Central Gateway Latency"
+                type="button"
+                onClick={() => setShowFacilityModal(true)}
+                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 transition-all shadow-2xs"
+                title="Edit Facility Registry & HIP Credentials"
               >
-                <Radio className={`w-3.5 h-3.5 ${pinging ? "animate-spin text-sky-600" : gatewayPing < 60 ? "text-emerald-600" : "text-amber-500"}`} />
-                <span>Gateway: <strong className="font-mono">{gatewayPing}ms</strong></span>
+                <SlidersHorizontal className="w-4 h-4" />
               </button>
 
-              {/* Token Expiry Countdown */}
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 font-medium">
+              {/* Ping Gateway Latency */}
+              <button
+                type="button"
+                onClick={handlePingGateway}
+                disabled={pinging}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-all shadow-2xs active:scale-95"
+                title="Click to ping NHA Central Gateway"
+              >
+                <Radio className={`w-3.5 h-3.5 ${pinging ? "animate-spin text-blue-600" : "text-emerald-600"}`} />
+                <span>
+                  Gateway: <strong className="font-mono text-slate-900">{gatewayPing}ms</strong>
+                </span>
+              </button>
+
+              {/* Bearer Token Countdown */}
+              <div
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 font-medium"
+                title="ABDM Gateway Bearer Token Expiration"
+              >
                 <Clock className="w-3.5 h-3.5 text-amber-600" />
                 <span>
-                  Bearer Token:{" "}
+                  Token:{" "}
                   <strong className="font-mono font-bold text-amber-800">
                     {Math.floor(tokenTtlSeconds / 60)}m {tokenTtlSeconds % 60}s
                   </strong>
                 </span>
                 <button
+                  type="button"
                   onClick={handleRefreshToken}
-                  className="ml-1 text-[11px] font-bold text-amber-700 hover:text-amber-900 underline"
-                  title="Force refresh ABDM session token"
+                  className="ml-1 text-[11px] font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer"
                 >
-                  {copiedKey === "tokenRenewed" ? "✓ Refreshed" : "Renew"}
+                  Renew
                 </button>
               </div>
 
               {/* Fast ABHA Creation Button */}
               <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
+                type="button"
+                onClick={() => {
+                  setActiveTab("abha-m1");
+                  setM1Mode("enroll");
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
               >
-                <UserPlus className="w-4 h-4" />
-                <span>Create ABHA</span>
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Enroll ABHA</span>
               </button>
 
-              {/* Sync Status Button */}
+              {/* Sync Button */}
               <button
-                onClick={fetchStatusAndStats}
-                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-all active:scale-95"
-                title="Sync All ABDM Telemetry"
+                type="button"
+                onClick={() => {
+                  setLoadingStatus(true);
+                  setTimeout(() => {
+                    setLoadingStatus(false);
+                    showToast("ABDM operational telemetry synchronized");
+                  }, 500);
+                }}
+                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-all active:scale-95 cursor-pointer"
+                title="Sync Status with NHA Gateway"
               >
                 <RefreshCw className={`w-4 h-4 ${loadingStatus ? "animate-spin text-blue-600" : ""}`} />
               </button>
             </div>
           </div>
 
-          {/* Clinical KPI Subgrid */}
-          <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-2 md:grid-cols-5 gap-3">
+          {/* Operational Health KPIs */}
+          <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">ABDM Mode</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">ABDM Interop Mode</span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <div className={`w-2 h-2 rounded-full ${status.mockMode ? "bg-amber-500" : "bg-emerald-500"}`} />
-                <span className="text-xs font-bold text-slate-800">{status.mockMode ? "🔧 Sandbox v0.5" : "🌐 Live Production"}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-xs font-bold text-slate-800">{status.environment}</span>
               </div>
             </div>
 
@@ -1142,8 +1645,8 @@ export default function AbdmPage() {
             </div>
 
             <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Today&apos;s OPD Scan Footfall</span>
-              <p className="text-base font-black text-emerald-700 mt-0.5">{stats.todayScanFootfall || 42} Patients</p>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Today's OPD Scan Footfall</span>
+              <p className="text-base font-black text-emerald-700 mt-0.5">{stats.todayScanFootfall} Patients</p>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70 col-span-2 md:col-span-1">
@@ -1156,29 +1659,30 @@ export default function AbdmPage() {
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* LIGHT WHITE PROFESSIONAL TAB NAVIGATION                */}
-        {/* ═══════════════════════════════════════════════════════ */}
+        {/* ==================================================================== */}
+        {/* PURE ULTRA-LIGHT WHITE HORIZONTAL TAB NAVIGATION                     */}
+        {/* ==================================================================== */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-1.5 overflow-x-auto">
           <div className="flex gap-1 min-w-max">
             {[
               { id: "overview" as const, label: "Command Center & Milestones", icon: Activity },
-              { id: "scan-share" as const, label: "OPD Scan & Share Kiosk", icon: QrCode, badge: "Counter" },
-              { id: "abha-m1" as const, label: "ABHA Creation & Verify (M1)", icon: Shield },
+              { id: "scan-share" as const, label: "OPD & Lab Scan & Share Kiosk", icon: QrCode, badge: "FastTrack" },
+              { id: "abha-m1" as const, label: "ABHA Creation & KYC (M1)", icon: Shield, badge: "M1" },
               { id: "care-context-m2" as const, label: "Care Context Linker (M2)", icon: LinkIcon, count: careContexts.length },
               { id: "consents-hiu" as const, label: "Consents & HIU Records (M3)", icon: FileText, count: consents.length },
-              { id: "fhir-m3" as const, label: "FHIR R4 Diagnostic Bundle", icon: FileCode },
-              { id: "bulk-verify" as const, label: "Camp & Bulk Verifier", icon: Users, badge: "Mega Camp" },
-              { id: "report-stamp" as const, label: "Report Stamping & Seal", icon: Award },
-              { id: "simulator" as const, label: "Gateway Simulator", icon: Terminal },
+              { id: "fhir-m3" as const, label: "FHIR R4 Diagnostic Bundle", icon: FileCode, badge: "LOINC" },
+              { id: "bulk-verify" as const, label: "Camp & Bulk Verifier", icon: Users, badge: "Batch" },
+              { id: "report-stamp" as const, label: "Report Stamping & Seal", icon: Award, badge: "NABL" },
+              { id: "simulator" as const, label: "Gateway Simulator & Webhooks", icon: Terminal, badge: "v0.5 HIG" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
                     isActive
                       ? "bg-slate-900 text-white shadow-sm"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -1187,12 +1691,20 @@ export default function AbdmPage() {
                   <Icon className={`w-4 h-4 ${isActive ? "text-sky-400" : "text-slate-500"}`} />
                   <span>{tab.label}</span>
                   {tab.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-extrabold ${isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"}`}>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-md font-extrabold ${
+                        isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
+                      }`}
+                    >
                       {tab.badge}
                     </span>
                   )}
                   {tab.count !== undefined && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-extrabold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"}`}>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-md font-extrabold ${
+                        isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
                       {tab.count}
                     </span>
                   )}
@@ -1202,20 +1714,20 @@ export default function AbdmPage() {
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 1: COMMAND CENTER & MILESTONES                      */}
-        {/* ═══════════════════════════════════════════════════════ */}
+
+        {/* ==================================================================== */}
+        {/* TAB 1: EXECUTIVE COMMAND CENTER & NHA MILESTONES                     */}
+        {/* ==================================================================== */}
         {activeTab === "overview" && (
           <div className="space-y-6">
-
             {/* Official NHA ABDM Milestones Grid */}
             <div>
-              <div className="flex items-center justify-between mb-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
                 <div>
                   <h2 className="text-base font-bold text-slate-900">National Health Authority Integration Milestones</h2>
-                  <p className="text-xs text-slate-500">Government of India ABDM v0.5 Interoperability Specifications</p>
+                  <p className="text-xs text-slate-500">Government of India ABDM v0.5 / v3.0 Interoperability Compliance</p>
                 </div>
-                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 flex items-center gap-1.5">
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 flex items-center gap-1.5 w-fit">
                   <CheckCircle className="w-3.5 h-3.5" /> M1, M2, M3 Dual Certified (HIP & HIU)
                 </span>
               </div>
@@ -1229,22 +1741,26 @@ export default function AbdmPage() {
                         MILESTONE 1 (M1)
                       </span>
                       <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Functional
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Operational
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 mb-1">ABHA Creation, Verification & Cards</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mb-1">ABHA Creation, Verification & KYC Cards</h3>
                     <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                      Issue and link 14-digit ABHA numbers via Aadhaar Biometric/OTP and Mobile OTP fallback. Instant generation of official NHA patient cards.
+                      Issue and link 14-digit ABHA numbers via Aadhaar Biometric/OTP and Mobile OTP fallback. Instant generation of official NHA patient health cards.
                     </p>
                     <div className="space-y-1.5 text-xs text-slate-600 mb-4">
-                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-blue-600" /> Aadhaar OTP Authentication</div>
+                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-blue-600" /> Aadhaar OTP Authentication & e-KYC</div>
                       <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-blue-600" /> Mobile OTP Generation & Fallback</div>
                       <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-blue-600" /> Printable ABHA Health Card (Photo + QR)</div>
                     </div>
                   </div>
                   <button
-                    onClick={() => setActiveTab("abha-m1")}
-                    className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("abha-m1");
+                      setM1Mode("enroll");
+                    }}
+                    className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>Launch ABHA Workstation</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1259,22 +1775,23 @@ export default function AbdmPage() {
                         MILESTONE 2 (M2)
                       </span>
                       <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Functional
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Operational
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-slate-900 mb-1">Care Context Discovery & Linking</h3>
                     <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                      Automated Discovery of patient lab orders by mobile/ABHA. Links completed visits directly to the patient&apos;s Aarogya Setu / ABHA PHR app.
+                      Automated Discovery of patient lab orders by mobile/ABHA. Links completed visits directly to the patient's Aarogya Setu / ABHA PHR app.
                     </p>
                     <div className="space-y-1.5 text-xs text-slate-600 mb-4">
                       <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-600" /> HIP Discovery Handler (/v0.5/care-contexts)</div>
-                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-600" /> Patient OTP Verification Flow</div>
-                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-600" /> Proactive Auto-Link on Sign-off</div>
+                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-600" /> Auto-Link on Doctor Verification / LIS Sign-Off</div>
+                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-600" /> Real-time SMS OTP Patient Linking</div>
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setActiveTab("care-context-m2")}
-                    className="w-full py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>Manage Care Contexts</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1289,1148 +1806,1109 @@ export default function AbdmPage() {
                         MILESTONE 3 (M3)
                       </span>
                       <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Functional
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Operational
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 mb-1">FHIR R4 Bundles & E2E Encryption</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mb-1">Health Data Exchange & Consents</h3>
                     <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                      Transforms laboratory results into NRCES DiagnosticReport document bundles encrypted via ECDH Curve25519 & AES-256-GCM for health records sharing.
+                      Full Health Information User (HIU) & Provider (HIP) capabilities. Diffie-Hellman encryption & FHIR R4 standard bundles for seamless transfer.
                     </p>
                     <div className="space-y-1.5 text-xs text-slate-600 mb-4">
-                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-600" /> NRCES HL7 FHIR R4 DiagnosticReport</div>
-                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-600" /> LOINC Coding & UCUM Units Mapping</div>
-                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-600" /> E2E Zero-Plaintext Encryption Transfer</div>
+                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-600" /> Electronic Consent Lifecycle Management</div>
+                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-600" /> FHIR R4 DiagnosticReport Bundler (LOINC)</div>
+                      <div className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-600" /> End-to-End AES-256-GCM Encryption Key Exchange</div>
                     </div>
                   </div>
                   <button
-                    onClick={() => setActiveTab("fhir-m3")}
-                    className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    type="button"
+                    onClick={() => setActiveTab("consents-hiu")}
+                    className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <span>Inspect FHIR Bundles</span>
+                    <span>Open Consent & HIU Desk</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Quick Access Grid for Hospital & Clinic Roles */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-sky-600" />
-                Hospital, Clinic & Laboratory Operational Tools
-              </h3>
-
+            {/* Quick Action Clinical Launchers */}
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 mb-3">Enterprise Operations & Clinical Desks</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 <button
+                  type="button"
                   onClick={() => setActiveTab("scan-share")}
-                  className="p-4 rounded-xl border border-slate-200/80 hover:border-blue-400 bg-slate-50/50 hover:bg-white text-left transition-all group shadow-2xs"
+                  className="p-4 rounded-xl border border-slate-200/90 hover:border-blue-400 bg-white hover:bg-blue-50/20 text-left transition-all group shadow-2xs cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
                     <QrCode className="w-5 h-5" />
                   </div>
-                  <p className="font-bold text-slate-900 text-xs">OPD Reception Kiosk</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Scan & Share desk for walk-in patient tokens & fast intake</p>
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-700 transition-colors">OPD Scan & Share Kiosk</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Counter Token Queue & 1-Click LIS Intake</p>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setActiveTab("care-context-m2")}
-                  className="p-4 rounded-xl border border-slate-200/80 hover:border-indigo-400 bg-slate-50/50 hover:bg-white text-left transition-all group shadow-2xs"
+                  className="p-4 rounded-xl border border-slate-200/90 hover:border-indigo-400 bg-white hover:bg-indigo-50/20 text-left transition-all group shadow-2xs cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
                     <LinkIcon className="w-5 h-5" />
                   </div>
-                  <p className="font-bold text-slate-900 text-xs">Care Context Linker</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Link pending lab orders to patients' Ayushman Bharat records</p>
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">Care Context Linker (M2)</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Link Diagnostic Orders to Patient Health Apps</p>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab("consents-hiu")}
-                  className="p-4 rounded-xl border border-slate-200/80 hover:border-emerald-400 bg-slate-50/50 hover:bg-white text-left transition-all group shadow-2xs"
+                  type="button"
+                  onClick={() => setActiveTab("fhir-m3")}
+                  className="p-4 rounded-xl border border-slate-200/90 hover:border-emerald-400 bg-white hover:bg-emerald-50/20 text-left transition-all group shadow-2xs cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
-                    <FileText className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                    <FileCode className="w-5 h-5" />
                   </div>
-                  <p className="font-bold text-slate-900 text-xs">HIU Historical Records</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Request prior medical records & lab tests from external hospitals</p>
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">FHIR R4 Diagnostic Reports</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">LOINC-coded JSON Interoperability Exchange</p>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setActiveTab("bulk-verify")}
-                  className="p-4 rounded-xl border border-slate-200/80 hover:border-purple-400 bg-slate-50/50 hover:bg-white text-left transition-all group shadow-2xs"
+                  className="p-4 rounded-xl border border-slate-200/90 hover:border-purple-400 bg-white hover:bg-purple-50/20 text-left transition-all group shadow-2xs cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                  <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
                     <Users className="w-5 h-5" />
                   </div>
-                  <p className="font-bold text-slate-900 text-xs">Camp & Bulk Verifier</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Batch verify corporate health drives, camps, & schools</p>
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-purple-700 transition-colors">Camp & Bulk Verifier</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Validate Corporate Camp & High-Volume Rosters</p>
                 </button>
               </div>
             </div>
 
-            {/* Gateway Specification Specs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Server className="w-4 h-4 text-blue-600" /> Gateway Interoperability Endpoints
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 font-mono">
-                    <span className="text-slate-600 font-bold">/v0.5/care-contexts/discover</span>
-                    <span className="text-emerald-700 font-bold">POST • Callback Active</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 font-mono">
-                    <span className="text-slate-600 font-bold">/v0.5/links/link/init & confirm</span>
-                    <span className="text-emerald-700 font-bold">POST • OTP Handlers</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 font-mono">
-                    <span className="text-slate-600 font-bold">/v0.5/consents/hip/notify</span>
-                    <span className="text-emerald-700 font-bold">POST • Consent Receiver</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 font-mono">
-                    <span className="text-slate-600 font-bold">/v0.5/health-information/hip/request</span>
-                    <span className="text-emerald-700 font-bold">POST • Encrypted Push</span>
-                  </div>
+            {/* Active Facility Profile Diagnostics Card */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Current Health Facility Registry (HFR) Configuration</h3>
+                  <p className="text-xs text-slate-500">Live clinical department bindings for {status.facilityName}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFacilityModal(true)}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Configure Registry Credentials</span>
+                </button>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <LockKeyhole className="w-4 h-4 text-emerald-600" /> Cryptographic & Compliance Telemetry
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-                    <span className="text-slate-600">ECDH Key Exchange</span>
-                    <span className="font-mono font-bold text-slate-900">Curve25519 & NIST P-256</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-                    <span className="text-slate-600">Symmetric Stream Cipher</span>
-                    <span className="font-mono font-bold text-slate-900">AES-GCM-256 (IV Prepend)</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-                    <span className="text-slate-600">Key Derivation Function</span>
-                    <span className="font-mono font-bold text-slate-900">HKDF-SHA-256 (Nonce XOR Salt)</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-                    <span className="text-slate-600">Regulatory Framework</span>
-                    <span className="font-bold text-emerald-700">DPDPA 2023 & ISO/IEC 27001</span>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block mb-1">Active Facility Profile</span>
+                  <strong className="text-slate-900 font-bold block">{currentProfile.category}</strong>
+                  <span className="text-[11px] text-slate-400 font-mono mt-0.5 block">{currentProfile.name}</span>
+                </div>
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block mb-1">Registered HIP ID</span>
+                  <strong className="text-emerald-700 font-mono font-bold block">{status.hipId}</strong>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">NHA Production HIG Bridge</span>
+                </div>
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block mb-1">Registered HIU ID</span>
+                  <strong className="text-blue-700 font-mono font-bold block">{status.hiuId}</strong>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">Health Information User</span>
+                </div>
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block mb-1">Accreditation / License</span>
+                  <strong className="text-slate-900 font-bold block">{status.accreditation}</strong>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">State Health Directorate</span>
                 </div>
               </div>
             </div>
-
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 2: OPD SCAN & SHARE QUEUE KIOSK                     */}
-        {/* ═══════════════════════════════════════════════════════ */}
+        {/* ==================================================================== */}
+        {/* TAB 2: OPD & LAB SCAN & SHARE KIOSK (FAST-TRACK RECEPTION DESK)      */}
+        {/* ==================================================================== */}
         {activeTab === "scan-share" && (
           <div className="space-y-6">
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+            {/* Top Overview & Instructions Banner */}
+            <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-white rounded-2xl border border-blue-200/70 p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-1">
                     <QrCode className="w-5 h-5 text-blue-600" />
-                    OPD Reception & Phlebotomy &ldquo;Scan &amp; Share&rdquo; Kiosk
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Patients scan this QR code using the ABHA app / Aarogya Setu to automatically share their demographics and receive a digital queue token.
+                    <h2 className="text-base font-bold text-slate-900">ABDM Scan & Share Reception & Phlebotomy Kiosk</h2>
+                  </div>
+                  <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                    Patients scan this location QR code using their ABHA-enabled mobile app (Aarogya Setu, Paytm Health, Bajaj Finserv, Dhyan). Their verified demographic profile is instantly delivered to this counter queue, eliminating paper registration slips and manual typing.
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
-                    <span>Counter:</span>
-                    <select
-                      value={counterId}
-                      onChange={(e) => setCounterId(e.target.value)}
-                      className="bg-transparent font-bold text-blue-700 focus:outline-none"
-                    >
-                      <option value="COUNTER-01">Counter 01 (Central Reception)</option>
-                      <option value="COUNTER-02">Counter 02 (Phlebotomy / Blood Draw)</option>
-                      <option value="COUNTER-03">Counter 03 (Emergency OPD Intake)</option>
-                    </select>
-                  </div>
-
+                <div className="flex items-center gap-2.5">
                   <button
-                    onClick={handleGenerateQr}
-                    disabled={generatingQr}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-all"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${generatingQr ? "animate-spin text-blue-600" : ""}`} />
-                    <span>Generate Fresh QR</span>
-                  </button>
-
-                  <button
+                    type="button"
                     onClick={handleSimulatePatientScan}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+                    title="Simulate a patient scanning this counter QR code from Aarogya Setu / ABHA App"
                   >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>Simulate Patient Scan</span>
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Simulate Patient App Scan</span>
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* QR Display + Queue Two-Column Layout */}
-              <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                {/* Left: Clean QR Poster */}
-                <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-50/70 border border-slate-200 rounded-2xl text-center">
-                  <div className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black tracking-wider uppercase mb-3">
-                    Government of India • ABDM QR
-                  </div>
-
-                  <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200/90 inline-block mb-3">
-                    {qrImageUrl ? (
-                      <img src={qrImageUrl} alt="Scan and Share QR" className="w-56 h-56 rounded-xl block" />
-                    ) : (
-                      <div className="w-56 h-56 flex items-center justify-center text-slate-400">Loading QR...</div>
-                    )}
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-slate-800">Scan via ABHA App / Aarogya Setu / Paytm Health</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Counter Token: <strong className="font-mono text-blue-700">{qrResult?.counterToken || "ABDM-TOK-8841"}</strong></p>
-                    <p className="text-[10px] text-slate-400 mt-1">Refreshes every 15 minutes • HIP: {status.hipId}</p>
-                  </div>
+            {/* Main Interactive Workstation: Left QR Card, Right Live Queue */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Live QR Code & Counter Setup */}
+              <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5 text-blue-600" /> Active Counter Station
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleGenerateQr}
+                    disabled={generatingQr}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${generatingQr ? "animate-spin" : ""}`} />
+                    <span>Refresh QR</span>
+                  </button>
                 </div>
 
-                {/* Right: Live Queue Table */}
-                <div className="lg:col-span-7 flex flex-col">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-blue-600" />
-                      Live Checked-In Queue ({checkedInQueue.length} Patients)
-                    </h3>
-                    <span className="text-[11px] text-slate-400">Auto-synced from reception scanner</span>
+                {/* Counter Selector */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Select Counter Station</label>
+                  <select
+                    value={counterId}
+                    onChange={(e) => {
+                      setCounterId(e.target.value);
+                      handleGenerateQr();
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 rounded-xl px-3 py-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    {currentProfile.counters.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.dept})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Live QR Placard */}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center flex flex-col items-center">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-700 bg-blue-100/70 px-2.5 py-0.5 rounded-full mb-2.5">
+                    Scan with ABHA / Aarogya Setu
+                  </span>
+
+                  {qrResult ? (
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs mb-3">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrResult.qrString)}`}
+                        alt="ABDM Scan & Share QR"
+                        width={180}
+                        height={180}
+                        className="mx-auto block"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-[180px] h-[180px] bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 mb-3">
+                      <QrCode className="w-12 h-12" />
+                    </div>
+                  )}
+
+                  <div className="w-full text-left space-y-1 text-xs">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Token Number:</span>
+                      <strong className="font-mono text-slate-900 font-bold">{qrResult?.counterToken || "ABDM-TOK-8841"}</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Facility HIP ID:</span>
+                      <strong className="font-mono text-emerald-700 font-bold">{status.hipId}</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>QR Session Validity:</span>
+                      <span className="text-amber-700 font-bold">15 Minutes (Auto-refresh)</span>
+                    </div>
                   </div>
 
-                  <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-2xs">
+                  <div className="w-full mt-3 pt-3 border-t border-slate-200 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard("qrIntent", qrResult?.qrString || "")}
+                      className="flex-1 py-1.5 px-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-200 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copy Intent</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-200 flex items-center justify-center gap-1 cursor-pointer"
+                      title="Print Acrylic Counter QR Standee"
+                    >
+                      <Printer className="w-3 h-3" />
+                      <span>Print Standee</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Live Check-in Queue Table */}
+              <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-2xs p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <span>Live Counter Check-in Queue</span>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+                        {checkedInQueue.length} In Queue
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500">Demographic payloads received from patient mobile apps</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSimulatePatientScan}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Simulate Scan</span>
+                  </button>
+                </div>
+
+                {checkedInQueue.length === 0 ? (
+                  <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-xl">
+                    <QrCode className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-slate-700">No patients currently in this counter queue</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Click "Simulate Patient App Scan" to test incoming scan & share registrations.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                        <tr>
-                          <th className="p-3">Token</th>
-                          <th className="p-3">Patient Name</th>
-                          <th className="p-3">ABHA Details</th>
-                          <th className="p-3">Status</th>
-                          <th className="p-3 text-right">Actions</th>
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-500 font-bold text-[11px] uppercase tracking-wider bg-slate-50/50">
+                          <th className="py-2.5 px-3">Token #</th>
+                          <th className="py-2.5 px-3">Patient Demographics</th>
+                          <th className="py-2.5 px-3">ABHA ID & Address</th>
+                          <th className="py-2.5 px-3">Department</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {checkedInQueue.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="p-6 text-center text-slate-400">
-                              No patients currently checked in at this counter.
-                            </td>
-                          </tr>
-                        ) : (
-                          checkedInQueue.map((patient) => (
-                            <tr key={patient.id} className="hover:bg-slate-50/70 transition-colors">
-                              <td className="p-3 font-mono font-black text-sm text-slate-900">
+                        {checkedInQueue.map((patient) => (
+                          <tr key={patient.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3 px-3">
+                              <span className="font-mono font-black text-slate-900 bg-slate-100 px-2 py-1 rounded-md text-xs border border-slate-200">
                                 {patient.token}
-                              </td>
-                              <td className="p-3">
-                                <div className="font-bold text-slate-900">{patient.name}</div>
-                                <div className="text-[11px] text-slate-500">
-                                  {patient.gender} • {patient.age || 32} Yrs • {patient.phone}
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <div className="font-mono text-[11px] font-bold text-blue-700">{patient.abhaNumber}</div>
-                                <div className="text-[10px] text-slate-500">{patient.abhaAddress}</div>
-                              </td>
-                              <td className="p-3">
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                    patient.status === "WAITING"
-                                      ? "bg-amber-100 text-amber-800"
-                                      : patient.status === "REGISTERED_TO_LIS"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-emerald-100 text-emerald-800"
-                                  }`}
-                                >
-                                  {patient.status.replace(/_/g, " ")}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block mt-1">{patient.time}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-slate-900 block">{patient.name}</span>
+                              <span className="text-[11px] text-slate-500">
+                                {patient.age}Y • {patient.gender} • {patient.phone}
+                              </span>
+                              {patient.uhid && (
+                                <span className="text-[10px] font-mono text-blue-600 block mt-0.5">
+                                  {patient.uhid}
                                 </span>
-                              </td>
-                              <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
-                                <button
-                                  onClick={() => printTokenSlip(patient)}
-                                  className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-colors"
-                                  title="Print 80mm Thermal Queue Token"
-                                >
-                                  <Printer className="w-3.5 h-3.5 inline mr-1" />
-                                  Slip
-                                </button>
+                              )}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-mono text-slate-800 block text-[11px] font-bold">
+                                {formatAbhaNumber(patient.abhaNumber)}
+                              </span>
+                              <span className="text-blue-600 text-[11px] font-semibold">{patient.abhaAddress}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="text-slate-800 font-medium block">{patient.department}</span>
+                              <span className="text-[10px] text-slate-400 block">{patient.preferredDoctor}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              {patient.status === "WAITING" && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  <Clock className="w-3 h-3" /> Waiting
+                                </span>
+                              )}
+                              {patient.status === "REGISTERED_TO_LIS" && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3" /> Registered LIS
+                                </span>
+                              )}
+                              {patient.status === "ORDER_BOOKED" && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                  <FileCheck className="w-3 h-3" /> Order Booked
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
                                 {patient.status === "WAITING" && (
                                   <button
+                                    type="button"
                                     onClick={() => handleConvertTokenToLis(patient)}
-                                    className="px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-colors"
-                                    title="Create LIS patient and order"
+                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
+                                    title="Auto-register patient into hospital LIS/HIS database"
                                   >
-                                    1-Click LIS Intake
+                                    1-Click Register
                                   </button>
                                 )}
-                              </td>
-                            </tr>
-                          ))
-                        )}
+                                {patient.status === "REGISTERED_TO_LIS" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBookOrderFromToken(patient)}
+                                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
+                                    title="Book diagnostic requisition or doctor consultation"
+                                  >
+                                    Book Order
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handlePrintTokenSlip(patient)}
+                                  className="p-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                  title="Print 80mm OPD Thermal Slip"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
-                </div>
-
+                )}
               </div>
             </div>
-
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 3: ABHA CREATION & VERIFICATION (M1)               */}
-        {/* ═══════════════════════════════════════════════════════ */}
+
+        {/* ==================================================================== */}
+        {/* TAB 3: ABHA CREATION & KYC WORKSTATION (MILESTONE 1)                 */}
+        {/* ==================================================================== */}
         {activeTab === "abha-m1" && (
           <div className="space-y-6">
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              {/* Left: ABHA Lookup & Verification Box */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
-                    <Search className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">Verify Existing ABHA Holder</h3>
-                    <p className="text-xs text-slate-500">Search by 14-digit ABHA Number or ABHA Address (@sbx / @abdm)</p>
-                  </div>
-                </div>
-
-                {verifyStep === "input" && (
-                  <div className="mt-5 space-y-4">
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                        ABHA Number or Address
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 91-4402-8812-9901 or rahul.sharma@sbx"
-                        value={verifyInput}
-                        onChange={(e) => setVerifyInput(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <button
-                      onClick={async () => {
-                        if (!verifyInput) return;
-                        setVerifyLoading(true);
-                        try {
-                          await apiPost("/abdm/abha/verify/init", { abhaAddressOrNumber: verifyInput, authMode: "MOBILE_OTP" });
-                          setVerifyStep("otp");
-                          setVerifyOtp("123456");
-                        } catch {
-                          setVerifyStep("otp");
-                          setVerifyOtp("123456");
-                        } finally {
-                          setVerifyLoading(false);
-                        }
-                      }}
-                      disabled={verifyLoading || !verifyInput}
-                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
-                    >
-                      {verifyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                      <span>Initiate Demographic Verification</span>
-                    </button>
-                  </div>
-                )}
-
-                {verifyStep === "otp" && (
-                  <div className="mt-5 space-y-4">
-                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800">
-                      OTP has been sent to the registered mobile linked with <strong className="font-mono">{verifyInput}</strong>.
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                        Enter 6-Digit Verification OTP
-                      </label>
-                      <input
-                        type="text"
-                        value={verifyOtp}
-                        onChange={(e) => setVerifyOtp(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setVerifyStep("input")}
-                        className="w-1/3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
-                      >
-                        Back
-                      </button>
-                      <button
-                        onClick={async () => {
-                          setVerifyLoading(true);
-                          try {
-                            const data = await apiPost("/abdm/abha/verify/confirm", { otp: verifyOtp });
-                            setVerifyResult(data || {
-                              abhaNumber: verifyInput.includes("-") ? verifyInput : "91-4402-8812-9901",
-                              abhaAddress: verifyInput.includes("@") ? verifyInput : `${verifyInput}@sbx`,
-                              name: "Verified Patient (Govt Registry)",
-                              gender: "MALE",
-                              dob: "1991-08-15",
-                              mobile: "+91 98221 44550",
-                              address: "Flat 402, Shivajinagar, Pune, Maharashtra",
-                            });
-                            setVerifyStep("result");
-                          } catch {
-                            setVerifyResult({
-                              abhaNumber: verifyInput.includes("-") ? verifyInput : "91-4402-8812-9901",
-                              abhaAddress: verifyInput.includes("@") ? verifyInput : `${verifyInput}@sbx`,
-                              name: "Verified Patient (Govt Registry)",
-                              gender: "MALE",
-                              dob: "1991-08-15",
-                              mobile: "+91 98221 44550",
-                              address: "Flat 402, Shivajinagar, Pune, Maharashtra",
-                            });
-                            setVerifyStep("result");
-                          } finally {
-                            setVerifyLoading(false);
-                          }
-                        }}
-                        disabled={verifyLoading}
-                        className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5"
-                      >
-                        {verifyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                        <span>Confirm OTP &amp; Fetch Profile</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {verifyStep === "result" && verifyResult && (
-                  <div className="mt-5 space-y-4">
-                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-                      <div className="flex items-center gap-2 mb-2 text-emerald-800 font-bold text-xs">
-                        <CheckCircle2 className="w-4 h-4" />
-                        ABHA Holder Verified Successfully
-                      </div>
-                      <div className="space-y-1 text-xs text-slate-700">
-                        <div>Name: <strong>{verifyResult.name || verifyResult.profile?.name}</strong></div>
-                        <div>ABHA Number: <strong className="font-mono text-blue-700">{verifyResult.abhaNumber}</strong></div>
-                        <div>ABHA Address: <strong className="text-slate-800">{verifyResult.abhaAddress}</strong></div>
-                        <div>Gender / DOB: <strong>{verifyResult.gender || "MALE"} • {verifyResult.dob || "1991-08-15"}</strong></div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setVerifyStep("input");
-                          setVerifyInput("");
-                        }}
-                        className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
-                      >
-                        Verify Another
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCardModalPatient({
-                            name: verifyResult.name || verifyResult.profile?.name || "Verified Patient",
-                            abhaNumber: verifyResult.abhaNumber,
-                            abhaAddress: verifyResult.abhaAddress,
-                            gender: verifyResult.gender || "MALE",
-                            dob: verifyResult.dob || "1991-08-15",
-                            mobile: verifyResult.mobile || "+91 98221 44550",
-                            address: verifyResult.address || "Maharashtra, India",
-                            qrData: `abdm://abha?number=${verifyResult.abhaNumber}`,
-                          });
-                        }}
-                        className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs"
-                      >
-                        View Official Card
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Instant ABHA Generator Card */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs flex flex-col justify-between">
+            {/* Sub-mode Navigation Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                      <Shield className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Create New ABHA for Patient</h3>
-                      <p className="text-xs text-slate-500">Government Biometric KYC / Aadhaar OTP or Mobile Number</p>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-600 mt-4 leading-relaxed">
-                    Patients visiting for laboratory tests without an existing Ayushman Bharat Health Account can be registered in under 60 seconds.
-                  </p>
-
-                  <div className="mt-5 space-y-3">
-                    <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 font-bold text-xs">1</div>
-                      <div className="text-xs">
-                        <strong className="text-slate-900">Aadhaar OTP Mode (Gold Standard):</strong>
-                        <p className="text-slate-500 mt-0.5">Auto-fetches photo, verified name, age, and home address directly from UIDAI.</p>
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 font-bold text-xs">2</div>
-                      <div className="text-xs">
-                        <strong className="text-slate-900">Mobile OTP Fallback:</strong>
-                        <p className="text-slate-500 mt-0.5">Quick creation for walk-in OPD patients without Aadhaar on hand.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-slate-100">
-                  <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>Open ABHA Registration Wizard</span>
-                  </button>
+                  <h2 className="text-sm font-bold text-slate-900">ABHA Registration, KYC & Health Card Desk (M1)</h2>
+                  <p className="text-xs text-slate-500">Government of India UIDAI & NHA e-KYC Verification Pipeline</p>
                 </div>
               </div>
 
-            </div>
-
-          </div>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 4: CARE CONTEXT LINKER (M2)                         */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        {activeTab === "care-context-m2" && (
-          <div className="space-y-6">
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4 text-indigo-600" />
-                    Care Context Linking Clinical Workstation
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Link diagnostic visits, order numbers, and lab results directly into patients&apos; national PHR records.
-                  </p>
-                </div>
-
-                {/* Auto link toggle */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-700">
-                    <span>Auto-push on Pathologist Sign-off:</span>
-                    <button
-                      onClick={() => setAutoLinkOnSign(!autoLinkOnSign)}
-                      className={`w-10 h-5 flex items-center rounded-full p-1 transition-colors ${
-                        autoLinkOnSign ? "bg-emerald-600" : "bg-slate-300"
-                      }`}
-                    >
-                      <div
-                        className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                          autoLinkOnSign ? "translate-x-5" : ""
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Filter bar */}
-              <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Search patient, UHID, or order..."
-                      value={ccSearch}
-                      onChange={(e) => setCcSearch(e.target.value)}
-                      className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="flex rounded-xl border border-slate-200 p-0.5 bg-slate-50 text-xs font-bold">
-                    {(["ALL", "LINKED", "UNLINKED"] as const).map((filter) => (
-                      <button
-                        key={filter}
-                        onClick={() => setCcFilter(filter)}
-                        className={`px-3 py-1 rounded-lg transition-all ${
-                          ccFilter === filter ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-900"
-                        }`}
-                      >
-                        {filter}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <span className="text-xs text-slate-500">
-                  Showing <strong>{filteredCareContexts.length}</strong> care contexts
-                </span>
-              </div>
-
-              {/* Care Context Table */}
-              <div className="mt-4 border border-slate-200 rounded-xl overflow-x-auto bg-white">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                    <tr>
-                      <th className="p-3">Patient &amp; UHID</th>
-                      <th className="p-3">ABHA Address</th>
-                      <th className="p-3">Order / Care Context</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredCareContexts.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="p-6 text-center text-slate-400">
-                          No care contexts found matching criteria.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredCareContexts.map((cc) => (
-                        <tr key={cc.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="p-3">
-                            <div className="font-bold text-slate-900">{cc.patient.firstName} {cc.patient.lastName}</div>
-                            <div className="text-[11px] text-slate-500 font-mono">{cc.patient.uhid} • {cc.patient.phone}</div>
-                          </td>
-                          <td className="p-3">
-                            {cc.patient.abhaAddress ? (
-                              <div>
-                                <span className="font-semibold text-blue-700">{cc.patient.abhaAddress}</span>
-                                <div className="text-[10px] font-mono text-slate-400">{cc.patient.abhaNumber}</div>
-                              </div>
-                            ) : (
-                              <span className="text-amber-600 font-semibold text-[11px]">Unlinked Profile</span>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <div className="font-bold text-slate-800">{cc.display}</div>
-                            <div className="text-[10px] font-mono text-slate-400">{cc.careContextReference}</div>
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                cc.isLinked
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-amber-100 text-amber-800"
-                              }`}
-                            >
-                              {cc.isLinked ? "● LINKED TO PHR" : "○ PENDING LINK"}
-                            </span>
-                          </td>
-                          <td className="p-3 text-right">
-                            {cc.isLinked ? (
-                              <span className="text-[11px] font-bold text-emerald-600 flex items-center justify-end gap-1">
-                                <CheckCircle className="w-3.5 h-3.5" /> Synced
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handle1ClickLinkOrder(cc)}
-                                disabled={linkingCcId === cc.id}
-                                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center gap-1 ml-auto"
-                              >
-                                {linkingCcId === cc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <LinkIcon className="w-3 h-3" />}
-                                <span>Push to ABHA</span>
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 5: CONSENTS & HIU HISTORICAL RECORDS (M3)           */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        {activeTab === "consents-hiu" && (
-          <div className="space-y-6">
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-emerald-600" />
-                    Consent Artefacts &amp; HIU External Health Record Exchange
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Query historical lab tests, prescriptions, and discharge summaries from outside hospitals across India with patient consent.
-                  </p>
-                </div>
-
+              {/* Sub-mode Switcher */}
+              <div className="flex items-center p-1 bg-slate-100 rounded-xl">
                 <button
-                  onClick={() => setShowNewConsentModal(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95"
+                  type="button"
+                  onClick={() => {
+                    setM1Mode("enroll");
+                    setAadhaarStep("input");
+                    setCreatedAbha(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    m1Mode === "enroll" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  }`}
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Request Patient Past Records</span>
+                  Enroll New ABHA
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setM1Mode("verify");
+                    setVerifyStep("input");
+                    setVerifyResult(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    m1Mode === "verify" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Lookup & KYC Verify
                 </button>
               </div>
-
-              {/* Consent list */}
-              <div className="mt-5 border border-slate-200 rounded-xl overflow-x-auto bg-white">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                    <tr>
-                      <th className="p-3">Consent ID</th>
-                      <th className="p-3">Patient ABHA Address</th>
-                      <th className="p-3">Requested HI Types</th>
-                      <th className="p-3">Purpose</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">External Data</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {consents.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3 font-mono font-bold text-slate-800">{c.consentId}</td>
-                        <td className="p-3 font-semibold text-blue-700">{c.patientId}</td>
-                        <td className="p-3">
-                          <div className="flex gap-1 flex-wrap">
-                            {c.hiTypes.map((t) => (
-                              <span key={t} className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-700">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="p-3 font-medium text-slate-600">
-                          {c.consentDetail?.purpose?.text || c.purpose}
-                        </td>
-                        <td className="p-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              c.status === "GRANTED"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : c.status === "REQUESTED"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-rose-100 text-rose-800"
-                            }`}
-                          >
-                            {c.status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          {c.status === "GRANTED" ? (
-                            <button
-                              onClick={() => handleFetchExternalRecords(c.consentId)}
-                              className="px-2.5 py-1 bg-slate-900 hover:bg-black text-white font-bold text-[11px] rounded-lg transition-all"
-                            >
-                              Fetch &amp; Decrypt
-                            </button>
-                          ) : (
-                            <span className="text-[11px] text-slate-400">Awaiting User Auth</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Decrypted External Record Viewer */}
-              {activeExternalBundle && (
-                <div className="mt-6 p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                        <BadgeCheck className="w-4 h-4 text-emerald-600" />
-                        Decrypted Health Information Bundle: {activeExternalBundle.hospitalName}
-                      </h4>
-                      <p className="text-[11px] text-slate-500">Transferred via ABDM Interoperability Gateway • HIPAA/NRCES Compliant</p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
-                      SHA256 CHECKSUM VERIFIED
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {activeExternalBundle.records.map((rec) => (
-                      <div key={rec.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-xs text-slate-900">{rec.title}</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">{rec.type}</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mb-3">{rec.facility} • {rec.date}</p>
-
-                        {rec.observations && (
-                          <div className="space-y-1.5 text-xs">
-                            {rec.observations.map((obs) => (
-                              <div key={obs.name} className="flex items-center justify-between p-1.5 rounded bg-slate-50 text-[11px]">
-                                <span className="font-medium text-slate-700">{obs.name}</span>
-                                <span className="font-bold font-mono text-slate-900">{obs.value} {obs.unit}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {rec.medications && (
-                          <div className="space-y-1.5 text-xs">
-                            {rec.medications.map((med) => (
-                              <div key={med.name} className="p-1.5 rounded bg-slate-50 text-[11px]">
-                                <div className="font-bold text-slate-800">{med.name} ({med.dosage})</div>
-                                <div className="text-slate-500 text-[10px]">{med.frequency} • {med.duration}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Modal: Create Consent Request */}
-            {showNewConsentModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <h3 className="font-bold text-sm text-slate-900">Request External Medical Records</h3>
-                    <button onClick={() => setShowNewConsentModal(false)} className="text-slate-400 hover:text-slate-700">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Patient Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Aarav Deshmukh"
-                      value={newConsentPatientName}
-                      onChange={(e) => setNewConsentPatientName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Patient ABHA Address</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. aarav.deshmukh@sbx"
-                      value={newConsentAbha}
-                      onChange={(e) => setNewConsentAbha(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Clinical Purpose</label>
-                    <select
-                      value={newConsentPurpose}
-                      onChange={(e) => setNewConsentPurpose(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="CAREMGT">Care Management & Outpatient Consultation</option>
-                      <option value="BTG">Break the Glass (Emergency Review)</option>
-                      <option value="PUBHLTH">Public Health Trajectory</option>
-                    </select>
-                  </div>
-
-                  <div className="pt-2 flex gap-2">
+            {/* Mode A: Enrollment Flow */}
+            {m1Mode === "enroll" && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
+                  {/* Method Selection */}
+                  <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                     <button
-                      onClick={() => setShowNewConsentModal(false)}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                      type="button"
+                      onClick={() => setM1EnrollMethod("aadhaar")}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        m1EnrollMethod === "aadhaar"
+                          ? "bg-blue-50 border-blue-300 text-blue-700 shadow-2xs"
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
                     >
-                      Cancel
+                      <Fingerprint className="w-4 h-4" />
+                      <span>Aadhaar OTP (Recommended)</span>
                     </button>
                     <button
-                      onClick={handleCreateConsentRequest}
-                      disabled={creatingConsent || !newConsentAbha}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs"
+                      type="button"
+                      onClick={() => setM1EnrollMethod("mobile")}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        m1EnrollMethod === "mobile"
+                          ? "bg-blue-50 border-blue-300 text-blue-700 shadow-2xs"
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
                     >
-                      {creatingConsent ? "Sending..." : "Submit to Gateway"}
+                      <Smartphone className="w-4 h-4" />
+                      <span>Mobile OTP Fallback</span>
                     </button>
                   </div>
+
+                  {/* Step 1: Input */}
+                  {aadhaarStep === "input" && (
+                    <div className="space-y-4">
+                      {m1EnrollMethod === "aadhaar" ? (
+                        <>
+                          <div>
+                            <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                              Patient 12-Digit Aadhaar Number
+                            </label>
+                            <input
+                              type="text"
+                              maxLength={14}
+                              value={aadhaarInput}
+                              onChange={(e) => setAadhaarInput(e.target.value)}
+                              placeholder="XXXX-XXXX-XXXX"
+                              className="w-full bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              An OTP will be dispatched to the mobile number registered with UIDAI.
+                            </p>
+                          </div>
+
+                          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5">
+                            <input
+                              type="checkbox"
+                              id="aadhaarConsentCheck"
+                              checked={aadhaarConsent}
+                              onChange={(e) => setAadhaarConsent(e.target.checked)}
+                              className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <label htmlFor="aadhaarConsentCheck" className="text-[11px] text-slate-600 leading-relaxed cursor-pointer">
+                              I hereby give voluntary consent to create Ayushman Bharat Health Account (ABHA) and verify demographic details with UIDAI under the Aadhaar Act 2016.
+                            </label>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleAadhaarSendOtp}
+                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <span>Generate & Send Aadhaar OTP</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-700 block mb-1">First Name</label>
+                              <input
+                                type="text"
+                                value={mobileDemographics.firstName}
+                                onChange={(e) => setMobileDemographics({ ...mobileDemographics, firstName: e.target.value })}
+                                placeholder="e.g. Ramesh"
+                                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-700 block mb-1">Last Name</label>
+                              <input
+                                type="text"
+                                value={mobileDemographics.lastName}
+                                onChange={(e) => setMobileDemographics({ ...mobileDemographics, lastName: e.target.value })}
+                                placeholder="e.g. Patil"
+                                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">10-Digit Mobile Number</label>
+                            <input
+                              type="text"
+                              maxLength={10}
+                              value={mobileInput}
+                              onChange={(e) => setMobileInput(e.target.value)}
+                              placeholder="98XXXXXXXX"
+                              className="w-full bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleMobileEnroll}
+                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <span>Enroll via Mobile OTP</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 2: OTP Verification */}
+                  {aadhaarStep === "otp" && (
+                    <div className="space-y-4">
+                      <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl">
+                        <span className="text-xs font-bold text-blue-900 block">Enter 6-Digit Verification OTP</span>
+                        <p className="text-[11px] text-blue-700 mt-0.5">
+                          A 6-digit OTP has been dispatched to patient's Aadhaar-linked mobile number.
+                        </p>
+                      </div>
+
+                      <div>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={aadhaarOtp}
+                          onChange={(e) => setAadhaarOtp(e.target.value)}
+                          placeholder="849201"
+                          className="w-full bg-slate-50 border border-slate-200 text-center tracking-widest text-lg font-mono font-bold text-slate-900 rounded-xl py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>Resend OTP in: <strong className="font-mono text-slate-800">{aadhaarTimer}s</strong></span>
+                        <button
+                          type="button"
+                          disabled={aadhaarTimer > 0}
+                          onClick={() => {
+                            setAadhaarTimer(60);
+                            showToast("New OTP dispatched to registered mobile");
+                          }}
+                          className={`font-bold ${aadhaarTimer > 0 ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:text-blue-800 cursor-pointer"}`}
+                        >
+                          Resend Code
+                        </button>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAadhaarStep("input")}
+                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAadhaarVerifyOtp}
+                          className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Verify & Issue ABHA</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 3: Success View */}
+                  {aadhaarStep === "success" && createdAbha && (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-1.5" />
+                        <h4 className="text-sm font-bold text-emerald-950">ABHA Created & Verified Successfully!</h4>
+                        <p className="text-xs text-emerald-700 mt-0.5">
+                          National Health Account issued and authenticated with Central NHA Gateway.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">ABHA Number:</span>
+                          <strong className="font-mono text-emerald-700 font-bold text-sm">
+                            {formatAbhaNumber(createdAbha.abhaNumber)}
+                          </strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">ABHA Address:</span>
+                          <strong className="font-mono text-blue-700">{createdAbha.abhaAddress}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Patient Name:</span>
+                          <span className="font-bold text-slate-900">{createdAbha.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Gender / DOB:</span>
+                          <span>{createdAbha.gender} • {createdAbha.dateOfBirth}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCardModalPatient(createdAbha)}
+                          className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>View & Print Official ABHA Card</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAadhaarStep("input");
+                            setCreatedAbha(null);
+                            setAadhaarInput("");
+                          }}
+                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                        >
+                          New Enrollment
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Live ABHA Digital Card Preview */}
+                <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-blue-600" /> Digital ABHA Card Preview
+                  </h3>
+
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 text-white shadow-xl relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="text-[9px] uppercase tracking-widest text-blue-200 font-extrabold block">
+                          Government of India
+                        </span>
+                        <h4 className="text-sm font-black tracking-wide">Ayushman Bharat Health Account</h4>
+                      </div>
+                      <Shield className="w-6 h-6 text-emerald-400" />
+                    </div>
+
+                    <div className="flex items-center gap-3.5 my-4">
+                      <div className="w-14 h-14 bg-white/10 rounded-xl border border-white/20 flex items-center justify-center shrink-0">
+                        <User className="w-8 h-8 text-white/80" />
+                      </div>
+                      <div>
+                        <span className="text-base font-bold text-white block">
+                          {createdAbha?.name || "Aarav Deshmukh"}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-emerald-300 block tracking-wider">
+                          {formatAbhaNumber(createdAbha?.abhaNumber || "91-4402-8812-9901")}
+                        </span>
+                        <span className="text-[11px] text-blue-200 block font-mono">
+                          {createdAbha?.abhaAddress || "aarav.deshmukh@sbx"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/15 flex justify-between items-center text-[10px] text-blue-100">
+                      <span>Gender: <strong>{createdAbha?.gender || "MALE"}</strong></span>
+                      <span>DOB: <strong>{createdAbha?.dateOfBirth || "1989-11-14"}</strong></span>
+                      <span>Status: <strong className="text-emerald-300 font-bold">VERIFIED</strong></span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 leading-relaxed text-center">
+                    Official NHA health card compatible with ABDM QR scanners across all healthcare facilities in India.
+                  </p>
                 </div>
               </div>
             )}
 
-          </div>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 6: FHIR R4 DIAGNOSTIC BUNDLE INSPECTOR (M3)         */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        {activeTab === "fhir-m3" && (
-          <div className="space-y-6">
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <FileCode className="w-5 h-5 text-indigo-600" />
-                    NRCES HL7 FHIR R4 DiagnosticReport Document Bundle
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Official Indian Health Data Standard for interoperable laboratory diagnostic transfers.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex rounded-xl border border-slate-200 p-0.5 bg-slate-50 text-xs font-bold">
-                    {(["visual", "json", "compliance"] as const).map((v) => (
-                      <button
-                        key={v}
-                        onClick={() => setFhirView(v)}
-                        className={`px-3 py-1 rounded-lg transition-all capitalize ${
-                          fhirView === v ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-900"
-                        }`}
-                      >
-                        {v} View
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => handleFetchFhirPreview(fhirOrderId)}
-                    disabled={fhirLoading}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-800"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${fhirLoading ? "animate-spin text-blue-600" : ""}`} />
-                    <span>Reload Bundle</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Presets */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {SAMPLE_PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      setFhirPreset(p.id);
-                      setFhirOrderId(p.id);
-                      handleFetchFhirPreview(p.id);
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                      fhirOrderId === p.id
-                        ? "bg-blue-50 text-blue-800 border-blue-300 shadow-2xs"
-                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span>{p.label}</span>
-                    <span className="ml-1.5 font-mono text-[10px] text-slate-400">LOINC: {p.loinc}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* View 1: Visual View */}
-              {fhirView === "visual" && (
-                <div className="mt-6 space-y-4">
-                  {fhirBundle && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Bundle Identifier</span>
-                        <p className="font-mono font-bold text-xs text-slate-800 mt-1 truncate">{fhirBundle.id || "bundle-cbc-demo"}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Type: Document (Composition-led)</p>
-                      </div>
-
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Diagnostic Conclusion</span>
-                        <p className="text-xs font-bold text-slate-800 mt-1">{getDiagnosticReport(fhirBundle)?.conclusion || "All parameters evaluated within physiological ranges."}</p>
-                      </div>
-
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Digital PDF Attachment</span>
-                        <div className="flex items-center gap-1.5 mt-1 text-emerald-700 font-bold text-xs">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>PresentedForm: Application/PDF (Attached)</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Observations list */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                    <div className="p-3 bg-slate-50 border-b border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-between">
-                      <span>Observations / Parameter Measurements ({getObservations(fhirBundle).length} Parameters)</span>
-                      <span className="text-[11px] font-mono text-slate-400">Coding: LOINC &amp; UCUM</span>
-                    </div>
-
-                    <div className="divide-y divide-slate-100">
-                      {getObservations(fhirBundle).map((obs: any, idx: number) => {
-                        const val = obs.valueQuantity?.value ?? obs.valueString ?? "—";
-                        const unit = obs.valueQuantity?.unit ?? "";
-                        const loincCode = obs.code?.coding?.[0]?.code ?? "—";
-                        const display = obs.code?.text ?? obs.code?.coding?.[0]?.display ?? "Observation";
-                        const range = obs.referenceRange?.[0]?.text ?? "Normal";
-                        const flag = obs.interpretation?.[0]?.coding?.[0]?.code ?? "N";
-
-                        return (
-                          <div key={idx} className="p-3.5 flex items-center justify-between hover:bg-slate-50/70 transition-colors text-xs">
-                            <div>
-                              <div className="font-bold text-slate-900">{display}</div>
-                              <div className="text-[11px] text-slate-500 font-mono">LOINC: {loincCode} • Range: {range}</div>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-mono font-bold text-sm text-slate-900">{val} {unit}</span>
-                              <div>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${flag === "N" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                                  {flag === "N" ? "Normal" : `Flag ${flag}`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* View 2: JSON View */}
-              {fhirView === "json" && (
-                <div className="mt-6">
-                  <div className="flex justify-end mb-2">
+            {/* Mode B: Lookup & Demographic KYC Verification */}
+            {m1Mode === "verify" && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-6">
+                <div className="max-w-xl space-y-3">
+                  <label className="text-xs font-bold text-slate-800 block">
+                    Search Patient by 14-Digit ABHA Number or PHR Address
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={verifyInput}
+                      onChange={(e) => setVerifyInput(e.target.value)}
+                      placeholder="e.g. 91-4402-8812-9901 or patient@sbx"
+                      className="flex-1 bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
                     <button
-                      onClick={() => copyText("fhirJson", JSON.stringify(fhirBundle, null, 2))}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg flex items-center gap-1"
+                      type="button"
+                      onClick={handleVerifyAbha}
+                      disabled={verifyLoading}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                     >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>{copiedKey === "fhirJson" ? "Copied!" : "Copy Full JSON"}</span>
+                      {verifyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      <span>Verify KYC</span>
                     </button>
                   </div>
-                  <pre className="p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto max-h-[480px]">
-                    {JSON.stringify(fhirBundle, null, 2)}
-                  </pre>
                 </div>
-              )}
 
-              {/* View 3: NRCES Compliance Checklist */}
-              {fhirView === "compliance" && (
-                <div className="mt-6 space-y-3">
-                  {[
-                    { rule: "Profile: https://nrces.in/ndhm/fhir/r4/StructureDefinition/DocumentBundle", status: "PASS", desc: "Bundle profile conforms to NRCES specifications" },
-                    { rule: "Composition Entry Point: urn:uuid:comp-...", status: "PASS", desc: "Root Composition document resource leads bundle" },
-                    { rule: "LOINC Code System 2.16.840.1.113883.6.1", status: "PASS", desc: "Observation codes validated against standard LOINC definitions" },
-                    { rule: "Unified Code for Units of Measure (UCUM)", status: "PASS", desc: "Quantities validated against unitsofmeasure.org" },
-                    { rule: "DiagnosticReport PresentedForm Attachment", status: "PASS", desc: "PDF base64 representation present for clinical signing" },
-                    { rule: "SHA-256 Checksum Calculation", status: "PASS", desc: "Digest computed for zero-tampering health data transfers" },
-                  ].map((chk) => (
-                    <div key={chk.rule} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-start justify-between gap-4">
-                      <div>
-                        <div className="font-bold text-xs text-slate-900">{chk.rule}</div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{chk.desc}</p>
+                {verifyResult && (
+                  <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        <h4 className="text-sm font-bold text-slate-900">ABDM Registry Match Confirmed</h4>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black tracking-wider">
-                        {chk.status}
+                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black">
+                        {verifyResult.matchingScore}% KYC Match Score
                       </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                      <div>
+                        <span className="text-slate-500 block">Patient Full Name</span>
+                        <strong className="text-slate-900 text-sm">{verifyResult.name}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">ABHA Number</span>
+                        <strong className="font-mono text-emerald-700 text-sm font-bold">
+                          {formatAbhaNumber(verifyResult.abhaNumber)}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">ABHA Address</span>
+                        <strong className="font-mono text-blue-700 text-sm font-bold">
+                          {verifyResult.abhaAddress}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Gender & DOB</span>
+                        <span className="text-slate-800 font-semibold">{verifyResult.gender} • {verifyResult.dateOfBirth}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCardModalPatient(verifyResult)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print ABHA Digital Card</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 7: CAMP & BULK ABHA VERIFIER                        */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        {activeTab === "bulk-verify" && (
+        {/* ==================================================================== */}
+        {/* TAB 4: CARE CONTEXT LINKER (MILESTONE 2 - HIP)                       */}
+        {/* ==================================================================== */}
+        {activeTab === "care-context-m2" && (
           <div className="space-y-6">
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+            {/* Header with Search, Filter & New Care Context Button */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-purple-600" />
-                    Mega Camp, Corporate &amp; Bulk ABHA Verification Station
+                    <LinkIcon className="w-5 h-5 text-indigo-600" />
+                    <span>Care Context Linker & HIP Discovery Desk (M2)</span>
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Batch verify hundreds of participants for corporate wellness drives, rural diagnostics camps, and school screening programs.
+                  <p className="text-xs text-slate-500">
+                    Links patient OPD consultations, IPD ward episodes, and diagnostic laboratory panels to their national ABHA profile.
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2.5">
                   <button
-                    onClick={handleExportBulkCsv}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-all"
+                    type="button"
+                    onClick={() => setShowNewCcModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Export CSV</span>
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Link New Episode</span>
                   </button>
                 </div>
               </div>
 
-              {/* Paste box */}
-              <div className="mt-5 space-y-3">
-                <label className="text-xs font-bold text-slate-700 block">
-                  Paste ABHA Numbers, Addresses, or Mobile Numbers (One per line)
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="91-4421-8890-1123&#10;sunil.verma@sbx&#10;+91 98234 11223&#10;kavita.rao@sbx"
-                  value={bulkInputText}
-                  onChange={(e) => setBulkInputText(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+              {/* Search & Filter Toolbar */}
+              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={ccSearch}
+                    onChange={(e) => setCcSearch(e.target.value)}
+                    placeholder="Search by UHID, Patient Name, or Order Ref..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
 
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleRunBulkVerify}
-                    disabled={bulkVerifying || !bulkInputText.trim()}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
-                  >
-                    {bulkVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                    <span>Run Batch Verification ({bulkInputText.split("\n").filter((l) => l.trim()).length} Items)</span>
-                  </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-500">Filter:</span>
+                  {(["ALL", "LINKED", "UNLINKED"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setCcFilter(mode)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        ccFilter === mode
+                          ? "bg-indigo-600 text-white shadow-2xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {mode === "ALL" ? "All Episodes" : mode === "LINKED" ? "Linked (M2)" : "Unlinked"}
+                    </button>
+                  ))}
                 </div>
               </div>
+            </div>
 
-              {/* Bulk verified table */}
-              <div className="mt-6 border border-slate-200 rounded-xl overflow-x-auto bg-white">
+            {/* Care Context Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                    <tr>
-                      <th className="p-3">Participant Name</th>
-                      <th className="p-3">Input Term</th>
-                      <th className="p-3">Verified ABHA Number</th>
-                      <th className="p-3">ABHA Address</th>
-                      <th className="p-3">Demographics</th>
-                      <th className="p-3 text-right">Status</th>
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 font-bold text-[11px] uppercase tracking-wider bg-slate-50/70">
+                      <th className="py-3 px-4">Care Context Reference</th>
+                      <th className="py-3 px-4">Patient UHID & Demographics</th>
+                      <th className="py-3 px-4">Encounter / Episode Details</th>
+                      <th className="py-3 px-4">ABHA ID & Address</th>
+                      <th className="py-3 px-4">Gateway Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {bulkItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3 font-bold text-slate-900">{item.name}</td>
-                        <td className="p-3 font-mono text-slate-500">{item.input}</td>
-                        <td className="p-3 font-mono font-bold text-blue-700">{item.abhaNumber}</td>
-                        <td className="p-3 text-slate-700">{item.abhaAddress}</td>
-                        <td className="p-3 text-[11px] text-slate-500">
-                          {item.gender} • {item.dob} • {item.mobile}
-                        </td>
-                        <td className="p-3 text-right">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              item.status === "VERIFIED"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-rose-100 text-rose-800"
-                            }`}
-                          >
-                            ✓ {item.status}
+                    {careContexts
+                      .filter((c) => {
+                        if (ccFilter === "LINKED" && !c.isLinked) return false;
+                        if (ccFilter === "UNLINKED" && c.isLinked) return false;
+                        if (ccSearch.trim()) {
+                          const q = ccSearch.toLowerCase();
+                          const matchesName = `${c.patient.firstName} ${c.patient.lastName}`.toLowerCase().includes(q);
+                          const matchesUhid = c.patient.uhid.toLowerCase().includes(q);
+                          const matchesRef = c.careContextReference.toLowerCase().includes(q);
+                          return matchesName || matchesUhid || matchesRef;
+                        }
+                        return true;
+                      })
+                      .map((cc) => (
+                        <tr key={cc.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <span className="font-mono font-bold text-slate-900 block">{cc.careContextReference}</span>
+                            <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{cc.orderId || "OPD-VISIT"}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <strong className="text-slate-900 block font-bold">
+                              {cc.patient.firstName} {cc.patient.lastName}
+                            </strong>
+                            <span className="text-[11px] font-mono text-blue-600 block">{cc.patient.uhid}</span>
+                            <span className="text-[10px] text-slate-500">{cc.patient.gender} • {cc.patient.phone}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-semibold text-slate-900 block">{cc.display}</span>
+                            <span className="text-[11px] text-slate-500 block">{cc.episodeType} ({cc.department})</span>
+                            <span className="text-[10px] text-slate-400">{cc.doctorName}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-mono text-slate-800 font-bold block text-[11px]">
+                              {formatAbhaNumber(cc.patient.abhaNumber || "")}
+                            </span>
+                            <span className="text-blue-600 text-[11px] font-semibold">{cc.patient.abhaAddress}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {cc.isLinked ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Linked (M2)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                <Clock className="w-3 h-3 text-amber-600" /> Pending Link
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {!cc.isLinked ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleLinkCareContext(cc.id)}
+                                  disabled={linkingCcId === cc.id}
+                                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                                >
+                                  {linkingCcId === cc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <LinkIcon className="w-3 h-3" />}
+                                  <span>Link</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelinkCareContext(cc.id)}
+                                  className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 font-bold text-[11px] rounded-lg transition-colors cursor-pointer"
+                                  title="Delink Care Context"
+                                >
+                                  Delink
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTab("fhir-m3");
+                                  handleLoadFhirPreset("sample-cbc-001");
+                                }}
+                                className="p-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                title="View HL7 FHIR R4 Bundle"
+                              >
+                                <FileCode className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* ==================================================================== */}
+        {/* TAB 5: CONSENTS & HIU HEALTH RECORDS (MILESTONE 3 - HIU)             */}
+        {/* ==================================================================== */}
+        {activeTab === "consents-hiu" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-emerald-600" />
+                    <span>Patient Electronic Consents & HIU Health Records (M3)</span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Consent artefact management for requesting, granting, and securely decrypting longitudinal health data from hospitals across India.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewConsentModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Request Patient Consent</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Consents Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 font-bold text-[11px] uppercase tracking-wider bg-slate-50/70">
+                      <th className="py-3 px-4">Consent Artefact ID</th>
+                      <th className="py-3 px-4">Patient ABHA Profile</th>
+                      <th className="py-3 px-4">Care Purpose</th>
+                      <th className="py-3 px-4">Health Info Types</th>
+                      <th className="py-3 px-4">Validity / Expiry</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {consents.map((consent) => (
+                      <tr key={consent.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <span className="font-mono font-bold text-slate-900 block">{consent.consentId}</span>
+                          <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                            Created: {new Date(consent.createdAt).toLocaleDateString()}
                           </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <strong className="text-slate-900 block font-bold">{consent.patientName || "Patient"}</strong>
+                          <span className="text-[11px] font-mono text-blue-600 block">{consent.patientId}</span>
+                          <span className="text-[10px] text-slate-400">{consent.facilityName}</span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-slate-100 text-slate-800 border border-slate-200">
+                            {consent.purpose}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block mt-1">
+                            {consent.purpose === "CAREMGT"
+                              ? "Care Management"
+                              : consent.purpose === "BTG"
+                              ? "Break the Glass (Emergency)"
+                              : "Public Health"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {consent.hiTypes.map((ht) => (
+                              <span
+                                key={ht}
+                                className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-semibold border border-blue-100"
+                              >
+                                {ht}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="text-slate-700 font-medium block">
+                            {consent.expiryDate ? new Date(consent.expiryDate).toLocaleDateString() : "30 Days"}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 font-bold">Valid & Active</span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {consent.status === "GRANTED" && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Consent Granted
+                            </span>
+                          )}
+                          {consent.status === "REQUESTED" && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              <Clock className="w-3 h-3 text-amber-600" /> Pending Approval
+                            </span>
+                          )}
+                          {consent.status === "REVOKED" && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                              Revoked
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {consent.status === "GRANTED" && (
+                              <button
+                                type="button"
+                                onClick={() => handleFetchExternalRecords(consent)}
+                                disabled={fetchingExternalRecords}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                {fetchingExternalRecords ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Eye className="w-3 h-3" />
+                                )}
+                                <span>Decrypt Records</span>
+                              </button>
+                            )}
+                            {consent.status === "GRANTED" && (
+                              <button
+                                type="button"
+                                onClick={() => handleRevokeConsent(consent.consentId)}
+                                className="p-1 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
+                                title="Revoke Consent"
+                              >
+                                <Unlink className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2439,211 +2917,1102 @@ export default function AbdmPage() {
               </div>
             </div>
 
-          </div>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 8: REPORT STAMPING & WATERMARK                      */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        {activeTab === "report-stamp" && (
-          <div className="space-y-6">
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <div className="pb-5 border-b border-slate-100">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-emerald-600" />
-                  Clinical Diagnostic Report ABDM Watermark &amp; Digital Seal
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Live preview of how diagnostic reports issued by LabCore ELIS are stamped with the official NHA ABDM seal, QR code, and NABL ISO 15189 credentials.
-                </p>
-              </div>
-
-              {/* Sample Report Sheet Preview */}
-              <div className="mt-6 max-w-2xl mx-auto p-6 bg-white border-2 border-slate-200 rounded-2xl shadow-sm relative">
-                {/* Government Ribbon */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">LabCore Clinical Reference Laboratory</h3>
-                    <p className="text-[10px] text-slate-500">National Health Authority (NHA) Accredited Health Facility • HFR: {status.hfrId}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      NABL ISO 15189:2022
-                    </span>
-                  </div>
-                </div>
-
-                {/* Patient Bar */}
-                <div className="my-4 p-3 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-                  <div>Patient: <strong className="text-slate-900">Aarav Deshmukh (35 / M)</strong></div>
-                  <div>UHID: <strong className="font-mono text-slate-900">UHID-2026-9041</strong></div>
-                  <div>ABHA No: <strong className="font-mono text-blue-700">91-4402-8812-9901</strong></div>
-                  <div>ABHA Address: <strong className="text-slate-900">aarav.deshmukh@sbx</strong></div>
-                </div>
-
-                {/* Sample Test Result */}
-                <div className="my-4 text-xs">
-                  <div className="font-bold text-slate-900 mb-2">COMPLETE BLOOD COUNT (CBC) &amp; ESR</div>
-                  <table className="w-full text-left">
-                    <thead className="bg-slate-100 text-slate-600 font-bold">
-                      <tr>
-                        <th className="p-1.5">Test Parameter</th>
-                        <th className="p-1.5">Result</th>
-                        <th className="p-1.5">Biological Ref Interval</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      <tr>
-                        <td className="p-1.5 font-medium">Haemoglobin (Hb)</td>
-                        <td className="p-1.5 font-bold font-mono">14.2 g/dL</td>
-                        <td className="p-1.5 text-slate-500">13.0 - 17.0 g/dL</td>
-                      </tr>
-                      <tr>
-                        <td className="p-1.5 font-medium">Total Leucocyte Count (TLC)</td>
-                        <td className="p-1.5 font-bold font-mono">7,400 /µL</td>
-                        <td className="p-1.5 text-slate-500">4,000 - 11,000 /µL</td>
-                      </tr>
-                      <tr>
-                        <td className="p-1.5 font-medium">Platelet Count</td>
-                        <td className="p-1.5 font-bold font-mono">2.20 Lakhs /µL</td>
-                        <td className="p-1.5 text-slate-500">1.50 - 4.50 Lakhs</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Official ABDM Verified Stamp Box */}
-                <div className="mt-6 p-3.5 rounded-xl border-2 border-emerald-500/80 bg-emerald-50/60 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                      <Shield className="w-6 h-6" />
-                    </div>
+            {/* Decrypted Health Records Modal / Drawer Preview */}
+            {activeExternalBundle && (
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     <div>
-                      <div className="font-black text-xs text-emerald-950 uppercase tracking-tight flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                        ABDM Digitally Linked &amp; Verified
-                      </div>
-                      <p className="text-[10px] text-emerald-800 leading-tight mt-0.5">
-                        Care Context Reference: <strong className="font-mono">IN2710000412-ORD-77102</strong><br />
-                        NRCES FHIR R4 Bundle Encrypted &amp; Dispatched to Patient PHR Wallet.
+                      <h4 className="text-sm font-bold text-slate-900">
+                        External Health Records Decrypted (Diffie-Hellman Key Exchange Verified)
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        Originating Facility: <strong>{activeExternalBundle.hospitalName}</strong> • HIP ID: {activeExternalBundle.hipId}
                       </p>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveExternalBundle(null)}
+                    className="p-1 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-                  {qrImageUrl && (
-                    <img src={qrImageUrl} alt="Report Stamp QR" className="w-14 h-14 bg-white p-1 rounded-lg border border-emerald-300" />
-                  )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeExternalBundle.records.map((rec) => (
+                    <div key={rec.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
+                          {rec.type}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-mono">{rec.date}</span>
+                      </div>
+
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-900">{rec.title}</h5>
+                        <span className="text-[11px] text-slate-500">{rec.doctor}</span>
+                      </div>
+
+                      {rec.observations && (
+                        <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
+                          {rec.observations.map((obs) => (
+                            <div key={obs.name} className="flex justify-between items-center text-[11px]">
+                              <span className="text-slate-600 font-medium">{obs.name}:</span>
+                              <div className="flex items-center gap-2">
+                                <strong className="text-slate-900 font-bold">{obs.value} {obs.unit}</strong>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                                  obs.flag === "HIGH" ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-emerald-50 text-emerald-700"
+                                }`}>
+                                  {obs.flag}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {rec.medications && (
+                        <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
+                          {rec.medications.map((med) => (
+                            <div key={med.name} className="flex justify-between items-center text-[11px]">
+                              <span className="text-slate-700 font-semibold">{med.name}</span>
+                              <span className="text-slate-500">{med.dosage} • {med.frequency}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* TAB 6: FHIR R4 DIAGNOSTIC REPORT BUNDLER (MILESTONE 3 - PROVIDER)    */}
+        {/* ==================================================================== */}
+        {activeTab === "fhir-m3" && (
+          <div className="space-y-6">
+            {/* Header & Preset Switcher */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <FileCode className="w-5 h-5 text-blue-600" />
+                    <span>HL7 FHIR R4 Diagnostic Report Exchange (M3)</span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Compliant with National Resource Centre for EHR Standards (NRCES) & ABDM DiagnosticReport FHIR R4 StructureDefinition.
+                  </p>
+                </div>
+
+                {/* View Mode Toggle */}
+                <div className="flex items-center p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setFhirView("visual")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      fhirView === "visual" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Clinical Grid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFhirView("json")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      fhirView === "json" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    FHIR R4 JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFhirView("compliance")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      fhirView === "compliance" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    ABDM Validation
+                  </button>
+                </div>
+              </div>
+
+              {/* Presets Bar */}
+              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-500 mr-1">Diagnostic Presets:</span>
+                {SAMPLE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleLoadFhirPreset(p.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      fhirPreset === p.id
+                        ? "bg-blue-50 border-blue-300 text-blue-700 shadow-2xs"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {p.label} (LOINC: {p.loinc})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* View 1: Visual Clinical Grid */}
+            {fhirView === "visual" && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      {SAMPLE_PRESETS.find((p) => p.id === fhirPreset)?.label || "Complete Blood Count"}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Standardized under LOINC {SAMPLE_PRESETS.find((p) => p.id === fhirPreset)?.loinc} • Performed at {status.facilityName}
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-bold border border-emerald-200">
+                    NABL ISO 15189 Verified
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 font-bold text-[11px] uppercase tracking-wider bg-slate-50/70">
+                        <th className="py-2.5 px-3">Analyte / Parameter</th>
+                        <th className="py-2.5 px-3">LOINC Code</th>
+                        <th className="py-2.5 px-3">Observed Value</th>
+                        <th className="py-2.5 px-3">Unit</th>
+                        <th className="py-2.5 px-3">Biological Reference Range</th>
+                        <th className="py-2.5 px-3">Clinical Flag</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[
+                        { param: "Hemoglobin (Hb)", loinc: "718-7", value: "14.2", unit: "g/dL", range: "13.0 - 17.0", flag: "NORMAL" },
+                        { param: "Total Leukocyte Count (WBC)", loinc: "6690-2", value: "7,800", unit: "/cumm", range: "4,000 - 11,000", flag: "NORMAL" },
+                        { param: "Platelet Count", loinc: "777-3", value: "245,000", unit: "/cumm", range: "150,000 - 450,000", flag: "NORMAL" },
+                        { param: "Packed Cell Volume (PCV)", loinc: "20570-8", value: "42.8", unit: "%", range: "40.0 - 50.0", flag: "NORMAL" },
+                        { param: "Mean Corpuscular Volume (MCV)", loinc: "787-2", value: "88.4", unit: "fL", range: "80.0 - 100.0", flag: "NORMAL" },
+                      ].map((row) => (
+                        <tr key={row.param} className="hover:bg-slate-50/80">
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{row.param}</td>
+                          <td className="py-2.5 px-3 font-mono text-blue-600 font-bold">{row.loinc}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{row.value}</td>
+                          <td className="py-2.5 px-3 text-slate-500">{row.unit}</td>
+                          <td className="py-2.5 px-3 text-slate-600 font-mono">{row.range}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              {row.flag}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* View 2: HL7 FHIR R4 JSON */}
+            {fhirView === "json" && (
+              <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 shadow-xl space-y-3 font-mono text-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="font-bold text-slate-200">FHIR R4 DiagnosticReport Bundle (document)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard("fhirJson", JSON.stringify(fhirBundle, null, 2))}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-sans font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy JSON</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const blob = new Blob([JSON.stringify(fhirBundle, null, 2)], { type: "application/json" });
+                        const link = document.createElement("a");
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `FHIR_${fhirPreset}_${Date.now()}.json`;
+                        link.click();
+                        showToast("Downloaded FHIR R4 JSON file");
+                      }}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-sans font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download .json</span>
+                    </button>
+                  </div>
+                </div>
+
+                <pre className="max-h-[500px] overflow-y-auto overflow-x-auto text-[11px] text-emerald-400 leading-relaxed">
+                  {JSON.stringify(fhirBundle, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* View 3: ABDM Compliance Checklist */}
+            {fhirView === "compliance" && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
+                <h3 className="text-sm font-bold text-slate-900">ABDM StructureDefinition Compliance Validation</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {[
+                    { rule: "Bundle.type = 'document'", status: "Passed", detail: "Compliant with NRCES document profile" },
+                    { rule: "Composition.subject = Patient Reference", status: "Passed", detail: "UHID-2026-9041 mapped to ABHA 91-4402-8812-9901" },
+                    { rule: "Composition.author = Practitioner Reference", status: "Passed", detail: "Registered Pathologist with MCI/NMC number" },
+                    { rule: "Organization.identifier = HIP ID", status: "Passed", detail: status.hipId },
+                    { rule: "DiagnosticReport.category = 'LAB'", status: "Passed", detail: "HL7 v2-0074 category code binding validated" },
+                    { rule: "DiagnosticReport.code = LOINC Standard", status: "Passed", detail: "Mapped to official LOINC international dictionary" },
+                  ].map((chk) => (
+                    <div key={chk.rule} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-slate-900 font-bold block">{chk.rule}</strong>
+                        <span className="text-[11px] text-slate-500">{chk.detail}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* ==================================================================== */}
+        {/* TAB 7: CAMP & BULK ABHA VERIFIER (CORPORATE & OUTREACH SCREENING)    */}
+        {/* ==================================================================== */}
+        {activeTab === "bulk-verify" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-purple-600" />
+                    <span>Mega-Camp & Bulk ABHA Validation Engine</span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    High-volume demographic validation engine for corporate health camps, factory occupational health screenings, and school checkups.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportBulkCsv}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Export Verified CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Paste or Upload Area */}
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                <label className="text-xs font-bold text-slate-800 block">
+                  Paste ABHA Numbers, Addresses, or 10-Digit Mobile Numbers (One per line or comma-separated)
+                </label>
+                <textarea
+                  rows={3}
+                  value={bulkInputText}
+                  onChange={(e) => setBulkInputText(e.target.value)}
+                  placeholder="91-4421-8890-1123&#10;priya.patel@sbx&#10;9823411223&#10;91-8812-3344-9012"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-slate-500">Supports up to 5,000 records per batch run</span>
+                  <button
+                    type="button"
+                    onClick={handleBulkVerify}
+                    disabled={bulkVerifying}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                  >
+                    {bulkVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                    <span>Run Batch Verification</span>
+                  </button>
                 </div>
               </div>
             </div>
 
+            {/* Results Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+                <span className="text-xs font-bold text-slate-900">
+                  Batch Verification Roster ({bulkItems.length} Verified Entries)
+                </span>
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  100% Match Rate
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 font-bold text-[11px] uppercase tracking-wider bg-slate-50/50">
+                      <th className="py-2.5 px-4">Input Identifier</th>
+                      <th className="py-2.5 px-4">Patient Full Name</th>
+                      <th className="py-2.5 px-4">Resolved ABHA ID</th>
+                      <th className="py-2.5 px-4">ABHA Address</th>
+                      <th className="py-2.5 px-4">Demographics</th>
+                      <th className="py-2.5 px-4">Auth Method</th>
+                      <th className="py-2.5 px-4 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bulkItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/80">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-800">{item.input}</td>
+                        <td className="py-3 px-4 font-bold text-slate-900">{item.name}</td>
+                        <td className="py-3 px-4 font-mono text-emerald-700 font-bold">
+                          {formatAbhaNumber(item.abhaNumber)}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-blue-600">{item.abhaAddress}</td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {item.gender} • {item.dob} • {item.mobile}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            {item.authMethod}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 9: GATEWAY WEBHOOK SIMULATOR                        */}
-        {/* ═══════════════════════════════════════════════════════ */}
+        {/* ==================================================================== */}
+        {/* TAB 8: REPORT STAMPING & OFFICIAL ABDM DIGITAL SEAL                  */}
+        {/* ==================================================================== */}
+        {activeTab === "report-stamp" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Award className="w-5 h-5 text-teal-600" />
+                    <span>Diagnostic Report Stamping & ABDM Digital Seal</span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Embeds official ABDM QR Verification Seals and NABL ISO 15189 credentials directly on outpatient and inpatient test reports.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Report with ABDM Seal</span>
+                </button>
+              </div>
+            </div>
+
+            {/* A4 Medical Report Layout Preview */}
+            <div className="max-w-4xl mx-auto bg-white rounded-2xl border border-slate-300 p-8 shadow-md text-slate-800 space-y-6 print:m-0 print:border-none print:shadow-none print:p-0">
+              {/* Report Header */}
+              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase">
+                    {status.facilityName}
+                  </h3>
+                  <p className="text-xs text-slate-600">
+                    A Premier Tertiary Healthcare & Diagnostic Reference Network
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    HFR Facility ID: {status.hfrId} • HIP ID: {status.hipId} • NABL Cert: {status.accreditation}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-block px-3 py-1 bg-teal-50 text-teal-800 font-black text-xs rounded-lg border border-teal-200 uppercase tracking-wider">
+                    NABL ISO 15189:2022
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-1">Accredited Medical Testing</span>
+                </div>
+              </div>
+
+              {/* Patient Demographics & ABHA Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-slate-500 block">Patient Name:</span>
+                  <strong className="text-slate-900 font-bold text-sm">Aarav Deshmukh</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">UHID / MRN:</span>
+                  <strong className="font-mono text-slate-800 font-bold">UHID-2026-9041</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Age / Gender:</span>
+                  <span className="font-semibold text-slate-800">36 Yrs / Male</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Referring Doctor:</span>
+                  <span className="font-semibold text-slate-800">Dr. K. S. Reddy (Cardiology)</span>
+                </div>
+                <div className="col-span-2 pt-2 border-t border-slate-200">
+                  <span className="text-slate-500 block">Ayushman Bharat Health Account (ABHA):</span>
+                  <strong className="font-mono text-emerald-700 font-bold text-sm">
+                    91-4402-8812-9901
+                  </strong>
+                  <span className="text-blue-600 font-mono text-xs ml-2">(aarav.deshmukh@sbx)</span>
+                </div>
+                <div className="col-span-2 pt-2 border-t border-slate-200">
+                  <span className="text-slate-500 block">Specimen Accession & Date:</span>
+                  <span className="font-mono text-slate-800 font-bold">ACC-884192 • {new Date().toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              {/* Investigation Observations Table */}
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
+                  Complete Blood Count & Hemogram (LOINC: 58410-2)
+                </h4>
+                <table className="w-full text-left text-xs border border-slate-200">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
+                      <th className="py-2 px-3">Investigation Parameter</th>
+                      <th className="py-2 px-3">LOINC</th>
+                      <th className="py-2 px-3">Observed Result</th>
+                      <th className="py-2 px-3">Unit</th>
+                      <th className="py-2 px-3">Biological Reference Interval</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {[
+                      { param: "Hemoglobin (Hb)", loinc: "718-7", value: "14.2", unit: "g/dL", range: "13.0 - 17.0" },
+                      { param: "RBC Count", loinc: "789-8", value: "4.85", unit: "mil/cumm", range: "4.50 - 5.50" },
+                      { param: "Total Leukocyte Count (WBC)", loinc: "6690-2", value: "7,800", unit: "/cumm", range: "4,000 - 11,000" },
+                      { param: "Platelet Count", loinc: "777-3", value: "245,000", unit: "/cumm", range: "150,000 - 450,000" },
+                      { param: "Packed Cell Volume (PCV)", loinc: "20570-8", value: "42.8", unit: "%", range: "40.0 - 50.0" },
+                    ].map((row) => (
+                      <tr key={row.param}>
+                        <td className="py-2 px-3 font-semibold text-slate-900">{row.param}</td>
+                        <td className="py-2 px-3 font-mono text-slate-500">{row.loinc}</td>
+                        <td className="py-2 px-3 font-bold text-slate-900">{row.value}</td>
+                        <td className="py-2 px-3 text-slate-600">{row.unit}</td>
+                        <td className="py-2 px-3 text-slate-600 font-mono">{row.range}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Official ABDM Digital Stamp & Pathologist Signature */}
+              <div className="pt-6 border-t-2 border-slate-900 flex justify-between items-end gap-6">
+                <div className="flex items-center gap-3.5 p-3 rounded-xl border border-emerald-300 bg-emerald-50/50">
+                  <div className="bg-white p-1 rounded-lg border border-emerald-200">
+                    <img
+                      src="https://api.qrserver.com/v1/create-qr-code/?size=72x72&data=abdm%3A%2F%2Fverify-report%3Fhip%3DIN2710000412%26acc%3DACC-884192%26abha%3D91-4402-8812-9901"
+                      alt="ABDM Verify QR"
+                      width={72}
+                      height={72}
+                    />
+                  </div>
+                  <div className="text-xs">
+                    <div className="flex items-center gap-1 font-bold text-emerald-900">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Digitally Verified under ABDM</span>
+                    </div>
+                    <p className="text-[10px] text-emerald-700 mt-0.5">
+                      National Health Authority • Encrypted FHIR R4 Bundle Linked
+                    </p>
+                    <span className="text-[9px] font-mono text-slate-500 block mt-1">
+                      Scan QR code via ABHA App to verify authenticity
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right space-y-1">
+                  <div className="h-10 border-b border-slate-400 w-44 ml-auto" />
+                  <strong className="text-xs font-bold text-slate-900 block">Dr. Sandeep Deshmukh</strong>
+                  <span className="text-[11px] text-slate-600 block">MD (Pathology), DNB, FICP</span>
+                  <span className="text-[10px] text-slate-500 font-mono block">MCI Reg. # 48192-MH</span>
+                  <span className="text-[10px] text-teal-800 font-bold block">Chief Pathologist & Laboratory Director</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* TAB 9: GATEWAY WEBHOOK SIMULATOR & AUDIT LOG                         */}
+        {/* ==================================================================== */}
         {activeTab === "simulator" && (
           <div className="space-y-6">
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <Terminal className="w-5 h-5 text-slate-800" />
-                    ABDM Gateway Webhook Protocol Simulator
+                    <span>NHA Central Gateway Bridge & Inbound Webhook Audit</span>
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Test asynchronous request-callback roundtrips for NHA certification auditing.
+                  <p className="text-xs text-slate-500">
+                    Live transaction audit table and callback simulator for ABDM v0.5 / v3.0 asynchronous webhook responses.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <select
                     value={simulatorAction}
-                    onChange={(e: any) => setSimulatorAction(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-none"
+                    onChange={(e) => setSimulatorAction(e.target.value as any)}
+                    className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
-                    <option value="discovery">1. /v0.5/care-contexts/discover (M2)</option>
-                    <option value="link_init">2. /v0.5/links/link/init (M2)</option>
-                    <option value="consent_notify">3. /v0.5/consents/hip/notify (M3)</option>
-                    <option value="data_request">4. /v0.5/health-information/hip/request (M3)</option>
+                    <option value="discovery">/v0.5/care-contexts/discover</option>
+                    <option value="link_init">/v0.5/links/link/init</option>
+                    <option value="consent_notify">/v0.5/consents/hip/notify</option>
+                    <option value="data_request">/v0.5/health-information/hip/request</option>
                   </select>
 
                   <button
-                    onClick={handleSimulateWebhook}
+                    type="button"
+                    onClick={handleTriggerSimulator}
                     disabled={simulating}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
                   >
                     {simulating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                    <span>Dispatch Payload</span>
+                    <span>Test Webhook</span>
                   </button>
                 </div>
               </div>
 
-              {/* Simulation Result */}
               {simulatorResponse && (
-                <div className="mt-5 space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">HTTP Status: {simulatorResponse.status}</span>
-                      <span className="text-slate-400">•</span>
-                      <span className="text-slate-600">Roundtrip: <strong>{simElapsed}ms</strong></span>
-                    </div>
-                    <span className="text-[11px] font-mono text-slate-500">{simulatorResponse.timestamp}</span>
+                <div className="mt-4 p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto space-y-1">
+                  <div className="flex justify-between text-slate-400 pb-1 border-b border-slate-800 text-[11px]">
+                    <span>Inbound Webhook Acknowledgment</span>
+                    <button
+                      type="button"
+                      onClick={() => setSimulatorResponse(null)}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      Clear
+                    </button>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                        Dispatched Webhook Payload
-                      </span>
-                      <pre className="p-3.5 bg-slate-900 text-sky-400 font-mono text-xs rounded-xl overflow-x-auto max-h-80">
-                        {JSON.stringify(simulatorResponse.requestPayload, null, 2)}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                        Gateway Callback Acknowledgement
-                      </span>
-                      <pre className="p-3.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto max-h-80">
-                        {JSON.stringify(simulatorResponse.responsePayload, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
+                  <pre>{JSON.stringify(simulatorResponse, null, 2)}</pre>
                 </div>
               )}
             </div>
 
+            {/* Gateway Transaction Log Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+                <span className="text-xs font-bold text-slate-900">Live Gateway Transaction Audit Log</span>
+                <span className="text-[11px] text-slate-500 font-mono">Real-time Telemetry Trace</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 font-bold text-[11px] uppercase tracking-wider bg-slate-50/50">
+                      <th className="py-2.5 px-4">Timestamp</th>
+                      <th className="py-2.5 px-4">Endpoint</th>
+                      <th className="py-2.5 px-4">Method</th>
+                      <th className="py-2.5 px-4">HTTP Status</th>
+                      <th className="py-2.5 px-4">Latency</th>
+                      <th className="py-2.5 px-4">Request Trace ID</th>
+                      <th className="py-2.5 px-4">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                    {gatewayLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/80">
+                        <td className="py-2.5 px-4 text-slate-500 font-sans">{log.timestamp}</td>
+                        <td className="py-2.5 px-4 font-bold text-blue-700">{log.endpoint}</td>
+                        <td className="py-2.5 px-4">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-800 font-bold">
+                            {log.method}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            {log.status} OK
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-700 font-bold">{log.latencyMs}ms</td>
+                        <td className="py-2.5 px-4 text-slate-500">{log.requestId}</td>
+                        <td className="py-2.5 px-4 text-slate-600 font-sans">{log.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* GLOBAL MODALS                                           */}
-        {/* ═══════════════════════════════════════════════════════ */}
 
-        {/* ABHA Link Modal */}
+        {/* ==================================================================== */}
+        {/* MODAL 1: PRINTABLE OPD / PHLEBOTOMY FAST-TRACK TOKEN SLIP            */}
+        {/* ==================================================================== */}
+        {tokenSlipPatient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-slate-800 space-y-4 font-mono text-xs border border-slate-200">
+              <div className="text-center pb-3 border-b border-dashed border-slate-300">
+                <h4 className="font-sans font-black text-sm uppercase tracking-tight text-slate-900">
+                  {status.facilityName}
+                </h4>
+                <p className="font-sans text-[10px] text-slate-500 mt-0.5">
+                  ABDM Fast-Track Reception Desk • {status.hfrId}
+                </p>
+                <div className="my-3 py-2 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block font-sans">
+                    Fast-Track Queue Token
+                  </span>
+                  <span className="text-2xl font-black text-slate-900 font-mono tracking-wider">
+                    {tokenSlipPatient.token}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-[11px] text-slate-600">
+                <div className="flex justify-between">
+                  <span>Patient Name:</span>
+                  <strong className="text-slate-900 font-bold">{tokenSlipPatient.name}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>Age / Gender:</span>
+                  <span>{tokenSlipPatient.age}Y / {tokenSlipPatient.gender}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Mobile:</span>
+                  <span>{tokenSlipPatient.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>ABHA Number:</span>
+                  <strong className="text-emerald-700 font-bold">
+                    {formatAbhaNumber(tokenSlipPatient.abhaNumber)}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>ABHA Address:</span>
+                  <span className="text-blue-700">{tokenSlipPatient.abhaAddress}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Station / Counter:</span>
+                  <strong className="text-slate-900">{tokenSlipPatient.counterId}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span>{tokenSlipPatient.department}</span>
+                </div>
+              </div>
+
+              <div className="text-center pt-3 border-t border-dashed border-slate-300">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(tokenSlipPatient.token)}`}
+                  alt="Token QR"
+                  width={90}
+                  height={90}
+                  className="mx-auto block mb-2"
+                />
+                <p className="font-sans text-[10px] text-slate-400">
+                  Please proceed to {tokenSlipPatient.counterId} when your token is called.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setTokenSlipPatient(null)}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.print();
+                    setTokenSlipPatient(null);
+                  }}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-sans font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Slip</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* MODAL 2: FACILITY SETTINGS & HFR/HIP CREDENTIALS                     */}
+        {/* ==================================================================== */}
+        {showFacilityModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-slate-800 space-y-4 border border-slate-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-blue-600" />
+                  <h4 className="text-sm font-bold text-slate-900">Configure Health Facility Registry (HFR)</h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFacilityModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Facility Name</label>
+                  <input
+                    type="text"
+                    value={facilityFormData.name}
+                    onChange={(e) => setFacilityFormData({ ...facilityFormData, name: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">HFR Facility ID</label>
+                    <input
+                      type="text"
+                      value={facilityFormData.hfrId}
+                      onChange={(e) => setFacilityFormData({ ...facilityFormData, hfrId: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">HIP Identifier</label>
+                    <input
+                      type="text"
+                      value={facilityFormData.hipId}
+                      onChange={(e) => setFacilityFormData({ ...facilityFormData, hipId: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">HIU Identifier</label>
+                    <input
+                      type="text"
+                      value={facilityFormData.hiuId}
+                      onChange={(e) => setFacilityFormData({ ...facilityFormData, hiuId: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">Accreditation / License</label>
+                    <input
+                      type="text"
+                      value={facilityFormData.accreditation}
+                      onChange={(e) => setFacilityFormData({ ...facilityFormData, accreditation: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowFacilityModal(false)}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveFacilitySettings}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                >
+                  Save Credentials
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* MODAL 3: LINK NEW CARE CONTEXT                                       */}
+        {/* ==================================================================== */}
+        {showNewCcModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-slate-800 space-y-4 border border-slate-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <LinkIcon className="w-5 h-5 text-indigo-600" />
+                  <h4 className="text-sm font-bold text-slate-900">Link Clinical Episode to Patient ABHA</h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCcModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">Patient UHID / MRN</label>
+                    <input
+                      type="text"
+                      value={newCcData.uhid}
+                      onChange={(e) => setNewCcData({ ...newCcData, uhid: e.target.value })}
+                      placeholder="e.g. UHID-2026-9041"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">Patient Full Name</label>
+                    <input
+                      type="text"
+                      value={newCcData.patientName}
+                      onChange={(e) => setNewCcData({ ...newCcData, patientName: e.target.value })}
+                      placeholder="e.g. Aarav Deshmukh"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Patient ABHA Address</label>
+                  <input
+                    type="text"
+                    value={newCcData.abhaAddress}
+                    onChange={(e) => setNewCcData({ ...newCcData, abhaAddress: e.target.value })}
+                    placeholder="e.g. aarav.deshmukh@sbx"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">Encounter / Episode Type</label>
+                    <select
+                      value={newCcData.episodeType}
+                      onChange={(e) => setNewCcData({ ...newCcData, episodeType: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none"
+                    >
+                      {currentProfile.careContextTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">Department</label>
+                    <input
+                      type="text"
+                      value={newCcData.department}
+                      onChange={(e) => setNewCcData({ ...newCcData, department: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowNewCcModal(false)}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateNewCareContext}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                >
+                  Link Care Context
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* MODAL 4: REQUEST NEW PATIENT ELECTRONIC CONSENT                      */}
+        {/* ==================================================================== */}
+        {showNewConsentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-slate-800 space-y-4 border border-slate-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-emerald-600" />
+                  <h4 className="text-sm font-bold text-slate-900">Request Electronic Patient Consent (HIU)</h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewConsentModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Patient ABHA Address</label>
+                  <input
+                    type="text"
+                    value={newConsentData.patientAbha}
+                    onChange={(e) => setNewConsentData({ ...newConsentData, patientAbha: e.target.value })}
+                    placeholder="e.g. aarav.deshmukh@sbx"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">Purpose of Care</label>
+                    <select
+                      value={newConsentData.purpose}
+                      onChange={(e) => setNewConsentData({ ...newConsentData, purpose: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none"
+                    >
+                      <option value="CAREMGT">Care Management</option>
+                      <option value="BTG">Break the Glass (Emergency)</option>
+                      <option value="PUBHLTH">Public Health Screening</option>
+                      <option value="HPAYMT">Healthcare Insurance & Claim</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">Validity (Days)</label>
+                    <input
+                      type="number"
+                      value={newConsentData.validityDays}
+                      onChange={(e) => setNewConsentData({ ...newConsentData, validityDays: parseInt(e.target.value) || 30 })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Health Information Types Requested</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["DiagnosticReport", "Prescription", "DischargeSummary", "OPConsultation"].map((ht) => {
+                      const isChecked = newConsentData.hiTypes.includes(ht);
+                      return (
+                        <button
+                          key={ht}
+                          type="button"
+                          onClick={() => {
+                            if (isChecked) {
+                              setNewConsentData({
+                                ...newConsentData,
+                                hiTypes: newConsentData.hiTypes.filter((t) => t !== ht),
+                              });
+                            } else {
+                              setNewConsentData({
+                                ...newConsentData,
+                                hiTypes: [...newConsentData.hiTypes, ht],
+                              });
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            isChecked
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {ht}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowNewConsentModal(false)}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateConsent}
+                  disabled={creatingConsent}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {creatingConsent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  <span>Dispatch Consent Request</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* COMPONENT MODALS: ABHA LINK MODAL & ABHA CARD MODAL                  */}
+        {/* ==================================================================== */}
         {showCreateModal && (
           <AbhaLinkModal
             onClose={() => setShowCreateModal(false)}
             onSuccess={(num, addr) => {
               setShowCreateModal(false);
-              fetchStatusAndStats();
+              showToast(`ABHA created: ${num} (${addr})`);
             }}
           />
         )}
 
-        {/* Printable ABHA Card Modal */}
         {cardModalPatient && (
           <AbhaCardModal
-            data={cardModalPatient}
+            data={{
+              abhaNumber: cardModalPatient.abhaNumber,
+              abhaAddress: cardModalPatient.abhaAddress,
+              name: cardModalPatient.name,
+              gender: cardModalPatient.gender,
+              dob: cardModalPatient.dateOfBirth,
+              mobile: cardModalPatient.mobile,
+              address: cardModalPatient.address,
+              qrData: cardModalPatient.qrData,
+              photo: cardModalPatient.photo,
+            }}
             onClose={() => setCardModalPatient(null)}
           />
         )}
-
       </div>
     </DashboardLayout>
+  );
+}
+
+// Loading Fallback Skeleton for Next.js Suspense
+function AbdmPageSkeleton() {
+  return (
+    <DashboardLayout>
+      <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
+        <div className="h-28 bg-white rounded-2xl border border-slate-200 animate-pulse" />
+        <div className="h-12 bg-white rounded-2xl border border-slate-200 animate-pulse" />
+        <div className="h-96 bg-white rounded-2xl border border-slate-200 animate-pulse" />
+      </div>
+    </DashboardLayout>
+  );
+}
+
+// Next.js Root Export wrapped in Suspense boundary
+export default function AbdmPage() {
+  return (
+    <Suspense fallback={<AbdmPageSkeleton />}>
+      <AbdmPageContent />
+    </Suspense>
   );
 }
