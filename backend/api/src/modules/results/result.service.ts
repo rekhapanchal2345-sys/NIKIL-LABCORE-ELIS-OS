@@ -260,19 +260,26 @@ export const bulkVerifyResults = async (
       failed: [] as { id: string; reason: string }[],
     };
 
-    for (const result of results) {
-      try {
-        if (result.status !== "ENTERED") {
-          verificationResults.failed.push({
-            id: result.id,
-            reason: `Result is in ${result.status} status, only ENTERED results can be verified`,
-          });
-          continue;
-        }
+    const validResultIds: string[] = [];
 
-        await prisma.result.update({
+    for (const result of results) {
+      if (result.status !== "ENTERED") {
+        verificationResults.failed.push({
+          id: result.id,
+          reason: `Result is in ${result.status} status, only ENTERED results can be verified`,
+        });
+        continue;
+      }
+      validResultIds.push(result.id);
+    }
+
+    if (validResultIds.length > 0) {
+      try {
+        await prisma.result.updateMany({
           where: {
-            id: result.id,
+            id: {
+              in: validResultIds,
+            },
           },
           data: {
             status: "VERIFIED",
@@ -280,13 +287,16 @@ export const bulkVerifyResults = async (
             verifiedById: verifiedBy || null,
           },
         });
-
-        verificationResults.succeeded.push(result.id);
+        verificationResults.succeeded.push(...validResultIds);
       } catch (error) {
-        verificationResults.failed.push({
-          id: result.id,
-          reason: error instanceof Error ? error.message : "Unknown error",
-        });
+        // If the bulk update fails entirely, mark all valid IDs as failed with the error
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        for (const id of validResultIds) {
+          verificationResults.failed.push({
+            id,
+            reason: errorMessage,
+          });
+        }
       }
     }
 
