@@ -154,8 +154,7 @@ export const getPendingApprovals = async (
     where.status = status;
   } else if (!status && !search && filter !== "pipeline") {
     // Default approval queue shows results verified by lab tech
-    // TEMPORARY FIX: Also show ENTERED results to help users see their completed results
-    where.status = { in: ["VERIFIED", "ENTERED"] };
+    where.status = "VERIFIED";
   } else if (filter === "pipeline") {
     // Show all active pipeline results (pending entry, entered, verified)
     where.status = { in: ["PENDING", "ENTERED", "VERIFIED"] };
