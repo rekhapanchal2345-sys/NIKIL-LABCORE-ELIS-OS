@@ -496,13 +496,10 @@ export class WhatsAppAIService {
       const messages = conversation.incomingMessages;
       
       // Check for repeated negative sentiment
-      let negativeCount = 0;
-      for (const message of messages) {
-        const sentiment = await this.analyzeSentiment(message.messageContent);
-        if (sentiment.sentiment === 'NEGATIVE') {
-          negativeCount++;
-        }
-      }
+      const sentimentPromises = messages.map(message => this.analyzeSentiment(message.messageContent));
+      const sentiments = await Promise.all(sentimentPromises);
+
+      const negativeCount = sentiments.filter(sentiment => sentiment.sentiment === 'NEGATIVE').length;
       
       if (negativeCount >= 3) {
         issues.push({
