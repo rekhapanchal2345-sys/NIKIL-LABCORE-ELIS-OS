@@ -109,7 +109,7 @@ function getInitials(doctor: Doctor) {
 }
 
 function getDoctorTier(referralCount: number) {
-  if (referralCount >= 50) return { label: "Platinum", bg: "bg-indigo-50 text-indigo-700 border-indigo-200" };
+  if (referralCount >= 50) return { label: "Platinum", bg: "bg-sky-50 text-sky-700 border-sky-200" };
   if (referralCount >= 20) return { label: "Gold", bg: "bg-amber-50 text-amber-700 border-amber-200" };
   if (referralCount >= 5) return { label: "Silver", bg: "bg-slate-100 text-slate-700 border-slate-300" };
   return { label: "Associate", bg: "bg-slate-50 text-slate-600 border-slate-200" };
@@ -172,7 +172,7 @@ export default function DoctorTable({
   if (loading) {
     return (
       <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden p-8 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-3"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600 mx-auto mb-3"></div>
         <p className="text-slate-500 text-sm font-medium">Loading medical practitioner directory...</p>
       </div>
     );
@@ -243,12 +243,12 @@ export default function DoctorTable({
                     {/* 2. Doctor Name, Qualifications, Code & Tier */}
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm shadow-xs flex-shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 font-bold text-sm shadow-xs flex-shrink-0">
                           {initials}
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900 text-sm leading-tight group-hover:text-indigo-600 transition-colors">
+                            <span className="font-bold text-slate-900 text-sm leading-tight group-hover:text-sky-700 transition-colors">
                               {docName}
                             </span>
                             <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${tier.bg}`}>
@@ -260,7 +260,7 @@ export default function DoctorTable({
                               {doctor.doctorCode || `DOC-${doctor.id}`}
                             </span>
                             {doctor.qualification && (
-                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                              <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.2 rounded border border-sky-200">
                                 {doctor.qualification}
                               </span>
                             )}
@@ -273,8 +273,8 @@ export default function DoctorTable({
                     <td className="py-4 px-4">
                       <div className="space-y-1">
                         {isPathologist ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                            <Award className="w-3 h-3 text-purple-600" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                            <Award className="w-3 h-3 text-teal-600" />
                             In-House Pathologist
                           </span>
                         ) : (
@@ -330,10 +330,10 @@ export default function DoctorTable({
                       {isReferring ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-purple-900 text-xs">
+                            <span className="font-bold text-slate-900 text-xs">
                               ₹{pendingPayout.toLocaleString()}
                             </span>
-                            <span className="text-[10px] font-bold bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded border border-purple-200">
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-200">
                               {commissionRate}%
                             </span>
                           </div>
@@ -344,7 +344,7 @@ export default function DoctorTable({
                                 e.stopPropagation();
                                 onPayout(doctor);
                               }}
-                              className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 hover:underline flex items-center gap-0.5"
+                              className="text-[10px] font-bold text-sky-700 hover:text-sky-900 hover:underline flex items-center gap-0.5"
                             >
                               <CreditCard className="w-3 h-3" />
                               Settle Payout
@@ -387,7 +387,7 @@ export default function DoctorTable({
                         {/* 1-Click New Order */}
                         <Link
                           href={`/orders/new?referringDoctorId=${doctor.id}&doctorName=${encodeURIComponent(docName)}`}
-                          className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 border border-indigo-200 transition-colors"
+                          className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-50 border border-sky-200 transition-colors"
                           title="Register New Patient Order for this Doctor"
                         >
                           <PlusCircle className="w-4 h-4" />
@@ -456,7 +456,7 @@ export default function DoctorTable({
                           <button
                             type="button"
                             onClick={() => onIdBadge(doctor)}
-                            className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 border border-purple-200 transition-colors"
+                            className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-50 border border-sky-200 transition-colors"
                             title="Doctor Privilege ID Badge & Chamber Certificate"
                           >
                             <FileBadge className="w-4 h-4" />
@@ -502,7 +502,7 @@ export default function DoctorTable({
                           <button
                             type="button"
                             onClick={() => onEdit && onEdit(doctor)}
-                            className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 border border-indigo-200 transition-colors"
+                            className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-50 border border-sky-200 transition-colors"
                             title="Edit Doctor Details"
                           >
                             <Edit2 className="w-4 h-4" />

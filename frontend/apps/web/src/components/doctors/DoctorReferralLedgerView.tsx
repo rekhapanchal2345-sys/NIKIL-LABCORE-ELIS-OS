@@ -233,11 +233,11 @@ export default function DoctorReferralLedgerView({
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">Total Referral Incentives</span>
-            <TrendingUp className="w-4 h-4 text-indigo-500" />
+            <TrendingUp className="w-4 h-4 text-teal-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900">₹{totalEarned.toLocaleString()}</span>
-            <span className="text-xs text-indigo-600 font-medium">Contracted Commissions</span>
+            <span className="text-xs text-teal-700 font-medium">Contracted Commissions</span>
           </div>
         </div>
 

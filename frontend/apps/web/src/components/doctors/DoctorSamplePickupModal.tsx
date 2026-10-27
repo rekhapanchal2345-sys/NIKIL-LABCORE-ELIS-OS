@@ -248,7 +248,7 @@ export default function DoctorSamplePickupModal({
           {/* Section 1: Doctor & Clinic Header Card */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-black text-sm">
+              <div className="w-11 h-11 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-800 font-black text-sm">
                 Dr
               </div>
               <div>
@@ -289,7 +289,7 @@ export default function DoctorSamplePickupModal({
                   placeholder="e.g. Ramesh Chandra Mehta"
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:outline-none"
+                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-sky-600 focus:outline-none"
                 />
               </div>
 
@@ -302,7 +302,7 @@ export default function DoctorSamplePickupModal({
                   placeholder="e.g. 48"
                   value={patientAge}
                   onChange={(e) => setPatientAge(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:outline-none"
+                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-sky-600 focus:outline-none"
                 />
               </div>
 
@@ -313,7 +313,7 @@ export default function DoctorSamplePickupModal({
                 <select
                   value={patientGender}
                   onChange={(e) => setPatientGender(e.target.value as any)}
-                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:outline-none bg-white"
+                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-sky-600 focus:outline-none bg-white"
                 >
                   <option value="MALE">Male</option>
                   <option value="FEMALE">Female</option>
@@ -332,7 +332,7 @@ export default function DoctorSamplePickupModal({
                   placeholder="e.g. 98765 12345"
                   value={patientPhone}
                   onChange={(e) => setPatientPhone(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:outline-none"
+                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-sky-600 focus:outline-none"
                 />
               </div>
 
@@ -349,7 +349,7 @@ export default function DoctorSamplePickupModal({
                     }}
                     className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
                       pickupLocationType === "DOCTOR_CLINIC"
-                        ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-xs"
+                        ? "bg-sky-50 border-sky-400 text-sky-800 shadow-xs"
                         : "bg-white border-slate-200 text-slate-600"
                     }`}
                   >
@@ -364,7 +364,7 @@ export default function DoctorSamplePickupModal({
                     }}
                     className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
                       pickupLocationType === "PATIENT_HOME"
-                        ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-xs"
+                        ? "bg-sky-50 border-sky-400 text-sky-800 shadow-xs"
                         : "bg-white border-slate-200 text-slate-600"
                     }`}
                   >
@@ -384,7 +384,7 @@ export default function DoctorSamplePickupModal({
                   placeholder="Enter full flat number, apartment name, street, landmark, area"
                   value={customAddress}
                   onChange={(e) => setCustomAddress(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:outline-none"
+                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-sky-600 focus:outline-none"
                 />
               </div>
             )}
@@ -394,10 +394,10 @@ export default function DoctorSamplePickupModal({
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <FlaskConical className="w-4 h-4 text-purple-600" />
+                <FlaskConical className="w-4 h-4 text-teal-600" />
                 <span>2. Laboratory Investigation Panels Required</span>
               </h4>
-              <span className="text-xs font-bold text-indigo-600">
+              <span className="text-xs font-bold text-sky-700">
                 {selectedTests.length} tests selected
               </span>
             </div>
@@ -412,14 +412,14 @@ export default function DoctorSamplePickupModal({
                     onClick={() => toggleTest(test.id)}
                     className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition-all flex items-start gap-2 ${
                       isSelected
-                        ? "bg-indigo-50/70 border-indigo-400 text-indigo-900 shadow-xs"
+                        ? "bg-sky-50/70 border-sky-400 text-sky-950 shadow-xs"
                         : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                     }`}
                   >
                     <div
                       className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 ${
                         isSelected
-                          ? "bg-indigo-600 border-indigo-600 text-white"
+                          ? "bg-sky-600 border-sky-600 text-white"
                           : "border-slate-300 bg-white"
                       }`}
                     >
@@ -507,7 +507,7 @@ export default function DoctorSamplePickupModal({
                 <select
                   value={assignedRiderId}
                   onChange={(e) => setAssignedRiderId(e.target.value)}
-                  className="w-full text-xs font-semibold px-2.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:outline-none bg-white mb-2"
+                  className="w-full text-xs font-semibold px-2.5 py-2 rounded-xl border border-slate-300 focus:border-sky-600 focus:outline-none bg-white mb-2"
                 >
                   {AVAILABLE_RIDERS.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -532,7 +532,7 @@ export default function DoctorSamplePickupModal({
                 placeholder="e.g. Patient is geriatric/hard vein; Call doctor immediately if WBC > 20,000"
                 value={clinicalNotes}
                 onChange={(e) => setClinicalNotes(e.target.value)}
-                className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:outline-none"
+                className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:border-sky-600 focus:outline-none"
               />
             </div>
           </div>

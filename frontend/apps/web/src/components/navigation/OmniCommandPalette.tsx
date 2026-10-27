@@ -19,6 +19,7 @@ import {
   Zap,
   Barcode,
   CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 
 // ============================================================================
@@ -30,7 +31,8 @@ export type CommandCategory =
   | 'PATIENTS'
   | 'ANALYZERS'
   | 'QUARANTINE_BARCODES'
-  | 'HARDWARE_ACTIONS';
+  | 'HARDWARE_ACTIONS'
+  | 'ABDM_SERVICES';
 
 export interface OmniCommandItem {
   id: string;
@@ -246,6 +248,97 @@ const CLINICAL_COMMAND_REGISTRY: OmniCommandItem[] = [
     metadata: {
       barcode: 'SMP-1092',
     },
+  },
+  // ABDM / ADM NATIONAL DIGITAL HEALTH SERVICES
+  {
+    id: 'ABDM-SCAN-SHARE',
+    category: 'ABDM_SERVICES',
+    title: 'ABDM Scan & Share OPD / Lab Token Desk',
+    subtitle: 'NHA Fast-Track Queue • Counter-01 & Phlebotomy-01 Digital Check-In • Token Slip Print',
+    badgeText: 'ABDM • FAST-TRACK',
+    badgeVariant: 'emerald',
+    keywords: ['abdm', 'scan', 'share', 'token', 'opd', 'phlebotomy', 'kiosk', 'counter', 'nha'],
+    routePath: '/abdm?tab=scan-share',
+    metadata: {
+      parameter: 'COUNTER-01',
+    },
+  },
+  {
+    id: 'ABDM-M1-ENROLL',
+    category: 'ABDM_SERVICES',
+    title: 'Enroll / Create New ABHA (Aadhaar & Mobile OTP - M1)',
+    subtitle: 'Government of India ABDM v0.5 • Biometric / OTP Identity Verification • ABHA Card Generation',
+    badgeText: 'M1 • ENROLLMENT',
+    badgeVariant: 'purple',
+    keywords: ['abdm', 'create', 'abha', 'enroll', 'aadhaar', 'otp', 'm1', 'id', 'generate'],
+    routePath: '/abdm?tab=abha-m1&mode=enroll',
+    metadata: {},
+  },
+  {
+    id: 'ABDM-M1-VERIFY',
+    category: 'ABDM_SERVICES',
+    title: 'Verify Patient ABHA & Demographic KYC Lookup',
+    subtitle: '14-Digit ABHA ID & PHR Address Search • KYC Match Verification • Digital Health Card Print',
+    badgeText: 'M1 • KYC VERIFY',
+    badgeVariant: 'blue',
+    keywords: ['verify', 'abha', 'lookup', 'kyc', 'demographic', 'address', 'phr', 'm1'],
+    routePath: '/abdm?tab=abha-m1&mode=verify',
+    metadata: {},
+  },
+  {
+    id: 'ABDM-M2-CARE-CONTEXT',
+    category: 'ABDM_SERVICES',
+    title: 'Care Context Linker (M2 - OPD, IPD, Lab & Rx)',
+    subtitle: 'HIP Discovery & Linking • Link Diagnostic Orders & Patient Visits to Aarogya Setu / ABHA App',
+    badgeText: 'M2 • HIP LINK',
+    badgeVariant: 'emerald',
+    keywords: ['care', 'context', 'link', 'm2', 'hip', 'discovery', 'orders', 'episodes', 'lab'],
+    routePath: '/abdm?tab=care-context-m2',
+    metadata: {},
+  },
+  {
+    id: 'ABDM-M3-CONSENTS',
+    category: 'ABDM_SERVICES',
+    title: 'Patient Consent Management & HIU Gateway (M3)',
+    subtitle: 'Electronic Consent Artifacts • Pull Historical Health Records from AIIMS, Apollo, Fortis',
+    badgeText: 'M3 • HIU GATEWAY',
+    badgeVariant: 'amber',
+    keywords: ['consent', 'hiu', 'm3', 'records', 'decrypt', 'external', 'apollo', 'aiims', 'data'],
+    routePath: '/abdm?tab=consents-hiu',
+    metadata: {},
+  },
+  {
+    id: 'ABDM-M3-FHIR',
+    category: 'ABDM_SERVICES',
+    title: 'FHIR R4 Diagnostic Report Exchange & LOINC Bundler (M3)',
+    subtitle: 'HL7 FHIR R4 DiagnosticReport Profile • CBC, Lipid, HbA1c, LFT, KFT Panels • Pathologist Sign-Off',
+    badgeText: 'M3 • FHIR R4',
+    badgeVariant: 'blue',
+    keywords: ['fhir', 'r4', 'diagnostic', 'report', 'bundle', 'loinc', 'snomed', 'm3', 'json'],
+    routePath: '/abdm?tab=fhir-m3',
+    metadata: {},
+  },
+  {
+    id: 'ABDM-BULK-VERIFY',
+    category: 'ABDM_SERVICES',
+    title: 'Mega-Camp & Batch ABHA Validation Engine',
+    subtitle: 'High-Volume Health Camp Screening • Corporate Outreach • Instant CSV Demographics Export',
+    badgeText: 'CAMP • BATCH',
+    badgeVariant: 'purple',
+    keywords: ['camp', 'bulk', 'batch', 'verify', 'screening', 'corporate', 'school', 'csv'],
+    routePath: '/abdm?tab=bulk-verify',
+    metadata: {},
+  },
+  {
+    id: 'ABDM-GATEWAY-AUDIT',
+    category: 'ABDM_SERVICES',
+    title: 'NHA Central Gateway Status & Inbound Webhook Audit',
+    subtitle: 'Live Latency Ping • HIG Bridge Health • Webhook Callback Simulator (v0.5 Interop)',
+    badgeText: 'NHA • GATEWAY',
+    badgeVariant: 'emerald',
+    keywords: ['gateway', 'nha', 'bridge', 'webhook', 'simulator', 'ping', 'latency', 'audit'],
+    routePath: '/abdm?tab=simulator',
+    metadata: {},
   },
 ];
 
@@ -676,6 +769,7 @@ export const OmniCommandPalette: React.FC<OmniCommandPaletteProps> = ({
                   { key: 'ANALYZERS', label: 'Analyzers & COM/IP' },
                   { key: 'QUARANTINE_BARCODES', label: 'Quarantine Tubes' },
                   { key: 'HARDWARE_ACTIONS', label: 'Hardware Commands' },
+                  { key: 'ABDM_SERVICES', label: 'ABDM / ADM Desk' },
                 ] as Array<{ key: CommandCategory; label: string }>
               ).map((tab) => (
                 <button
@@ -727,6 +821,9 @@ export const OmniCommandPalette: React.FC<OmniCommandPaletteProps> = ({
                           )}
                           {item.category === 'HARDWARE_ACTIONS' && (
                             <Zap className="w-4 h-4 text-purple-400" />
+                          )}
+                          {item.category === 'ABDM_SERVICES' && (
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
                           )}
                         </div>
 

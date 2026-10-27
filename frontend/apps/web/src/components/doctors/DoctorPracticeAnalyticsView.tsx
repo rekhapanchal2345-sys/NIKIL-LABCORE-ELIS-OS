@@ -61,11 +61,11 @@ export default function DoctorPracticeAnalyticsView() {
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">Average Consultation Time</span>
-            <Clock className="w-4 h-4 text-indigo-500" />
+            <Clock className="w-4 h-4 text-sky-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900">12.4 min</span>
-            <span className="text-xs text-indigo-600 font-medium">Optimal Standard</span>
+            <span className="text-xs text-sky-700 font-medium">Optimal Standard</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Target range: 10 - 15 minutes</p>
         </div>

@@ -72,6 +72,79 @@ const CATEGORY_TABS: Array<{ id: SearchCategory; label: string; countBadge?: str
   { id: "ACTIONS", label: "Quick Actions" },
 ];
 
+const LOCAL_ABDM_ACTIONS: SearchItem[] = [
+  {
+    id: "action-abdm-scan-share",
+    type: "ACTION",
+    title: "ABDM Scan & Share Token Desk",
+    subtitle: "OPD & Phlebotomy Fast-Track Queue • Counter Token QR Generator",
+    tag: "ABDM FAST-TRACK",
+    tagColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
+    href: "/abdm?tab=scan-share",
+    metadata: { shortcut: "SCAN" },
+  },
+  {
+    id: "action-abdm-create-abha",
+    type: "ACTION",
+    title: "Enroll / Create New ABHA (Aadhaar & Mobile OTP - M1)",
+    subtitle: "Issue 14-digit ABHA Number & Download Official NHA Health Card",
+    tag: "M1 ENROLL",
+    tagColor: "bg-purple-500/20 text-purple-300 border border-purple-500/40",
+    href: "/abdm?tab=abha-m1&mode=enroll",
+    metadata: { shortcut: "M1" },
+  },
+  {
+    id: "action-abdm-verify-abha",
+    type: "ACTION",
+    title: "Verify Patient ABHA & Demographic KYC Lookup",
+    subtitle: "Search by ABHA Number / PHR Address • Demographic KYC Validation",
+    tag: "M1 VERIFY",
+    tagColor: "bg-blue-500/20 text-blue-300 border border-blue-500/40",
+    href: "/abdm?tab=abha-m1&mode=verify",
+    metadata: { shortcut: "KYC" },
+  },
+  {
+    id: "action-abdm-care-context",
+    type: "ACTION",
+    title: "Care Context Linker (M2 - OPD / IPD / Diagnostic Lab)",
+    subtitle: "Link Diagnostic Orders, Visits & Episodes to Patient ABHA Health App",
+    tag: "M2 LINK",
+    tagColor: "bg-teal-500/20 text-teal-300 border border-teal-500/40",
+    href: "/abdm?tab=care-context-m2",
+    metadata: { shortcut: "M2" },
+  },
+  {
+    id: "action-abdm-consents-hiu",
+    type: "ACTION",
+    title: "Patient Consents & HIU Gateway Records (M3)",
+    subtitle: "Electronic Consents • Pull Health Records from AIIMS, Apollo, Fortis",
+    tag: "M3 HIU",
+    tagColor: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+    href: "/abdm?tab=consents-hiu",
+    metadata: { shortcut: "M3" },
+  },
+  {
+    id: "action-abdm-fhir",
+    type: "ACTION",
+    title: "FHIR R4 Diagnostic Report Exchange (M3)",
+    subtitle: "HL7 FHIR R4 JSON • LOINC Coded Panels • Pathologist Sign-Off",
+    tag: "FHIR R4",
+    tagColor: "bg-sky-500/20 text-sky-300 border border-sky-500/40",
+    href: "/abdm?tab=fhir-m3",
+    metadata: { shortcut: "FHIR" },
+  },
+  {
+    id: "action-abdm-report-seal",
+    type: "ACTION",
+    title: "ABDM Digital Seal & QR Report Stamping",
+    subtitle: "NABL ISO 15189 Verified Lab Report Stamping with Official ABHA QR",
+    tag: "ABDM SEAL",
+    tagColor: "bg-teal-500/20 text-teal-300 border border-teal-500/40",
+    href: "/abdm?tab=report-stamp",
+    metadata: { shortcut: "SEAL" },
+  },
+];
+
 export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -162,11 +235,26 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
           activeBranchId
         );
 
+        const qLower = query.trim().toLowerCase();
+        const matchingAbdmActions = LOCAL_ABDM_ACTIONS.filter((act) => {
+          if (activeCategory === "ACTIONS" && !qLower) return true;
+          if (!qLower) return false;
+          return (
+            act.title.toLowerCase().includes(qLower) ||
+            act.subtitle.toLowerCase().includes(qLower) ||
+            act.tag.toLowerCase().includes(qLower) ||
+            (act.metadata?.shortcut && act.metadata.shortcut.toLowerCase().includes(qLower)) ||
+            (qLower.includes("abdm") || qLower.includes("abha") || qLower.includes("scan") || qLower.includes("fhir"))
+          );
+        });
+
         if (res && res.success && res.data) {
           const fetchedResults: SearchItem[] = res.data.results || [];
-          setResults(fetchedResults);
+          // Deduplicate and combine
+          const combined = [...matchingAbdmActions, ...fetchedResults];
+          setResults(combined);
         } else {
-          setResults([]);
+          setResults(matchingAbdmActions);
         }
       } catch (err: any) {
         if (err.name !== "AbortError") {

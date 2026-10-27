@@ -263,6 +263,24 @@ export default function Header({
           )}
         </div>
 
+        {/* ABDM Central Gateway Live Status Pill & Fast-Track Token Desk */}
+        <button
+          type="button"
+          onClick={() => router.push("/abdm?tab=scan-share")}
+          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/90 text-[11px] text-[#334155] hover:bg-white hover:border-emerald-400 hover:text-[#0F172A] transition-all shadow-2xs group cursor-pointer"
+          title="ABDM National Digital Health Gateway: Connected to NHA (Click to open Scan & Share Token Desk)"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+          </span>
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-105 transition-transform" />
+          <span className="font-bold text-[#0F172A]">ABDM Gateway</span>
+          <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-100/80 text-emerald-800">
+            ONLINE
+          </span>
+        </button>
+
         {/* Global Spotlight Search Trigger */}
         <button
           type="button"

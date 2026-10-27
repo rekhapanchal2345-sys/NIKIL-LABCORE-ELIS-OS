@@ -852,7 +852,7 @@ export default function RegisterDoctorWizard({
             className="h-1 transition-all duration-300"
             style={{
               width: `${progress}%`,
-              background: 'linear-gradient(90deg, var(--primary), var(--info))',
+              background: 'var(--primary)',
             }}
           />
         </div>

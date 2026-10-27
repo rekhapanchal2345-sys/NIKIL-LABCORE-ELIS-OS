@@ -143,12 +143,36 @@ export default function DoctorNavigationHeader({
 
   const [selectedFacility, setSelectedFacility] = useState("Main Hospital Campus (OPD Block A)");
   const [selectedChamber, setSelectedChamber] = useState("Chamber 102 - Cardiology & Echo Lab");
-  const [activeDoctorContext, setActiveDoctorContext] = useState({
-    name: "Dr. Rajesh Sharma, MD",
-    regNo: "MCI/NMC-2012-78941",
-    department: "Cardiology",
-    status: "Chamber Active",
-  });
+  const [chamberStatus, setChamberStatus] = useState<"live" | "rounds" | "break">("live");
+
+  const DOCTOR_PRESETS = [
+    {
+      name: "Dr. Rajesh Sharma, MD",
+      regNo: "MCI/NMC-2012-78941",
+      department: "Cardiology",
+      chamber: "Chamber 102 - Cardiology & Echo Lab",
+    },
+    {
+      name: "Dr. Vikram Patel, MD",
+      regNo: "MCI/NMC-2015-44219",
+      department: "General Medicine",
+      chamber: "Chamber 101 - General Medicine & Triage",
+    },
+    {
+      name: "Dr. Priya Nair, MD",
+      regNo: "MCI/NMC-2018-91024",
+      department: "Pediatrics",
+      chamber: "Chamber 108 - Pediatrics & Child Wellness",
+    },
+    {
+      name: "Dr. Ananya Iyer, MD",
+      regNo: "MCI/NMC-2016-55102",
+      department: "Pathology",
+      chamber: "Pathology Review Desk - Grossing & Verification",
+    },
+  ];
+
+  const [activeDoctorContext, setActiveDoctorContext] = useState(DOCTOR_PRESETS[0]);
 
   return (
     <div className="space-y-3">
@@ -171,10 +195,15 @@ export default function DoctorNavigationHeader({
                   Enterprise Hospital & LIS Suite
                 </span>
                 {kpis.criticalPanics > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[11px] font-black border border-rose-200 flex items-center gap-1 animate-pulse">
+                  <button
+                    type="button"
+                    onClick={() => onTabChange("verification")}
+                    className="px-2.5 py-0.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-black border border-rose-200 flex items-center gap-1 animate-pulse cursor-pointer transition"
+                    title="Click to view critical telephonic panic call log register"
+                  >
                     <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                    {kpis.criticalPanics} STAT Panic Results Pending
-                  </span>
+                    {kpis.criticalPanics} STAT Panic Results Pending (Review Now)
+                  </button>
                 )}
               </div>
               <p className="text-xs text-slate-500 font-medium max-w-2xl">
@@ -326,17 +355,50 @@ export default function DoctorNavigationHeader({
             </div>
           </div>
 
-          {/* Active Clinician Badge */}
+          {/* Active Clinician Badge & Duty Selector */}
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-medium">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2 py-0.5 rounded-lg">
               <UserCheck className="w-3.5 h-3.5 text-teal-600" />
-              <strong className="text-slate-900">{activeDoctorContext.name}</strong>
-              <span className="text-[10px] text-slate-500 font-mono">({activeDoctorContext.regNo})</span>
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Chamber Live
-            </span>
+              <select
+                value={activeDoctorContext.name}
+                onChange={(e) => {
+                  const match = DOCTOR_PRESETS.find((d) => d.name === e.target.value);
+                  if (match) {
+                    setActiveDoctorContext(match);
+                    setSelectedChamber(match.chamber);
+                  }
+                }}
+                className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer"
+              >
+                {DOCTOR_PRESETS.map((d) => (
+                  <option key={d.name} value={d.name}>
+                    {d.name} ({d.department})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setChamberStatus((prev) => (prev === "live" ? "rounds" : prev === "rounds" ? "break" : "live"));
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer transition"
+              style={{
+                backgroundColor: chamberStatus === "live" ? "#ecfdf5" : chamberStatus === "rounds" ? "#f0f9ff" : "#f8fafc",
+                borderColor: chamberStatus === "live" ? "#a7f3d0" : chamberStatus === "rounds" ? "#bae6fd" : "#e2e8f0",
+                color: chamberStatus === "live" ? "#065f46" : chamberStatus === "rounds" ? "#0369a1" : "#475569",
+              }}
+              title="Click to toggle clinician status"
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  backgroundColor: chamberStatus === "live" ? "#10b981" : chamberStatus === "rounds" ? "#0284c7" : "#94a3b8",
+                }}
+              />
+              {chamberStatus === "live" ? "Chamber Live" : chamberStatus === "rounds" ? "In Ward Rounds" : "On Break"}
+            </button>
           </div>
         </div>
 

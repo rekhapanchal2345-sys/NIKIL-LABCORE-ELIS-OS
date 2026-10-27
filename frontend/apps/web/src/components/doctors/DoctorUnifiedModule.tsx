@@ -443,10 +443,10 @@ export function DoctorsPageContent({ initialTab }: { initialTab?: DoctorModuleTa
                 {/* KPI 3: Referral Business Revenue */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs hover:shadow-xs transition-all">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-100 flex items-center justify-center">
                       <DollarSign className="w-5 h-5" />
                     </div>
-                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                    <span className="text-[11px] font-bold text-sky-800 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
                       Paid Revenue
                     </span>
                   </div>
@@ -520,7 +520,7 @@ export function DoctorsPageContent({ initialTab }: { initialTab?: DoctorModuleTa
                   onClick={() => { setDirectoryFilterTab("partners"); setPage(1); }}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                     directoryFilterTab === "partners"
-                      ? "bg-indigo-600 text-white shadow-2xs"
+                      ? "bg-sky-700 text-white shadow-2xs"
                       : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
                   }`}
                 >

@@ -2006,7 +2006,7 @@ export default function DoctorRequisitionSlipModal({
             {/* Modal Header */}
             <div className="bg-white px-6 py-4 text-slate-900 border-b border-slate-200 flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shadow-xs">
                   <MessageCircle className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div>
@@ -2133,12 +2133,12 @@ export default function DoctorRequisitionSlipModal({
                     }}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
                       whatsappTemplate === "commission_statement"
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-900 shadow-xs ring-2 ring-indigo-500/20"
+                        ? "border-sky-600 bg-sky-50 text-sky-950 shadow-xs ring-2 ring-sky-500/20"
                         : "border-slate-200 hover:bg-slate-50 text-slate-700"
                     }`}
                   >
                     <div className="text-xs font-bold flex items-center gap-1.5">
-                      <Award size={13} className="text-indigo-600" />
+                      <Award size={13} className="text-sky-700" />
                       Statement
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">Referral Ledger</div>
@@ -2259,11 +2259,11 @@ export default function DoctorRequisitionSlipModal({
             <div className="bg-white px-6 py-4 text-slate-900 border-b border-slate-200 flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center shadow-xs">
-                  <Mail className="w-5 h-5 text-white" />
+                  <Mail className="w-5 h-5 text-sky-700" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold tracking-tight">Doctor Email Dispatcher</h3>
-                  <p className="text-xs text-sky-100 font-medium">
+                  <p className="text-xs text-slate-500 font-medium">
                     Sending Official Requisition Slip & PDF to <span className="font-semibold text-slate-800">Dr. {docName}</span> ({doctorCode})
                   </p>
                 </div>
@@ -2273,7 +2273,7 @@ export default function DoctorRequisitionSlipModal({
                   type="button"
                   onClick={() => setShowSmtpConfig(!showSmtpConfig)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                    showSmtpConfig ? "bg-white text-blue-900 shadow-sm" : "bg-white/10 hover:bg-white/20 text-white"
+                    showSmtpConfig ? "bg-sky-50 text-sky-800 border border-sky-200 shadow-xs" : "bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200"
                   }`}
                   title="Configure SMTP / Gmail App Password"
                 >
@@ -2362,12 +2362,12 @@ export default function DoctorRequisitionSlipModal({
                     }}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
                       emailTemplate === "portal_activation"
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-900 shadow-xs ring-2 ring-indigo-500/20"
+                        ? "border-sky-600 bg-sky-50 text-sky-950 shadow-xs ring-2 ring-sky-500/20"
                         : "border-slate-200 hover:bg-slate-50 text-slate-700"
                     }`}
                   >
                     <div className="text-xs font-bold flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-indigo-600" />
+                      <Sparkles size={13} className="text-sky-700" />
                       Portal Onboarding
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">LIS Portal Credentials</div>
@@ -2400,12 +2400,12 @@ export default function DoctorRequisitionSlipModal({
                     }}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
                       emailTemplate === "commission_statement"
-                        ? "border-purple-600 bg-purple-50 text-purple-900 shadow-xs ring-2 ring-purple-500/20"
+                        ? "border-teal-600 bg-teal-50 text-teal-900 shadow-xs ring-2 ring-purple-500/20"
                         : "border-slate-200 hover:bg-slate-50 text-slate-700"
                     }`}
                   >
                     <div className="text-xs font-bold flex items-center gap-1.5">
-                      <Award size={13} className="text-purple-600" />
+                      <Award size={13} className="text-teal-600" />
                       Statement
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">Monthly Ledger</div>

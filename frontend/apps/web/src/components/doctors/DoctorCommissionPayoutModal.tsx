@@ -394,7 +394,7 @@ export default function DoctorCommissionPayoutModal({
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="font-mono font-bold text-purple-700 block">
+                    <span className="font-mono font-bold text-emerald-700 block">
                       {voucherData.voucherNumber}
                     </span>
                     <span className="text-[10px] text-slate-500">{voucherData.payoutDate}</span>
@@ -475,7 +475,7 @@ export default function DoctorCommissionPayoutModal({
                 <button
                   type="button"
                   onClick={handlePrintVoucher}
-                  className="flex-1 py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   Print Voucher

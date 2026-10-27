@@ -522,7 +522,7 @@ export default function DoctorIpdRoundsView({
               {/* P: Plan */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded bg-indigo-100 text-indigo-800 flex items-center justify-center text-[10px] font-black">P</span>
+                  <span className="w-4 h-4 rounded bg-sky-100 text-sky-800 flex items-center justify-center text-[10px] font-black">P</span>
                   Plan (Medications, IV fluids, Lab Orders & Discharge Directive)
                 </label>
                 <textarea

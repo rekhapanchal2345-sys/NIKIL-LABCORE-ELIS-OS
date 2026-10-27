@@ -346,7 +346,7 @@ export default function DoctorForm({
       <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
         <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
               <Building2 className="h-4 w-4" />
             </div>
             <div>
@@ -436,7 +436,7 @@ export default function DoctorForm({
                 checked={form.reportDeliveryPortal}
                 onChange={(e) => updateField("reportDeliveryPortal", e.target.checked)}
                 disabled={loading}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-slate-300 text-sky-700 focus:ring-sky-500"
               />
               <span className="text-xs font-semibold text-slate-700">Doctor EMR Portal</span>
             </label>

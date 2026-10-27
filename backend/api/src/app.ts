@@ -48,6 +48,7 @@ import branchRoutes from "./modules/branches/branch.routes";
 import searchRoutes from "./modules/search/search.routes";
 import cacheRoutes from "./modules/cache/cache.routes";
 import healthRoutes from "./modules/health/health.routes";
+import docsRoutes from "./docs/docs.routes";
 import { requestCorrelationMiddleware } from "./lib/logger.service";
 
 // =======================================================
@@ -552,6 +553,12 @@ app.use("/api/v1/search", searchRoutes);
 // =======================================================
 app.use("/api/cache", cacheRoutes);
 app.use("/api/v1/cache", cacheRoutes);
+
+// =======================================================
+// OPENAPI 3.0 & INTERACTIVE SWAGGER DOCUMENTATION (DAY 26)
+// =======================================================
+app.use("/api/docs", docsRoutes);
+app.use("/docs", docsRoutes);
 
 // =======================================================
 // STATIC ASSETS & SPA FALLBACK (Consolidated Frontend)

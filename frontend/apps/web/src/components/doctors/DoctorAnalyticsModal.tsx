@@ -122,7 +122,7 @@ export default function DoctorAnalyticsModal({
 
   const departmentMix = [
     { dept: "Biochemistry & Metabolism", pct: 44, color: "bg-amber-500" },
-    { dept: "Hematology & Coagulation", pct: 28, color: "bg-purple-500" },
+    { dept: "Hematology & Coagulation", pct: 28, color: "bg-sky-500" },
     { dept: "Endocrinology & Thyroid", pct: 16, color: "bg-sky-500" },
     { dept: "Serology & Infectious", pct: 12, color: "bg-rose-500" },
   ];
@@ -256,7 +256,7 @@ export default function DoctorAnalyticsModal({
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 Total Test Orders
               </span>
-              <p className="text-2xl font-black text-indigo-700">{totalOrders}</p>
+              <p className="text-2xl font-black text-sky-800">{totalOrders}</p>
               <span className="text-[10px] text-slate-500 font-medium">Avg ~{avgTicket}/patient</span>
             </div>
 
@@ -349,7 +349,7 @@ export default function DoctorAnalyticsModal({
             {/* Top 5 Prescribed Profiles */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
               <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <TrendingUp className="w-4 h-4 text-sky-700" />
                 <span>Top Prescribed Investigation Panels</span>
               </h4>
 
@@ -357,7 +357,7 @@ export default function DoctorAnalyticsModal({
                 {topInvestigations.map((t, idx) => (
                   <div key={t.name} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
                     <div className="flex items-center gap-2 truncate">
-                      <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-black text-[10px] flex items-center justify-center shrink-0">
+                      <span className="w-5 h-5 rounded-full bg-sky-100 text-sky-800 font-black text-[10px] flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
                       <span className="font-semibold text-slate-800 truncate">{t.name}</span>

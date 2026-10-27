@@ -203,7 +203,7 @@ export default function DoctorDutyRosterView() {
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-sky-800">{r.chamberNumber}</div>
                         {r.nightOnCall && (
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200 mt-1 inline-block">
+                          <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200 mt-1 inline-block">
                             🌙 Night On-Call Cover
                           </span>
                         )}

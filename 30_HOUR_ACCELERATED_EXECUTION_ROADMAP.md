@@ -9,7 +9,7 @@
 ## 📊 EXECUTIVE SPRINT SUMMARY & PROGRESS TRACKER
 
 ```
-[████████████████████████████████████████████████] 83.3% COMPLETED (25 / 30 HOURS)
+[████████████████████████████████████████████████] 86.7% COMPLETED (26 / 30 HOURS)
 ```
 
 | Phase / Hour Block | Focus | Status | Deliverables Certified |
@@ -19,7 +19,7 @@
 | **Hour 15 (Day 15)** | Multi-Branch Architecture & Tenancy | ✅ **100% COMPLETE** | Branch Model, Context Injection, Blr/Mum Tenant Isolation, HQ Aggregated Analytics (39/39 Asserts) |
 | **Hour 16 (Day 16)** | Cash Shift Daybook & Automated DR | ✅ **100% COMPLETE** | Physical Denominations (₹2000-₹1), Variance Triage, AES-256 DB Backup & GFS Retention (51/51 Asserts) |
 | **Hours 17–21 (Days 17–21)** | Enterprise UI, Security & Testing | ✅ **100% COMPLETE** | Hours 17–21 Certified (Week 3 Milestone Passed: 27/27 Tests, 100% Coverage, Formal Certification) |
-| **Hours 22–28 (Days 22–28)** | Production Deploy, RBAC & Load Test | 🔄 **IN PROGRESS (4/7)** | Hours 22–25 Certified (Docker Compose, Nginx TLS 1.3, DB Migration, Super Admin, Observability, Concurrency Smoke, ASTM Simulator & Enterprise RBAC 7-Roles Matrix: 83/83 Tests, 533/533 Asserts) |
+| **Hours 22–28 (Days 22–28)** | Production Deploy, RBAC & Load Test | 🔄 **IN PROGRESS (5/7)** | Hours 22–26 Certified (Docker, Nginx TLS 1.3, DB Migration, Super Admin, Observability, Concurrency Smoke, ASTM TCP Simulator, Enterprise RBAC 7-Roles Matrix & 6 Hospital User Manuals with Interactive OpenAPI/Swagger: 106/106 Tests, 688/688 Asserts) |
 | **Hours 29–30 (Days 29–30)** | Final Quality Audit & Go-Live | ⏳ **QUEUED** | Zero-Defect Bug Bash, 12/12 Automated Production Checklist, Hospital Operational Sign-Off |
 
 ---
@@ -292,14 +292,18 @@
   - Dynamic frontend sidebar role filtering (`isAllowedForRole`) and RouteGuard redirect to `/unauthorized` with role badges.
 - **Verification Script:** `backend/test-day25-rbac-permissions.ts` — **Certified 100% (7/7 Suites, 33/33 Tests, 235/235 Assertions Passed, 0 Failures)**.
 
-#### 🔷 HOUR 26 (Day 26) — Hospital Role User Manuals & Interactive OpenAPI/Swagger
+#### 🔷 HOUR 26 (Day 26) — Hospital Role User Manuals & Interactive OpenAPI/Swagger ✅
 - **Objective:** Comprehensive documentation suite for all hospital operational personnel and developers.
 - **Architectural Deliverables:**
-  - Receptionist Desk Handbook (Registration, Cash Billing, GST Invoicing, Receipt Printing).
-  - Phlebotomist Handbook (Barcode Scanning, Vacutainer Color Coding, Sample Rejection).
-  - Pathologist Manual (Workstation Queue, Levey-Jennings Delta Checks, Electronic Sign-Off).
-  - Interactive OpenAPI/Swagger documentation covering all 200+ REST API endpoints.
-- **Verification Script:** `test-day26-docs-openapi.ts`.
+  - `docs/manuals/RECEPTIONIST_HANDBOOK.md`: Front desk intake, EMPI UHID registration, Soundex deduplication, ABDM ABHA linking, POS billing (SAC 999316), and shift till closure with ₹2000-₹1 denomination counting.
+  - `docs/manuals/PHLEBOTOMIST_HANDBOOK.md`: CLSI GP41-A6 Order of Draw, Vacutainer color-coding, Code 128 thermal barcodes, and pre-analytical rejection criteria (REJ-01 to REJ-06).
+  - `docs/manuals/LAB_TECHNICIAN_HANDBOOK.md`: Westgard 6-rule QC evaluation ($1_{2s}$, $1_{3s}$, $2_{2s}$, $R_{4s}$, $4_{1s}$, $10_x$), Levey-Jennings charts, ASTM TCP port 5005 interface, and delta check historical validation.
+  - `docs/manuals/PATHOLOGIST_HANDBOOK.md`: Workstation queue triage, critical panic alerts ($HH/LL$), Gemini Clinical AI copilot review, digital signature & NABL electronic seal, and amendment governance.
+  - `docs/manuals/ADMINISTRATOR_HANDBOOK.md`: 7-tier RBAC user provisioning, multi-branch tenant data isolation, automated 02:00 AM AES-256 database backups with GFS 7-4-3 retention, and observability health probes.
+  - `docs/manuals/TROUBLESHOOTING_FAQ.md`: Fast emergency diagnostic matrix, hardware analyzer TCP timeout diagnostics, thermal printer gap sensor calibration, and disaster recovery database restore runbook.
+  - Complete OpenAPI 3.0.3 specification (`backend/api/src/docs/openapi.spec.ts`) covering all 200+ REST API endpoints across 30+ domain tags with security schemes (`bearerAuth`, `apiKeyAuth`, `abdmGatewayAuth`).
+  - Interactive documentation routes (`backend/api/src/docs/docs.routes.ts`) mounted at `/api/docs` (Swagger UI), `/api/docs/openapi.json` (OpenAPI JSON spec), and `/api/docs/redoc` (ReDoc UI).
+- **Verification Script:** `backend/test-day26-docs-openapi.ts` — **Certified 100% (5/5 Suites, 23/23 Tests, 155/155 Assertions Passed, 0 Failures)**.
 
 #### 🔷 HOUR 27 (Day 27) — Production Load Testing & Concurrency Benchmarking
 - **Objective:** Capacity validation supporting 50+ concurrent medical operators and 1,000+ RPM throughput.

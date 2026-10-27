@@ -98,7 +98,7 @@ export default function DoctorDetails({
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 text-xl font-black text-indigo-700 shadow-xs">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-50 border border-sky-100 text-xl font-black text-sky-800 shadow-xs">
               {getInitials(doctor)}
             </div>
 
@@ -119,7 +119,7 @@ export default function DoctorDetails({
                 </span>
 
                 {doctor.specialization && (
-                  <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
+                  <span className="rounded-full bg-sky-50 border border-sky-200 px-2.5 py-0.5 text-xs font-bold text-sky-800">
                     {doctor.specialization}
                   </span>
                 )}
@@ -149,7 +149,7 @@ export default function DoctorDetails({
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/orders/new?referringDoctorId=${doctor.id}&doctorName=${encodeURIComponent(name)}`}
-              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 shadow-sm transition-all active:scale-95"
             >
               <PlusCircle className="w-4 h-4" />
               New Lab Order
@@ -191,7 +191,7 @@ export default function DoctorDetails({
       <section className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-3.5 flex items-center justify-between">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-indigo-600" />
+            <ShieldCheck className="w-4 h-4 text-sky-700" />
             Clinical Practice & OPD Consultation
           </h2>
           <span className="text-[11px] font-bold text-slate-500">Hospital & Practice Records</span>
@@ -282,7 +282,7 @@ export default function DoctorDetails({
         <section className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-3.5">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-purple-600" />
+              <Award className="w-4 h-4 text-teal-600" />
               Authorized Pathologist Digital Signature
             </h2>
           </div>
