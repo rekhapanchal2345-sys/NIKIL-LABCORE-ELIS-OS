@@ -991,10 +991,7 @@ class ClinicalNlpEngine {
   // ──────────────────────────────────────────────────────────────────────────
   // 3. NAMED ENTITY RECOGNITION & QUANTITATIVE ANALYTE EXTRACTION
   // ──────────────────────────────────────────────────────────────────────────
-  static extractNamedEntities(clinicalText) {
-    const entities = [];
-    const lower = clinicalText.toLowerCase();
-
+  static extractLoincEntities(clinicalText, lower, entities) {
     // 1. Lab Tests & Quantitative Analytes (LOINC Grounded)
     LOINC_KNOWLEDGE_BASE.forEach(loinc => {
       loinc.keywords.forEach(kw => {
@@ -1038,7 +1035,9 @@ class ClinicalNlpEngine {
         }
       });
     });
+  }
 
+  static extractRxNormEntities(clinicalText, entities) {
     // 2. Medications & Dosages (RxNorm Grounded)
     RXNORM_KNOWLEDGE_BASE.forEach(rx => {
       rx.keywords.forEach(kw => {
@@ -1060,7 +1059,9 @@ class ClinicalNlpEngine {
         }
       });
     });
+  }
 
+  static extractSeverityEntities(clinicalText, lower, entities) {
     // 3. Clinical Severity Lexicon
     const severityLexicon = [
       { kw: "critical delta surge", level: "PANIC" },
@@ -1091,7 +1092,9 @@ class ClinicalNlpEngine {
         startIdx += sev.kw.length;
       }
     });
+  }
 
+  static extractAnatomyEntities(clinicalText, lower, entities) {
     // 4. Anatomical Sites & Laterality
     const anatomyLexicon = [
       { kw: "retrosternal", site: "Retrosternal / Precordium", laterality: "Midline" },
@@ -1123,6 +1126,16 @@ class ClinicalNlpEngine {
         startIdx += anat.kw.length;
       }
     });
+  }
+
+  static extractNamedEntities(clinicalText) {
+    const entities = [];
+    const lower = clinicalText.toLowerCase();
+
+    this.extractLoincEntities(clinicalText, lower, entities);
+    this.extractRxNormEntities(clinicalText, entities);
+    this.extractSeverityEntities(clinicalText, lower, entities);
+    this.extractAnatomyEntities(clinicalText, lower, entities);
 
     return this.deduplicateEntities(entities);
   }
