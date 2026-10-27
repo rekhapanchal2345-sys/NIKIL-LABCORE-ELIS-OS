@@ -202,7 +202,12 @@ export default function DashboardPage() {
               <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{user?.role}</div>
             </div>
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Sign out">
+          <button
+            className="btn btn-ghost btn-icon"
+            onClick={handleLogout}
+            title="Sign out"
+            aria-label="Sign out"
+          >
             <LogOut size={18} />
           </button>
         </div>
@@ -419,7 +424,14 @@ export default function DashboardPage() {
                     onChange={(e) => setNewPw(e.target.value)}
                     disabled={pwLoading}
                   />
-                  <button type="button" className="input-icon-right" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                  <button
+                    type="button"
+                    className="input-icon-right"
+                    onClick={() => setShowPw(!showPw)}
+                    tabIndex={-1}
+                    aria-label={showPw ? "Hide password" : "Show password"}
+                    title={showPw ? "Hide password" : "Show password"}
+                  >
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>

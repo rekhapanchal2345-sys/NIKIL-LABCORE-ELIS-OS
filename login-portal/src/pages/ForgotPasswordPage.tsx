@@ -65,7 +65,13 @@ export default function ForgotPasswordPage() {
   return (
     <div className="auth-layout">
       <div className="auth-card fade-in" style={{ maxWidth: 420 }}>
-        <button className="btn btn-ghost btn-icon" onClick={() => navigate("/login")} style={{ marginBottom: 20 }}>
+        <button
+          className="btn btn-ghost btn-icon"
+          onClick={() => navigate("/login")}
+          style={{ marginBottom: 20 }}
+          aria-label="Go back to login"
+          title="Go back to login"
+        >
           <ArrowLeft size={18} />
         </button>
 
@@ -145,7 +151,14 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     disabled={loading}
                   />
-                  <button type="button" className="input-icon-right" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                  <button
+                    type="button"
+                    className="input-icon-right"
+                    onClick={() => setShowPw(!showPw)}
+                    tabIndex={-1}
+                    aria-label={showPw ? "Hide password" : "Show password"}
+                    title={showPw ? "Hide password" : "Show password"}
+                  >
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>

@@ -110,7 +110,13 @@ export default function MfaSetupPage() {
     <div className="auth-layout">
       <div className="auth-card fade-in" style={{ maxWidth: 480 }}>
         {step !== "backup" && (
-          <button className="btn btn-ghost btn-icon" onClick={() => navigate("/login")} style={{ marginBottom: 20 }}>
+          <button
+            className="btn btn-ghost btn-icon"
+            onClick={() => navigate("/login")}
+            style={{ marginBottom: 20 }}
+            aria-label="Go back to login"
+            title="Go back to login"
+          >
             <ArrowLeft size={18} />
           </button>
         )}
