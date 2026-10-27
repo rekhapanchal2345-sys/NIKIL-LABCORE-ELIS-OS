@@ -9,7 +9,6 @@ import {
   Percent,
   CheckCircle2,
   Calendar,
-  Sparkles,
   ArrowUpRight,
   Info,
   Layers,
@@ -209,11 +208,11 @@ export default function BillingMetrics({
       {/* Sub-bar with View Selector & Scope Summary */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-          <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-          <span className="text-slate-900 font-bold">Real-time Financial Telemetry</span>
+           <span className="h-2 w-2 rounded-full bg-blue-600" />
+           <span className="text-slate-900 font-bold">Register summary</span>
           <span className="text-slate-300">•</span>
           <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 font-mono shadow-sm">
-            {liveRegisterMetrics.count} Register Invoices
+             {liveRegisterMetrics.count} invoices in view
           </span>
           {activeStatusFilter && (
             <>
@@ -248,7 +247,7 @@ export default function BillingMetrics({
               : "text-slate-600 hover:text-slate-900"
               }`}
           >
-            Today's Window (IST)
+             Today
           </button>
         </div>
       </div>
@@ -266,7 +265,7 @@ export default function BillingMetrics({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                Realized Collections
+                 Collections received
               </span>
               <span
                 className="text-slate-400 hover:text-slate-600"
@@ -285,7 +284,7 @@ export default function BillingMetrics({
           <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
             <span>Billed: {formatCurrency(displayBilledTurnover)}</span>
             <span className="font-bold text-emerald-700 font-mono">
-              {liveRegisterMetrics.recoveryRate}% Realized
+               {liveRegisterMetrics.recoveryRate}% collected
             </span>
           </div>
           <div className="mt-2.5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
@@ -308,7 +307,7 @@ export default function BillingMetrics({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-blue-700">
-                Paid Invoices (100%)
+                 Paid invoices
               </span>
               <span
                 className="text-slate-400 hover:text-slate-600"
@@ -335,7 +334,7 @@ export default function BillingMetrics({
                   (displayPaidInvoicesCount / liveRegisterMetrics.count) * 100
                 )
                 : 100}
-              % of Total
+               % of view
             </span>
           </div>
           <div className="mt-2.5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
@@ -366,7 +365,7 @@ export default function BillingMetrics({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                Pending / Due Balance
+                 Outstanding balance
               </span>
               <span
                 className="text-slate-400 hover:text-slate-600"
@@ -390,7 +389,7 @@ export default function BillingMetrics({
               className={`font-bold font-mono ${displayPendingDue > 0 ? "text-amber-700" : "text-emerald-700"
                 }`}
             >
-              {displayPendingDue > 0 ? "Action Required" : "Zero Arrears"}
+               {displayPendingDue > 0 ? "Collection required" : "No outstanding"}
             </span>
           </div>
           <div className="mt-2.5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">

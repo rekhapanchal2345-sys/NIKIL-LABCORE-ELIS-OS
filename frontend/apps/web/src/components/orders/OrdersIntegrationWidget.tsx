@@ -1,144 +1,114 @@
 "use client";
 
 import React from "react";
-import {
-  Server,
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  Zap,
-  Radio,
-  Cpu,
-  Layers,
-  Sparkles,
-  QrCode,
-  ShieldCheck,
-  RefreshCw,
-  ExternalLink,
-  GitBranch,
-  Split,
-  TestTube
-} from "lucide-react";
+import { Activity, ArrowRight, Server, ShieldCheck } from "lucide-react";
+
+export interface IntegrationFeed {
+  id: string;
+  name: string;
+  protocol?: string;
+  status: "CONNECTED" | "DEGRADED" | "DISCONNECTED" | "UNKNOWN";
+  lastMessageAt?: string;
+  messagesToday?: number;
+}
 
 interface OrdersIntegrationWidgetProps {
   onOpenEngine?: () => void;
+  feeds?: IntegrationFeed[];
   ordersToday?: number;
 }
 
+const statusLabel: Record<IntegrationFeed["status"], string> = {
+  CONNECTED: "Connected",
+  DEGRADED: "Degraded",
+  DISCONNECTED: "Disconnected",
+  UNKNOWN: "Unknown",
+};
+
+const statusClass: Record<IntegrationFeed["status"], string> = {
+  CONNECTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  DEGRADED: "bg-amber-50 text-amber-700 border-amber-200",
+  DISCONNECTED: "bg-rose-50 text-rose-700 border-rose-200",
+  UNKNOWN: "bg-slate-50 text-slate-600 border-slate-200",
+};
+
 export default function OrdersIntegrationWidget({
   onOpenEngine,
-  ordersToday = 840,
+  feeds = [],
+  ordersToday,
 }: OrdersIntegrationWidgetProps) {
-  const quickFeeds = [
-    { name: "Central HIS Wards (HL7 ORM)", port: "2575", status: "ONLINE", protocol: "HL7 v2.5", count: "218 Orders" },
-    { name: "Consultant OPD Desk", port: "443", status: "BUSY", protocol: "REST EMR", count: "412 Orders" },
-    { name: "ABDM / ABHA Digital Prescriptions", port: "443", status: "ONLINE", protocol: "FHIR R4", count: "84 Orders" },
-    { name: "Analyzer Worklists (Cobas & Sysmex)", port: "5000", status: "ONLINE", protocol: "ASTM E1394", count: "380 Pushed" },
-  ];
-
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 relative overflow-hidden transition-all duration-300 hover:border-sky-300">
-      <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-sky-50 via-indigo-50/40 to-transparent rounded-full pointer-events-none -mr-12 -mt-12 blur-2xl" />
-
-      <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-              <Server className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h3 className="font-extrabold text-sm text-slate-900 tracking-tight">
-                  Hospital & Lab Orders Integration Engine
-                </h3>
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  LIVE REQUISITION BUS
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Automatic HL7 ORM Ingest, Tube Allocator & Analyzer Worklists
-              </p>
-            </div>
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
+      <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-100 bg-sky-50 text-sky-700">
+            <Server className="h-5 w-5" />
           </div>
-
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Order interfaces</h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Review interface connectivity and inbound order messages returned by configured systems.
+            </p>
+          </div>
+        </div>
+        {onOpenEngine && (
           <button
             type="button"
             onClick={onOpenEngine}
-            className="text-xs font-bold text-sky-700 hover:text-sky-900 flex items-center gap-1 hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-sky-700 hover:text-sky-900"
           >
-            <span>Launch Engine</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            Open interface workspace <ArrowRight className="h-3.5 w-3.5" />
           </button>
+        )}
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Configured feeds</p>
+          <p className="mt-1 text-lg font-black text-slate-900">{feeds.length}</p>
         </div>
-
-        {/* Telemetry Strip */}
-        <div className="grid grid-cols-4 gap-2 text-center">
-          <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Active Feeds</p>
-            <p className="text-sm font-black text-emerald-600 mt-0.5">6 Feeds</p>
-          </div>
-          <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Inbound Today</p>
-            <p className="text-sm font-black text-sky-700 mt-0.5">{ordersToday}</p>
-          </div>
-          <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Reflex Rules</p>
-            <p className="text-sm font-black text-purple-700 mt-0.5">4 Active</p>
-          </div>
-          <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Exceptions</p>
-            <p className="text-sm font-black text-emerald-600 mt-0.5">0 Held</p>
-          </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Connected feeds</p>
+          <p className="mt-1 text-lg font-black text-slate-900">{feeds.filter((feed) => feed.status === "CONNECTED").length}</p>
         </div>
-
-        {/* Live Channel Quick List */}
-        <div className="space-y-1.5">
-          {quickFeeds.map((qc, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 hover:bg-slate-100/80 transition-colors text-xs border border-slate-100"
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    qc.status === "BUSY"
-                      ? "bg-sky-500 animate-spin"
-                      : "bg-emerald-500 animate-pulse"
-                  }`}
-                />
-                <span className="font-bold text-slate-800">{qc.name}</span>
-                <span className="text-[10px] font-mono text-slate-400">:{qc.port}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.2 rounded border border-slate-200">
-                  {qc.protocol}
-                </span>
-                <span className="font-mono text-[11px] font-bold text-sky-700">{qc.count}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom Action Footer */}
-        <div className="pt-2 flex items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            <span>NABL ISO 15189 Specimen Custody & ABDM M1-M3 Certified</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={onOpenEngine}
-            className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs transition-all shadow-2xs flex items-center gap-1.5"
-          >
-            <Zap className="h-3.5 w-3.5" />
-            <span>Open Orders Integration Engine &rarr;</span>
-          </button>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Orders today</p>
+          <p className="mt-1 text-lg font-black text-slate-900">{ordersToday ?? "—"}</p>
         </div>
       </div>
-    </div>
+
+      <div className="mt-4 space-y-2">
+        {feeds.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+            <Activity className="mx-auto h-5 w-5 text-slate-400" />
+            <p className="mt-2 text-xs font-semibold text-slate-700">No interface telemetry available</p>
+            <p className="mt-1 text-[11px] text-slate-500">Configure an interface or open the workspace to review connection settings.</p>
+          </div>
+        ) : (
+          feeds.map((feed) => (
+            <div key={feed.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-xs font-bold text-slate-800">{feed.name}</p>
+                <p className="mt-0.5 text-[10px] text-slate-500">
+                  {feed.protocol || "Protocol not specified"}
+                  {feed.lastMessageAt ? ` · Last message ${feed.lastMessageAt}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-slate-500">{feed.messagesToday ?? "—"} messages</span>
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusClass[feed.status]}`}>
+                  {statusLabel[feed.status]}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+        <ShieldCheck className="h-3.5 w-3.5 text-slate-500" />
+        Interface status is shown only when reported by the configured connection.
+      </div>
+    </section>
   );
 }

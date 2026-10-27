@@ -18,7 +18,6 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Sparkles,
   ShieldCheck,
   Flame,
   CheckSquare,
@@ -170,13 +169,13 @@ export default function DueAgingTracker({
   };
 
   const handleSendWhatsAppReminder = (inv: AgingInvoice) => {
-    const patientName = inv.patientName || "Valued Patient";
+    const patientName = inv.patientName || "Patient";
     const amount = Number(inv.pendingAmount || 0).toFixed(2);
     const invNo = inv.invoiceNumber || "";
     const phone = (inv.patientPhone || "").replace(/[^0-9]/g, "");
 
     const message = encodeURIComponent(
-      `Dear ${patientName},\nThis is a formal settlement reminder from LabCore Diagnostics regarding your pending balance of ₹${amount} for Invoice #${invNo} (${inv.daysOverdue} days overdue).\n\nPlease settle your balance at the laboratory billing counter or via BharatQR.\nThank you for your prompt attention!`
+      `Dear ${patientName},\nThis is a payment reminder for the pending balance of ₹${amount} for invoice #${invNo} (${inv.daysOverdue} days overdue).\n\nPlease contact the billing desk for payment assistance.\nThank you.`
     );
 
     if (phone) {
@@ -195,11 +194,11 @@ export default function DueAgingTracker({
   };
 
   const handleCopyPaymentLink = (inv: AgingInvoice) => {
-    const text = `LabCore Payment Demand for Invoice #${inv.invoiceNumber}: upi://pay?pa=labcore@upi&pn=LabCore&am=${inv.pendingAmount}`;
+    const text = `Invoice #${inv.invoiceNumber} | Balance due: ₹${Number(inv.pendingAmount || 0).toFixed(2)}`;
     navigator.clipboard.writeText(text);
     setCopiedId(String(inv.id));
     setTimeout(() => setCopiedId(null), 2000);
-    showInvoiceToast("success", "Copied UPI payment link to clipboard");
+    showInvoiceToast("success", "Copied invoice balance reference");
   };
 
   const handleExecuteWriteOff = async () => {
@@ -274,32 +273,32 @@ export default function DueAgingTracker({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 p-6 text-white shadow-md">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xs">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-xs font-semibold text-rose-300 ring-1 ring-rose-400/30">
+              <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
                 Accounts Receivable (A/R)
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500">
                 Total Overdue Accounts: {stats.totalCount}
               </span>
             </div>
-            <h2 className="text-xl font-bold tracking-tight text-white mt-1">
-              Outstanding Dues & Aging Debt Tracker
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 mt-1">
+              Outstanding Dues &amp; Aging Debt Tracker
             </h2>
-            <p className="text-xs text-slate-300 mt-0.5">
-              Automated 0-30, 31-60, 61-90, and 90+ days aging buckets, batch WhatsApp payment demands, and small balance write-offs.
+            <p className="text-xs text-slate-500 mt-0.5">
+              Automated 0-30, 31-60, 61-90, and 90+ days aging buckets, batch WhatsApp payment demands, and balance reconciliation.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-xs font-semibold text-white shadow-sm ring-1 ring-white/20 hover:bg-white/20 transition-all"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all"
             >
-              <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
-              Export Aging CSV
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              <span>Export Aging CSV</span>
             </button>
           </div>
         </div>

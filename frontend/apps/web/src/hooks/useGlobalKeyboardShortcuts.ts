@@ -15,7 +15,7 @@ interface ShortcutHandlers {
  * - Ctrl+M: Open Quick Communication Slideover
  * - Alt+P: Register New Walk-In Patient
  * - Alt+O: Create Diagnostic Test Order
- * - Alt+S: Cash Shift Daybook & Reconciliation
+ * - Alt+S: Cash Shift Till & Cash Counter (/payments?tab=cash-counter)
  * - Alt+R: Verified Reports & PDF Dispatch
  * - Alt+Q: Pathologist Workstation & Approvals
  * - Alt+B: Specimen Accession & Phlebotomy
@@ -70,7 +70,7 @@ export function useGlobalKeyboardShortcuts({
             break;
           case "s":
             e.preventDefault();
-            router.push("/invoices?tab=daybook");
+            router.push("/payments?tab=cash-counter");
             break;
           case "r":
             e.preventDefault();

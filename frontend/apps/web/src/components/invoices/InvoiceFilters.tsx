@@ -10,7 +10,6 @@ import {
   User,
   CreditCard,
   X,
-  Sparkles,
 } from "lucide-react";
 
 interface Doctor {
@@ -141,7 +140,7 @@ export default function InvoiceFilters({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px] mr-1">
-            Date Presets:
+            Date range:
           </span>
           {[
             { id: "all", label: "All Dates" },
@@ -189,7 +188,7 @@ export default function InvoiceFilters({
         {/* Search */}
         <div className="lg:col-span-2">
           <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Smart Search
+             Search invoices
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -201,7 +200,7 @@ export default function InvoiceFilters({
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 handleSearchChange(e.target.value)
               }
-              placeholder="Invoice #, patient name, UHID, phone, order ID..."
+               placeholder="Invoice no., patient, UHID, phone or order no."
               className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-2 pl-10 pr-9 text-xs text-slate-900 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
             {filters.search && (
@@ -251,15 +250,16 @@ export default function InvoiceFilters({
             <option value="CASH">Cash Counter</option>
             <option value="UPI">UPI (GPay / PhonePe / QR)</option>
             <option value="CARD">Credit / Debit Card</option>
+            <option value="TPA">TPA &amp; Cashless Insurance</option>
             <option value="NET_BANKING">Net Banking</option>
             <option value="CHEQUE">Cheque / DD</option>
           </select>
         </div>
 
-        {/* Referring Doctor (B2B) */}
+        {/* Referring doctor */}
         <div>
           <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Referring Doctor (B2B)
+             Referring doctor
           </label>
           <select
             value={filters.doctorId}
@@ -269,7 +269,7 @@ export default function InvoiceFilters({
             disabled={loadingDoctors}
             className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs font-medium text-slate-900 outline-none transition focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
           >
-            <option value="">All Referring Doctors</option>
+             <option value="">All referring doctors</option>
             {doctors.map((doctor) => {
               const cleaned = (doctor.fullName || "")
                 .replace(/^(dr\.?|dr\b)\s+/i, "")
@@ -319,7 +319,7 @@ export default function InvoiceFilters({
 
         <div className="lg:col-span-2 flex items-end">
           <p className="text-[11px] text-slate-500">
-            Real-time multi-counter filtering by invoice number, patient name, UHID, doctor referral, payment mode, or settlement status.
+             Search and filter by invoice, patient, UHID, order, referrer, payment mode or status.
           </p>
         </div>
       </div>

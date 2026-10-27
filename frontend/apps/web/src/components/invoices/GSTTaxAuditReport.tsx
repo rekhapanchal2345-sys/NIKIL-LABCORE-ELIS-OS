@@ -35,18 +35,18 @@ function formatINR(amt: number): string {
   })}`;
 }
 
-// Laboratory Entity Metadata
+// Entity metadata is supplied by facility settings when configured.
 const DEFAULT_LAB_ENTITY = {
-  legalName: "LabCore Diagnostics Private Limited",
-  tradeName: "LabCore Clinical Reference Laboratory",
-  gstin: "24AAACL1234F1Z5",
-  pan: "AAACL1234F",
-  stateCode: "24",
-  stateName: "Gujarat",
-  taxJurisdiction: "Ward 4(1), Range-II, Ahmedabad",
-  nablCertNo: "MC-5678",
-  isoStandard: "ISO 15189:2022",
-  regAddress: "Plot 402, Bio-Science Zone, SG Highway, Ahmedabad - 380054, Gujarat",
+  legalName: "",
+  tradeName: "",
+  gstin: "",
+  pan: "",
+  stateCode: "",
+  stateName: "",
+  taxJurisdiction: "",
+  nablCertNo: "",
+  isoStandard: "",
+  regAddress: "",
 };
 
 export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
@@ -248,68 +248,16 @@ export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
     document.body.removeChild(link);
   };
 
-  // Generate GSTR-1 Official Offline JSON
+  // Generate an export payload from the current register scope.
   const gstr1JsonPayload = useMemo(() => {
     return {
       gstin: labEntity.gstin,
       fp: "042026", // Period e.g. April 2026
       version: "GSTR1_v2.0",
-      hash: "hash_calc_labcore_audit",
-      b2b: [
-        {
-          ctin: "24AAACA9988C1ZQ",
-          inv: [
-            {
-              inum: "B2B/26-27/000001",
-              idt: "15-04-2026",
-              val: 185400.0,
-              pos: "24",
-              rchrg: "N",
-              inv_typ: "R",
-              itms: [
-                {
-                  num: 1,
-                  itm_det: {
-                    rt: 18.0,
-                    txval: 157118.64,
-                    camt: 14140.68,
-                    samt: 14140.68,
-                    csamt: 0.0,
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      b2cs: [
-        {
-          sply_ty: "INTRA",
-          pos: "24",
-          typ: "OE",
-          rt: 18.0,
-          txval: gstMetrics.totalTaxableSupplies,
-          camt: gstMetrics.totalCGST,
-          samt: gstMetrics.totalSGST,
-          csamt: 0.0,
-        },
-      ],
-      nil: {
-        inv: [
-          {
-            sply_ty: "INTRAB2B",
-            expt_amt: 0.0,
-            nil_amt: 0.0,
-            ngsup_amt: 0.0,
-          },
-          {
-            sply_ty: "INTRAB2C",
-            expt_amt: gstMetrics.totalExemptSupplies,
-            nil_amt: 0.0,
-            ngsup_amt: 0.0,
-          },
-        ],
-      },
+       hash: "",
+       b2b: [],
+       b2cs: [],
+       nil: { inv: [] },
       cdnr: gstMetrics.creditNotes.map((c) => ({
         ctin: "24AAACA9988C1ZQ",
         nt: [
@@ -335,45 +283,8 @@ export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
           },
         ],
       })),
-      hsn: {
-        data: [
-          {
-            num: 1,
-            hsn_sc: "999312",
-            desc: "Human Health & Pathology Laboratory Diagnostic Services",
-            uqc: "NOS",
-            qty: gstMetrics.totalInvoicesCount,
-            val: gstMetrics.totalGrossTurnover,
-            txval: gstMetrics.totalTaxableSupplies,
-            iamt: gstMetrics.totalIGST,
-            camt: gstMetrics.totalCGST,
-            samt: gstMetrics.totalSGST,
-            csamt: 0.0,
-          },
-        ],
-      },
-      doc_issue: {
-        doc_det: [
-          {
-            doc_num: 1,
-            doc_typ: "Invoices for outward supply",
-            from: "INV/26-27/000001",
-            to: `INV/26-27/${String(gstMetrics.totalInvoicesCount).padStart(6, "0")}`,
-            totnum: gstMetrics.totalInvoicesCount,
-            canc: 0,
-            net_issue: gstMetrics.totalInvoicesCount,
-          },
-          {
-            doc_num: 2,
-            doc_typ: "Credit Note",
-            from: "CN/26-27/000001",
-            to: "CN/26-27/000002",
-            totnum: gstMetrics.creditNotes.length,
-            canc: 0,
-            net_issue: gstMetrics.creditNotes.length,
-          },
-        ],
-      },
+       hsn: { data: [] },
+       doc_issue: { doc_det: [] },
     };
   }, [gstMetrics, labEntity]);
 
@@ -395,22 +306,22 @@ export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
   return (
     <div className="space-y-6">
       {/* Executive Hero Banner */}
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white shadow-md">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xs">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-xs font-semibold text-indigo-300 ring-1 ring-indigo-400/30 flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                GST Rule 46 & SAC 999312 Statutory Filing
+              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                GST Rule 46 &amp; SAC 999312 Statutory Filing
               </span>
-              <span className="text-xs text-slate-400">
-                FY {selectedFY} • GSTIN: {labEntity.gstin}
+              <span className="text-xs text-slate-500">
+                FY {selectedFY} • GSTIN: {labEntity.gstin || "07AAAAA0000A1Z5"}
               </span>
             </div>
-            <h2 className="text-xl font-bold tracking-tight text-white mt-1.5 flex items-center gap-2">
-              GST Tax Audit & GSTR-1 Return Filing Engine
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 mt-1.5 flex items-center gap-2">
+              GST Tax Audit &amp; GSTR-1 Return Filing Engine
             </h2>
-            <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
               Complete automated statutory reconciliation across Tables 4 (B2B), 7 (B2C), 8 (Exempt Healthcare), 9B (Credit Notes), 12 (HSN/SAC 999312) and 13 (Document Register) for direct GST Portal upload.
             </p>
           </div>
@@ -418,7 +329,7 @@ export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setJsonModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-md hover:bg-indigo-500 transition-all ring-1 ring-indigo-400/30"
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all"
             >
               <Code className="h-4 w-4" />
               GSTR-1 Portal JSON
@@ -1162,7 +1073,7 @@ export default function GSTTaxAuditReport({ invoices }: GSTReportProps) {
 
                 <div className="pt-6 flex justify-between text-[11px] text-slate-500">
                   <div>
-                    <div className="font-bold text-slate-800">For LabCore Diagnostics Pvt. Ltd.</div>
+                    <div className="font-bold text-slate-800">For the registered healthcare facility</div>
                     <div className="mt-8 border-t border-slate-300 pt-1">Authorized Accounts Signatory</div>
                   </div>
                   <div className="text-right">

@@ -342,11 +342,11 @@ export default function ProfessionalInvoice({
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(24);
       pdf.setFont("helvetica", "bold");
-      pdf.text("LABCORE ELIS", 15, 20);
+      pdf.text("Healthcare facility", 15, 20);
       
       pdf.setFontSize(10);
       pdf.setFont("helvetica", "normal");
-      pdf.text("Enterprise Laboratory Information System", 15, 28);
+      pdf.text("Patient billing statement", 15, 28);
       
       pdf.setFontSize(16);
       pdf.setFont("helvetica", "bold");
@@ -610,8 +610,8 @@ export default function ProfessionalInvoice({
                 LC
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-wide">LABCORE ELIS</h1>
-                <p className="text-indigo-100 text-sm uppercase tracking-widest">Enterprise Laboratory Information System</p>
+                <h1 className="text-2xl font-bold text-white tracking-wide">Healthcare facility</h1>
+                <p className="text-indigo-100 text-sm uppercase tracking-widest">Patient billing statement</p>
               </div>
             </div>
             <div className="text-right">

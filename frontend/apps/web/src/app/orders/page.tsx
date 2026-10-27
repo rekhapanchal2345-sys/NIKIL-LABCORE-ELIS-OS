@@ -45,6 +45,7 @@ import OrderPipelineKanban from "@/components/orders/OrderPipelineKanban";
 import SpecimenAccessioningModal from "@/components/orders/SpecimenAccessioningModal";
 import RegisterOrderWizard from "@/components/orders/RegisterOrderWizard";
 import PhlebotomyBarcodeGeneratorModal from "@/components/orders/PhlebotomyBarcodeGeneratorModal";
+import DiagnosticInvestigationStudio from "@/components/orders/DiagnosticInvestigationStudio";
 
 import {
   Barcode,
@@ -147,6 +148,13 @@ export interface Order {
   dueAmount: number;
 }
 
+const WORKSTATION_TABS = ["worklist", "kanban", "tat", "studio", "analytics", "comms", "integration"] as const;
+type WorkstationTab = (typeof WORKSTATION_TABS)[number];
+
+function isWorkstationTab(value: string | null): value is WorkstationTab {
+  return Boolean(value && WORKSTATION_TABS.includes(value as WorkstationTab));
+}
+
 const TUBE_CONTAINER_COLORS: Record<string, { bg: string; text: string; border: string; capColor: string; name: string }> = {
   "EDTA Tube": { bg: "bg-purple-500/10", text: "text-purple-300", border: "border-purple-500/40", capColor: "#8B5CF6", name: "Lavender EDTA" },
   "Lavender Top": { bg: "bg-purple-500/10", text: "text-purple-300", border: "border-purple-500/40", capColor: "#8B5CF6", name: "Lavender EDTA" },
@@ -180,7 +188,7 @@ export default function OrdersPage() {
   useEffect(() => { showToastRef.current = showToast; }, [showToast]);
 
   // Master Workstation Tab
-  const [workstationTab, setWorkstationTab] = useState<"worklist" | "kanban" | "tat" | "analytics" | "comms" | "integration">("worklist");
+  const [workstationTab, setWorkstationTab] = useState<WorkstationTab>("worklist");
 
   // Data states
   const [orders, setOrders] = useState<Order[]>([]);
@@ -253,7 +261,7 @@ export default function OrdersPage() {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has('tab')) {
         const requestedTab = urlParams.get('tab');
-        setWorkstationTab(requestedTab === "integration" ? "integration" : requestedTab as any);
+        if (isWorkstationTab(requestedTab)) setWorkstationTab(requestedTab);
       }
       if (urlParams.has('status')) setStatusFilter(urlParams.get('status') || "all");
       if (urlParams.has('payment')) setPaymentFilter(urlParams.get('payment') || "all");
@@ -338,13 +346,22 @@ export default function OrdersPage() {
       else setIsRefreshing(true);
 
       const [ordersRes, doctorsRes] = await Promise.all([
-        orderApi.getAll(),
+        orderApi.getAll("page=1&limit=100"),
         doctorApi.getAll().catch(() => ({ data: [] })),
       ]);
 
       if (ordersRes && (ordersRes.success || ordersRes.data)) {
-        const list = ordersRes.data?.orders || ordersRes.data || [];
-        setOrders(Array.isArray(list) ? list : []);
+        const firstPage = ordersRes.data?.orders || (Array.isArray(ordersRes.data) ? ordersRes.data : []);
+        const totalPages = Number(ordersRes.data?.pagination?.totalPages || 1);
+        const remainingPages = totalPages > 1
+          ? await Promise.all(
+              Array.from({ length: totalPages - 1 }, (_, index) =>
+                orderApi.getAll(`page=${index + 2}&limit=100`)
+              )
+            )
+          : [];
+        const remainingOrders = remainingPages.flatMap((response: any) => response?.data?.orders || []);
+        setOrders(Array.isArray(firstPage) ? [...firstPage, ...remainingOrders] : []);
       }
       setDataState("ready");
 
@@ -491,20 +508,25 @@ export default function OrdersPage() {
   // Metrics
   const computedMetrics = useMemo(() => {
     const totalOrders = orders.length;
-    const pendingDraw = orders.filter((o) => !o.sampleCollected && o.orderStatus !== "CANCELLED").length;
-    const statCount = orders.filter((o) => (o.priority === "STAT" || o.priority === "URGENT") && o.orderStatus !== "COMPLETED").length;
+    const pendingDraw = orders.filter((o) => o.orderStatus === "REGISTERED" && !o.sampleCollected).length;
+    const statCount = orders.filter((o) => (o.priority === "STAT" || o.priority === "URGENT") && !["COMPLETED", "CANCELLED"].includes(o.orderStatus)).length;
     const inAnalyzer = orders.filter((o) => o.orderStatus === "PROCESSING").length;
     const completedCount = orders.filter((o) => o.orderStatus === "COMPLETED").length;
+    const cancelledCount = orders.filter((o) => o.orderStatus === "CANCELLED").length;
+    const todayKey = new Date().toLocaleDateString("en-CA");
+    const todayOrders = orders.filter((o) => new Date(o.createdAt).toLocaleDateString("en-CA") === todayKey).length;
     const totalBilled = orders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
     const totalCollected = orders.reduce((sum, o) => sum + (o.paidAmount || 0), 0);
     const totalDue = orders.reduce((sum, o) => sum + (o.dueAmount || 0), 0);
 
     return {
       totalOrders,
+      todayOrders,
       pendingDraw,
       statCount,
       inAnalyzer,
       completedCount,
+      cancelledCount,
       totalBilled,
       totalCollected,
       totalDue,
@@ -575,7 +597,11 @@ export default function OrdersPage() {
   const handleSelectAllCurrentPage = () => {
     const allCurrentPageSelected = currentOrders.length > 0 && currentOrders.every((order) => selectedOrders.has(order.id));
     if (allCurrentPageSelected) {
-      setSelectedOrders(new Set());
+      setSelectedOrders((previous) => {
+        const next = new Set(previous);
+        currentOrders.forEach((order) => next.delete(order.id));
+        return next;
+      });
     } else {
       setSelectedOrders((previous) => new Set([...previous, ...currentOrders.map((o) => o.id)]));
     }
@@ -689,7 +715,7 @@ export default function OrdersPage() {
                     }`}
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${autoRefreshEnabled ? "animate-spin text-emerald-600" : ""}`} />
-                    Live Sync {autoRefreshEnabled ? `(${countdown}s)` : "OFF"}
+                    Auto-refresh {autoRefreshEnabled ? `(${countdown}s)` : "OFF"}
                   </button>
 
                   <button
@@ -705,7 +731,7 @@ export default function OrdersPage() {
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>New order</span>
+                     <span>New requisition</span>
                     <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.2 text-[9px] font-mono bg-white/20 rounded">N</kbd>
                   </button>
                 </div>
@@ -716,11 +742,11 @@ export default function OrdersPage() {
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 border-t border-slate-100 pt-5">
               <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Booked</span>
-                  <span className="h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total orders</span>
+                   <span className="h-2 w-2 rounded-full bg-sky-500" />
                 </div>
                 <p className="mt-1 text-2xl font-black text-slate-900">{computedMetrics.totalOrders}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Active requisitions</p>
+                 <p className="text-[10px] text-slate-400 mt-0.5">{computedMetrics.todayOrders} registered today</p>
               </div>
 
               <div className="rounded-xl border border-amber-200/90 bg-amber-50/50 p-3 shadow-2xs">
@@ -730,12 +756,12 @@ export default function OrdersPage() {
               </div>
 
               <div className="rounded-xl border border-rose-200/90 bg-rose-50/50 p-3 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-800">STAT / Critical</span>
-                  {computedMetrics.statCount > 0 && <Flame className="h-3.5 w-3.5 text-rose-600 fill-rose-600 animate-bounce" />}
+                 <div className="flex items-center justify-between">
+                   <span className="text-[10px] font-bold uppercase tracking-wider text-rose-800">Priority orders</span>
+                   {computedMetrics.statCount > 0 && <Flame className="h-3.5 w-3.5 text-rose-600 fill-rose-600" />}
                 </div>
                 <p className="mt-1 text-2xl font-black text-rose-900">{computedMetrics.statCount}</p>
-                <p className="text-[10px] text-rose-700/80 mt-0.5">Emergency priorities</p>
+                 <p className="text-[10px] text-rose-700/80 mt-0.5">STAT and urgent review</p>
               </div>
 
               <div className="rounded-xl border border-indigo-200/90 bg-indigo-50/50 p-3 shadow-2xs">
@@ -808,6 +834,21 @@ export default function OrdersPage() {
               </button>
 
               <button
+                onClick={() => setWorkstationTab("studio")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  workstationTab === "studio"
+                    ? "bg-white text-purple-900 shadow-xs border border-purple-300 ring-1 ring-purple-200"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <FlaskConical className="h-3.5 w-3.5 text-purple-600" />
+                <span>Investigation Studio</span>
+                <span className="rounded-full bg-purple-100 text-purple-800 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider">
+                  NABL
+                </span>
+              </button>
+
+              <button
                 onClick={() => setWorkstationTab("analytics")}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   workstationTab === "analytics"
@@ -853,17 +894,16 @@ export default function OrdersPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-300 bg-gradient-to-r from-rose-50 via-red-50/60 to-rose-50 p-4 shadow-xs">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-                      <Flame className="h-5 w-5 fill-white animate-bounce" />
+                       <Flame className="h-5 w-5 fill-white" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-black uppercase tracking-wider text-rose-800">
-                          CRITICAL STAT EMERGENCY TRIAGE ALERT
-                        </span>
-                        <span className="h-2 w-2 rounded-full bg-rose-600 animate-ping" />
-                      </div>
-                      <p className="text-xs text-rose-950 font-bold mt-0.5">
-                        {computedMetrics.statCount} Requisition(s) require immediate laboratory processing (Sub-60 min SLA).
+                           Priority order review
+                           </span>
+                         </div>
+                       <p className="text-xs text-rose-950 font-bold mt-0.5">
+                         {computedMetrics.statCount} STAT or urgent order(s) require review against the configured turnaround target.
                       </p>
                     </div>
                   </div>
@@ -878,7 +918,7 @@ export default function OrdersPage() {
                           : "bg-white text-rose-800 border border-rose-300 hover:bg-rose-100"
                       }`}
                     >
-                      {priorityFilter === "STAT" ? "Show All Requisitions" : "⚡ Isolate STAT Orders"}
+                       {priorityFilter === "STAT" ? "Show all orders" : "Show STAT orders"}
                     </button>
                   </div>
                 </div>
@@ -1129,12 +1169,12 @@ export default function OrdersPage() {
                             />
                           </th>
                           <th className="px-5 py-4">Requisition ID</th>
-                          <th className="px-5 py-4">Patient Demographics</th>
+                           <th className="px-5 py-4">Patient details</th>
                           <th className="px-5 py-4">Referring Doctor</th>
-                          <th className="px-5 py-4">Test Panels &amp; Containers</th>
-                          <th className="px-5 py-4">Stage &amp; Phlebotomy</th>
-                          <th className="px-5 py-4">Billing &amp; Ledger</th>
-                          <th className="px-5 py-4 text-right">Workflow Actions</th>
+                           <th className="px-5 py-4">Investigations &amp; specimen</th>
+                           <th className="px-5 py-4">Lifecycle &amp; collection</th>
+                           <th className="px-5 py-4">Billing</th>
+                           <th className="px-5 py-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -1376,6 +1416,17 @@ export default function OrdersPage() {
                                     <MessageCircle className="h-3.5 w-3.5" />
                                   </button>
 
+                                  <button
+                                    onClick={() => {
+                                      setWorkstationTab("studio");
+                                      window.history.pushState(null, "", `/orders?tab=studio&orderId=${order.id}`);
+                                    }}
+                                    className="rounded-xl border border-purple-200 bg-purple-50 px-2 py-1.5 text-purple-700 hover:bg-purple-100 transition-colors shadow-2xs"
+                                    title="Open in Diagnostic Investigation Studio"
+                                  >
+                                    <FlaskConical className="h-3.5 w-3.5" />
+                                  </button>
+
                                   <OrderRowQuickActions
                                     order={order as any}
                                     onView={() => router.push(`/orders/${order.id}`)}
@@ -1495,6 +1546,13 @@ export default function OrdersPage() {
             </div>
           )}
 
+          {/* TAB: DIAGNOSTIC INVESTIGATION STUDIO (ULTRA LIGHT WHITE HOSPITAL WORKBENCH) */}
+          {workstationTab === "studio" && (
+            <div className="space-y-4">
+              <DiagnosticInvestigationStudio />
+            </div>
+          )}
+
           {/* TAB 4: FINANCIAL & OPERATIONAL ANALYTICS */}
           {workstationTab === "analytics" && (
             <div className="space-y-6">
@@ -1502,12 +1560,12 @@ export default function OrdersPage() {
                 analytics={analyticsData ?? {
                   overview: {
                     totalOrders: computedMetrics.totalOrders,
-                    todayOrders: computedMetrics.totalOrders,
+                     todayOrders: computedMetrics.todayOrders,
                     pendingSamples: computedMetrics.pendingDraw,
                     statOrders: computedMetrics.statCount,
                     urgentOrders: 0,
                     completedToday: computedMetrics.completedCount,
-                    cancelledToday: 0,
+                     cancelledToday: computedMetrics.cancelledCount,
                     tatBreachCount: tatData?.breached || 0,
                   },
                   revenue: {
@@ -1525,9 +1583,16 @@ export default function OrdersPage() {
                 loading={analyticsLoading}
                 onStatClick={(filter) => {
                   if (filter === "STAT") { setPriorityFilter("STAT"); setWorkstationTab("worklist"); }
-                  else if (filter === "REGISTERED") { setStatusFilter("REGISTERED"); setWorkstationTab("worklist"); }
-                  else if (filter === "COMPLETED") { setStatusFilter("COMPLETED"); setWorkstationTab("worklist"); }
-                }}
+                   else if (filter === "REGISTERED") { setStatusFilter("REGISTERED"); setWorkstationTab("worklist"); }
+                   else if (filter === "COMPLETED") { setStatusFilter("COMPLETED"); setWorkstationTab("worklist"); }
+                   else if (filter === "TAT_BREACH") { setWorkstationTab("tat"); setShowTATMonitor(true); }
+                   else if (filter === "today") {
+                     const today = new Date().toISOString().slice(0, 10);
+                     setDateFrom(today);
+                     setDateTo(today);
+                     setWorkstationTab("worklist");
+                   }
+                 }}
               />
             </div>
           )}

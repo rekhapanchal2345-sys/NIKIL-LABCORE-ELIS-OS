@@ -17,7 +17,6 @@ import {
   Printer,
   Share2,
   ArrowRight,
-  Sparkles,
   User,
   Phone,
   Receipt,
@@ -175,7 +174,7 @@ export default function AdvancedPaymentModal({
       setTransactionId("");
       setCardLast4("");
       setCardBrand("VISA / MASTER");
-      setPosTerminalId("POS-HDFC-01");
+       setPosTerminalId("");
       setChequeNumber("");
       setBankName("");
       setInsuranceProvider("");
@@ -192,8 +191,8 @@ export default function AdvancedPaymentModal({
     }
   }, [isOpen, invoice]);
 
-  // Dynamic UPI QR generation
-  const upiId = "labcore@icici";
+  // Generate a QR only when an institution has configured its own VPA.
+  const upiId = "";
   const invNumber = invoice?.invoiceNumber || `INV-${invoice?.id || "001"}`;
   const upiPayAmount = parsedAmount > 0 ? parsedAmount : initialDue;
 
@@ -201,7 +200,7 @@ export default function AdvancedPaymentModal({
     if (paymentMethod !== "UPI" || upiPayAmount <= 0) return;
     try {
       const payload = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
-        "LabCore Diagnostics"
+        "Healthcare facility"
       )}&am=${upiPayAmount.toFixed(2)}&cu=INR&tr=${encodeURIComponent(
         invNumber
       )}&tn=${encodeURIComponent(`Settle Due ${invNumber}`)}`;
@@ -354,8 +353,7 @@ export default function AdvancedPaymentModal({
           </div>
 
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-500/20 mb-2">
-            <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-            Transaction Approved & Reconciled
+             Transaction Approved & Reconciled
           </span>
 
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -436,23 +434,23 @@ export default function AdvancedPaymentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-5 overflow-y-auto">
       <div className="relative w-full max-w-3xl rounded-3xl bg-white shadow-[0_35px_110px_rgba(0,0,0,0.5)] border border-slate-200/80 my-auto overflow-hidden">
         {/* ─── HEADER: INSTITUTIONAL CASHIER CONSOLE ─── */}
-        <div className="border-b border-slate-200/80 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 py-5 text-white">
+        <div className="border-b border-slate-200 bg-white px-6 py-5 text-slate-900">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
                 <Banknote className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-black tracking-tight text-white">
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900">
                     Collect Due Payment
                   </h2>
-                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 ring-1 ring-emerald-500/30">
-                    Fast Settle
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                     Payment collection
                   </span>
                 </div>
-                <p className="text-xs text-slate-300">
-                  Invoice <span className="font-mono font-bold text-white">#{invNumber}</span> • Cashier: <span className="text-white font-medium">{cashierName}</span>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Invoice <span className="font-mono font-bold text-slate-800">#{invNumber}</span> • Cashier: <span className="text-slate-800 font-medium">{cashierName}</span>
                 </p>
               </div>
             </div>
@@ -469,7 +467,7 @@ export default function AdvancedPaymentModal({
 
         {/* ─── BODY CONTAINER ─── */}
         <div className="p-6 overflow-y-auto max-h-[82vh]">
-          {/* Top Dossier: Patient Demographics & Financial Telemetry */}
+           {/* Patient demographics and balance */}
           <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Patient Demographics Card */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 flex items-center gap-3 md:col-span-1">
@@ -481,7 +479,7 @@ export default function AdvancedPaymentModal({
                   {invoice.patientName || "Walk-in Patient"}
                 </p>
                 <p className="text-slate-500 font-mono text-[11px]">
-                  UHID: {invoice.patientUhid || "LC-000001"}
+                   UHID: {invoice.patientUhid || "—"}
                 </p>
                 <p className="text-slate-500 text-[11px]">
                   {invoice.patientPhone || "No Mobile"}
@@ -489,7 +487,7 @@ export default function AdvancedPaymentModal({
               </div>
             </div>
 
-            {/* Financial Telemetry Banner */}
+             {/* Outstanding balance */}
             <div className="rounded-2xl border border-amber-200/90 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-50/40 p-3.5 md:col-span-2 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1">
@@ -517,7 +515,6 @@ export default function AdvancedPaymentModal({
                 }}
                 className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition-all hover:scale-105 active:scale-95"
               >
-                <Sparkles className="h-3.5 w-3.5" />
                 <span>Settle Full Due</span>
               </button>
             </div>
@@ -526,7 +523,7 @@ export default function AdvancedPaymentModal({
           {/* Payment History Accordion */}
           {existingPayments.length > 0 && (
             <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/50 p-3">
-              <button
+                   {upiId ? <button
                 type="button"
                 onClick={() => setShowPaymentHistory(!showPaymentHistory)}
                 className="flex w-full items-center justify-between text-xs font-bold text-slate-700 hover:text-indigo-600 transition-colors"
@@ -540,7 +537,7 @@ export default function AdvancedPaymentModal({
                 <span className="text-[11px] text-indigo-600 font-semibold">
                   {showPaymentHistory ? "Hide History ▲" : "View Breakdown ▼"}
                 </span>
-              </button>
+                   </button> : <span className="text-[11px] font-medium text-slate-500">UPI VPA not configured</span>}
 
               {showPaymentHistory && (
                 <div className="mt-3 space-y-2 border-t border-slate-200/80 pt-2 text-xs">
@@ -851,7 +848,7 @@ export default function AdvancedPaymentModal({
                       />
                     ) : (
                       <div className="h-32 w-32 flex items-center justify-center bg-slate-100 text-slate-400 text-xs">
-                        Generating QR...
+                         UPI QR is unavailable until a VPA is configured.
                       </div>
                     )}
                     <span className="text-[10px] font-bold text-slate-600 mt-1">

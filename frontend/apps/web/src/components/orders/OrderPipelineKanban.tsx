@@ -207,7 +207,7 @@ export default function OrderPipelineKanban({
                 {stageOrders.length === 0 ? (
                   <div className="flex h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/60 p-4 text-center text-slate-400">
                     <FileText className="h-6 w-6 stroke-[1.5] text-slate-300 mb-2" />
-                    <p className="text-xs font-semibold text-slate-500">No requisitions in this stage</p>
+                     <p className="text-xs font-semibold text-slate-500">No orders in this stage</p>
                   </div>
                 ) : (
                   stageOrders.map((order) => {
@@ -224,14 +224,14 @@ export default function OrderPipelineKanban({
                             : "border-slate-200/90 shadow-2xs"
                         }`}
                       >
-                        {/* STAT Emergency Banner */}
+                         {/* Priority order banner */}
                         {isStat && (
-                          <div className="flex items-center justify-between bg-gradient-to-r from-rose-600 to-red-600 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white shadow-xs">
-                            <span className="flex items-center gap-1">
-                              <Flame className="h-3 w-3 fill-white animate-bounce" /> {order.priority} PRIORITY
-                            </span>
-                            <span className="bg-white/20 px-1.5 py-0.2 rounded font-mono text-[8px]">
-                              FAST-TRACK
+                           <div className="flex items-center justify-between bg-rose-600 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white shadow-xs">
+                             <span className="flex items-center gap-1">
+                               <Flame className="h-3 w-3 fill-white" /> {order.priority} PRIORITY
+                             </span>
+                             <span className="bg-white/20 px-1.5 py-0.2 rounded font-mono text-[8px]">
+                               PRIORITY
                             </span>
                           </div>
                         )}

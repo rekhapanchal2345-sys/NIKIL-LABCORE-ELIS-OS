@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import InvoiceTable from "@/components/invoices/InvoiceTable";
@@ -14,7 +14,6 @@ import PixelPerfectInvoice from "@/components/invoices/PixelPerfectInvoice";
 import WhatsAppShare from "@/components/invoices/WhatsAppShare";
 import EmailShare from "@/components/invoices/EmailShare";
 import InvoiceQuickDrawer from "@/components/invoices/InvoiceQuickDrawer";
-import DayBookReconciliation from "@/components/invoices/DayBookReconciliation";
 import DueAgingTracker from "@/components/invoices/DueAgingTracker";
 import DoctorReferralBilling from "@/components/invoices/DoctorReferralBilling";
 import GSTTaxAuditReport from "@/components/invoices/GSTTaxAuditReport";
@@ -35,7 +34,6 @@ import {
   Send,
   FileSpreadsheet,
   RotateCcw,
-  Sparkles,
   CheckCircle2,
   RefreshCw,
   X,
@@ -98,22 +96,28 @@ export default function InvoicesPage() {
   const [emailShareOpen, setEmailShareOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  // New Enterprise Features State
+  const router = useRouter();
+
+  // Billing workspace state
   const tabParam = searchParams.get("tab") || "all";
-  const [activeTab, setActiveTab] = useState<"all" | "pos" | "daybook" | "aging" | "b2b" | "gst" | "tpa">(
-    (["all", "pos", "daybook", "aging", "b2b", "gst", "tpa"].includes(tabParam) ? tabParam : "all") as any
+  const [activeTab, setActiveTab] = useState<"all" | "pos" | "aging" | "b2b" | "gst" | "tpa">(
+    (["all", "pos", "aging", "b2b", "gst", "tpa"].includes(tabParam) ? tabParam : "all") as any
   );
   const [quickDrawerInvoice, setQuickDrawerInvoice] = useState<Invoice | null>(null);
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
 
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t && ["all", "pos", "daybook", "aging", "b2b", "gst", "tpa"].includes(t)) {
+    if (t === "daybook") {
+      router.replace("/payments?tab=cash-counter");
+      return;
+    }
+    if (t && ["all", "pos", "aging", "b2b", "gst", "tpa"].includes(t)) {
       setActiveTab(t as any);
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
-  const handleTabChange = (tab: "all" | "pos" | "daybook" | "aging" | "b2b" | "gst" | "tpa") => {
+  const handleTabChange = (tab: "all" | "pos" | "aging" | "b2b" | "gst" | "tpa") => {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
     if (tab === "all") {
@@ -226,6 +230,9 @@ export default function InvoicesPage() {
       if (filters.doctorId) {
         queryParams.append("doctorId", filters.doctorId);
       }
+      if (filters.paymentMode) {
+        queryParams.append("paymentMode", filters.paymentMode);
+      }
       if (filters.dateFrom) {
         queryParams.append("dateFrom", filters.dateFrom);
       }
@@ -336,7 +343,6 @@ export default function InvoicesPage() {
           };
         });
 
-        console.log('Transformed invoices (fallback):', transformedInvoices);
         setInvoices(transformedInvoices);
         setError(null);
       } else {
@@ -475,15 +481,15 @@ export default function InvoicesPage() {
             ...invoice,
             patientInfo: {
               ...invoice.patientInfo,
-              age: fullInvoice.order?.patient?.age || (fullInvoice.order?.patient?.dateOfBirth ? String(Math.floor((Date.now() - new Date(fullInvoice.order.patient.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000))) : "36"),
-              gender: fullInvoice.order?.patient?.gender || invoice.patientInfo?.gender || "Male",
-              address: fullInvoice.order?.patient?.address || invoice.patientInfo?.address || "12, Shanti Nagar, Medical Circle, Ahmedabad",
+              age: fullInvoice.order?.patient?.age || (fullInvoice.order?.patient?.dateOfBirth ? String(Math.floor((Date.now() - new Date(fullInvoice.order.patient.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000))) : undefined),
+              gender: fullInvoice.order?.patient?.gender || invoice.patientInfo?.gender,
+              address: fullInvoice.order?.patient?.address || invoice.patientInfo?.address,
               phone: fullInvoice.order?.patient?.phone || invoice.patientPhone,
             },
             doctorInfo: {
               ...invoice.doctorInfo,
               name: fullInvoice.order?.doctor?.fullName || invoice.doctorName,
-              qualification: fullInvoice.order?.doctor?.specialization || "MBBS, MD (Medicine)",
+              qualification: fullInvoice.order?.doctor?.specialization,
             },
             items: fullInvoice.order?.items?.map((item: any) => ({
               id: item.id,
@@ -590,7 +596,7 @@ export default function InvoicesPage() {
     <DashboardLayout title="Invoices">
       <ToastManager />
       <div className="space-y-6">
-        {/* Executive Header */}
+        {/* Register header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/90 pb-5 bg-white p-5 rounded-2xl border shadow-sm">
           <div>
             <div className="flex items-center gap-3">
@@ -600,61 +606,63 @@ export default function InvoicesPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                    Hospital &amp; Diagnostic Invoicing ERP
+                    Hospital Invoices &amp; Billing Desk
                   </h1>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                    <Sparkles className="h-3 w-3 text-blue-600" />
-                    Ultra Elite RCM
+                  <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                    Counter #1 Active
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                  Multi-counter OPD/IPD billing, TPA cashless pre-auth reconciliation, front-desk day book, and GSTR-1 tax compliance.
-                </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1 font-medium">
+                  <span>OPD, Inpatient (IPD), Diagnostics, Procedures, Corporate &amp; TPA Cashless Billing</span>
+                  <span>•</span>
+                  <span className="text-slate-400 font-mono text-[11px]">Shift: Morning (08:00 - 16:00)</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              Live Billing Sync
-            </span>
-
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => handleTabChange("pos")}
-              className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all"
+              className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-all"
             >
               <Plus className="h-4 w-4" />
-              + Quick POS Billing
+              <span>+ New Counter Bill (POS)</span>
             </button>
             <button
-              onClick={() => handleTabChange("daybook")}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all"
+              onClick={() => handleTabChange("aging")}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs transition-all"
             >
-              <Receipt className="h-4 w-4 text-emerald-600" />
-              Day Book Shift Close
+              <Clock className="h-4 w-4 text-amber-600" />
+              <span>Receivables &amp; Aging</span>
+            </button>
+            <button
+              onClick={() => handleTabChange("tpa")}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs transition-all"
+            >
+              <ShieldCheck className="h-4 w-4 text-blue-600" />
+              <span>TPA Claims</span>
             </button>
             <button
               onClick={() => fetchInvoices()}
               title="Refresh register"
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors shadow-xs"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-blue-600" : "text-blue-600"}`} />
-              Refresh
+              <span>Refresh</span>
             </button>
           </div>
         </div>
 
-        {/* Tab Navigation Pills */}
-        <div className="flex overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 text-xs font-semibold scrollbar-none gap-1.5 shadow-sm">
+        {/* Tab Navigation Hub */}
+        <div className="flex overflow-x-auto rounded-2xl border border-slate-200/90 bg-white p-1.5 text-xs font-semibold scrollbar-none gap-1.5 shadow-xs">
           {[
-            { id: "all", label: "All Invoices (Register)", count: invoices.length, icon: FileText },
-            { id: "pos", label: "Quick POS Billing", isNew: true, icon: CreditCard },
-            { id: "tpa", label: "TPA & Cashless Claims", icon: ShieldCheck },
-            { id: "daybook", label: "Day Book & Shift Close", icon: Receipt },
-            { id: "aging", label: "Due Aging Tracker", icon: Clock },
-            { id: "b2b", label: "B2B & Referral Billing", icon: Stethoscope },
-            { id: "gst", label: "GST & Tax Audit", icon: ShieldCheck },
+            { id: "all", label: "Invoice Register", count: invoices.length, icon: FileText },
+            { id: "pos", label: "New Counter Bill (POS)", badge: "Fast POS", icon: CreditCard },
+            { id: "tpa", label: "TPA & Cashless Claims", badge: "Insurance", icon: ShieldCheck },
+            { id: "aging", label: "Receivables & Aging", badge: "Due", icon: Clock },
+            { id: "b2b", label: "Corporate & Referrals", badge: "B2B", icon: Stethoscope },
+            { id: "gst", label: "GST & Tax Audit", badge: "SAC 999312", icon: ShieldCheck },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -662,26 +670,31 @@ export default function InvoicesPage() {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id as any)}
-                className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl transition-all ${isActive
-                  ? "bg-blue-600 text-white font-bold shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent"
-                  }`}
+                className={`flex items-center gap-2 whitespace-nowrap px-3.5 py-2.5 rounded-xl transition-all ${
+                  isActive
+                    ? "bg-blue-600 text-white font-bold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent"
+                }`}
               >
                 <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`} />
                 <span>{tab.label}</span>
-                {tab.count !== undefined && (
+                {tab.count !== undefined ? (
                   <span
-                    className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${isActive ? "bg-white/20 text-white" : "border border-slate-200 bg-slate-100 text-slate-600"
-                      }`}
+                    className={`ml-1 rounded-full px-2 py-0.2 text-[10px] font-bold ${
+                      isActive ? "bg-white/20 text-white" : "border border-slate-200 bg-slate-100 text-slate-600"
+                    }`}
                   >
                     {tab.count}
                   </span>
-                )}
-                {tab.isNew && (
-                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">
-                    Fast
+                ) : (tab as any).badge ? (
+                  <span
+                    className={`ml-1 rounded-md px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
+                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500 border border-slate-200"
+                    }`}
+                  >
+                    {(tab as any).badge}
                   </span>
-                )}
+                ) : null}
               </button>
             );
           })}
@@ -799,12 +812,7 @@ export default function InvoicesPage() {
           />
         )}
 
-        {/* TAB 3: DAY BOOK & CASH DRAWER RECONCILIATION */}
-        {activeTab === "daybook" && (
-          <DayBookReconciliation invoices={invoices} onRefresh={fetchInvoices} />
-        )}
-
-        {/* TAB 4: DUE AGING TRACKER */}
+        {/* TAB: DUE AGING TRACKER */}
         {activeTab === "aging" && (
           <DueAgingTracker
             invoices={invoices}
@@ -899,21 +907,9 @@ export default function InvoicesPage() {
               createdAt: selectedInvoice.createdAt,
               dueDate: selectedInvoice.dueDate,
             }}
-            cashierName={(selectedInvoice as any)?.payments?.[0]?.receivedBy || "Cash Desk #01 (Admin)"}
+            cashierName={(selectedInvoice as any)?.payments?.[0]?.receivedBy}
             labInfo={{
-              name: "LABCORE DIAGNOSTICS & RESEARCH INSTITUTE",
-              subName: "Central Clinical & Molecular Reference Laboratory",
-              branch: "Main Central Counter #01 (OPD)",
-              address: "Plot 42-A, Health Avenue, Medical Enclave",
-              city: "Ahmedabad, Gujarat - 380016",
-              phone: "+91 98765 43210",
-              gstin: "24ABCDE1234F1Z5",
-              email: "billing@labcore.in",
-              website: "www.labcore.in",
-              upiId: "labcore@icici",
-              nablNumber: "NABL MC-5678",
-              isoStandard: "ISO 15189:2022",
-              icmrNumber: "ICMR: LAB-9042",
+              name: "Healthcare facility",
             }}
             paperWidth="80mm"
             onSwitchToA4={() => {
@@ -938,19 +934,19 @@ export default function InvoicesPage() {
               transactionId: (selectedInvoice as any)?.payments?.[0]?.transactionId || selectedInvoice.orderNumber,
               patientName: selectedInvoice.patientName,
               patientId: selectedInvoice.patientId == null ? undefined : String(selectedInvoice.patientId),
-              patientUhid: selectedInvoice.patientUhid || "LC-000001",
-              age: selectedInvoice.patientInfo?.age || "35",
-              gender: selectedInvoice.patientInfo?.gender || "Male",
+              patientUhid: selectedInvoice.patientUhid,
+              age: selectedInvoice.patientInfo?.age,
+              gender: selectedInvoice.patientInfo?.gender,
               phone: selectedInvoice.patientPhone,
-              address: selectedInvoice.patientInfo?.address || "12, Shanti Nagar, Medical Circle, Ahmedabad",
-              collectedBy: (selectedInvoice as any)?.payments?.[0]?.receivedBy || "Central Collection Counter",
+              address: selectedInvoice.patientInfo?.address,
+              collectedBy: (selectedInvoice as any)?.payments?.[0]?.receivedBy,
               collectionDate: selectedInvoice.createdAt,
-              collectionTime: selectedInvoice.createdAt ? new Date(selectedInvoice.createdAt).toLocaleTimeString("en-IN") : "10:30 AM",
-              sampleType: "Whole Blood EDTA / Serum",
-              refDoctor: (selectedInvoice.doctorName as string) || "Self Referral",
-              refDoctorQualification: selectedInvoice.doctorInfo?.qualification || "MBBS, MD (Medicine)",
-              labBranch: "Main Central Processing Center",
-              verifyCode: selectedInvoice.invoiceNumber?.replace(/[^0-9]/g, "").slice(-7) || "LC99120",
+              collectionTime: selectedInvoice.createdAt ? new Date(selectedInvoice.createdAt).toLocaleTimeString("en-IN") : undefined,
+              sampleType: undefined,
+              refDoctor: selectedInvoice.doctorName as string,
+              refDoctorQualification: selectedInvoice.doctorInfo?.qualification,
+              labBranch: undefined,
+              verifyCode: undefined,
               items: ((selectedInvoice as any)?.items && (selectedInvoice as any).items.length > 0)
                 ? (selectedInvoice as any).items.map((item: any) => ({
                   id: item.id,
@@ -991,29 +987,20 @@ export default function InvoicesPage() {
               pendingAmount: selectedInvoice.pendingAmount,
               paymentDate: (selectedInvoice as any)?.payments?.[0]?.paidAt || selectedInvoice.createdAt,
               paymentStatus: selectedInvoice.paymentStatus === "PAID" ? "PAID" : "PENDING",
-              bankName: "HDFC Bank Ltd.",
-              accountName: "LabCore Diagnostics Pvt. Ltd.",
-              accountNumber: "50200088991122",
-              ifscCode: "HDFC0000123",
-              upiId: "labcore@icici",
-              whatsappNumber: selectedInvoice.patientPhone || "+91 98765 43210",
-              verifiedBy: "Dr. Rajesh Pathak",
-              verifierQualification: "MD Pathology (Reg No: G-45892)",
-              verifierRegNo: "G-45892",
-              labManager: (selectedInvoice as any)?.payments?.[0]?.receivedBy || "Dr. S. Mehta (Lab Director)",
-              companyName: "LabCore Diagnostics Pvt. Ltd.",
+              bankName: undefined,
+              accountName: undefined,
+              accountNumber: undefined,
+              ifscCode: undefined,
+              upiId: undefined,
+              whatsappNumber: selectedInvoice.patientPhone,
+              verifiedBy: undefined,
+              verifierQualification: undefined,
+              verifierRegNo: undefined,
+              labManager: (selectedInvoice as any)?.payments?.[0]?.receivedBy,
+              companyName: undefined,
             }}
             labInfo={{
-              name: "LabCore Diagnostics Pvt. Ltd.",
-              address: "123 Health Avenue, Medical District, Ahmedabad, Gujarat - 380016, India",
-              phone: "+91 98765 43210",
-              email: "info@labcore.in",
-              website: "www.labcore.in",
-              gstin: "24ABCDE1234F1Z5",
-              pan: "ABCDE1234F",
-              nablAccredited: "MC-5678 (ISO 15189:2022)",
-              isoCertified: "ISO 9001:2015 & ISO 27001",
-              hipaaCompliant: "Patient Data Protected",
+              name: "Healthcare facility",
             }}
             onSwitchToThermal={() => {
               setA4InvoiceOpen(false);
@@ -1047,12 +1034,12 @@ export default function InvoicesPage() {
               pdf.setTextColor(255, 255, 255);
               pdf.setFontSize(24);
               pdf.setFont("helvetica", "bold");
-              pdf.text("LABCORE ELIS", 15, 18);
+               pdf.text("Healthcare facility", 15, 18);
 
               pdf.setFontSize(10);
               pdf.setFont("helvetica", "normal");
-              pdf.text("Enterprise Laboratory Information System", 15, 25);
-              pdf.text("Diagnostic Laboratory Services", 15, 30);
+               pdf.text("Patient billing statement", 15, 25);
+               pdf.text("Invoice register", 15, 30);
 
               pdf.setFontSize(16);
               pdf.setFont("helvetica", "bold");
@@ -1176,7 +1163,7 @@ export default function InvoicesPage() {
               pdf.setFontSize(8);
               pdf.setFont("helvetica", "normal");
               pdf.setTextColor(107, 114, 128);
-              pdf.text("Generated by LabCore ELIS | For queries, please contact billing department", pageWidth / 2, yPosition, { align: "center" });
+               pdf.text("Generated from the invoice register | Please contact the billing desk for queries", pageWidth / 2, yPosition, { align: "center" });
               pdf.setTextColor(0, 0, 0);
 
               return pdf.output("blob");
@@ -1209,12 +1196,12 @@ export default function InvoicesPage() {
               pdf.setTextColor(255, 255, 255);
               pdf.setFontSize(24);
               pdf.setFont("helvetica", "bold");
-              pdf.text("LABCORE ELIS", 15, 18);
+               pdf.text("Healthcare facility", 15, 18);
 
               pdf.setFontSize(10);
               pdf.setFont("helvetica", "normal");
-              pdf.text("Enterprise Laboratory Information System", 15, 25);
-              pdf.text("Diagnostic Laboratory Services", 15, 30);
+               pdf.text("Patient billing statement", 15, 25);
+               pdf.text("Invoice register", 15, 30);
 
               pdf.setFontSize(16);
               pdf.setFont("helvetica", "bold");
@@ -1342,7 +1329,7 @@ export default function InvoicesPage() {
               pdf.setFontSize(8);
               pdf.setFont("helvetica", "normal");
               pdf.setTextColor(107, 114, 128);
-              pdf.text("Generated by LabCore ELIS | For queries, please contact billing department", pageWidth / 2, yPosition, { align: "center" });
+               pdf.text("Generated from the invoice register | Please contact the billing desk for queries", pageWidth / 2, yPosition, { align: "center" });
               pdf.setTextColor(0, 0, 0);
 
               return pdf.output("blob");

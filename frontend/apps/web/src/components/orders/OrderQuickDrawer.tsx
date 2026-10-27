@@ -198,8 +198,8 @@ export default function OrderQuickDrawer({
                 </span>
 
                 {isStat && (
-                  <span className="rounded-full bg-rose-600 px-2.5 py-0.5 text-[10px] font-black uppercase text-white shadow-xs flex items-center gap-1 animate-pulse">
-                    <Flame className="h-3 w-3 fill-white" /> {order.priority} EMERGENCY
+                   <span className="rounded-full bg-rose-600 px-2.5 py-0.5 text-[10px] font-black uppercase text-white shadow-xs flex items-center gap-1">
+                     <Flame className="h-3 w-3 fill-white" /> {order.priority} PRIORITY
                   </span>
                 )}
 
@@ -232,7 +232,7 @@ export default function OrderQuickDrawer({
                   </button>
                 </span>
                 <span>•</span>
-                <span>{order.items.length} Diagnostic Assay(s)</span>
+                 <span>{order.items.length} investigation(s)</span>
               </div>
             </div>
 
@@ -247,7 +247,7 @@ export default function OrderQuickDrawer({
           {/* Clinical Requisition Milestone Stepper */}
           <div className="mt-4 pt-3.5 border-t border-slate-200/80">
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1.5">
-              <span>Current Requisition Stage</span>
+               <span>Current order stage</span>
               <span className="text-sky-700 font-extrabold">{workflowSteps[currentStep]?.label || order.orderStatus}</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
@@ -270,7 +270,7 @@ export default function OrderQuickDrawer({
             {([
               ["overview", "Overview"],
               ["tubes", "Specimen Tubes"],
-              ["tests", `Assays (${order.items.length})`],
+               ["tests", `Investigations (${order.items.length})`],
               ["billing", "Billing Ledger"],
               ["timeline", "Audit Log"],
             ] as const).map(([tabKey, tabLabel]) => (
@@ -335,10 +335,10 @@ export default function OrderQuickDrawer({
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Government ABDM ABHA Status:</span>
-                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Linked &amp; Verified (ABDM M2)
-                  </span>
+                   <span className="text-slate-500">Patient identity record:</span>
+                   <span className="font-bold text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                     Linked to patient record
+                   </span>
                 </div>
               </div>
 

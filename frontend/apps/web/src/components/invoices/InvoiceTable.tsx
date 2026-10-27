@@ -10,7 +10,6 @@ import {
   MoreVertical,
   Receipt,
   QrCode,
-  Sparkles,
   ArrowUpRight,
   Clock,
   ShieldCheck,
@@ -189,6 +188,15 @@ function getPaymentStatusBadge(status?: string, pendingAmt?: number) {
     );
   }
 
+  if (value === "TPA" || value === "INSURANCE" || value === "CASHLESS" || value === "TPA_PENDING") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+        <ShieldCheck className="h-3 w-3 text-blue-600" />
+        TPA Claim Pending
+      </span>
+    );
+  }
+
   return (
     <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
       {status || "Registered"}
@@ -291,6 +299,15 @@ function PaymentModeCell({ invoice, isPaid }: { invoice: Invoice; isPaid: boolea
     );
   }
 
+  if (resolvedMode === "TPA" || resolvedMode === "INSURANCE" || resolvedMode === "CASHLESS") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+        <ShieldCheck className="h-3 w-3 text-blue-600" />
+        TPA Cashless
+      </span>
+    );
+  }
+
   return (
     <span className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
       {resolvedMode}
@@ -357,24 +374,24 @@ export default function InvoiceTable({
                   <span>Date &amp; Time</span>
                 </div>
                 <span className="block text-[9px] font-normal normal-case text-slate-400">
-                  Creation Timestamp
+                   Invoice creation
                 </span>
               </th>
               <th className="px-4 py-3.5 text-left border-r border-slate-200/60">
                 <div className="flex items-center gap-1.5">
                   <UserCheck className="h-3.5 w-3.5 text-indigo-600" />
-                  <span>Patient &amp; Referral (DPDP)</span>
+                   <span>Patient &amp; referrer</span>
                 </div>
                 <span className="block text-[9px] font-normal normal-case text-slate-400">
                   UHID + Masked Contact
                 </span>
               </th>
               <th className="px-4 py-3.5 text-right border-r border-slate-200/60">Gross (₹)</th>
-              <th className="px-4 py-3.5 text-right border-r border-slate-200/60">Tax &amp; Disc</th>
+               <th className="px-4 py-3.5 text-right border-r border-slate-200/60">Adjustments</th>
               <th className="px-4 py-3.5 text-right border-r border-slate-200/60">Net Bill (₹)</th>
               <th className="px-4 py-3.5 text-left border-r border-slate-200/60">Status</th>
               <th className="px-4 py-3.5 text-left border-r border-slate-200/60">Payment Mode</th>
-              <th className="px-4 py-3.5 text-center min-w-[220px]">Actions (Quick Print)</th>
+               <th className="px-4 py-3.5 text-center min-w-[220px]">Actions</th>
             </tr>
           </thead>
 
@@ -394,7 +411,7 @@ export default function InvoiceTable({
                     <Receipt className="h-7 w-7" />
                   </div>
                   <p className="text-base font-bold text-slate-900">
-                    No Diagnostic Invoices Found
+                     No invoices found
                   </p>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                     No billing records match the current filters. Try changing your search or date selection.
@@ -452,6 +469,9 @@ export default function InvoiceTable({
                         <span className="font-mono text-xs font-bold text-blue-700 group-hover:underline transition">
                           {invoice.invoiceNumber || `INV-${invoice.id}`}
                         </span>
+                        <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[9px] font-bold text-slate-600 border border-slate-200 uppercase font-mono">
+                          {invoice.paymentMode === "TPA" ? "TPA" : (invoice.orderNumber?.startsWith("IPD") ? "IPD" : "OPD")}
+                        </span>
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono mt-0.5">
                         {invoice.orderNumber ? `Ord: ${invoice.orderNumber}` : ""}
@@ -477,7 +497,7 @@ export default function InvoiceTable({
                           </div>
                           <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
                             <span className="font-mono font-semibold text-slate-700">
-                              {invoice.patientUhid || "LC-000001"}
+                               {invoice.patientUhid || "—"}
                             </span>
                             {invoice.patientPhone && (
                               <>
@@ -581,7 +601,7 @@ export default function InvoiceTable({
                         {/* 2. Quick A4 GST Invoice Print Button */}
                         <button
                           onClick={() => onPrint?.(invoice, "a4")}
-                          title="Print A4 GST Tax Invoice (Official NABL Copy)"
+                           title="Print A4 invoice"
                           className="flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-800 shadow-sm hover:bg-blue-100 transition-all"
                         >
                           <FileText className="h-3.5 w-3.5 text-blue-600" />
@@ -632,7 +652,7 @@ export default function InvoiceTable({
         </table>
       </div>
 
-      {/* Enterprise Server Pagination Bar */}
+      {/* Register pagination */}
       {pagination && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-3.5 text-xs text-slate-600">
           <div className="flex items-center gap-3 text-slate-500">

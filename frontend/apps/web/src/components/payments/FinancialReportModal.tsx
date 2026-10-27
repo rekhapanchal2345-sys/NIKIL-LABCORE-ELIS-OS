@@ -19,9 +19,7 @@ import { formatIndianRupees } from "@/lib/money";
 export type ReportType =
   | "DAY_BOOK"
   | "MODE_BREAKDOWN"
-  | "CASHIER_AUDIT"
-  | "GST_REGISTER"
-  | "AGING_RECEIVABLES";
+  | "CASHIER_AUDIT";
 
 interface FinancialReportModalProps {
   isOpen: boolean;
@@ -99,24 +97,6 @@ export default function FinancialReportModal({
       else map[name].digital += amt;
     });
     return map;
-  }, [filteredPayments]);
-
-  // GST aggregation
-  const gstData = useMemo(() => {
-    const totalCollected = filteredPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    // Assumes diagnostic services at standard / exempted or 18% GST where applicable
-    const taxableValue = Math.round((totalCollected / 1.18) * 100) / 100;
-    const gstTotal = Math.round((totalCollected - taxableValue) * 100) / 100;
-    const cgst = Math.round((gstTotal / 2) * 100) / 100;
-    const sgst = gstTotal - cgst;
-
-    return {
-      totalCollected,
-      taxableValue,
-      gstTotal,
-      cgst,
-      sgst,
-    };
   }, [filteredPayments]);
 
   // Print Report Handler
@@ -198,7 +178,7 @@ export default function FinancialReportModal({
         sanitizeCsvCell(d.count),
         sanitizeCsvCell(d.total),
       ]);
-    } else if (selectedReport === "CASHIER_AUDIT") {
+    } else {
       headers = ["Cashier", "Txn Count", "Cash Total (₹)", "Digital Total (₹)", "Grand Total (₹)"];
       rows = Object.entries(cashierData).map(([name, d]) => [
         sanitizeCsvCell(name),
@@ -207,15 +187,6 @@ export default function FinancialReportModal({
         sanitizeCsvCell(d.digital),
         sanitizeCsvCell(d.total),
       ]);
-    } else {
-      headers = ["Metric", "Amount (₹)"];
-      rows = [
-        [sanitizeCsvCell("Total Collections"), sanitizeCsvCell(gstData.totalCollected)],
-        [sanitizeCsvCell("Taxable Amount (SAC 999312)"), sanitizeCsvCell(gstData.taxableValue)],
-        [sanitizeCsvCell("CGST (9%)"), sanitizeCsvCell(gstData.cgst)],
-        [sanitizeCsvCell("SGST (9%)"), sanitizeCsvCell(gstData.sgst)],
-        [sanitizeCsvCell("Total GST Liability"), sanitizeCsvCell(gstData.gstTotal)],
-      ];
     }
 
     const csvContent =
@@ -265,7 +236,6 @@ export default function FinancialReportModal({
               { id: "DAY_BOOK", label: "Day Book (Cash Book)" },
               { id: "MODE_BREAKDOWN", label: "Mode-wise Breakdown" },
               { id: "CASHIER_AUDIT", label: "Cashier Productivity" },
-              { id: "GST_REGISTER", label: "GST Tax Register" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -442,45 +412,6 @@ export default function FinancialReportModal({
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {/* REPORT 4: GST REGISTER */}
-          {selectedReport === "GST_REGISTER" && (
-            <div>
-              <h4 className="text-sm font-bold text-slate-900 mb-1">GST & Tax Collection Register</h4>
-              <p className="text-xs text-slate-500 mb-4">Output tax liabilities calculated on diagnostic collections</p>
-
-              <div className="grid gap-3 sm:grid-cols-4 mb-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-[11px] uppercase tracking-wider text-slate-500">Gross Turnover</div>
-                  <div className="text-lg font-mono font-bold text-slate-900">
-                    {formatCurrency(gstData.totalCollected)}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-[11px] uppercase tracking-wider text-slate-500">Taxable Base</div>
-                  <div className="text-lg font-mono font-bold text-slate-800">
-                    {formatCurrency(gstData.taxableValue)}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-[11px] uppercase tracking-wider text-blue-700">CGST (9%)</div>
-                  <div className="text-lg font-mono font-bold text-blue-900">
-                    {formatCurrency(gstData.cgst)}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-[11px] uppercase tracking-wider text-indigo-700">SGST (9%)</div>
-                  <div className="text-lg font-mono font-bold text-indigo-900">
-                    {formatCurrency(gstData.sgst)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs text-slate-700">
-                <strong>GST Compliance Note:</strong> In India, clinical diagnostic laboratory services provided to patients by healthcare institutions are predominantly exempt under GST Notification No. 12/2017-Central Tax (Rate). Tax breakdown is calculated here for corporate diagnostic contracts and wellness packages where GST applies.
-              </div>
             </div>
           )}
         </div>

@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   Download,
   AlertTriangle,
-  Sparkles,
   FileText,
   Share2,
   Sliders,
@@ -238,7 +237,7 @@ function generateCode39Svg(text: string, height: number = 36): string {
 export default function ThermalReceipt({
   invoice,
   labInfo,
-  cashierName = "Cash Desk #01 (Admin)",
+  cashierName,
   paperWidth = "80mm",
   onSwitchToA4,
   onClose,
@@ -267,19 +266,19 @@ export default function ThermalReceipt({
   const [showNabl, setShowNabl] = useState(true);
 
   const lab = {
-    name: labInfo?.name || "LABCORE DIAGNOSTICS & RESEARCH INSTITUTE",
-    subName: labInfo?.subName || "Central Clinical & Molecular Reference Laboratory",
-    branch: labInfo?.branch || "Main Central Counter #01 (OPD)",
-    address: labInfo?.address || "Plot 42-A, Health Avenue, Medical Enclave",
-    city: labInfo?.city || "Ahmedabad, Gujarat - 380016",
-    phone: labInfo?.phone || "+91 98765 43210",
-    gstin: labInfo?.gstin || "24ABCDE1234F1Z5",
-    email: labInfo?.email || "billing@labcore.in",
-    website: labInfo?.website || "www.labcore.in",
-    upiId: labInfo?.upiId || "labcore@icici",
-    nablNumber: labInfo?.nablNumber || "NABL MC-5678",
-    isoStandard: labInfo?.isoStandard || "ISO 15189:2022",
-    icmrNumber: labInfo?.icmrNumber || "ICMR: LAB-9042",
+    name: labInfo?.name || "Healthcare facility",
+    subName: labInfo?.subName || "Patient billing receipt",
+    branch: labInfo?.branch || "",
+    address: labInfo?.address || "",
+    city: labInfo?.city || "",
+    phone: labInfo?.phone || "",
+    gstin: labInfo?.gstin || "",
+    email: labInfo?.email || "",
+    website: labInfo?.website || "",
+    upiId: labInfo?.upiId || "",
+    nablNumber: labInfo?.nablNumber || "",
+    isoStandard: labInfo?.isoStandard || "",
+    icmrNumber: labInfo?.icmrNumber || "",
   };
 
   const invNumber = invoice.invoiceNumber || `INV-${invoice.id || "001"}`;
@@ -303,35 +302,24 @@ export default function ThermalReceipt({
       ) || 18
     ).padStart(2, "0")}`;
 
-  // Expected Report Delivery Time (Standard: +3.5 hours from bill or 08:30 PM today)
-  const reportETA = useMemo(() => {
-    try {
-      const base = invoice.createdAt ? new Date(invoice.createdAt) : new Date();
-      base.setHours(base.getHours() + 4);
-      return base.toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return "08:30 PM Today";
-    }
-  }, [invoice.createdAt]);
-
-  // Dynamic Bharat UPI or Report Verification URL
+  // Generate a code only when the facility has configured payment or verification details.
   const upiPayAmount = pendingAmt > 0 ? pendingAmt : netPayable;
   const upiPayload =
-    pendingAmt > 0
+    pendingAmt > 0 && lab.upiId
       ? `upi://pay?pa=${encodeURIComponent(lab.upiId)}&pn=${encodeURIComponent(
-          "LabCore Diagnostics"
+          lab.name
         )}&am=${upiPayAmount.toFixed(2)}&cu=INR&tr=${encodeURIComponent(
           invNumber
         )}&tn=${encodeURIComponent(`Settlement ${invNumber}`)}`
-      : `https://${lab.website}/reports?inv=${encodeURIComponent(invNumber)}&uhid=${encodeURIComponent(
-          invoice.patientUhid || "LC01"
-        )}`;
+      : invoice.id && typeof window !== "undefined"
+        ? `${window.location.origin}/invoices/${invoice.id}`
+        : "";
 
   const generateQR = useCallback(async () => {
+    if (!upiPayload) {
+      setQrDataURL("");
+      return;
+    }
     try {
       const url = await QRCode.toDataURL(upiPayload, {
         width: is58 ? 115 : 145,
@@ -364,20 +352,20 @@ export default function ThermalReceipt({
       ? "--------------------------------"
       : "----------------------------------------";
 
-    let text = `${lab.name}\n${lab.subName}\n${lab.address}, ${lab.city}\nGSTIN: ${lab.gstin} | ${lab.nablNumber}\nHelpline: ${lab.phone}\n${divider}\n`;
+    let text = `${lab.name}\n${lab.subName}\n${lab.address}${lab.city ? `, ${lab.city}` : ""}\n${lab.gstin ? `GSTIN: ${lab.gstin}\n` : ""}${lab.phone ? `Phone: ${lab.phone}\n` : ""}${divider}\n`;
     text += `*** OPD DIAGNOSTIC CASH RECEIPT ***\n`;
     text += `Receipt No : ${invNumber}\n`;
     text += `Date & Time: ${fmtDateTime(invoice.createdAt)}\n`;
     text += `Order / Acc: ${orderNumber}\n`;
     text += `Token No   : ${tokenNum}\n`;
-    text += `Counter/Op : ${cashierName}\n`;
+    text += `Counter/Op : ${cashierName || "—"}\n`;
     text += `${thinDivider}\n`;
     text += `PATIENT INFORMATION:\n`;
-    text += `UHID / PID : ${invoice.patientUhid || "LC-000001"}\n`;
-    text += `Patient    : ${invoice.patientName || "Walk-in Patient"}\n`;
-    text += `Age/Gender : ${invoice.patientAge ? `${invoice.patientAge} Yrs` : "35 Yrs"} / ${invoice.patientGender || "Male"}\n`;
+  text += `UHID / PID : ${invoice.patientUhid || "Not recorded"}\n`;
+    text += `Patient    : ${invoice.patientName || "—"}\n`;
+    text += `Age/Gender : ${invoice.patientAge ? `${invoice.patientAge} Yrs` : "—"} / ${invoice.patientGender || "—"}\n`;
     text += `Contact    : ${invoice.patientPhone || "—"}\n`;
-    text += `Ref Doctor : ${invoice.doctorName ? `Dr. ${invoice.doctorName}` : "Self Referral (OPD)"}\n`;
+  text += `Ref Doctor : ${invoice.doctorName ? `Dr. ${invoice.doctorName}` : "Not recorded"}\n`;
     text += `${divider}\n`;
     text += `SR  INVESTIGATION             SAC    AMT\n`;
     text += `${thinDivider}\n`;
@@ -420,9 +408,7 @@ export default function ThermalReceipt({
       ? `*** [ FULLY SETTLED & PAID - ${invoice.paymentMode || "CASH"} ] ***\n`
       : `*** [ ⚠️ BALANCE OUTSTANDING: ${fmt(pendingAmt)} ⚠️ ] ***\n`;
     text += `Words: ${numberToWordsINR(netPayable)}\n`;
-    text += `Phlebotomy Desk : Counter #03 | Expected: Today ${reportETA}\n`;
-    text += `Online Report   : ${lab.website}/reports\n`;
-    text += `Thank you! Wishing you good health.\n`;
+    text += `Please retain this receipt for your records.\n`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -439,8 +425,8 @@ export default function ThermalReceipt({
         `*Diagnostic Cash Receipt & Token Slip*\n` +
         `----------------------------------------\n` +
         `📋 *Receipt No:* #${invNumber}\n` +
-        `🎫 *Token No:* *${tokenNum}* (Counter #03)\n` +
-        `👤 *Patient:* ${invoice.patientName || "Valued Patient"} (UHID: ${invoice.patientUhid || "LC-000001"})\n` +
+        `🎫 *Token No:* *${tokenNum || "Not recorded"}*\n` +
+        `👤 *Patient:* ${invoice.patientName || "Patient"} (UHID: ${invoice.patientUhid || "Not recorded"})\n` +
         `📅 *Date:* ${fmtDateTime(invoice.createdAt)}\n` +
         `🩺 *Tests Booked:*\n${itemsList || "• Diagnostic Laboratory Investigations"}\n` +
         `----------------------------------------\n` +
@@ -448,9 +434,8 @@ export default function ThermalReceipt({
         `💳 *Paid:* ${fmt(paidAmt)} (${invoice.paymentMode || "CASH"})\n` +
         `${pendingAmt > 0 ? `⚠️ *Balance Due:* *${fmt(pendingAmt)}*\n` : `✅ *Status:* FULLY PAID\n`}` +
         `----------------------------------------\n` +
-        `⏰ *Report Ready:* Expected Today by *${reportETA}*\n` +
-        `🌐 *Download Online PDF:* https://${lab.website}/reports\n\n` +
-        `_Thank you for trusting LabCore Diagnostics! Wishing you good health._`
+        `\n` +
+        `_Thank you. Please retain this receipt for your records._`
     );
     const phone = (invoice.patientPhone || "").replace(/[^0-9]/g, "");
     const targetUrl = phone
@@ -543,36 +528,36 @@ export default function ThermalReceipt({
       : "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-2 sm:p-4 overflow-y-auto">
-      <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl shadow-[0_40px_140px_rgba(0,0,0,0.8)] md:flex-row my-auto border border-white/10 max-h-[95vh]" style={{background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)'}}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-2xl md:flex-row my-auto max-h-[95vh]">
         {/* ─── LEFT: THERMAL RECEIPT DISPLAY ─── */}
-        <div className="flex flex-1 flex-col items-center justify-start overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 sm:p-8 relative">
+        <div className="flex flex-1 flex-col items-center justify-start overflow-y-auto bg-slate-100/80 p-4 sm:p-8 relative border-b md:border-b-0 md:border-r border-slate-200">
           {/* Paper Edge Preview Toolbar */}
-          <div className="mb-4 flex items-center gap-2 rounded-2xl bg-white/10 backdrop-blur-md px-3 py-1.5 text-xs text-white shadow-inner">
-            <span className="font-bold text-amber-400">Roll: {activePaper}</span>
-            <span className="text-white/30">•</span>
-            <span className="text-white/70">
+          <div className="mb-4 flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-xs text-slate-700 shadow-sm">
+            <span className="font-bold text-blue-700">Roll: {activePaper}</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-600 font-medium">
               {slipMode === "INVOICE"
                 ? "Diagnostic Tax Memo"
                 : slipMode === "TOKEN"
                 ? "Phlebotomy Token"
                 : "Payment Voucher"}
             </span>
-            <span className="text-white/30">•</span>
+            <span className="text-slate-300">•</span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setPreviewZoom((z) => Math.max(75, z - 10))}
-                className="p-0.5 hover:text-amber-400 text-white/60 transition-colors"
+                className="p-0.5 hover:text-blue-600 text-slate-500 transition-colors"
                 title="Zoom Out"
               >
                 <ZoomOut className="h-3.5 w-3.5" />
               </button>
-              <span className="font-mono text-[10px]">{previewZoom}%</span>
+              <span className="font-mono text-[10px] text-slate-700 font-semibold">{previewZoom}%</span>
               <button
                 type="button"
                 onClick={() => setPreviewZoom((z) => Math.min(130, z + 10))}
-                className="p-0.5 hover:text-amber-400 text-white/60 transition-colors"
+                className="p-0.5 hover:text-blue-600 text-slate-500 transition-colors"
                 title="Zoom In"
               >
                 <ZoomIn className="h-3.5 w-3.5" />
@@ -580,7 +565,7 @@ export default function ThermalReceipt({
               <button
                 type="button"
                 onClick={() => setPreviewZoom(100)}
-                className="p-0.5 hover:text-amber-400 text-white/60 transition-colors ml-0.5"
+                className="p-0.5 hover:text-blue-600 text-slate-500 transition-colors ml-0.5"
                 title="Reset Zoom"
               >
                 <RotateCcw className="h-3 w-3" />
@@ -655,11 +640,11 @@ export default function ThermalReceipt({
                   >
                     {lab.subName}
                   </div>
-                  <div style={{ fontSize: is58 ? 7 : 8, margin: "1px 0" }}>
-                    {lab.address}, {lab.city}
-                  </div>
+                   {(lab.address || lab.city) && <div style={{ fontSize: is58 ? 7 : 8, margin: "1px 0" }}>
+                     {lab.address}{lab.address && lab.city ? ", " : ""}{lab.city}
+                   </div>}
 
-                  {showNabl && (
+                   {showNabl && (lab.nablNumber || lab.isoStandard || lab.gstin) && (
                     <>
                       <div
                         style={{
@@ -753,7 +738,7 @@ export default function ThermalReceipt({
                           fontWeight: 800,
                         }}
                       >
-                        Booth #03 (Fast-Track)
+                         Collection desk
                       </div>
                       <div
                         style={{
@@ -761,7 +746,7 @@ export default function ThermalReceipt({
                           color: "#333",
                         }}
                       >
-                        ETA: Today {reportETA}
+                         Token issued at collection
                       </div>
                     </div>
                   </div>
@@ -842,7 +827,7 @@ export default function ThermalReceipt({
                   >
                     <span>UHID / PID:</span>
                     <span style={{ fontWeight: 900 }}>
-                      {invoice.patientUhid || "LC-000001"}
+                      {invoice.patientUhid || "—"}
                     </span>
                   </div>
                   <div
@@ -908,7 +893,7 @@ export default function ThermalReceipt({
                         textAlign: "right",
                       }}
                     >
-                      {invoice.doctorName ? `Dr. ${invoice.doctorName}` : "Self Referral (OPD)"}
+                      {invoice.doctorName ? `Dr. ${invoice.doctorName}` : "Not recorded"}
                     </span>
                   </div>
                 </div>
@@ -1294,27 +1279,11 @@ export default function ThermalReceipt({
                 )}
 
                 {/* ─── PHLEBOTOMY & REPORT READY COMMITMENT ─── */}
-                <div
-                  style={{
-                    borderTop: "1px dashed #000",
-                    borderBottom: "1px dashed #000",
-                    padding: "3px 0",
-                    margin: "5px 0",
-                    fontSize: is58 ? 7 : 8,
-                    textAlign: "center",
-                    lineHeight: 1.35,
-                  }}
-                >
-                  <div>
-                    <b>Sample Accession Desk:</b> Booth #03 (Main Phlebotomy)
+                {lab.website && (
+                  <div style={{ borderTop: "1px dashed #000", borderBottom: "1px dashed #000", padding: "3px 0", margin: "5px 0", fontSize: is58 ? 7 : 8, textAlign: "center", lineHeight: 1.35 }}>
+                    <b>Online portal:</b> {lab.website}
                   </div>
-                  <div>
-                    <b>Expected Verification:</b> Today by {reportETA}
-                  </div>
-                  <div>
-                    <b>Online Portal:</b> {lab.website}/reports
-                  </div>
-                </div>
+                )}
 
                 {/* ─── FOOTER & STATUTORY E-AUDIT DISCLAIMER ─── */}
                 <div
@@ -1329,10 +1298,10 @@ export default function ThermalReceipt({
                   <p style={{ fontWeight: 800, fontSize: is58 ? 8 : 9 }}>
                     Thank you for choosing {lab.name}
                   </p>
-                  <p style={{ margin: "1px 0" }}>Wishing you a speedy recovery & good health!</p>
-                  <p style={{ margin: "1px 0", color: "#333" }}>
-                    Helpline: {lab.phone} • {lab.email}
-                  </p>
+                   <p style={{ margin: "1px 0" }}>Please retain this receipt for your records.</p>
+                   {(lab.phone || lab.email) && <p style={{ margin: "1px 0", color: "#333" }}>
+                     {lab.phone}{lab.phone && lab.email ? " • " : ""}{lab.email}
+                   </p>}
                   <p style={{ margin: "1px 0", color: "#555" }}>
                     Printed: {fmtDateTime(new Date().toISOString())}
                   </p>
@@ -1356,122 +1325,110 @@ export default function ThermalReceipt({
           </div>
         </div>
 
-        {/* ─── RIGHT: PREMIUM CONTROL PANEL ─── */}
-        <div className="relative flex w-full flex-col justify-between overflow-y-auto border-t border-white/10 p-5 sm:p-7 md:w-[420px] md:border-t-0 md:border-l" style={{background: 'linear-gradient(160deg, #1e1b4b 0%, #0f172a 60%, #1a1035 100%)'}}>
-          {/* Subtle glow orbs */}
-          <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-violet-600/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-amber-500/8 blur-3xl" />
-
-          <div className="relative">
-            {/* ── Premium Header ── */}
-            <div className="mb-5 flex items-center justify-between">
+        {/* ─── RIGHT: CLINICAL COUNTER CONTROL PANEL ─── */}
+        <div className="relative flex w-full flex-col justify-between overflow-y-auto bg-white p-5 sm:p-6 md:w-[420px] md:border-l border-slate-200">
+          <div className="relative space-y-4">
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-white shadow-xl shadow-amber-500/40">
-                  <Receipt className="h-6 w-6" />
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-400 ring-2 ring-slate-900">
-                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                  </span>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 shadow-sm">
+                  <Receipt className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-black text-white flex items-center gap-1.5 tracking-tight">
+                  <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
                     Thermal POS Console
                   </h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="relative inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-amber-950 shadow-md shadow-amber-500/30">
-                      <span className="animate-pulse h-1 w-1 rounded-full bg-amber-800" />
-                      ESC/POS Premium
+                    <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                      ESC/POS
                     </span>
-                    <span className="relative inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-600 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white shadow-md shadow-violet-500/30">
-                      ⚡ Advanced
+                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                      Standard Counter Print
                     </span>
                   </div>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* ── Premium Status Pill ── */}
-            <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+            {/* ── Invoice & Patient Snapshot Card ── */}
+            <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                    Invoice / Receipt
-                  </p>
-                  <p className="font-mono text-sm font-black text-white mt-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Bill / Voucher #
+                  </span>
+                  <p className="font-mono text-sm font-bold text-slate-900 mt-0.5">
                     {invNumber}
                   </p>
                 </div>
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black border ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold border ${
                     isPaid
-                      ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300"
-                      : "border-amber-400/30 bg-amber-500/15 text-amber-300"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
                   }`}
                 >
-                  <span className={`h-1.5 w-1.5 rounded-full ${isPaid ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${isPaid ? 'bg-emerald-600' : 'bg-amber-600'}`} />
                   {isPaid ? "Fully Settled" : `Due: ${fmt(pendingAmt)}`}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Patient</p>
-                  <p className="text-xs font-bold text-slate-200 truncate mt-0.5">
+                  <span className="text-[10px] text-slate-500 block">Patient</span>
+                  <span className="font-bold text-slate-800 truncate block">
                     {invoice.patientName || "Walk-in Patient"}
-                  </p>
+                  </span>
                 </div>
                 <div>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Net Payable</p>
-                  <p className="text-xs font-black text-amber-300 mt-0.5">{fmt(netPayable)}</p>
+                  <span className="text-[10px] text-slate-500 block">Net Payable</span>
+                  <span className="font-mono font-bold text-slate-900 block">{fmt(netPayable)}</span>
                 </div>
                 <div>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Payment Mode</p>
-                  <p className="text-xs font-bold text-slate-300 mt-0.5">
+                  <span className="text-[10px] text-slate-500 block">Settlement Tender</span>
+                  <span className="font-semibold text-slate-700 block">
                     {invoice.paymentMode || "CASH"}
-                  </p>
+                  </span>
                 </div>
                 <div>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Token</p>
-                  <p className="text-xs font-black text-violet-300 mt-0.5">#{tokenNum}</p>
+                  <span className="text-[10px] text-slate-500 block">Counter Token</span>
+                  <span className="font-mono font-bold text-blue-700 block">#{tokenNum}</span>
                 </div>
               </div>
             </div>
 
             {/* ── Slip Mode Switcher ── */}
-            <div className="mb-4">
-              <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-slate-400">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-600">
                 Slip Layout Mode
               </label>
-              <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1">
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1">
                 {(['INVOICE', 'TOKEN', 'SETTLEMENT'] as const).map((mode) => (
                   <button
                     key={mode}
                     type="button"
                     onClick={() => setSlipMode(mode)}
-                    className={`rounded-lg py-2 text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
+                    className={`rounded-lg py-1.5 text-[11px] font-bold transition ${
                       slipMode === mode
-                        ? mode === 'INVOICE'
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
-                          : mode === 'TOKEN'
-                          ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30'
-                          : 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/30'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        ? 'bg-white text-blue-700 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {mode === 'INVOICE' ? 'Full Bill' : mode === 'TOKEN' ? 'Token' : 'Voucher'}
+                    {mode === 'INVOICE' ? 'Full Bill' : mode === 'TOKEN' ? 'Token Slip' : 'Payment Slip'}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* ── Paper Size ── */}
-            <div className="mb-4">
-              <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-slate-400">
-                Paper Roll Width
+            {/* ── Paper Roll Width ── */}
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                Thermal Roll Width
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {(['80mm', '58mm'] as const).map((size) => (
@@ -1479,30 +1436,25 @@ export default function ThermalReceipt({
                     key={size}
                     type="button"
                     onClick={() => setActivePaper(size)}
-                    className={`relative flex flex-col items-center justify-center rounded-2xl border p-3 transition-all duration-200 ${
+                    className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition ${
                       activePaper === size
-                        ? 'border-amber-400/50 bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-200 shadow-lg shadow-amber-500/20 ring-1 ring-amber-400/30'
-                        : 'border-white/10 bg-white/5 text-slate-400 hover:border-white/20 hover:bg-white/8 hover:text-slate-200'
+                        ? 'border-blue-600 bg-blue-50/70 text-blue-900 ring-2 ring-blue-500/20'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    {activePaper === size && (
-                      <span className="absolute top-1.5 right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-900" />
-                      </span>
-                    )}
-                    <span className="text-xs font-black">{size === '80mm' ? '80 mm (3")' : '58 mm (2")'}</span>
-                    <span className="text-[9px] mt-0.5 opacity-70">
-                      {size === '80mm' ? 'Desktop POS · Epson/TVS' : 'Bluetooth Handheld POS'}
+                    <span className="text-xs font-bold">{size === '80mm' ? '80 mm (3" Standard)' : '58 mm (2" Handheld)'}</span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">
+                      {size === '80mm' ? 'Desktop POS Printer' : 'Portable Bluetooth POS'}
                     </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* ── Typography & Contrast ── */}
-            <div className="mb-4 grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+            {/* ── Typography & Density ── */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
                   Font Engine
                 </div>
                 <div className="flex gap-1">
@@ -1511,10 +1463,10 @@ export default function ThermalReceipt({
                       key={f}
                       type="button"
                       onClick={() => setFontStyle(f)}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all duration-200 ${
+                      className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition ${
                         fontStyle === f
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                          ? 'bg-white text-blue-700 shadow-sm border border-slate-200'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       {f}
@@ -1523,23 +1475,23 @@ export default function ThermalReceipt({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3 flex flex-col justify-between">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 flex flex-col justify-between">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
                   Head Density
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-[10px] font-bold text-slate-300">
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[11px] font-semibold text-slate-700">
                     {highContrast ? "Deep Black" : "Standard"}
                   </span>
                   <button
                     type="button"
                     onClick={() => setHighContrast(!highContrast)}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      highContrast ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-md shadow-amber-500/30' : 'bg-white/10'
+                      highContrast ? 'bg-blue-600' : 'bg-slate-300'
                     }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                         highContrast ? 'translate-x-4' : 'translate-x-0'
                       }`}
                     />
@@ -1549,61 +1501,54 @@ export default function ThermalReceipt({
             </div>
 
             {/* ── Display Toggles ── */}
-            <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
-                Display Elements
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">
+                Print Elements Toggle
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
                   { state: showQR, setter: setShowQR, label: 'UPI QR Code' },
                   { state: showBarcode, setter: setShowBarcode, label: 'Sample Barcode' },
                   { state: showPhlebotomy, setter: setShowPhlebotomy, label: 'Phlebotomy Guide' },
                   { state: showNabl, setter: setShowNabl, label: 'NABL & GSTIN' },
                 ].map(({ state, setter, label }) => (
-                  <label key={label} className="flex items-center gap-2 cursor-pointer group">
-                    <div
-                      onClick={() => setter(!state)}
-                      className={`relative flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border-2 transition-all cursor-pointer ${
-                        state
-                          ? 'border-amber-400 bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm shadow-amber-500/30'
-                          : 'border-white/20 bg-white/5 hover:border-white/30'
-                      }`}
-                    >
-                      {state && <span className="text-[8px] font-black text-white">✓</span>}
-                    </div>
-                    <span className={`text-[10px] font-bold transition-colors ${
-                      state ? 'text-slate-200' : 'text-slate-500 group-hover:text-slate-400'
-                    }`}>{label}</span>
+                  <label key={label} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={state}
+                      onChange={(e) => setter(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-[11px] font-medium text-slate-700">{label}</span>
                   </label>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* ─── PREMIUM ACTION BUTTONS ─── */}
-          <div className="relative space-y-2 pt-4 border-t border-white/10">
+          {/* ─── ACTION BUTTONS ─── */}
+          <div className="space-y-2 pt-4 border-t border-slate-200 mt-4">
             {/* Switch to A4 */}
             {onSwitchToA4 && (
               <button
+                type="button"
                 onClick={onSwitchToA4}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-400/30 bg-indigo-500/10 px-4 py-2.5 text-xs font-bold text-indigo-300 transition-all hover:bg-indigo-500/20 hover:border-indigo-400/50 hover:text-indigo-200 hover:shadow-lg hover:shadow-indigo-500/20 active:scale-[0.99]"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-2 text-xs font-bold text-blue-800 transition hover:bg-blue-100"
               >
                 <FileText className="h-4 w-4" />
-                <span>Switch to A4 GST Tax Invoice</span>
+                <span>Switch to A4 Institutional Tax Invoice</span>
               </button>
             )}
 
-            {/* ★ Premium Print Button */}
+            {/* Print Button */}
             <button
+              type="button"
               onClick={handlePrint}
-              className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl px-5 py-3.5 text-sm font-black text-white shadow-2xl shadow-amber-500/40 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-amber-500/60 active:translate-y-0"
-              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 50%, #d97706 100%)' }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 transition active:scale-[0.99]"
             >
-              {/* Shimmer overlay */}
-              <div className="pointer-events-none absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-[100%]" />
-              <Printer className="h-5 w-5 drop-shadow" />
-              <span className="tracking-wide">Print {activePaper} Thermal Slip</span>
-              <span className="ml-auto rounded-full border border-white/30 bg-white/10 px-2 py-0.5 text-[9px] font-black tracking-widest">
+              <Printer className="h-4 w-4" />
+              <span>Print {activePaper} Thermal Slip</span>
+              <span className="ml-auto rounded-md bg-blue-700/80 px-2 py-0.5 text-[10px] font-mono">
                 ESC/POS
               </span>
             </button>
@@ -1611,25 +1556,27 @@ export default function ThermalReceipt({
             {/* Share Grid */}
             <div className="grid grid-cols-2 gap-2">
               <button
+                type="button"
                 onClick={handleWhatsAppReceipt}
-                className="group flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-500/15 px-3 py-2.5 text-xs font-bold text-emerald-300 transition-all hover:bg-emerald-500/25 hover:shadow-lg hover:shadow-emerald-500/20 hover:text-emerald-200 active:scale-[0.98]"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
               >
                 <Share2 className="h-3.5 w-3.5" />
                 <span>WhatsApp</span>
               </button>
 
               <button
+                type="button"
                 onClick={handleCopyText}
-                className="group flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-slate-300 transition-all hover:bg-white/10 hover:text-slate-100 active:scale-[0.98]"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 {copied ? (
                   <>
-                    <Check className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-emerald-400 font-black">Copied!</span>
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    <span className="text-emerald-700 font-bold">Copied!</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="h-3.5 w-3.5 text-slate-400" />
+                    <Copy className="h-3.5 w-3.5 text-slate-500" />
                     <span>Copy Text</span>
                   </>
                 )}
@@ -1638,8 +1585,9 @@ export default function ThermalReceipt({
 
             {/* Close */}
             <button
+              type="button"
               onClick={onClose}
-              className="flex w-full items-center justify-center gap-1 rounded-xl px-4 py-1.5 text-[10px] font-medium text-slate-600 hover:text-slate-400 transition-colors"
+              className="flex w-full items-center justify-center py-1 text-xs font-medium text-slate-500 hover:text-slate-800 transition"
             >
               Close Window
             </button>

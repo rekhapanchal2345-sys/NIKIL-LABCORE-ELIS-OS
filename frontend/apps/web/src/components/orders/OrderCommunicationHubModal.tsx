@@ -132,14 +132,13 @@ export function OrderCommunicationHubModal({
 
   // Host URL helper
   const appOrigin = useMemo(() => {
-    if (typeof window !== "undefined") return window.location.origin;
-    return "https://labcore.in";
+    return typeof window !== "undefined" ? window.location.origin : "";
   }, []);
 
   // Compute test names and pricing
   const testNamesList = useMemo(() => {
-    if (!order?.items || !Array.isArray(order.items)) return "Pathology Diagnostic Panel";
-    return order.items.map((i: any) => i.test?.testName || "Diagnostic Test").join(", ");
+    if (!order?.items || !Array.isArray(order.items)) return "Investigation details unavailable";
+    return order.items.map((i: any) => i.test?.testName || "Investigation details unavailable").join(", ");
   }, [order]);
 
   const receiptUrl = `${appOrigin}/orders/${order?.id}/receipt`;
@@ -186,12 +185,11 @@ export function OrderCommunicationHubModal({
           `• Amount Paid: ₹${paid}\n` +
           `• Balance Due: ₹${balanceDue}\n\n` +
           `📍 *Specimen Collection Venue:*\n${order.collectionType === "HOME_COLLECTION" ? "Home Visit Phlebotomist" : "Central Lab Walk-in Desk"}\n\n` +
-          `🔬 *Specimen Barcode:* ${order.barcode || "Generated at accession"}\n` +
+           `🔬 *Specimen Barcode:* ${order.barcode || "Not assigned"}\n` +
           `👨‍⚕️ *Consultant/Doctor:* ${doctor}\n\n` +
           `📲 *View & Download Official Receipt:*\n${receiptUrl}\n\n` +
           `Track live testing progress here:\n${trackingUrl}\n\n` +
-          `_LabCore Diagnostics • NABL ISO 15189:2022 Accredited_\n` +
-          `Helpline: +91-22-1234-5678`;
+           `_LabCore Diagnostics • Please retain this order reference for support._`;
         break;
 
       case "SAMPLE_COLLECTED":
@@ -202,9 +200,8 @@ export function OrderCommunicationHubModal({
           `Your biological specimens for Order *#${orderNo}* have been successfully collected and received at our central diagnostic testing facility.\n\n` +
           `🧪 *Sample Barcode:* ${order.barcode || "Accessioned"}\n` +
           `🔬 *Tests In Queue:* ${testNamesList}\n` +
-          `❄️ *Cold Chain Assurance:* Temperature maintained during transit.\n\n` +
-          `Our certified pathologists and lab technologists have initiated standard automated analyzer runs.\n\n` +
-          `You will receive an instant notification with your digitally signed report as soon as verification is complete.\n\n` +
+           `The specimen is available for the next configured laboratory workflow step.\n\n` +
+           `You will receive a notification when the report is released.\n\n` +
           `Live Order Status: ${trackingUrl}\n\n` +
           `_LabCore ELIS Laboratory • Quality & Precision_`;
         break;
@@ -255,23 +252,20 @@ export function OrderCommunicationHubModal({
           `• Report Published: *${order.reportedAt ? new Date(order.reportedAt).toLocaleString("en-IN") : "Recently"}*\n\n` +
           `🛡️ *QUALITY & VERIFICATION*\n` +
           `• Parameters reported: *${totalParameters || "Available in report"}*\n` +
-          `• Clinical verification: *${verifiedBy || "Authorized Pathologist"}*\n` +
-          `• Verification timestamp: *${verifiedAt ? new Date(verifiedAt).toLocaleString("en-IN") : "Recorded in secure report"}*\n` +
-          `• Collection status: *${order.collectedAt ? "Specimen collected and accessioned" : "Accession details available in report"}*\n\n` +
+           (verifiedBy ? `• Clinical verification: *${verifiedBy}*\n` : "") +
+           (verifiedAt ? `• Verification timestamp: *${new Date(verifiedAt).toLocaleString("en-IN")}*\n` : "") +
+           `• Collection status: *${order.collectedAt ? "Specimen collected and accessioned" : "See report for accession details"}*\n\n` +
           (reportValues.length
             ? `🔬 *CLINICAL SNAPSHOT*\n${reportValues.join("\n")}\n` +
               (flaggedValues.length ? `⚠️ *Attention:* ${flaggedValues.length} value(s) require clinical review. Please consult your doctor.\n` : `✅ No flagged values detected in the shared snapshot.\n`) +
               `\n`
             : "") +
           `📥 *OPEN VERIFIED DIGITAL REPORT*\n${reportUrl}\n\n` +
-          `🔐 *SECURITY & AUTHENTICITY*\n` +
-          `• Digitally signed clinical report\n` +
-          `• Secure portal access with audit trail\n` +
-          `• QR authenticity verification included\n` +
-          `• Confidential medical information — share only with authorized care providers\n\n` +
+           `🔐 *PRIVACY*\n` +
+           `• This message contains confidential medical information.\n` +
+           `• Share the report only with authorized care providers.\n\n` +
           `Please share this report with your consulting physician (*${doctor}*) for clinical interpretation.\n\n` +
-          `For questions, call LabCore Clinical Assistance: +91-22-1234-5678\n` +
-          `_LabCore Diagnostics • Precision testing | Verified care | Better health_`;
+           `_LabCore Diagnostics • Please retain this order reference for support._`;
         break;
 
       case "CRITICAL_PANEL":
@@ -283,8 +277,8 @@ export function OrderCommunicationHubModal({
           `Critical alert criteria have been flagged for prescribed tests: *${testNamesList}*.\n\n` +
           `Immediate clinical consultation with your attending physician or hospital emergency unit is strongly advised.\n\n` +
           `Access verified preliminary values immediately:\n${reportUrl}\n\n` +
-          `LabCore STAT Emergency Pathologist Desk: +91-22-1234-9999\n` +
-          `Timestamp: ${new Date().toLocaleTimeString("en-IN")}`;
+           `Please contact the ordering clinician or the configured laboratory support channel.\n` +
+           `Timestamp: ${new Date().toLocaleTimeString("en-IN")}`;
         break;
 
       case "PAYMENT_RECEIPT":
@@ -302,7 +296,7 @@ export function OrderCommunicationHubModal({
               : `Your account is fully settled. Thank you for prompt payment!\n`
           }\n` +
           `Download official GST Tax Invoice:\n${receiptUrl}\n\n` +
-          `LabCore ELIS Billing Desk: +91-22-1234-5678`;
+           `Please retain this order reference for billing support.`;
         break;
 
       case "HOME_COLLECTION_SLOT":
@@ -315,8 +309,7 @@ export function OrderCommunicationHubModal({
           `⏰ *Time Window:* ${order.collectionTimeSlot || "08:00 - 10:00 AM"}\n` +
           `📍 *Address:* ${order.homeCollectionAddress || order.patient?.address || "Patient Address"}\n\n` +
           `⚠️ *Preparation Protocol:*\n${customFastingNote}\n\n` +
-          `Our certified phlebotomist will carry sterile vacuum sealed vacutainer tubes and digital identity badge.\n\n` +
-          `Emergency reschedule helpline: +91-22-1234-5678`;
+           `Please keep the patient identity document and any preparation instructions available for collection.`;
         break;
     }
 
@@ -1168,7 +1161,7 @@ export function OrderCommunicationHubModal({
                 >
                   {/* Security Notice */}
                   <div className="py-1 px-2.5 rounded-lg bg-[#182229] text-[#8696a0] text-[10px] text-center max-w-[280px] mx-auto shadow-xs">
-                    🔒 Messages are end-to-end encrypted with LabCore HIPAA compliant healthcare gateway.
+                     Message preview. Delivery status is confirmed by the configured channel after dispatch.
                   </div>
 
                   {/* Speech Bubble */}
@@ -1181,13 +1174,13 @@ export function OrderCommunicationHubModal({
                     </div>
                   </div>
 
-                  {/* Simulated WhatsApp Quick Action Buttons */}
+                   {/* Message link preview */}
                   <div className="max-w-[310px] ml-auto space-y-1">
                     <div className="py-1.5 px-3 rounded-xl bg-[#202c33] text-emerald-400 text-[11px] font-bold text-center border border-slate-700 hover:bg-[#2a3942] cursor-pointer shadow-xs">
-                      📄 Open Digital Tax Receipt
+                       Open receipt link
                     </div>
                     <div className="py-1.5 px-3 rounded-xl bg-[#202c33] text-emerald-400 text-[11px] font-bold text-center border border-slate-700 hover:bg-[#2a3942] cursor-pointer shadow-xs">
-                      📊 Track Real-Time Sample
+                       Open order tracking link
                     </div>
                   </div>
                 </div>
@@ -1201,9 +1194,7 @@ export function OrderCommunicationHubModal({
                   {/* Email Header */}
                   <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-4 text-white text-center">
                     <h4 className="font-black text-sm tracking-wider uppercase">LabCore Diagnostics</h4>
-                    <p className="text-[10px] text-blue-200 mt-0.5">
-                      NABL Accredited • ISO 15189:2022 Certified Pathology Lab
-                    </p>
+                     <p className="text-[10px] text-blue-200 mt-0.5">Order communication preview</p>
                   </div>
 
                   {/* Email Body */}

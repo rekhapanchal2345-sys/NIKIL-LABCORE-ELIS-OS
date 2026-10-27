@@ -56,79 +56,27 @@ export default function TpaClaimsCenter({
   const [selectedProvider, setSelectedProvider] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Enterprise TPA / Cashless Claim Records for Hospital, Lab, and Clinic
-  const [claims] = useState<TpaClaimRecord[]>([
-    {
-      id: 'CLM-001',
-      claimNumber: 'CLM/2026/0411',
-      preAuthNumber: 'PA-STAR-88129',
-      invoiceNumber: 'ELIS/2026/0893',
-      patientName: 'Vikramaditya Verma',
-      patientUhid: 'UHID-88221',
-      patientPhone: '+91 99100 88221',
-      tpaProvider: 'Star Health Allied Insurance',
-      corporatePolicyNumber: 'STAR-CORP-992014',
-      estimatedAmount: 14500,
-      approvedAmount: 12000,
-      copayAmount: 2500,
-      copayPaid: true,
-      status: 'PRE_AUTH_APPROVED',
-      submittedDate: '15 Oct 2026, 09:30 AM',
-    },
-    {
-      id: 'CLM-002',
-      claimNumber: 'CLM/2026/0412',
-      preAuthNumber: 'PA-MEDI-77102',
-      invoiceNumber: 'ELIS/2026/0895',
-      patientName: 'Meenakshi Sundaram',
-      patientUhid: 'UHID-88225',
-      patientPhone: '+91 98401 55210',
-      tpaProvider: 'MediAssist India TPA',
-      corporatePolicyNumber: 'INFY-MED-6612',
-      estimatedAmount: 8500,
-      approvedAmount: 8500,
-      copayAmount: 0,
-      copayPaid: true,
-      status: 'SUBMITTED',
-      submittedDate: '14 Oct 2026, 02:15 PM',
-    },
-    {
-      id: 'CLM-003',
-      claimNumber: 'CLM/2026/0409',
-      preAuthNumber: 'PA-VIDAL-44190',
-      invoiceNumber: 'ELIS/2026/0878',
-      patientName: 'Anand Chandrashekar',
-      patientUhid: 'UHID-88190',
-      patientPhone: '+91 98200 11982',
-      tpaProvider: 'Vidal Health TPA',
-      corporatePolicyNumber: 'TCS-VIDAL-33129',
-      estimatedAmount: 22000,
-      approvedAmount: 20000,
-      copayAmount: 2000,
-      copayPaid: true,
-      status: 'UNDER_QUERY',
-      submittedDate: '13 Oct 2026, 11:00 AM',
-    },
-    {
-      id: 'CLM-004',
-      claimNumber: 'CLM/2026/0398',
-      preAuthNumber: 'PA-ICICI-11029',
-      invoiceNumber: 'ELIS/2026/0854',
-      patientName: 'Gaurav Khandelwal',
-      patientUhid: 'UHID-88145',
-      patientPhone: '+91 99881 22334',
-      tpaProvider: 'ICICI Lombard Health Care',
-      corporatePolicyNumber: 'WIPRO-LOMB-9901',
-      estimatedAmount: 18000,
-      approvedAmount: 17500,
-      copayAmount: 500,
-      copayPaid: true,
-      status: 'SETTLED',
-      submittedDate: '10 Oct 2026, 10:00 AM',
-      settledDate: '14 Oct 2026, 04:30 PM',
-      deductionAmount: 500,
-    }
-  ]);
+  // Claims are shown only when the connected invoice record carries an
+  // insurance/TPA payment mode. No sample claims are displayed.
+  const claims = invoices
+    .filter((invoice) => ["TPA", "INSURANCE", "CASHLESS"].includes((invoice.paymentMode || "").toUpperCase()))
+    .map<TpaClaimRecord>((invoice) => ({
+      id: String(invoice.id),
+      claimNumber: String((invoice as any).claimNumber || "—"),
+      preAuthNumber: String((invoice as any).preAuthNumber || "—"),
+      invoiceNumber: invoice.invoiceNumber || `INV-${invoice.id}`,
+      patientName: invoice.patientName || "—",
+      patientUhid: invoice.patientUhid || "—",
+      patientPhone: invoice.patientPhone || "",
+      tpaProvider: String((invoice as any).tpaProvider || "Unassigned"),
+      corporatePolicyNumber: String((invoice as any).policyNumber || "—"),
+      estimatedAmount: Number(invoice.netPayable || 0),
+      approvedAmount: Number((invoice as any).approvedAmount || invoice.netPayable || 0),
+      copayAmount: Number((invoice as any).copayAmount || 0),
+      copayPaid: Number((invoice as any).copayAmount || 0) === 0,
+      status: ((invoice.paymentStatus || "SUBMITTED").toUpperCase() === "PAID" ? "SETTLED" : "SUBMITTED") as TpaClaimRecord["status"],
+      submittedDate: invoice.createdAt || "—",
+    }));
 
   const filteredClaims = claims.filter((claim) => {
     if (selectedProvider !== 'ALL' && !claim.tpaProvider.toLowerCase().includes(selectedProvider.toLowerCase())) {
@@ -208,10 +156,10 @@ export default function TpaClaimsCenter({
             </div>
           </div>
           <div className="text-2xl font-black tracking-tight text-slate-900 font-mono">
-            ₹5,000.00
+             ₹{claims.reduce((total, claim) => total + claim.copayAmount, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-xs text-slate-500 mt-1">
-            Non-medical consumables & 10% co-pay split
+             Patient share recorded on connected claims
           </div>
         </div>
       </div>

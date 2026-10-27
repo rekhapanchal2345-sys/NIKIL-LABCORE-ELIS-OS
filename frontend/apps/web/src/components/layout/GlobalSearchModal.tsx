@@ -145,6 +145,162 @@ const LOCAL_ABDM_ACTIONS: SearchItem[] = [
   },
 ];
 
+const LOCAL_BILLING_INVOICE_ACTIONS: SearchItem[] = [
+  {
+    id: "action-invoice-new-pos",
+    type: "ACTION",
+    title: "New Counter Bill / Fast POS Desk",
+    subtitle: "OPD, IPD, Diagnostics, Procedures & Cashless Insurance Billing",
+    tag: "BILLING POS",
+    tagColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
+    href: "/invoices/new",
+    metadata: { shortcut: "POS" },
+  },
+  {
+    id: "action-invoice-register",
+    type: "ACTION",
+    title: "Invoices & Billing Register",
+    subtitle: "All patient bills, receipts, settlement status and payment ledger",
+    tag: "INVOICES",
+    tagColor: "bg-blue-500/20 text-blue-300 border border-blue-500/40",
+    href: "/invoices",
+    metadata: { shortcut: "BILL" },
+  },
+  {
+    id: "action-invoice-tpa",
+    type: "ACTION",
+    title: "TPA & Cashless Claims Management",
+    subtitle: "Insurance pre-authorizations, claim tracking, deductions and co-pay",
+    tag: "TPA CLAIMS",
+    tagColor: "bg-teal-500/20 text-teal-300 border border-teal-500/40",
+    href: "/invoices?tab=tpa",
+    metadata: { shortcut: "TPA" },
+  },
+  {
+    id: "action-payment-cash-counter",
+    type: "ACTION",
+    title: "Cash Counter & Shift Till Close",
+    subtitle: "Cashier currency denomination counter, blind count and till handover",
+    tag: "CASH TILL",
+    tagColor: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+    href: "/payments?tab=cash-counter",
+    metadata: { shortcut: "TILL" },
+  },
+  {
+    id: "action-invoice-aging",
+    type: "ACTION",
+    title: "Outstanding Receivables & Due Aging Matrix",
+    subtitle: "0-30, 31-60, 61-90, 90+ days overdue patient and corporate balances",
+    tag: "AGING",
+    tagColor: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
+    href: "/invoices?tab=aging",
+    metadata: { shortcut: "DUE" },
+  },
+  {
+    id: "action-invoice-gst",
+    type: "ACTION",
+    title: "GST Tax Audit & Medical Exemption (SAC 999312)",
+    subtitle: "Healthcare Notification 12/2017 exemption audit, GSTR-1 Table 4/12",
+    tag: "GST AUDIT",
+    tagColor: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40",
+    href: "/invoices?tab=gst",
+    metadata: { shortcut: "GST" },
+  },
+];
+
+const LOCAL_CLINICAL_TESTS_ACTIONS: SearchItem[] = [
+  {
+    id: "action-test-catalogue",
+    type: "TEST",
+    title: "Master Diagnostic Test Catalogue",
+    subtitle: "Search 180+ orderable investigations, LOINC codes & sample specs",
+    tag: "TEST CATALOGUE",
+    tagColor: "bg-blue-500/20 text-blue-300 border border-blue-500/40",
+    href: "/tests",
+    metadata: { shortcut: "TESTS" },
+  },
+  {
+    id: "action-test-new",
+    type: "ACTION",
+    title: "New Investigation Requisition Setup",
+    subtitle: "Define new clinical analyte, vacutainer tube, pricing & TAT",
+    tag: "NEW TEST",
+    tagColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
+    href: "/tests/new",
+    metadata: { shortcut: "ADD TEST" },
+  },
+  {
+    id: "action-test-panic-alerts",
+    type: "ACTION",
+    title: "Critical Values & Panic Alert Matrix",
+    subtitle: "Life-threatening panic limits (K+, Troponin, Glucose) & phone alert",
+    tag: "CRITICAL PANIC",
+    tagColor: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
+    href: "/tests?workspace=panic-alerts",
+    metadata: { shortcut: "PANIC" },
+  },
+  {
+    id: "action-test-phlebotomy-sop",
+    type: "ACTION",
+    title: "Phlebotomy Draw & Vacutainer Tube SOP",
+    subtitle: "CLSI H3-A6 order of draw: Blood Culture, Citrate, SST, Heparin, EDTA",
+    tag: "CLSI SOP",
+    tagColor: "bg-purple-500/20 text-purple-300 border border-purple-500/40",
+    href: "/tests?workspace=phlebotomy-sop",
+    metadata: { shortcut: "TUBES" },
+  },
+  {
+    id: "action-test-rejection-rules",
+    type: "ACTION",
+    title: "Specimen Rejection & HIL Interference Criteria",
+    subtitle: "Hemolysis, icterus, lipemia, clot & QNS pre-analytical standards",
+    tag: "REJECTION RULES",
+    tagColor: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+    href: "/tests?workspace=rejection-rules",
+    metadata: { shortcut: "REJECT" },
+  },
+  {
+    id: "action-test-packages",
+    type: "TEST",
+    title: "Health Checkup Packages & Screening Profiles",
+    subtitle: "Multi-analyte wellness panels, executive health & bundle tariffs",
+    tag: "PACKAGES",
+    tagColor: "bg-purple-500/20 text-purple-300 border border-purple-500/40",
+    href: "/tests/packages",
+    metadata: { shortcut: "PANEL" },
+  },
+  {
+    id: "action-test-tariffs",
+    type: "ACTION",
+    title: "Hospital Master Tariffs & Rate Cards",
+    subtitle: "OPD walk-in, IPD ward, ICU, TPA cashless & referral lab schedules",
+    tag: "TARIFFS",
+    tagColor: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+    href: "/tests?workspace=b2b-tariff",
+    metadata: { shortcut: "TARIFF" },
+  },
+  {
+    id: "action-test-qc",
+    type: "ACTION",
+    title: "Quality Control & Westgard Multirule Calibration",
+    subtitle: "Daily Levey-Jennings charts & ISO 15189 analytical calibration",
+    tag: "WESTGARD QC",
+    tagColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
+    href: "/tests?workspace=qc",
+    metadata: { shortcut: "QC" },
+  },
+  {
+    id: "action-test-interfacing",
+    type: "ACTION",
+    title: "Analyzer Interfacing & Bidirectional LIS",
+    subtitle: "ASTM 1394 & HL7 protocol connections for automated analyzers",
+    tag: "LIS ASTM/HL7",
+    tagColor: "bg-sky-500/20 text-sky-300 border border-sky-500/40",
+    href: "/tests?workspace=interfacing",
+    metadata: { shortcut: "INTERFACING" },
+  },
+];
+
 export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -236,7 +392,15 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
         );
 
         const qLower = query.trim().toLowerCase();
-        const matchingAbdmActions = LOCAL_ABDM_ACTIONS.filter((act) => {
+        const combinedLocalActions = [
+          ...LOCAL_BILLING_INVOICE_ACTIONS,
+          ...LOCAL_ABDM_ACTIONS,
+          ...LOCAL_CLINICAL_TESTS_ACTIONS,
+        ];
+        const matchingLocalActions = combinedLocalActions.filter((act) => {
+          if (activeCategory === "TESTS" && act.type === "TEST") {
+            if (!qLower) return true;
+          }
           if (activeCategory === "ACTIONS" && !qLower) return true;
           if (!qLower) return false;
           return (
@@ -244,17 +408,33 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
             act.subtitle.toLowerCase().includes(qLower) ||
             act.tag.toLowerCase().includes(qLower) ||
             (act.metadata?.shortcut && act.metadata.shortcut.toLowerCase().includes(qLower)) ||
-            (qLower.includes("abdm") || qLower.includes("abha") || qLower.includes("scan") || qLower.includes("fhir"))
+            (qLower.includes("invoice") ||
+              qLower.includes("bill") ||
+              qLower.includes("pos") ||
+              qLower.includes("tpa") ||
+              qLower.includes("daybook") ||
+              qLower.includes("till") ||
+              qLower.includes("gst") ||
+              qLower.includes("test") ||
+              qLower.includes("loinc") ||
+              qLower.includes("tube") ||
+              qLower.includes("panic") ||
+              qLower.includes("sop") ||
+              qLower.includes("reject") ||
+              qLower.includes("abdm") ||
+              qLower.includes("abha") ||
+              qLower.includes("scan") ||
+              qLower.includes("fhir"))
           );
         });
 
         if (res && res.success && res.data) {
           const fetchedResults: SearchItem[] = res.data.results || [];
           // Deduplicate and combine
-          const combined = [...matchingAbdmActions, ...fetchedResults];
+          const combined = [...matchingLocalActions, ...fetchedResults];
           setResults(combined);
         } else {
-          setResults(matchingAbdmActions);
+          setResults(matchingLocalActions);
         }
       } catch (err: any) {
         if (err.name !== "AbortError") {

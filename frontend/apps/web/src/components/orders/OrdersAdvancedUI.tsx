@@ -120,7 +120,7 @@ function StatCard({
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
         </div>
         {urgent && Number(value) > 0 && (
-          <span className="h-2 w-2 rounded-full bg-rose-600 animate-ping" />
+           <span className="h-2 w-2 rounded-full bg-rose-600" />
         )}
       </div>
 
@@ -165,8 +165,8 @@ export function OrderAnalyticsDashboard({
       {(ov.statOrders > 0 || ov.tatBreachCount > 0) && (
         <div className="flex flex-wrap gap-2.5 items-center justify-between rounded-2xl border border-rose-200 bg-rose-50/70 px-4 py-3 text-rose-900 shadow-2xs">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 animate-bounce" />
-            <span className="text-xs font-black uppercase tracking-wider text-rose-900">Emergency &amp; SLA Alarms:</span>
+             <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0" />
+             <span className="text-xs font-black uppercase tracking-wider text-rose-900">Priority and SLA review:</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -176,7 +176,7 @@ export function OrderAnalyticsDashboard({
                 onClick={() => onStatClick?.("STAT")}
               >
                 <Flame className="h-3.5 w-3.5 text-rose-600 fill-rose-600" />
-                {ov.statOrders} STAT Requisitions Pending
+                 {ov.statOrders} STAT orders pending
               </span>
             )}
             {ov.tatBreachCount > 0 && (
@@ -190,7 +190,7 @@ export function OrderAnalyticsDashboard({
             )}
             {tatData && tatData.critical > 0 && (
               <span className="text-xs font-bold bg-amber-100/70 text-amber-900 border border-amber-300 rounded-full px-2.5 py-1">
-                ⚠️ {tatData.critical} Approaching TAT Threshold
+                 {tatData.critical} approaching turnaround target
               </span>
             )}
           </div>
@@ -203,7 +203,7 @@ export function OrderAnalyticsDashboard({
           icon={Layers}
           label="Today"
           value={ov.todayOrders}
-          sub="Requisitions booked"
+           sub="Orders registered"
           color="text-sky-600"
           onClick={() => onStatClick?.("today")}
         />
@@ -217,7 +217,7 @@ export function OrderAnalyticsDashboard({
         />
         <StatCard
           icon={Zap}
-          label="STAT Emergency"
+           label="STAT / urgent"
           value={ov.statOrders}
           sub="Immediate run"
           color="text-rose-600"
@@ -320,8 +320,8 @@ export function TATMonitorPanel({
           {combined.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
               <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
-              <p className="font-black text-slate-900 text-base">All Requisitions Within SLA!</p>
-              <p className="text-xs text-slate-500 mt-1">Zero critical or breached turnaround orders across diagnostic bays.</p>
+               <p className="font-black text-slate-900 text-base">No orders outside the configured SLA</p>
+               <p className="text-xs text-slate-500 mt-1">Current active orders are within their configured turnaround targets.</p>
             </div>
           ) : (
             combined.map((order) => (
@@ -581,7 +581,7 @@ export function AdvancedFilterBar({
           <label className={labelClass}>Clinical Priority</label>
           <select className={selectClass} value={filters.priority} onChange={(e) => onChange("priority", e.target.value)}>
             <option value="all">All Priorities</option>
-            <option value="STAT">⚡ STAT Emergency</option>
+             <option value="STAT">STAT / emergency priority</option>
             <option value="URGENT">🔴 Urgent Priority</option>
             <option value="ROUTINE">🟢 Routine Standard</option>
           </select>
@@ -646,7 +646,7 @@ export function ViewModeSwitcher({
   const modes = [
     { key: "table" as const, label: "Worklist Table", icon: Layers },
     { key: "pipeline" as const, label: "Pipeline Kanban", icon: Activity },
-    { key: "analytics" as const, label: "Telemetry & TAT", icon: BarChart3 },
+    { key: "analytics" as const, label: "Performance review", icon: BarChart3 },
   ];
 
   return (

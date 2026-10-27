@@ -11,12 +11,10 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  QrCode,
   Calendar,
   User,
   Phone,
   Mail,
-  ShieldCheck,
   Building,
   DollarSign,
   ChevronRight,
@@ -63,7 +61,6 @@ export default function InvoiceQuickDrawer({
   onSendBill,
   onRefund,
 }: InvoiceQuickDrawerProps) {
-  const [showQrModal, setShowQrModal] = useState(false);
   const [unmaskPhone, setUnmaskPhone] = useState(false);
 
   if (!isOpen || !invoice) return null;
@@ -76,18 +73,6 @@ export default function InvoiceQuickDrawer({
   const pendingAmount = Number(invoice.pendingAmount ?? Math.max(0, netPayable - paidAmount));
   const isPaid = pendingAmount <= 0;
   const doctorDisplay = formatDoctorName(invoice.doctorName);
-
-  // Generate standard Indian UPI URI for instant counter QR code
-  const upiId = "labcore@upi";
-  const upiPayUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
-    "LabCore Diagnostics"
-  )}&am=${pendingAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(
-    `Inv ${invoice.invoiceNumber || ""}`
-  )}`;
-
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-    upiPayUri
-  )}`;
 
   const formatINR = (amount: number) => {
     return `₹${Number(amount || 0).toLocaleString("en-IN", {
@@ -315,10 +300,6 @@ export default function InvoiceQuickDrawer({
               {invoice.doctorEmail && (
                 <p className="text-xs text-slate-500 mt-1">{invoice.doctorEmail}</p>
               )}
-              <div className="mt-3 flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                <span>NABL &amp; ISO Verified Diagnostic</span>
-              </div>
             </div>
           </div>
 
@@ -328,7 +309,7 @@ export default function InvoiceQuickDrawer({
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                 Diagnostic Services ({(invoice as any).items?.length || invoice.samples?.length || 1})
               </h3>
-              <span className="text-[11px] font-mono text-slate-500">SAC Code: 999312</span>
+               <span className="text-[11px] text-slate-500">Service codes shown per line item</span>
             </div>
 
             <div className="divide-y divide-slate-100">
@@ -402,34 +383,6 @@ export default function InvoiceQuickDrawer({
             )}
           </div>
 
-          {/* Instant QR Code Counter Pay Card */}
-          {!isPaid && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 shadow-sm flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                  <QrCode className="h-4 w-4 text-blue-600" />
-                  Instant BharatQR / UPI Pay
-                </h4>
-                <p className="text-[11px] text-slate-600 mt-0.5">
-                  Patient can scan directly with Google Pay, PhonePe, or Paytm
-                </p>
-                <div className="mt-2 text-xs font-mono font-bold text-blue-800">
-                  Amount: {formatINR(pendingAmount)}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <img
-                  src={qrImageUrl}
-                  alt="UPI QR Code"
-                  className="h-20 w-20 rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
-                />
-                <span className="text-[9px] font-semibold text-blue-700 mt-1 uppercase">
-                  Scan to Pay
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Drawer Footer */}

@@ -874,9 +874,6 @@ export default function PaymentsPage() {
   const [sortField, setSortField] = useState<"paidAt" | "amount" | "patientName">("paidAt");
   const [sortAsc, setSortAsc] = useState(false);
 
-  // Receivables Aging Filter
-  const [agingFilter, setAgingFilter] = useState<"ALL" | "CURRENT" | "8-15" | "16-30" | "30+">("ALL");
-
   // Clinical Facility Context Switcher (Hospital / Lab / Clinic)
   const [facilityType, setFacilityType] = useState<"HOSPITAL" | "LAB" | "CLINIC">("HOSPITAL");
 
@@ -1283,9 +1280,9 @@ export default function PaymentsPage() {
     },
   ]);
 
-  // Reports Tab State
+  // Reports Tab State (Strictly Cashier, Till & Tender Operations)
   const [activeReportView, setActiveReportView] = useState<
-    "DAY_BOOK" | "MODE_WISE" | "CASHIER_TALLY" | "GST_SAC" | "DEPARTMENT" | "DOCTOR_REFERRAL"
+    "DAY_BOOK" | "MODE_WISE" | "CASHIER_TALLY" | "DEPARTMENT"
   >("DAY_BOOK");
   const [reportDateRange, setReportDateRange] = useState("Today");
 
@@ -1412,6 +1409,29 @@ export default function PaymentsPage() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get('tab')?.toLowerCase();
+
+      // Route billing/invoicing tabs to Invoices module
+      if (tabParam === "aging" || tabParam === "receivables" || tabParam === "due") {
+        window.location.href = "/invoices?tab=aging";
+        return;
+      }
+      if (tabParam === "gst" || tabParam === "tax") {
+        window.location.href = "/invoices?tab=gst";
+        return;
+      }
+      if (tabParam === "b2b" || tabParam === "corporate" || tabParam === "referral" || tabParam === "referrals") {
+        window.location.href = "/invoices?tab=b2b";
+        return;
+      }
+      if (tabParam === "tpa" || tabParam === "insurance" || tabParam === "claims") {
+        window.location.href = "/invoices?tab=tpa";
+        return;
+      }
+      if (tabParam === "pos" || tabParam === "billing" || tabParam === "new") {
+        window.location.href = "/invoices/new";
+        return;
+      }
+
       if (tabParam && TAB_SLUG_MAP[tabParam]) {
         setActiveTab(TAB_SLUG_MAP[tabParam]);
       } else if (urlParams.has('tab') && paymentTabs.includes(urlParams.get('tab') as any)) {
@@ -1421,7 +1441,6 @@ export default function PaymentsPage() {
       if (urlParams.has('method')) setMethodFilter(urlParams.get('method') || "All");
       if (urlParams.has('date')) setDateFilter(urlParams.get('date') || "All");
       if (urlParams.has('search')) setSearch(urlParams.get('search') || "");
-      if (urlParams.has('aging')) setAgingFilter(urlParams.get('aging') as any);
     }
   }, []);
 
@@ -5395,15 +5414,13 @@ export default function PaymentsPage() {
                 </div>
               </div>
 
-              {/* 5 Report Sub-Tabs Switcher */}
+              {/* Cashier EOD Report Sub-Tabs Switcher */}
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {[
                   { id: "DAY_BOOK", label: "Daily Cash Book (Day Book)", icon: FileText },
                   { id: "MODE_WISE", label: "Tender Mix & MDR Analysis", icon: CreditCard },
                   { id: "CASHIER_TALLY", label: "Cashier Shift Performance", icon: User },
-                  { id: "GST_SAC", label: "GST & SAC 999312 Exemption", icon: Landmark },
                   { id: "DEPARTMENT", label: "Department Revenue Breakdown", icon: Stethoscope },
-                  { id: "DOCTOR_REFERRAL", label: "Referring Doctor Referral MIS", icon: User },
                 ].map((rep) => {
                   const IconComp = rep.icon;
                   const isActive = activeReportView === rep.id;
@@ -5422,6 +5439,32 @@ export default function PaymentsPage() {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Billing Modules Cross-Reference Banner */}
+              <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50/70 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5 text-sky-950 font-medium">
+                  <Landmark className="h-4 w-4 text-sky-700 shrink-0" />
+                  <span>
+                    Looking for <strong>Statutory GST Tax Audit (SAC 999312 / GSTR-1)</strong> or <strong>Referring Doctor Commission Billing</strong>?
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href="/invoices?tab=gst"
+                    className="inline-flex items-center gap-1 rounded-lg bg-white border border-sky-200 px-3 py-1 font-bold text-sky-800 hover:bg-sky-100 transition shadow-2xs"
+                  >
+                    <span>GST Tax Audit</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </a>
+                  <a
+                    href="/invoices?tab=b2b"
+                    className="inline-flex items-center gap-1 rounded-lg bg-white border border-sky-200 px-3 py-1 font-bold text-sky-800 hover:bg-sky-100 transition shadow-2xs"
+                  >
+                    <span>Doctor Referrals</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -5639,71 +5682,7 @@ export default function PaymentsPage() {
               </div>
             )}
 
-            {/* Dynamic View 4: GST & SAC 999312 EXEMPTION REGISTER */}
-            {activeReportView === "GST_SAC" && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
-                  <div className="flex items-start gap-3">
-                    <Landmark className="h-5 w-5 text-blue-700 shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wide">
-                        Statutory GST Exemption for Healthcare & Diagnostic Services (SAC 999312)
-                      </h4>
-                      <p className="text-xs text-blue-800 mt-1 leading-relaxed">
-                        Under Ministry of Finance <strong>Notification No. 12/2017 - Central Tax (Rate) dated 28th June 2017, Serial No. 74</strong>, healthcare diagnostic, pathological, biochemical, and radiological investigations provided by an authorized clinical establishment are <strong>NIL-RATED / EXEMPT</strong> from CGST, SGST, and IGST.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-                  <table className="w-full text-left text-xs">
-                    <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3">SAC / HSN Code</th>
-                        <th className="px-4 py-3">Service Classification</th>
-                        <th className="px-4 py-3 text-right">Taxable Turnover</th>
-                        <th className="px-4 py-3 text-center">CGST (0%)</th>
-                        <th className="px-4 py-3 text-center">SGST (0%)</th>
-                        <th className="px-4 py-3 text-center">Tax Payable</th>
-                        <th className="px-4 py-3">Exemption Citation</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-mono">
-                      <tr>
-                        <td className="px-4 py-3 font-bold text-blue-700">SAC 999312</td>
-                        <td className="px-4 py-3 font-sans font-medium text-slate-900">Pathology & Clinical Laboratory Blood Tests</td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(78500)}</td>
-                        <td className="px-4 py-3 text-center text-slate-500">0.00</td>
-                        <td className="px-4 py-3 text-center text-slate-500">0.00</td>
-                        <td className="px-4 py-3 text-center text-emerald-700 font-bold">₹0.00 (NIL)</td>
-                        <td className="px-4 py-3 font-sans text-xs text-slate-500">Notif 12/2017-CT(R) Sl.74</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 font-bold text-blue-700">SAC 999312</td>
-                        <td className="px-4 py-3 font-sans font-medium text-slate-900">Histopathology & Cytopathology Biopsy Studies</td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(24800)}</td>
-                        <td className="px-4 py-3 text-center text-slate-500">0.00</td>
-                        <td className="px-4 py-3 text-center text-slate-500">0.00</td>
-                        <td className="px-4 py-3 text-center text-emerald-700 font-bold">₹0.00 (NIL)</td>
-                        <td className="px-4 py-3 font-sans text-xs text-slate-500">Notif 12/2017-CT(R) Sl.74</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 font-bold text-blue-700">SAC 999312</td>
-                        <td className="px-4 py-3 font-sans font-medium text-slate-900">Microbiology Culture & Sensitivity Panels</td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(19400)}</td>
-                        <td className="px-4 py-3 text-center text-slate-500">0.00</td>
-                        <td className="px-4 py-3 text-center text-slate-500">0.00</td>
-                        <td className="px-4 py-3 text-center text-emerald-700 font-bold">₹0.00 (NIL)</td>
-                        <td className="px-4 py-3 font-sans text-xs text-slate-500">Notif 12/2017-CT(R) Sl.74</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Dynamic View 5: DEPARTMENT REVENUE BREAKDOWN */}
+            {/* Dynamic View 4: DEPARTMENT REVENUE BREAKDOWN */}
             {activeReportView === "DEPARTMENT" && (
               <div className="space-y-4">
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
@@ -5756,94 +5735,6 @@ export default function PaymentsPage() {
                         <td className="px-4 py-3 text-center font-bold text-blue-700">5.7%</td>
                         <td className="px-4 py-3 text-slate-600">Dr. Neha Shah (DMRD)</td>
                       </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Dynamic View 6: REFERRING DOCTOR REFERRAL MIS */}
-            {activeReportView === "DOCTOR_REFERRAL" && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
-                    <span className="text-[10px] uppercase font-bold text-slate-500">Active Referring Clinicians</span>
-                    <div className="text-xl font-mono font-bold text-slate-900 mt-1">28 Doctors</div>
-                    <span className="text-[10px] text-slate-400">Attached OPD & Clinics</span>
-                  </div>
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3.5 shadow-xs">
-                    <span className="text-[10px] uppercase font-bold text-emerald-800">Total Patient Referrals</span>
-                    <div className="text-xl font-mono font-bold text-emerald-700 mt-1">114 Orders</div>
-                    <span className="text-[10px] text-emerald-600">This Month</span>
-                  </div>
-                  <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3.5 shadow-xs">
-                    <span className="text-[10px] uppercase font-bold text-blue-800">Billed Diagnostic Value</span>
-                    <div className="text-xl font-mono font-bold text-blue-700 mt-1">{formatCurrency(128450)}</div>
-                    <span className="text-[10px] text-blue-600">Diagnostic Revenue Yield</span>
-                  </div>
-                  <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3.5 shadow-xs">
-                    <span className="text-[10px] uppercase font-bold text-purple-800">Average Yield Per Order</span>
-                    <div className="text-xl font-mono font-bold text-purple-700 mt-1">{formatCurrency(1126.75)}</div>
-                    <span className="text-[10px] text-purple-600">Prescription Basket Size</span>
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-                  <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-3 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Referring Physician Volume & Diagnostic Yield MIS</h4>
-                      <p className="text-[11px] text-slate-500">Compliant clinician attribution register and test prescription breakdown</p>
-                    </div>
-                    <button
-                      onClick={() => showNotification("Exporting Referring Doctor MIS statement to Excel...", "info")}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 transition"
-                    >
-                      <FileSpreadsheet className="h-3.5 w-3.5" />
-                      Export Clinician MIS
-                    </button>
-                  </div>
-                  <table className="w-full text-left text-xs">
-                    <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3">Clinician Name & Medical Reg #</th>
-                        <th className="px-4 py-3">Clinic / Hospital Attachment</th>
-                        <th className="px-4 py-3">Specialty</th>
-                        <th className="px-4 py-3 text-center">Patients Referred</th>
-                        <th className="px-4 py-3 text-center">Tests Prescribed</th>
-                        <th className="px-4 py-3 text-right">Billed Revenue (₹)</th>
-                        <th className="px-4 py-3 text-center">Share</th>
-                        <th className="px-4 py-3 text-right">Attribution Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {[
-                        { name: "Dr. Rajesh Dave", reg: "GMC-39201", clinic: "Dave Heart Clinic, Navrangpura", spec: "Cardiology & Internal Med", patients: 34, tests: 92, revenue: 42800, share: "33.3%" },
-                        { name: "Dr. Priya Sharma", reg: "GMC-44102", clinic: "Shreeji Endocrine Centre", spec: "Diabetology & Endocrinology", patients: 28, tests: 76, revenue: 31400, share: "24.4%" },
-                        { name: "Dr. Animesh Roy", reg: "GMC-19402", clinic: "Lifecare Multi-Specialty Clinic", spec: "General Medicine", patients: 22, tests: 48, revenue: 22150, share: "17.2%" },
-                        { name: "Dr. Meera Desai", reg: "GMC-51029", clinic: "Mother & Child Maternity Clinic", spec: "OBGYN & Fetal Medicine", patients: 18, tests: 42, revenue: 19800, share: "15.4%" },
-                        { name: "Dr. K. S. Trivedi", reg: "GMC-22810", clinic: "Sterling Kidney Care Hospital", spec: "Nephrology & Urology", patients: 12, tests: 28, revenue: 12300, share: "9.6%" },
-                      ].map((doc, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80 transition">
-                          <td className="px-4 py-3.5">
-                            <div className="font-bold text-slate-900">{doc.name}</div>
-                            <div className="font-mono text-[10px] text-blue-700 mt-0.5">{doc.reg}</div>
-                          </td>
-                          <td className="px-4 py-3.5 font-medium text-slate-800">{doc.clinic}</td>
-                          <td className="px-4 py-3.5 text-slate-600">{doc.spec}</td>
-                          <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-900">{doc.patients}</td>
-                          <td className="px-4 py-3.5 text-center font-mono text-slate-700">{doc.tests}</td>
-                          <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">{formatCurrency(doc.revenue)}</td>
-                          <td className="px-4 py-3.5 text-center font-bold text-emerald-700">{doc.share}</td>
-                          <td className="px-4 py-3.5 text-right">
-                            <button
-                              onClick={() => showNotification(`Generating referral breakdown report for ${doc.name}...`, "info")}
-                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
-                            >
-                              Prescriptions
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
                     </tbody>
                   </table>
                 </div>
