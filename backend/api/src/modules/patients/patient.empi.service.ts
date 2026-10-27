@@ -22,7 +22,6 @@ import { HttpError } from "../../utils/http-error";
 import { WebSocketService } from "../../lib/websocket";
 import { createAuditLog } from "../audit/audit.service";
 import { generateUHID } from "./patient.service";
-import { WebSocketService } from "../../lib/websocket";
 import {
   ConfidentialityLevel,
   EmpiDecision,
@@ -863,7 +862,7 @@ export const handleAbdmScanShare = async (
 
   if (topMatch?.decision === EmpiDecision.AUTO_BLOCK_DUPLICATE) {
     const responsePayload = {
-      action: "EXISTING_PATIENT",
+      action: "EXISTING_PATIENT" as "EXISTING_PATIENT",
       uhid: topMatch.candidateUhid,
       patientId: topMatch.candidatePatientId,
       empiScore: topMatch.score,
@@ -924,7 +923,7 @@ export const handleAbdmScanShare = async (
     });
 
     const responsePayload = {
-      action: "REVIEW_REQUIRED",
+      action: "REVIEW_REQUIRED" as "REVIEW_REQUIRED",
       uhid: newPatient.uhid,
       patientId: newPatient.id,
       empiScore: topMatch.score,
@@ -940,7 +939,7 @@ export const handleAbdmScanShare = async (
   }
 
   const responsePayload = {
-    action: "NEW_PATIENT",
+    action: "NEW_PATIENT" as "NEW_PATIENT",
     uhid: newPatient.uhid,
     patientId: newPatient.id,
     tokenNumber: payload.tokenNumber,
