@@ -327,17 +327,19 @@ const menuSections: MenuSection[] = [
     items: [
       {
         id: "tests",
-        label: "Test Catalog",
+        label: "Diagnostic Tests",
         name: "tests",
         href: "/tests",
         icon: FlaskConical,
         accent: ACCENTS.sapphire,
         children: [
-          { label: "All Tests", href: "/tests" },
-          { label: "Add / Edit Test", href: "/tests/new" },
-          { label: "Test Categories", href: "/tests/categories" },
-          { label: "Parameters & Units", href: "/tests/parameters" },
-          { label: "Reference Ranges (CLSI)", href: "/tests/reference-ranges" },
+          { label: "Test catalogue", href: "/tests" },
+          { label: "New investigation", href: "/tests/new", badge: "Add", badgeVariant: "emerald" },
+          { label: "Departments", href: "/tests/categories" },
+          { label: "Packages & profiles", href: "/tests/packages" },
+          { label: "Analytes & units", href: "/tests/parameters" },
+          { label: "Reference intervals", href: "/tests/reference-ranges" },
+          { label: "Staff training", href: "/tests/training" },
         ],
       },
       {

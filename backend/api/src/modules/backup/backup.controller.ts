@@ -11,6 +11,7 @@ import {
 } from './backup.service';
 import { BackupRetentionService, BackupMetadata } from './backup-retention.service';
 import { BackupSchedulerService } from './backup-scheduler.service';
+import { DisasterRecoveryService } from './disaster-recovery.service';
 
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), 'backups');
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || '';
@@ -366,6 +367,69 @@ export const triggerScheduledBackupNowController = async (req: AuthenticatedRequ
     res.status(500).json({
       success: false,
       message: 'Failed to execute scheduled backup routine',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Execute live Disaster Recovery drill
+ */
+export const executeDrDrillController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can execute disaster recovery drills',
+      });
+    }
+
+    const drillResult = await DisasterRecoveryService.executeDrDrill();
+    res.json({
+      success: true,
+      message: 'Disaster recovery drill executed successfully',
+      data: drillResult,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to execute disaster recovery drill',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Get Disaster Recovery capabilities and failover status
+ */
+export const getDrStatusController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can view DR status',
+      });
+    }
+
+    const pitr = DisasterRecoveryService.verifyPitrCapability(new Date());
+    const failover = DisasterRecoveryService.verifyFailoverResilience();
+
+    res.json({
+      success: true,
+      data: {
+        pitrCapability: pitr,
+        failoverResilience: failover,
+        certifiedStandards: [
+          'ISO 22301 (Business Continuity Management)',
+          'NABL ISO 15189:2022 §5.10 (LIMS Data Integrity & Disaster Recovery)',
+          'DPDP Act 2023 §8 (Data Security & Protection Safeguards)',
+        ],
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve disaster recovery status',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }

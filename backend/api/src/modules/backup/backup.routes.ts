@@ -13,6 +13,8 @@ import {
   verifyBackupController,
   getSchedulerStatusController,
   triggerScheduledBackupNowController,
+  executeDrDrillController,
+  getDrStatusController,
 } from './backup.controller';
 
 const router = Router();
@@ -74,6 +76,18 @@ router.get('/scheduler/status', getSchedulerStatusController);
  * @desc    Trigger automated 02:00 AM backup routine on-demand
  */
 router.post('/scheduler/trigger', triggerScheduledBackupNowController);
+
+/**
+ * @route   POST /api/backups/dr/drill
+ * @desc    Execute live Disaster Recovery drill (backup + staging integrity audit)
+ */
+router.post('/dr/drill', executeDrDrillController);
+
+/**
+ * @route   GET /api/backups/dr/status
+ * @desc    Get Disaster Recovery PITR and failover resilience status
+ */
+router.get('/dr/status', getDrStatusController);
 
 /**
  * @route   DELETE /api/backups/:fileName

@@ -347,139 +347,109 @@ export default function TestsPage() {
         )}
 
         {/* =========================================================================
-            1. LIGHT WHITE CLINICAL HOSPITAL HEADER & CREDENTIALS
+            1. TEST CATALOGUE HEADER
         ========================================================================= */}
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 text-slate-900 shadow-xs">
-          {/* Subtle medical tricolor accent strip on top */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-600" />
+        <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm sm:p-6">
+          <div className="absolute inset-x-0 top-0 h-1 bg-sky-600" />
 
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2.5">
-              {/* Quality & Accreditation Badges */}
-              <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-800">
-                  <FlaskConical className="h-3.5 w-3.5 text-blue-600" /> Clinical Diagnostic Master Directory
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-800">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> NABL Accredited (ISO 15189:2022)
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-800">
-                  <Activity className="h-3.5 w-3.5 text-indigo-600" /> LOINC &amp; ABDM FHIR R4 Ready
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-800">
-                  <Cpu className="h-3.5 w-3.5 text-purple-600" /> ASTM / HL7 Bi-Directional Interfaced
-                </span>
+          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-800">
+                <FlaskConical className="h-3.5 w-3.5 text-sky-700" />
+                Diagnostic test catalogue
               </div>
-
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                Diagnostic Tests &amp; Clinical Integration Engine
+              <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+                Investigations and clinical master data
               </h1>
-              <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-                Hospital-grade pathology investigation catalog with bi-directional analyzer interfacing, multi-tier B2B tariffs, pre-analytical vacutainer SOPs, automated clinical formulas, and NABL panic alert thresholds.
+              <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
+                Maintain the investigations used by registration, order entry, specimen collection and reporting teams. Review specimen requirements, preparation, turnaround time, pricing and operational status from one controlled directory.
               </p>
             </div>
 
-            {/* Quick Actions Header Hub */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsTubeGuideOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3.5 py-2.5 text-xs font-bold text-slate-700 transition shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
               >
-                <span>🧪</span>
-                <span>Vacutainer SOP</span>
+                <FlaskConical className="h-4 w-4 text-sky-700" />
+                <span>Specimen guide</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsTariffModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3.5 py-2.5 text-xs font-bold text-slate-700 transition shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
               >
                 <Printer className="h-4 w-4 text-blue-600" />
-                <span>Print Tariff Card</span>
+                <span>Print tariff sheet</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsBulkPriceModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3.5 py-2.5 text-xs font-bold text-blue-700 transition shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs font-bold text-sky-800 shadow-sm transition hover:bg-sky-100"
               >
                 <TrendingUp className="h-4 w-4 text-blue-600" />
-                <span>Bulk Pricing</span>
+                <span>Bulk pricing</span>
               </button>
 
               <Link
                 href="/tests/new"
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-lg bg-sky-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-sky-800"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add Investigation</span>
+                <span>New investigation</span>
               </Link>
             </div>
           </div>
 
-          {/* Real-Time Clinical KPI Strip in Light White Aesthetics */}
-          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 border-t border-slate-100 pt-5">
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Directory</span>
-                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Investigations</span>
+                <FlaskConical className="h-4 w-4 text-sky-700" />
               </div>
               <p className="mt-1 text-2xl font-black text-slate-900">{tests.length}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">{totalActive} Operational Tests</p>
+              <p className="mt-0.5 text-[10px] text-slate-500">Loaded in this catalogue</p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Active</span>
+              <p className="mt-1 text-2xl font-black text-slate-900">{totalActive}</p>
+              <p className="mt-0.5 text-[10px] text-slate-500">Available for order entry</p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Departments</span>
               <p className="mt-1 text-2xl font-black text-slate-900">{totalCategoriesCount}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Biochem, Hema, Micro, Immuno</p>
+              <p className="mt-0.5 text-[10px] text-slate-500">Configured catalogue sections</p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700">STAT / Rapid</span>
-                <Flame className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
-              </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Rapid TAT</span>
               <p className="mt-1 text-2xl font-black text-slate-900">{statAvailableCount}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Sub-4h Emergency TAT</p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Health Packages</span>
-              <p className="mt-1 text-2xl font-black text-slate-900">4</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Profiles &amp; Executive Wellness</p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Quality Standard</span>
-              <p className="mt-1 text-xl font-black text-slate-900">ISO 15189</p>
-              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">NABL MC-4129 Certified</p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tariff Structure</span>
-              <p className="mt-1 text-xl font-black text-slate-900">3-Tier B2B</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">0% GST Healthcare Exempt</p>
+              <p className="mt-0.5 text-[10px] text-slate-500">Configured at four hours or less</p>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* =========================================================================
-            2. MASTER WORKSTATION TABS (Professional Clinical Tab Navigation)
+            2. CATALOGUE WORK AREAS
         ========================================================================= */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-2xs overflow-x-auto">
+        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm overflow-x-auto">
           <div className="flex gap-1 min-w-max">
             {[
-              { id: "catalog" as const, label: "1. Diagnostic Test Menu", icon: TableIcon, count: filteredTests.length },
-              { id: "packages" as const, label: "2. Health Packages & Bundles", icon: Package },
-              { id: "parameters" as const, label: "3. Analyte Reference Matrix", icon: SlidersHorizontal },
-              { id: "formulas" as const, label: "4. Clinical Formulas & Derivations", icon: Calculator, badge: "Automated" },
-              { id: "qc" as const, label: "5. Analyzer QC & Instruments", icon: ShieldCheck, badge: "Westgard" },
-              { id: "interfacing" as const, label: "6. LIMS Analyzer Interfacing", icon: Cpu, badge: "ASTM/HL7" },
-              { id: "b2b-tariff" as const, label: "7. B2B Tariff & Doctor Margin", icon: TrendingUp, badge: "0% GST" },
-              { id: "panic-alerts" as const, label: "8. Panic / Critical Value Alerts", icon: ShieldAlert, badge: "NABL 15m" },
-              { id: "phlebotomy-sop" as const, label: "9. Phlebotomy & Draw SOP", icon: FlaskConical },
-              { id: "training" as const, label: "10. Clinical AI & Training", icon: Brain, badge: "AI" },
+              { id: "catalog" as const, label: "Catalogue", icon: TableIcon, count: filteredTests.length },
+              { id: "packages" as const, label: "Packages & profiles", icon: Package },
+              { id: "parameters" as const, label: "Analytes & intervals", icon: SlidersHorizontal },
+              { id: "formulas" as const, label: "Calculated results", icon: Calculator },
+              { id: "qc" as const, label: "Quality & instruments", icon: ShieldCheck },
+              { id: "interfacing" as const, label: "Analyzer connections", icon: Cpu },
+              { id: "b2b-tariff" as const, label: "Tariffs", icon: TrendingUp },
+              { id: "panic-alerts" as const, label: "Critical values", icon: ShieldAlert },
+              { id: "phlebotomy-sop" as const, label: "Specimen collection", icon: FlaskConical },
+              { id: "training" as const, label: "Staff training", icon: Brain },
             ].map((tab) => {
               const isActive = workstationTab === tab.id;
               const Icon = tab.icon;
@@ -488,22 +458,13 @@ export default function TestsPage() {
                   key={tab.id}
                   onClick={() => setWorkstationTab(tab.id)}
                   className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      isActive
+                        ? "bg-sky-700 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
-                  <Icon className={`h-3.5 w-3.5 ${isActive ? "text-sky-400" : "text-slate-500"}`} />
+                  <Icon className={`h-3.5 w-3.5 ${isActive ? "text-white" : "text-slate-500"}`} />
                   <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span
-                      className={`rounded-md px-1.5 py-0.2 text-[9px] font-black uppercase ${
-                        isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
-                      }`}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
                   {tab.count !== undefined && (
                     <span
                       className={`rounded-full px-2 py-0.2 text-[10px] font-mono font-bold ${

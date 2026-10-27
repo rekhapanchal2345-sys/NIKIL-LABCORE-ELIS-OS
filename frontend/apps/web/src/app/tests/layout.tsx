@@ -11,8 +11,7 @@ import {
   Scale,
   Package,
   ShieldCheck,
-  Sparkles,
-  Brain,
+  GraduationCap,
 } from "lucide-react";
 
 export default function TestsLayout({
@@ -23,23 +22,22 @@ export default function TestsLayout({
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/tests", label: "Diagnostic Test Catalog", icon: FlaskConical, exact: true },
-    { href: "/tests/new", label: "Add Investigation", icon: PlusCircle },
-    { href: "/tests/categories", label: "Lab Departments", icon: FolderTree },
-    { href: "/tests/parameters", label: "Analyte Parameters", icon: Sliders },
-    { href: "/tests/reference-ranges", label: "Biological Intervals", icon: Scale },
-    { href: "/tests/packages", label: "Health Packages", icon: Package },
-    { href: "/tests/training", label: "Clinical AI Training", icon: Brain },
+    { href: "/tests", label: "Test catalogue", icon: FlaskConical, exact: true },
+    { href: "/tests/new", label: "New investigation", icon: PlusCircle },
+    { href: "/tests/categories", label: "Departments", icon: FolderTree },
+    { href: "/tests/packages", label: "Packages & profiles", icon: Package },
+    { href: "/tests/parameters", label: "Analytes & units", icon: Sliders },
+    { href: "/tests/reference-ranges", label: "Reference intervals", icon: Scale },
+    { href: "/tests/training", label: "Staff training", icon: GraduationCap },
   ];
 
   return (
-    <DashboardLayout title="Diagnostic Directory & Pathology Master">
-      <div className="space-y-6">
-        {/* Hospital Grade Sub-Navigation Ribbon (Light White Professional UI) */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-2 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-2 py-1">
+    <DashboardLayout title="Diagnostic test catalogue">
+      <div className="space-y-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+          <div className="flex flex-col gap-3 px-2 py-1 lg:flex-row lg:items-center lg:justify-between">
             {/* Navigation Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <nav aria-label="Test catalogue sections" className="flex items-center gap-1.5 overflow-x-auto py-0.5">
               {navItems.map((item) => {
                 const isActive = item.exact
                   ? pathname === item.href
@@ -50,28 +48,24 @@ export default function TestsLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-2 whitespace-nowrap px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+                    className={`flex min-h-9 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-colors duration-200 ${
                       isActive
-                        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20 border border-blue-600"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent"
+                        ? "border border-sky-200 bg-sky-50 text-sky-800"
+                        : "border border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                     }`}
                   >
-                    <Icon className={`h-3.5 w-3.5 ${isActive ? "text-white" : "text-slate-500"}`} />
+                    <Icon className={`h-3.5 w-3.5 ${isActive ? "text-sky-700" : "text-slate-500"}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
               })}
-            </div>
+            </nav>
 
-            {/* Quick Accreditation Badge */}
-            <div className="hidden lg:flex items-center gap-2.5 pr-2 text-xs font-semibold text-slate-600 border-l border-slate-200 pl-4">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <div className="hidden items-center gap-2 border-l border-slate-200 pl-4 pr-2 text-xs text-slate-500 xl:flex">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600">
                 <ShieldCheck className="h-3.5 w-3.5" />
               </span>
-              <div className="flex flex-col text-left">
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">ISO 15189 &amp; NABL Accredited</span>
-                <span className="text-[10px] text-slate-500 leading-tight">CAP Validated Specimen Master</span>
-              </div>
+              <span className="font-medium">Controlled clinical master data</span>
             </div>
           </div>
         </div>
