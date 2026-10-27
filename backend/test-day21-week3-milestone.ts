@@ -29,6 +29,7 @@ import { registerBillingTests } from "./tests/billing.test";
 import { registerSampleTests } from "./tests/sample.test";
 import { registerReportTests } from "./tests/report.test";
 import { registerEnterpriseWeek3Tests } from "./tests/enterprise-week3.test";
+import { registerWestgardTests } from "./tests/westgard.test";
 import prisma from "./api/config/database";
 import { cacheService } from "./api/src/modules/cache/cache.service";
 
@@ -45,6 +46,7 @@ async function runWeek3MilestoneCertification() {
     registerSampleTests();
     registerReportTests();
     registerEnterpriseWeek3Tests();
+    registerWestgardTests();
 
     // 2. Execute Complete Test Runner
     const execution = await runner.run();
