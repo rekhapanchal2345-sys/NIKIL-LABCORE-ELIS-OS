@@ -1,6 +1,6 @@
 {
   "name": "labcore-elis-web",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "npm --prefix apps/web run dev",

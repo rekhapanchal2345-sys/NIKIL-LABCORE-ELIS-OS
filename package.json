@@ -1,6 +1,6 @@
 {
   "name": "labcore-elis-backend-fixed",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "description": "LabCore ELIS & Hospital Information System - Advanced Doctor & Pathology Module",
   "main": "index.js",
   "scripts": {
