@@ -1054,6 +1054,7 @@ model Test {
   deltaCheckEnabled        Boolean           @default(false)
   deltaThresholdPercentage Decimal?          @db.Decimal(5, 2)
   description              String?
+  isConfidential           Boolean           @default(false)
   orderItems               OrderItem[]
   results                  Result[]
   samples                  Sample[]
@@ -1112,8 +1113,14 @@ model ReferenceRange {
   ageGroup       String?
   minAgeUnit     String?
   maxAgeUnit     String?
+  minAgeInHours  Int?
+  maxAgeInHours  Int?
+  minAgeInDays   Int?
+  maxAgeInDays   Int?
   notes          String?
   isActive       Boolean       @default(true)
+  isDeleted      Boolean       @default(false)
+  deletedAt      DateTime?
   displayOrder   Int?          @default(0)
   updatedAt      DateTime      @updatedAt
   parameter      TestParameter @relation(fields: [parameterId], references: [id], onDelete: Cascade)
@@ -1224,6 +1231,7 @@ model Order {
   commissionEntries       DoctorCommissionEntry[]
   branchId               String?                 @map("branch_id")
   branch                 Branch?                 @relation(fields: [branchId], references: [id])
+  creditNotes            CreditNote[]
 
   @@index([patientId])
   @@index([doctorId])
@@ -1343,6 +1351,7 @@ model Invoice {
   sgstAmount    Decimal       @default(0) @db.Decimal(10, 2)
   taxableAmount Decimal       @db.Decimal(10, 2)
   order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  creditNotes   CreditNote[]
 
   @@index([paymentStatus])
   @@index([createdAt])
@@ -1454,6 +1463,15 @@ model ResultValue {
   updatedAt                    DateTime                      @updatedAt
   clinicalSignificance         String?
   rangeIndicator               String?
+  snapshotReferenceMin         Decimal?                      @db.Decimal(10, 2)
+  snapshotReferenceMax         Decimal?                      @db.Decimal(10, 2)
+  snapshotUnit                 String?
+  snapshotAgeText              String?
+  snapshotGender               String?
+  rawResult                    String?
+  numericResult                Decimal?                      @db.Decimal(10, 2)
+  operator                     String?
+  instrumentFlags              String?
   criticalValueAcknowledgments CriticalValueAcknowledgment[]
   parameter                    TestParameter                 @relation(fields: [parameterId], references: [id])
   result                       Result                        @relation(fields: [resultId], references: [id], onDelete: Cascade)
@@ -1500,6 +1518,15 @@ model Report {
   qualityAssurance       Json?
   reportReferenceId      String?               @unique
   templateType           String?               @default("standard")
+  version                Int                   @default(1)
+  isAmended              Boolean               @default(false)
+  parentReportId         String?
+  amendmentReason        String?
+  amendedAt              DateTime?
+  amendedById            String?
+  digitalSignatureHash   String?
+  signedAt               DateTime?
+  signedByUserId         String?
   historyEntries         PatientHistoryEntry[] @relation("PatientHistoryReports")
   addendums              ReportAddendum[]      @relation("ReportAddendums")
   shareLinks             ReportShareLink[]
@@ -3771,6 +3798,8 @@ model AntibioticSusceptibility {
   clsiBreakpointR        String              @map("clsi_breakpoint_r")
   interpretation         AstInterpretation
   isRestrictedReserve    Boolean             @default(false) @map("is_restricted_reserve") // e.g., Colistin, Linezolid
+  antibioticGroup        String              @default("A") @map("antibiotic_group")
+  isSuppressedOnReport   Boolean             @default(false) @map("is_suppressed_on_report")
   testedAt               DateTime            @default(now()) @map("tested_at")
 
   isolate                MicrobiologyIsolate @relation(fields: [isolateId], references: [id], onDelete: Cascade)
@@ -4171,7 +4200,8 @@ model NexusBioTensorAudit {
   @@index([createdAt])
   @@index([patientId, createdAt])
   @@map("nexus_bio_tensor_audits")
-}
+}
+
 
 model Branch {
   id              String         @id @default(cuid())
@@ -4200,4 +4230,317 @@ model Branch {
   @@index([city])
   @@index([isActive])
   @@map("branches")
+}
+
+
+model DailySequence {
+  seqDate    String   @map("seq_date")
+  seriesName String   @default("SMP") @map("series_name")
+  currentVal Int      @default(0) @map("current_val")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([seqDate, seriesName])
+  @@map("daily_sequences")
+}
+
+model CreditNote {
+  id                 String   @id @default(uuid())
+  creditNoteNumber   String   @unique @map("credit_note_number")
+  orderId            String   @map("order_id")
+  invoiceId          String?  @map("invoice_id")
+  partnerId          String?  @map("partner_id")
+  amount             Decimal  @db.Decimal(12, 2)
+  reason             String
+  cancelledTestCodes String[] @map("cancelled_test_codes")
+  createdAt          DateTime @default(now()) @map("created_at")
+  createdById        String?  @map("created_by_id")
+
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoice            Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([invoiceId])
+  @@index([partnerId])
+  @@map("credit_notes")
+}
+
+model HistoSpecimen {
+  id                 String       @id @default(uuid())
+  accessionNumber    String       @unique @map("accession_number")
+  sampleId           String?      @map("sample_id")
+  orderId            String       @map("order_id")
+  patientId          String       @map("patient_id")
+  biopsySite         String       @map("biopsy_site")
+  clinicalHistory    String?      @map("clinical_history")
+  grossDescription   String?      @map("gross_description")
+  status             String       @default("GROSSING")
+  dataMatrixBarcode  String       @unique @map("data_matrix_barcode")
+  receivedAt         DateTime     @default(now()) @map("received_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  blocks             HistoBlock[]
+
+  @@index([orderId])
+  @@index([patientId])
+  @@map("histo_specimens")
+}
+
+model HistoBlock {
+  id                  String        @id @default(uuid())
+  specimenId          String        @map("specimen_id")
+  blockCode           String        @map("block_code")
+  tissueCassetteColor String?       @map("tissue_cassette_color")
+  dataMatrixBarcode   String        @unique @map("data_matrix_barcode")
+  isDecalcified       Boolean       @default(false) @map("is_decalcified")
+  createdAt           DateTime      @default(now()) @map("created_at")
+
+  specimen            HistoSpecimen @relation(fields: [specimenId], references: [id], onDelete: Cascade)
+  slides              HistoSlide[]
+
+  @@unique([specimenId, blockCode])
+  @@map("histo_blocks")
+}
+
+model HistoSlide {
+  id                  String     @id @default(uuid())
+  blockId             String     @map("block_id")
+  slideCode           String     @map("slide_code")
+  stainType           String     @default("H&E") @map("stain_type")
+  microscopicFindings String?    @map("microscopic_findings")
+  dataMatrixBarcode   String     @unique @map("data_matrix_barcode")
+  isIhc               Boolean    @default(false) @map("is_ihc")
+  createdAt           DateTime   @default(now()) @map("created_at")
+
+  block               HistoBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([blockId, slideCode])
+  @@map("histo_slides")
+}
+
+model QcMaterialLot {
+  id                 String        @id @default(uuid())
+  analyzerCode       String        @map("analyzer_code")
+  testCode           String        @map("test_code")
+  qcLevel            String        @map("qc_level")
+  lotNumber          String        @map("lot_number")
+  manufacturerMean   Decimal       @map("manufacturer_mean") @db.Decimal(10, 4)
+  manufacturerSD     Decimal       @map("manufacturer_sd") @db.Decimal(10, 4)
+  labEstablishedMean Decimal?      @map("lab_established_mean") @db.Decimal(10, 4)
+  labEstablishedSD   Decimal?      @map("lab_established_sd") @db.Decimal(10, 4)
+  expiryDate         DateTime      @map("expiry_date")
+  isActive           Boolean       @default(true) @map("is_active")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  runs               QcRunResult[]
+
+  @@unique([analyzerCode, testCode, qcLevel, lotNumber])
+  @@map("qc_material_lots")
+}
+
+model QcRunResult {
+  id                 String         @id @default(uuid())
+  qcMaterialLotId    String?        @map("qc_material_lot_id")
+  analyzerCode       String         @map("analyzer_code")
+  testCode           String         @map("test_code")
+  qcLevel            String         @map("qc_level")
+  runValue           Decimal        @map("run_value") @db.Decimal(10, 4)
+  meanUsed           Decimal        @map("mean_used") @db.Decimal(10, 4)
+  sdUsed             Decimal        @map("sd_used") @db.Decimal(10, 4)
+  zScore             Decimal        @map("z_score") @db.Decimal(6, 2)
+  westgardPassed     Boolean        @map("westgard_passed")
+  violatedRules      String[]       @map("violated_rules")
+  runAt              DateTime       @default(now()) @map("run_at")
+  operatorUserId     String?        @map("operator_user_id")
+  correctiveAction   String?        @map("corrective_action")
+
+  qcMaterialLot      QcMaterialLot? @relation(fields: [qcMaterialLotId], references: [id], onDelete: SetNull)
+
+  @@index([analyzerCode, testCode, runAt])
+  @@map("qc_run_results")
+}
+
+model HematologyScattergram {
+  id                         String   @id @default(uuid())
+  barcode                    String   @unique
+  testCode                   String   @default("CBC") @map("test_code")
+  wbcHistogramUrl            String?  @map("wbc_histogram_url")
+  rbcHistogramUrl            String?  @map("rbc_histogram_url")
+  pltHistogramUrl            String?  @map("plt_histogram_url")
+  diffScattergramUrl         String?  @map("diff_scattergram_url")
+  channelData256             Json?    @map("channel_data_256")
+  suspectFlags               String[] @map("suspect_flags")
+  manualSlideReviewRequired  Boolean  @default(false) @map("manual_slide_review_required")
+  uncorrectedWbc             Decimal? @map("uncorrected_wbc") @db.Decimal(10, 2)
+  nrbcCountPer100Wbc         Decimal? @map("nrbc_count_per_100_wbc") @db.Decimal(6, 2)
+  correctedWbc               Decimal? @map("corrected_wbc") @db.Decimal(10, 2)
+  createdAt                  DateTime @default(now()) @map("created_at")
+
+  @@index([barcode])
+  @@map("hematology_scattergrams")
+}
+
+model MicroplateLayout96 {
+  id                   String   @id @default(uuid())
+  plateId              String   @unique @map("plate_id")
+  assayType            String   @map("assay_type")
+  direction            String   @default("ROW_WISE_A1_A12")
+  blankOD              Decimal? @map("blank_od") @db.Decimal(6, 4)
+  negativeControlOD    Decimal? @map("negative_control_od") @db.Decimal(6, 4)
+  positiveControlOD    Decimal? @map("positive_control_od") @db.Decimal(6, 4)
+  isPlateControlsValid Boolean  @default(false) @map("is_plate_controls_valid")
+  cutOffIndexValue     Decimal? @map("cut_off_index_value") @db.Decimal(8, 4)
+  wellsData            Json     @map("wells_data")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([plateId])
+  @@map("microplate_layouts_96")
+}
+
+model BloodBankReservation {
+  id                    String    @id @default(uuid())
+  unitNumber            String    @unique @map("unit_number")
+  bloodGroup            String    @map("blood_group")
+  status                String    @default("AVAILABLE_IN_STOCK")
+  reservedForPatientId  String?   @map("reserved_for_patient_id")
+  reservedAt            DateTime? @map("reserved_at")
+  crossMatchExpiryAt    DateTime? @map("cross_match_expiry_at")
+  forwardGroupingJson   Json?     @map("forward_grouping_json")
+  reverseGroupingJson   Json?     @map("reverse_grouping_json")
+  isDiscrepancyResolved Boolean   @default(true) @map("is_discrepancy_resolved")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  @@index([unitNumber])
+  @@index([status])
+  @@map("blood_bank_reservations")
+}
+
+model DynamicSeriesTest {
+  id                   String    @id @default(uuid())
+  orderId              String    @map("order_id")
+  patientId            String    @map("patient_id")
+  seriesType           String    @default("OGTT_75G") @map("series_type")
+  fastingValue         Decimal?  @map("fasting_value") @db.Decimal(8, 2)
+  fastingScannedAt     DateTime? @map("fasting_scanned_at")
+  glucoseLoadGivenAt   DateTime? @map("glucose_load_given_at")
+  oneHourValue         Decimal?  @map("one_hour_value") @db.Decimal(8, 2)
+  oneHourScannedAt     DateTime? @map("one_hour_scanned_at")
+  twoHourValue         Decimal?  @map("two_hour_value") @db.Decimal(8, 2)
+  twoHourScannedAt     DateTime? @map("two_hour_scanned_at")
+  isTimeWindowCompliant Boolean   @default(true) @map("is_time_window_compliant")
+  deviationReason      String?   @map("deviation_reason")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  @@index([orderId])
+  @@index([patientId])
+  @@map("dynamic_series_tests")
+}
+
+model EquipmentComplianceLog {
+  id                             String   @id @default(uuid())
+  equipmentCode                  String   @unique @map("equipment_code")
+  calibrationExpiryDate          DateTime @map("calibration_expiry_date")
+  nextPreventiveMaintenanceDate  DateTime @map("next_preventive_maintenance_date")
+  isComplianceLocked             Boolean  @default(false) @map("is_compliance_locked")
+  lockReason                     String?  @map("lock_reason")
+  updatedAt                      DateTime @updatedAt @map("updated_at")
+
+  @@index([equipmentCode])
+  @@map("equipment_compliance_logs")
+}
+
+model EqasProficiencyRecord {
+  id             String   @id @default(uuid())
+  cycleId        String   @map("cycle_id")
+  parameterCode  String   @map("parameter_code")
+  blindBarcode   String   @unique @map("blind_barcode")
+  labResultValue Decimal  @map("lab_result_value") @db.Decimal(10, 4)
+  peerMean       Decimal  @map("peer_mean") @db.Decimal(10, 4)
+  peerSD         Decimal  @map("peer_sd") @db.Decimal(10, 4)
+  zScore         Decimal  @map("z_score") @db.Decimal(6, 2)
+  isSatisfactory Boolean  @default(true) @map("is_satisfactory")
+  capaTicketId   String?  @map("capa_ticket_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([blindBarcode])
+  @@map("eqas_proficiency_records")
+}
+
+model TempExcursionCapa {
+  id                      String   @id @default(uuid())
+  sensorLocation          String   @map("sensor_location")
+  minTempRecorded         Decimal  @map("min_temp_recorded") @db.Decimal(5, 2)
+  maxTempRecorded         Decimal  @map("max_temp_recorded") @db.Decimal(5, 2)
+  isExcursionActive       Boolean  @default(false) @map("is_excursion_active")
+  quarantinedReagentLots  String[] @map("quarantined_reagent_lots")
+  capaActionTaken         String?  @map("capa_action_taken")
+  recordedAt              DateTime @default(now()) @map("recorded_at")
+
+  @@index([sensorLocation])
+  @@map("temp_excursion_capas")
+}
+
+// ============================================================================
+// PART-4 ENTERPRISE MODELS: DOUBLE ENTRY LEDGER, FLOW CYTOMETRY & NGS VARIANTS
+// ============================================================================
+
+model DoubleEntryLedger {
+  id                 String   @id @default(uuid())
+  transactionNumber  String   @unique @map("transaction_number")
+  referenceType      String   @map("reference_type")
+  referenceId        String   @map("reference_id")
+  patientId          String?  @map("patient_id")
+  totalDebit         Decimal  @map("total_debit") @db.Decimal(12, 2)
+  totalCredit        Decimal  @map("total_credit") @db.Decimal(12, 2)
+  isBalanced         Boolean  @default(true) @map("is_balanced")
+  entriesJson        Json     @map("entries_json")
+  postedAt           DateTime @default(now()) @map("posted_at")
+  postedByUserId     String?  @map("posted_by_user_id")
+
+  @@index([referenceId])
+  @@index([transactionNumber])
+  @@map("double_entry_ledgers")
+}
+
+model FlowCytometryAssay {
+  id                  String   @id @default(uuid())
+  orderId             String   @map("order_id")
+  patientId           String   @map("patient_id")
+  cbcResultId         String?  @map("cbc_result_id")
+  isCbcVerified       Boolean  @default(false) @map("is_cbc_verified")
+  totalLeukocyteCount Decimal? @map("total_leukocyte_count") @db.Decimal(10, 2)
+  lymphocytePercent   Decimal? @map("lymphocyte_percent") @db.Decimal(5, 2)
+  cd4Percent          Decimal  @map("cd4_percent") @db.Decimal(5, 2)
+  cd8Percent          Decimal  @map("cd8_percent") @db.Decimal(5, 2)
+  absoluteCd4Count    Decimal? @map("absolute_cd4_count") @db.Decimal(10, 2)
+  absoluteCd8Count    Decimal? @map("absolute_cd8_count") @db.Decimal(10, 2)
+  cd4Cd8Ratio         Decimal? @map("cd4_cd8_ratio") @db.Decimal(6, 2)
+  cdcStage            String?  @map("cdc_stage")
+  calculationStatus   String   @map("calculation_status")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([orderId])
+  @@index([patientId])
+  @@map("flow_cytometry_assays")
+}
+
+model NgsVariantRecord {
+  id                   String   @id @default(uuid())
+  sampleBarcode        String   @map("sample_barcode")
+  chromosome           String
+  position             Int
+  refAllele            String   @map("ref_allele")
+  altAllele            String   @map("alt_allele")
+  qualityScore         Decimal? @map("quality_score") @db.Decimal(8, 2)
+  filterStatus         String   @map("filter_status")
+  readDepth            Int?     @map("read_depth")
+  clinicalSignificance String?  @map("clinical_significance")
+  geneSymbol           String?  @map("gene_symbol")
+  hgvsNotation         String?  @map("hgvs_notation")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([sampleBarcode])
+  @@index([chromosome, position])
+  @@map("ngs_variant_records")
 }
