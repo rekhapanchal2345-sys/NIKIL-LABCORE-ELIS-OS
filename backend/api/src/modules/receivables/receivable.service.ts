@@ -202,20 +202,25 @@ export const updateOverdueStatus = async () => {
       },
     });
 
-    for (const receivable of overdueReceivables) {
-      const dueDate = new Date(receivable.dueDate);
-      const overdueDays = Math.floor(
-        (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
+    // ⚡ Bolt: Execute updates concurrently using an interactive transaction to avoid N+1 queries sequentially
+    await prisma.$transaction(async (tx) => {
+      await Promise.all(
+        overdueReceivables.map((receivable) => {
+          const dueDate = new Date(receivable.dueDate);
+          const overdueDays = Math.floor(
+            (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
 
-      await prisma.receivable.update({
-        where: { id: receivable.id },
-        data: {
-          overdueDays,
-          status: "OVERDUE",
-        },
-      });
-    }
+          return tx.receivable.update({
+            where: { id: receivable.id },
+            data: {
+              overdueDays,
+              status: "OVERDUE",
+            },
+          });
+        })
+      );
+    });
 
     return { updated: overdueReceivables.length };
   } catch (error) {
