@@ -79,7 +79,9 @@ export default function NotificationToast() {
           </div>
           <button
             onClick={() => removeNotification(notification.id)}
-            className="flex-shrink-0 inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
+            className="flex-shrink-0 inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 rounded-md"
+            aria-label="Close notification"
+            title="Close notification"
           >
             <X className="w-4 h-4" />
           </button>
