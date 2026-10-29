@@ -616,110 +616,11 @@ export const OmniCommandPalette: React.FC<OmniCommandPaletteProps> = ({
   }, [activeRoute]);
 
   return (
-    <div className="w-full bg-slate-950 text-slate-100 border-b border-slate-800 select-none">
-      {/* =================================================================== */}
-      {/* PERSISTENT DIAGNOSTIC PIPELINE STATUS BAR & ROLE-AWARE BREADCRUMBS  */}
-      {/* =================================================================== */}
-      <div className="max-w-[1600px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        {/* Left: Role Badge + Smart Breadcrumbs */}
-        <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-indigo-400" />
-            {currentRole.replace(/_/g, ' ')}
-          </span>
-
-          <nav aria-label="Clinical Breadcrumbs" className="hidden md:flex items-center gap-1.5 text-xs text-slate-400">
-            <span className="font-semibold text-slate-300">NIKIL-LABCORE-OS</span>
-            {breadcrumbSegments.map((seg, idx) => (
-              <React.Fragment key={seg + idx}>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-                <span
-                  className={
-                    idx === breadcrumbSegments.length - 1
-                      ? 'text-cyan-400 font-semibold'
-                      : 'text-slate-400'
-                  }
-                >
-                  {seg}
-                </span>
-              </React.Fragment>
-            ))}
-          </nav>
-        </div>
-
-        {/* Center: Omni-Command Trigger Button (Ctrl + K) */}
-        <button
-          type="button"
-          onClick={() => {
-            setIsOpen(true);
-            setTimeout(() => inputRef.current?.focus(), 20);
-          }}
-          className="flex items-center justify-between gap-6 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800/90 border border-slate-700/80 text-xs text-slate-300 transition-all shadow-inner group min-w-[280px] sm:min-w-[360px]"
-        >
-          <span className="flex items-center gap-2 text-slate-400 group-hover:text-slate-200">
-            <Search className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Search MRN, ABHA, Analyzer IP, Panic Alerts, Commands...</span>
-          </span>
-          <kbd className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-slate-800 text-cyan-300 rounded border border-slate-600">
-            Ctrl + K
-          </kbd>
-        </button>
-
-        {/* Right: Live Hardware Pipeline Telemetry Bar */}
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-            <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-slate-400">Net:</span>
-            <span className="font-mono font-semibold text-emerald-300">
-              {(telemetry.networkThroughputKbps / 1000).toFixed(2)} Mbps
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-            <Activity className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-slate-400">Serial:</span>
-            <span className="font-mono font-semibold text-cyan-300">
-              {telemetry.serialPacketFps} FPS
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-            <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-slate-400">Analyzers:</span>
-            <span className="font-mono font-semibold text-white">
-              {telemetry.activeAnalyzersCount}/{telemetry.totalAnalyzersCount}
-            </span>
-          </div>
-
-          {/* Unacknowledged Panic Counter with Audio Chime Trigger */}
-          <button
-            type="button"
-            onClick={() => {
-              triggerClinicalPanicAudioChime();
-              setSelectedCategory('CRITICAL_PANIC');
-              setIsOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-rose-950/80 hover:bg-rose-900/80 border border-rose-500/60 text-rose-200 font-semibold animate-pulse"
-          >
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-            <span>{telemetry.unacknowledgedPanicCount} PANIC</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setAudioMuted((m) => !m)}
-            title={audioMuted ? 'Unmute Clinical Alert Audio' : 'Mute Clinical Alert Audio'}
-            className="p-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200"
-          >
-            {audioMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
-          </button>
-        </div>
-      </div>
-
+    <div className="select-none">
       {/* Action Confirmation Banner */}
       {actionFeedback && (
-        <div className="bg-emerald-950/90 border-t border-emerald-500/40 px-4 py-1.5 text-xs text-emerald-200 flex items-center justify-center gap-2">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+        <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-1.5 text-xs text-emerald-800 flex items-center justify-center gap-2">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
           <span>{actionFeedback}</span>
         </div>
       )}
@@ -728,7 +629,7 @@ export const OmniCommandPalette: React.FC<OmniCommandPaletteProps> = ({
       {/* OMNI-COMMAND CLINICAL PALETTE MODAL OVERLAY                         */}
       {/* =================================================================== */}
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-16 px-4 bg-slate-950/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-16 px-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
             {/* Search Input Header */}
             <div className="flex items-center px-4 py-3.5 border-b border-slate-800 bg-slate-950/60">

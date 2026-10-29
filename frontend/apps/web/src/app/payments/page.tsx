@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, Fragment } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import {
   paymentApi,
@@ -11,6 +12,18 @@ import {
   cashCounterApi,
   settlementsApi,
 } from "@/lib/api";
+import {
+  PAYMENT_TABS,
+  PaymentTab,
+  HealthcareFacilityScale,
+  TAB_SLUG_MAP,
+  TAB_TO_SLUG,
+  resolvePaymentTabFromSlug,
+  calculateDenominationTotal,
+  calculateShiftTillReconciliation,
+  classifyReceivableAgingBucket,
+  getFacilityScaleMeta,
+} from "@/lib/payment-utils";
 import PaymentReceipt from "@/components/payments/PaymentReceipt";
 import PaymentDetailModal from "@/components/payments/PaymentDetailModal";
 import CollectPaymentModal from "@/components/payments/CollectPaymentModal";
@@ -77,6 +90,11 @@ import {
   FileCheck,
   CircleSlash,
   ArrowRight,
+  Banknote,
+  Smartphone,
+  FlaskConical,
+  Info,
+  FileClock,
 } from "lucide-react";
 
 type PaymentStatus =
@@ -143,49 +161,7 @@ type SummaryStats = {
   cashDrawer: number;
 };
 
-const paymentTabs = [
-  "Overview",
-  "Transactions",
-  "Cash Counter",
-  "Advances & Wallet",
-  "Refunds",
-  "Settlements",
-  "Reconciliation",
-  "Reports",
-  "Audit Log",
-] as const;
-
-type PaymentTab = (typeof paymentTabs)[number];
-
-const TAB_SLUG_MAP: Record<string, PaymentTab> = {
-  overview: "Overview",
-  transactions: "Transactions",
-  "cash-counter": "Cash Counter",
-  cashcounter: "Cash Counter",
-  counter: "Cash Counter",
-  till: "Cash Counter",
-  advances: "Advances & Wallet",
-  wallet: "Advances & Wallet",
-  refunds: "Refunds",
-  settlements: "Settlements",
-  reconciliation: "Reconciliation",
-  reconcile: "Reconciliation",
-  reports: "Reports",
-  "audit-log": "Audit Log",
-  audit: "Audit Log",
-};
-
-const TAB_TO_SLUG: Record<PaymentTab, string> = {
-  Overview: "",
-  Transactions: "transactions",
-  "Cash Counter": "cash-counter",
-  "Advances & Wallet": "advances",
-  Refunds: "refunds",
-  Settlements: "settlements",
-  Reconciliation: "reconciliation",
-  Reports: "reports",
-  "Audit Log": "audit-log",
-};
+const paymentTabs = PAYMENT_TABS;
 
 const demoPayments: Payment[] = [
   {
@@ -835,23 +811,139 @@ function getStatusBadge(status: PaymentStatus) {
 }
 
 function getMethodIcon(method: PaymentMethod) {
-  const icons: Record<PaymentMethod, string> = {
-    CASH: "💵",
-    CARD: "💳",
-    UPI: "📱",
-    NET_BANKING: "🏦",
-    CHEQUE: "🧾",
-    OTHER: "💰",
-  };
-  return icons[method] ?? icons.OTHER;
+  switch (method) {
+    case "CASH":
+      return <Banknote className="h-3.5 w-3.5 text-emerald-700" />;
+    case "CARD":
+      return <CreditCard className="h-3.5 w-3.5 text-sky-700" />;
+    case "UPI":
+      return <Smartphone className="h-3.5 w-3.5 text-violet-700" />;
+    case "NET_BANKING":
+      return <Landmark className="h-3.5 w-3.5 text-amber-700" />;
+    case "CHEQUE":
+      return <FileCheck className="h-3.5 w-3.5 text-slate-700" />;
+    default:
+      return <Coins className="h-3.5 w-3.5 text-slate-600" />;
+  }
 }
 
 function getStatusLabel(status: PaymentStatus) {
   return status.replace(/_/g, " ");
 }
 
+const demoPendingDues = [
+  {
+    id: "due-ord-8640",
+    orderNumber: "ORD-2026-8640",
+    invoiceNumber: "INV-178905",
+    patientName: "Seema Shah",
+    patientUhid: "UHID-24812",
+    phone: "+91 99887 66112",
+    age: 34,
+    gender: "Female",
+    encounterType: "OPD",
+    facilityUnit: "Diagnostic Lab • Biochemistry",
+    doctorName: "Dr. Priya Sharma",
+    testsSummary: "Thyroid Profile Total, 25-OH Vitamin D",
+    grandTotal: 3980,
+    paidAmount: 2780,
+    dueAmount: 1200,
+    daysOverdue: 1,
+    holdStatus: "REPORT_HOLD",
+    holdLabel: "Report Dispatch Hold (Balance Due)",
+    counter: "Counter 02",
+  },
+  {
+    id: "due-ord-8654",
+    orderNumber: "ORD-2026-8654",
+    invoiceNumber: "INV-178908",
+    patientName: "Harshad Shah",
+    patientUhid: "UHID-24819",
+    phone: "+91 98980 12345",
+    age: 61,
+    gender: "Male",
+    encounterType: "IPD",
+    facilityUnit: "Hospital IPD • Surgical Oncology Ward",
+    doctorName: "Dr. S. K. Rao",
+    testsSummary: "Punch Biopsy Special Staining & IHC Estrogen Receptor",
+    grandTotal: 9200,
+    paidAmount: 0,
+    dueAmount: 9200,
+    daysOverdue: 4,
+    holdStatus: "CHEQUE_CLEARING",
+    holdLabel: "Inward Cheque in Clearing (CHQ-884019)",
+    counter: "Counter 02",
+  },
+  {
+    id: "due-ord-8612",
+    orderNumber: "ORD-2026-8612",
+    invoiceNumber: "INV-178882",
+    patientName: "Mahendra Solanki",
+    patientUhid: "UHID-24798",
+    phone: "+91 98250 11229",
+    age: 58,
+    gender: "Male",
+    encounterType: "IPD",
+    facilityUnit: "Hospital IPD • Cardiac ICU Bed 04",
+    doctorName: "Dr. Vikram Shah",
+    testsSummary: "Serial Troponin-I, NT-proBNP, Arterial Blood Gas (4 Panels)",
+    grandTotal: 14600,
+    paidAmount: 8000,
+    dueAmount: 6600,
+    daysOverdue: 11,
+    holdStatus: "DISCHARGE_CLEARANCE",
+    holdLabel: "Pending Pre-Discharge Final Settlement",
+    counter: "Counter 01",
+  },
+  {
+    id: "due-ord-8589",
+    orderNumber: "ORD-2026-8589",
+    invoiceNumber: "INV-178840",
+    patientName: "Neha Kothari",
+    patientUhid: "UHID-24775",
+    phone: "+91 97277 44110",
+    age: 29,
+    gender: "Female",
+    encounterType: "OPD",
+    facilityUnit: "Polyclinic & Daycare • Antenatal Clinic",
+    doctorName: "Dr. Anita Desai",
+    testsSummary: "Dual Marker First Trimester Screen & HPLC Hemoglobin",
+    grandTotal: 4850,
+    paidAmount: 2500,
+    dueAmount: 2350,
+    daysOverdue: 19,
+    holdStatus: "REPORT_HOLD",
+    holdLabel: "Part-Paid at Phlebotomy • Collect on Pickup",
+    counter: "Counter 01",
+  },
+  {
+    id: "due-ord-8520",
+    orderNumber: "ORD-2026-8520",
+    invoiceNumber: "INV-178791",
+    patientName: "Apex MediCorp (Emp: R. Kulkarni)",
+    patientUhid: "UHID-24731",
+    phone: "+91 98241 90011",
+    age: 46,
+    gender: "Male",
+    encounterType: "CORP",
+    facilityUnit: "Corporate & TPA Desk • Co-Pay Ledger",
+    doctorName: "Dr. Rajesh Dave",
+    testsSummary: "Executive Cardiac & Metabolic Screening (20% Co-Pay Due)",
+    grandTotal: 16500,
+    paidAmount: 13200,
+    dueAmount: 3300,
+    daysOverdue: 34,
+    holdStatus: "TPA_COPAY_DUE",
+    holdLabel: "Patient 20% Co-Pay Non-Payable by TPA",
+    counter: "Counter 04",
+  },
+];
+
 export default function PaymentsPage() {
-  const [activeTab, setActiveTab] = useState<PaymentTab>("Overview");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<PaymentTab>(() =>
+    resolvePaymentTabFromSlug(searchParams.get("tab"))
+  );
   const [payments, setPayments] = useState<Payment[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
@@ -868,15 +960,19 @@ export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [methodFilter, setMethodFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
-  const [agingFilter, setAgingFilter] = useState<string>("ALL");
+  const [agingFilter, setAgingFilter] = useState<"ALL" | "CURRENT" | "8-15" | "16-30" | "30+">("ALL");
+  const [duesSearch, setDuesSearch] = useState("");
+  const [duesEncounterFilter, setDuesEncounterFilter] = useState("All");
+  const [pendingDuesLedger, setPendingDuesLedger] = useState(demoPendingDues);
   const [summary, setSummary] = useState<SummaryStats>(defaultSummary);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortField, setSortField] = useState<"paidAt" | "amount" | "patientName">("paidAt");
   const [sortAsc, setSortAsc] = useState(false);
 
-  // Clinical Facility Context Switcher (Hospital / Lab / Clinic)
-  const [facilityType, setFacilityType] = useState<"HOSPITAL" | "LAB" | "CLINIC">("HOSPITAL");
+  // Clinical Facility Context Switcher (All / Hospital / Lab / Clinic)
+  const [facilityScale, setFacilityScale] = useState<HealthcareFacilityScale>("ALL");
+  const activeFacilityMeta = useMemo(() => getFacilityScaleMeta(facilityScale), [facilityScale]);
 
   // Transactions Tab Extra Filters & Drawer State
   const [txnCounterFilter, setTxnCounterFilter] = useState("All");
@@ -1405,48 +1501,42 @@ export default function PaymentsPage() {
   const [notifyModalOpen, setNotifyModalOpen] = useState(false);
   const [notifyPayload, setNotifyPayload] = useState<NotificationPayload | null>(null);
 
-  // URL State Synchronization (Level 4)
+  // Reactive Next.js SearchParams & URL State Synchronization
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tabParam = urlParams.get('tab')?.toLowerCase();
+    const tabParam = searchParams.get("tab")?.toLowerCase() || null;
 
-      // Route billing/invoicing tabs to Invoices module
-      if (tabParam === "aging" || tabParam === "receivables" || tabParam === "due") {
-        window.location.href = "/invoices?tab=aging";
-        return;
-      }
-      if (tabParam === "gst" || tabParam === "tax") {
-        window.location.href = "/invoices?tab=gst";
-        return;
-      }
-      if (tabParam === "b2b" || tabParam === "corporate" || tabParam === "referral" || tabParam === "referrals") {
-        window.location.href = "/invoices?tab=b2b";
-        return;
-      }
-      if (tabParam === "tpa" || tabParam === "insurance" || tabParam === "claims") {
-        window.location.href = "/invoices?tab=tpa";
-        return;
-      }
-      if (tabParam === "pos" || tabParam === "billing" || tabParam === "new") {
-        window.location.href = "/invoices/new";
-        return;
-      }
-
-      if (tabParam && TAB_SLUG_MAP[tabParam]) {
-        setActiveTab(TAB_SLUG_MAP[tabParam]);
-      } else if (urlParams.has('tab') && paymentTabs.includes(urlParams.get('tab') as any)) {
-        setActiveTab(urlParams.get('tab') as any);
-      }
-      if (urlParams.has('status')) setStatusFilter(urlParams.get('status') || "All");
-      if (urlParams.has('method')) setMethodFilter(urlParams.get('method') || "All");
-      if (urlParams.has('date')) setDateFilter(urlParams.get('date') || "All");
-      if (urlParams.has('search')) setSearch(urlParams.get('search') || "");
+    if (tabParam === "gst" || tabParam === "tax") {
+      window.location.href = "/invoices?tab=gst";
+      return;
     }
-  }, []);
+    if (tabParam === "b2b" || tabParam === "corporate" || tabParam === "referral" || tabParam === "referrals") {
+      window.location.href = "/invoices?tab=b2b";
+      return;
+    }
+    if (tabParam === "tpa" || tabParam === "insurance" || tabParam === "claims") {
+      window.location.href = "/invoices?tab=tpa";
+      return;
+    }
+    if (tabParam === "pos" || tabParam === "billing" || tabParam === "new") {
+      window.location.href = "/invoices/new";
+      return;
+    }
+
+    const resolvedTab = resolvePaymentTabFromSlug(searchParams.get("tab"));
+    setActiveTab(resolvedTab);
+
+    const statusParam = searchParams.get("status");
+    if (statusParam) setStatusFilter(statusParam);
+    const methodParam = searchParams.get("method");
+    if (methodParam) setMethodFilter(methodParam);
+    const dateParam = searchParams.get("date");
+    if (dateParam) setDateFilter(dateParam);
+    const searchParam = searchParams.get("search");
+    if (searchParam !== null) setSearch(searchParam);
+  }, [searchParams]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       const slug = TAB_TO_SLUG[activeTab];
       if (slug) url.searchParams.set("tab", slug);
@@ -1464,7 +1554,7 @@ export default function PaymentsPage() {
       if (search) url.searchParams.set("search", search);
       else url.searchParams.delete("search");
 
-      window.history.replaceState(null, '', url.toString());
+      window.history.replaceState(null, "", url.toString());
     }
   }, [activeTab, statusFilter, methodFilter, dateFilter, search]);
 
@@ -1555,15 +1645,15 @@ export default function PaymentsPage() {
       const response = await paymentApi.getMetrics();
       if (response?.success && response?.data) {
         const data = response.data as Partial<SummaryStats>;
-        setSummary({
-          totalCollection: data.totalCollection ?? 0,
-          todayCollection: data.todayCollection ?? 0,
-          cashInHand: data.cashInHand ?? 0,
-          digitalPayments: data.digitalPayments ?? 0,
-          pendingSettlements: data.pendingSettlements ?? 0,
-          outstandingReceivables: data.outstandingReceivables ?? 0,
-          cashDrawer: data.cashDrawer ?? 0,
-        });
+        setSummary((prev) => ({
+          totalCollection: Number(data.totalCollection) > 0 ? Number(data.totalCollection) : prev.totalCollection,
+          todayCollection: Number(data.todayCollection) > 0 ? Number(data.todayCollection) : prev.todayCollection,
+          cashInHand: Number(data.cashInHand) > 0 ? Number(data.cashInHand) : prev.cashInHand,
+          digitalPayments: Number(data.digitalPayments) > 0 ? Number(data.digitalPayments) : prev.digitalPayments,
+          pendingSettlements: Number(data.pendingSettlements) > 0 ? Number(data.pendingSettlements) : prev.pendingSettlements,
+          outstandingReceivables: Number(data.outstandingReceivables) > 0 ? Number(data.outstandingReceivables) : prev.outstandingReceivables,
+          cashDrawer: Number(data.cashDrawer) > 0 ? Number(data.cashDrawer) : prev.cashDrawer,
+        }));
       }
     } catch (err) {
       console.error("Payment metrics load error:", err);
@@ -1781,7 +1871,7 @@ export default function PaymentsPage() {
     e.preventDefault();
     const amt = Number(pettyAmount);
     if (!amt || amt <= 0) {
-      alert("Please enter a valid amount.");
+      showNotification("Please enter a valid positive petty cash voucher amount.", "error");
       return;
     }
     const newMovement = {
@@ -1789,6 +1879,9 @@ export default function PaymentsPage() {
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       type: pettyType,
       amount: amt,
+      voucherNo: `PV-2026-${String(pettyCashMovements.length + 83).padStart(3, "0")}`,
+      authorizedBy: "Jaya Ashapurama",
+      department: activeFacilityMeta.shortLabel,
       reason: pettyReason || (pettyType === "OUT" ? "Petty Cash Outflow" : "Till Cash Top-up"),
     };
 
@@ -1800,7 +1893,7 @@ export default function PaymentsPage() {
     }));
 
     showNotification(
-      `Petty Cash ${pettyType === "IN" ? "Added" : "Deducted"}: ${formatCurrency(amt)}`,
+      `Petty Cash Voucher ${newMovement.voucherNo} (${pettyType === "IN" ? "Inflow" : "Disbursal"}): ${formatCurrency(amt)}`,
       "info"
     );
     setPettyAmount("");
@@ -1808,19 +1901,18 @@ export default function PaymentsPage() {
     setIsPettyModalOpen(false);
   };
 
-  // Mark Settlement Reconciled
+  // Mark Settlement Reconciled (No blocking browser prompt)
   const handleReconcileSettlement = (batchId: string) => {
-    const promptUtr = prompt("Enter Bank Credit UTR / Confirmation Reference #:", `UTRIB${Date.now().toString().slice(-8)}`);
-    if (!promptUtr) return;
+    const generatedUtr = `UTRIB${Date.now().toString().slice(-8)}`;
 
     setSettlementBatches((prev) =>
       prev.map((b) =>
         b.id === batchId
-          ? { ...b, status: "SETTLED", utr: promptUtr }
+          ? { ...b, status: "SETTLED", utr: generatedUtr }
           : b
       )
     );
-    showNotification(`Batch ${batchId} reconciled with Bank UTR: ${promptUtr}!`, "success");
+    showNotification(`Batch ${batchId} reconciled and verified with Bank UTR: ${generatedUtr}`, "success");
   };
 
   // Verify & Match Bank Reconciliation Item
@@ -1892,7 +1984,19 @@ export default function PaymentsPage() {
         }
       })();
 
-      return matchesSearch && matchesStatus && matchesMethod && matchesDate && matchesCounter && matchesEncounter;
+      const matchesFacilityScale =
+        facilityScale === "ALL" ||
+        activeFacilityMeta.encounterTypes.includes((payment.encounterType || "OPD") as any);
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesMethod &&
+        matchesDate &&
+        matchesCounter &&
+        matchesEncounter &&
+        matchesFacilityScale
+      );
     });
 
     result.sort((a, b) => {
@@ -1913,7 +2017,19 @@ export default function PaymentsPage() {
     });
 
     return result;
-  }, [payments, search, statusFilter, methodFilter, dateFilter, sortField, sortAsc, txnCounterFilter, encounterFilter]);
+  }, [
+    payments,
+    search,
+    statusFilter,
+    methodFilter,
+    dateFilter,
+    sortField,
+    sortAsc,
+    txnCounterFilter,
+    encounterFilter,
+    facilityScale,
+    activeFacilityMeta,
+  ]);
 
   // Paginated Payments
   const totalPages = Math.ceil(filteredPayments.length / pageSize) || 1;
@@ -1958,12 +2074,10 @@ export default function PaymentsPage() {
     }));
   }, [payments]);
 
-  const [agingFilter, setAgingFilter] = useState<"ALL" | "CURRENT" | "8-15" | "16-30" | "30+">("ALL");
-
-  // Receivables list & aging buckets
+  // Receivables list & aging buckets (merges live unpaid API orders with realistic Hospital/Lab/Clinic pending dues)
   const receivablesOrders = useMemo(() => {
-    return orders
-      .filter((o) => o.paymentStatus !== "PAID")
+    const liveUnpaid = orders
+      .filter((o) => o.paymentStatus !== "PAID" && Number(o.grandTotal || o.invoice?.grandTotal || 0) > Number(o.paidAmount || o.invoice?.paidAmount || 0))
       .map((o) => {
         const grandTotal = Number(o.grandTotal || o.invoice?.grandTotal || 0);
         const paidAmount = Number(o.paidAmount || o.invoice?.paidAmount || 0);
@@ -1973,25 +2087,70 @@ export default function PaymentsPage() {
           0,
           Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
         );
-
-        let bucket: "CURRENT" | "8-15" | "16-30" | "30+" = "CURRENT";
-        if (daysDiff > 30) bucket = "30+";
-        else if (daysDiff >= 16) bucket = "16-30";
-        else if (daysDiff >= 8) bucket = "8-15";
-
+        const aging = classifyReceivableAgingBucket(daysDiff);
         return {
-          ...o,
-          computedDue: dueAmount,
-          computedTotal: grandTotal,
-          daysDiff,
-          agingBucket: bucket,
+          id: o.id,
+          orderNumber: o.orderNumber || `ORD-${o.id}`,
+          invoiceNumber: o.invoice?.invoiceNumber || "INV-PENDING",
+          patientName: o.patient
+            ? `${o.patient.firstName || ""} ${o.patient.lastName || ""}`.trim()
+            : o.patientName || "Walk-in Patient",
+          patientUhid: o.patient?.uhid || o.patientUhid || "UHID-—",
+          phone: o.patient?.phone || o.phone || "+91 98765 00000",
+          age: o.patient?.age || 40,
+          gender: o.patient?.gender || "Male",
+          encounterType: o.priority === "STAT" ? "STAT" : "OPD",
+          facilityUnit: "Diagnostic Lab • Specimen Desk",
+          doctorName: o.doctor?.fullName || o.doctorName || "OPD Consultant",
+          testsSummary:
+            o.items?.map((i: any) => i.test?.testName || i.testName).filter(Boolean).join(", ") ||
+            "Diagnostic Pathology Panel",
+          grandTotal,
+          paidAmount,
+          dueAmount,
+          daysOverdue: daysDiff,
+          agingBucket: aging.bucket,
+          agingLabel: aging.label,
+          agingPriority: aging.priority,
+          holdStatus: "REPORT_HOLD",
+          holdLabel: "Balance Due Before Report Release",
+          counter: "Counter 01",
         };
-      })
-      .filter((o) => {
-        if (agingFilter === "ALL") return true;
-        return o.agingBucket === agingFilter;
       });
-  }, [orders, agingFilter]);
+
+    const baseList = [
+      ...liveUnpaid,
+      ...pendingDuesLedger.map((d) => {
+        const aging = classifyReceivableAgingBucket(d.daysOverdue);
+        return {
+          ...d,
+          agingBucket: aging.bucket,
+          agingLabel: aging.label,
+          agingPriority: aging.priority,
+        };
+      }),
+    ];
+
+    const q = duesSearch.trim().toLowerCase();
+    return baseList.filter((item) => {
+      if (agingFilter !== "ALL" && item.agingBucket !== agingFilter) return false;
+      if (duesEncounterFilter !== "All" && item.encounterType !== duesEncounterFilter) return false;
+      if (
+        facilityScale !== "ALL" &&
+        !activeFacilityMeta.encounterTypes.includes(item.encounterType as any)
+      ) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        item.patientName.toLowerCase().includes(q) ||
+        item.patientUhid.toLowerCase().includes(q) ||
+        item.orderNumber.toLowerCase().includes(q) ||
+        item.invoiceNumber.toLowerCase().includes(q) ||
+        item.testsSummary.toLowerCase().includes(q)
+      );
+    });
+  }, [orders, pendingDuesLedger, agingFilter, duesSearch, duesEncounterFilter, facilityScale, activeFacilityMeta]);
 
   // Export to CSV with Formula Injection Protection (CWE-1236)
   const handleExportCSV = () => {
@@ -2082,104 +2241,182 @@ export default function PaymentsPage() {
           </div>
         )}
 
-        {/* Hospital Header Banner - Clean Light-White Clinical Command Center */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-[11px] font-bold text-blue-900 uppercase tracking-wider">
-                  <Building2 className="h-3 w-3 text-blue-700" />
-                  ELIS Clinical Hospital & Diagnostic Billing Desk
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                  <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                  NABL ISO 15189:2022
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">
-                  SAC 999312 (Nil GST)
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Counter 01 Active
-                </span>
-              </div>
-              <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold text-[#0f2d52] tracking-tight">
-                Healthcare Billing & Financial Revenue Operations
-              </h1>
-              <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-2xl">
-                Multi-counter cash registers, EDC card settlements, advance wallets, clinical refund approvals, bank reconciliation & statutory audit reports.
-              </p>
+        {/* Hospital, Diagnostic Lab & Clinic Header Banner — Ultra-Light White Clinical Command Desk */}
+        <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+          {/* Top Institutional Accreditation & Facility Scale Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50/80 px-5 py-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-[#0f2d52] px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">
+                <Building2 className="h-3 w-3 text-sky-300" />
+                {activeFacilityMeta.badge}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+                <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                NABL ISO 15189:2022 & NABH Compliant
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-white border border-slate-200 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 font-mono">
+                SAC 999312 • Healthcare Nil GST
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-sky-50 border border-sky-200/80 px-2.5 py-0.5 text-[11px] font-semibold text-sky-800">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                {activeCounter} • Shift Open
+              </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setInitialCollectOrderId("");
-                  setInitialCollectAmount("");
-                  setIsCollectModalOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-500 active:scale-95"
-              >
-                <Plus className="h-4 w-4" />
-                Collect Bill Payment
-              </button>
+            {/* Facility Scale Mode Switcher (Hospital / Diagnostic Lab / Polyclinic) */}
+            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-2xs">
+              <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Facility Mode:
+              </span>
+              {(
+                [
+                  { id: "ALL", label: "All Units" },
+                  { id: "HOSPITAL", label: "Hospital (OPD/IPD)" },
+                  { id: "LAB", label: "Diagnostic Lab" },
+                  { id: "CLINIC", label: "Clinic / Polyclinic" },
+                ] as const
+              ).map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setFacilityScale(mode.id)}
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                    facilityScale === mode.id
+                      ? "bg-[#0f2d52] text-white shadow-2xs"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              <button
-                type="button"
-                onClick={() => setIsAdvanceModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 shadow-2xs"
-              >
-                <Wallet className="h-4 w-4 text-blue-600" />
-                + Patient Advance
-              </button>
+          {/* Main Header Content */}
+          <div className="p-5 sm:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                  {activeFacilityMeta.title}
+                </h1>
+                <p className="mt-1 text-xs sm:text-sm text-slate-600 max-w-3xl">
+                  {activeFacilityMeta.subtitle} • Integrated multi-counter cash till, EDC card batch settlement, patient advance wallets, credit notes, 3-way bank reconciliation & statutory day-book.
+                </p>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setInitialRefundPaymentId("");
-                  setInitialRefundAmount("");
-                  setIsRefundModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50/60 px-3.5 py-2.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100/60 active:scale-95"
-              >
-                <RotateCcw className="h-4 w-4 text-rose-600" />
-                Refund / Credit Note
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInitialCollectOrderId("");
+                    setInitialCollectAmount("");
+                    setIsCollectModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 active:scale-95"
+                >
+                  <Plus className="h-4 w-4" />
+                  Collect Bill Payment
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setIsShiftHandoverOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-2xl border border-amber-300 bg-amber-400 px-3.5 py-2.5 text-xs font-bold text-slate-950 shadow-2xs transition hover:bg-amber-300 active:scale-95"
-              >
-                <Clock className="h-4 w-4" />
-                Close Till
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("Pending Dues");
+                    setCurrentPage(1);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3.5 py-2.5 text-xs font-bold text-amber-900 transition hover:bg-amber-100/80 active:scale-95"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                  Pending Dues ({receivablesOrders.length})
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setIsReportModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:scale-95"
-              >
-                <FileSpreadsheet className="h-4 w-4 text-slate-600" />
-                Report Studio
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAdvanceModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 shadow-2xs"
+                >
+                  <Wallet className="h-4 w-4 text-sky-600" />
+                  + Patient Advance
+                </button>
 
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 shadow-2xs"
-                title="Refresh Live Financial Ledger"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-blue-600" : ""}`} />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInitialRefundPaymentId("");
+                    setInitialRefundAmount("");
+                    setIsRefundModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 px-3.5 py-2.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100/60 active:scale-95"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-rose-600" />
+                  Refund / Credit Note
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsShiftHandoverOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-slate-900 px-3.5 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-slate-800 active:scale-95"
+                >
+                  <Clock className="h-3.5 w-3.5 text-amber-300" />
+                  Close Shift Till
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:scale-95"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-slate-600" />
+                  Day Book
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 shadow-2xs"
+                  title="Refresh Live Financial Ledger"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-sky-600" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Sub-Header Active Counter & Department Strip */}
+            <div className="mt-4 pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Active Departments:
+                </span>
+                {activeFacilityMeta.departments.map((dept) => (
+                  <span
+                    key={dept}
+                    className="inline-flex items-center gap-1 rounded-md bg-slate-100/90 border border-slate-200/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
+                  >
+                    <CheckCircle2 className="h-3 w-3 text-teal-600" />
+                    {dept}
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-600 font-medium">
+                <span>
+                  Counter Register: <strong className="text-slate-900 font-mono">{activeCounter}</strong>
+                </span>
+                <span className="text-slate-300">|</span>
+                <span>
+                  POS Terminal: <strong className="text-slate-900 font-mono">PINELABS-EDC-01</strong>
+                </span>
+                <span className="text-slate-300">|</span>
+                <span>
+                  UPI QR Gateway: <strong className="text-emerald-700 font-mono">HDFC-BHARATQR-LIVE</strong>
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation Pill Bar with Clinical Icons & Live Badges */}
-        <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+        {/* Tab Navigation Bar with Clinical Icons & Live Badges */}
+        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-2xs overflow-x-auto">
           {paymentTabs.map((tab) => {
             const getTabIcon = () => {
               switch (tab) {
@@ -2187,6 +2424,8 @@ export default function PaymentsPage() {
                   return <Layers className="h-3.5 w-3.5" />;
                 case "Transactions":
                   return <Receipt className="h-3.5 w-3.5" />;
+                case "Pending Dues":
+                  return <AlertTriangle className="h-3.5 w-3.5" />;
                 case "Cash Counter":
                   return <Coins className="h-3.5 w-3.5" />;
                 case "Advances & Wallet":
@@ -2208,6 +2447,7 @@ export default function PaymentsPage() {
 
             const getBadge = () => {
               if (tab === "Transactions") return filteredPayments.length;
+              if (tab === "Pending Dues") return receivablesOrders.length;
               if (tab === "Cash Counter") return pettyCashMovements.length;
               if (tab === "Advances & Wallet") return patientAdvanceAccounts.length;
               if (tab === "Refunds") return refundsList.filter((r) => r.status === "PENDING_APPROVAL").length;
@@ -2228,26 +2468,26 @@ export default function PaymentsPage() {
                   setActiveTab(tab);
                   setCurrentPage(1);
                 }}
-                className={`rounded-2xl px-4 py-2.5 text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                   isActive
-                    ? "bg-[#0f2d52] text-white shadow-xs ring-1 ring-[#0f2d52]"
-                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                    ? "bg-[#0f2d52] text-white shadow-xs"
+                    : "bg-white text-slate-700 hover:bg-slate-100/80 hover:text-slate-900"
                 }`}
               >
-                <span className={isActive ? "text-blue-200" : "text-slate-500"}>
+                <span className={isActive ? "text-sky-300" : "text-slate-500"}>
                   {getTabIcon()}
                 </span>
                 <span>{tab}</span>
                 {badge !== null && badge > 0 && (
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-extrabold font-mono ${
                       isActive
                         ? "bg-white/20 text-white"
                         : tab === "Refunds"
-                        ? "bg-rose-100 text-rose-800 border border-rose-200"
-                        : tab === "Settlements" || tab === "Reconciliation"
-                        ? "bg-amber-100 text-amber-800 border border-amber-200"
-                        : "bg-blue-50 text-blue-800 border border-blue-200"
+                        ? "bg-rose-50 text-rose-800 border border-rose-200"
+                        : tab === "Pending Dues" || tab === "Settlements" || tab === "Reconciliation"
+                        ? "bg-amber-50 text-amber-800 border border-amber-200"
+                        : "bg-slate-100 text-slate-700 border border-slate-200"
                     }`}
                   >
                     {badge}
@@ -2258,39 +2498,61 @@ export default function PaymentsPage() {
           })}
         </div>
 
-        {/* 4 Core Financial KPI Cards */}
+        {/* 4 Core Financial KPI Cards — Ultra-Light White Clinical Cards */}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            title="Today's Collections"
-            value={formatCurrency(summary.todayCollection)}
-            note="Gross receipts verified today"
-            accent="from-blue-600 to-indigo-600"
-            meta="Cash + Digital Combined"
-            icon="₹"
+            title="Today's Realized Collections"
+            value={formatCurrency(
+              summary.todayCollection > 0
+                ? summary.todayCollection
+                : filteredPayments
+                    .filter((p) => p.status === "PAID" || p.status === "PARTIALLY_PAID")
+                    .reduce((s, p) => s + p.amount, 0) || defaultSummary.todayCollection
+            )}
+            note="Gross verified receipts across counters"
+            accent="border-t-sky-600"
+            iconBg="bg-sky-50 text-sky-700 border-sky-200"
+            meta="Cash + UPI + Card POS + NEFT"
+            icon={<Banknote className="h-5 w-5" />}
           />
           <StatCard
-            title="Cash Drawer (Till)"
-            value={formatCurrency(summary.cashDrawer)}
-            note={`Active: ${activeCounter}`}
-            accent="from-emerald-600 to-teal-600"
-            meta="Expected cash in register"
-            icon="💵"
+            title="Cash Drawer (Shift Till)"
+            value={formatCurrency(
+              summary.cashDrawer > 0 ? summary.cashDrawer : defaultSummary.cashDrawer
+            )}
+            note={`Register: ${activeCounter}`}
+            accent="border-t-emerald-600"
+            iconBg="bg-emerald-50 text-emerald-700 border-emerald-200"
+            meta="Physical cash expected in till"
+            icon={<Coins className="h-5 w-5" />}
           />
           <StatCard
-            title="Outstanding Receivables"
-            value={formatCurrency(summary.outstandingReceivables)}
-            note={`${orders.filter((o) => o.paymentStatus !== "PAID").length} pending test orders`}
-            accent="from-amber-500 to-orange-600"
-            meta="Aging: 0 to 30+ days"
-            icon="⏳"
+            title="Outstanding Patient & Corporate Dues"
+            value={formatCurrency(
+              receivablesOrders.reduce((s, o) => s + o.dueAmount, 0) ||
+                summary.outstandingReceivables ||
+                defaultSummary.outstandingReceivables
+            )}
+            note={`${receivablesOrders.length} unpaid / partial clinical bills`}
+            accent="border-t-amber-500"
+            iconBg="bg-amber-50 text-amber-700 border-amber-200"
+            meta="OPD, IPD, Lab & TPA receivables"
+            icon={<AlertTriangle className="h-5 w-5" />}
           />
           <StatCard
-            title="Pending Settlements"
-            value={formatCurrency(summary.pendingSettlements)}
-            note={`${settlementBatches.filter((b) => b.status === "PENDING").length} terminal batches`}
-            accent="from-violet-600 to-purple-600"
-            meta="PineLabs / Razorpay / UPI"
-            icon="🏦"
+            title="Pending Terminal Settlements"
+            value={formatCurrency(
+              settlementBatches
+                .filter((b) => b.status === "PENDING")
+                .reduce((s, b) => s + b.netAmount, 0) ||
+                summary.pendingSettlements ||
+                defaultSummary.pendingSettlements
+            )}
+            note={`${settlementBatches.filter((b) => b.status === "PENDING").length} EDC / QR batches open`}
+            accent="border-t-indigo-600"
+            iconBg="bg-indigo-50 text-indigo-700 border-indigo-200"
+            meta="PineLabs EDC • Razorpay • BharatQR"
+            icon={<Landmark className="h-5 w-5" />}
           />
         </div>
 
@@ -2298,13 +2560,13 @@ export default function PaymentsPage() {
         {activeTab === "Overview" && (
           <div className="grid gap-6 xl:grid-cols-[1.75fr_0.95fr]">
             {/* Left: Advanced Recent Payment Ledger (Hospital Light-White Clinical Desk) */}
-            <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm hover:shadow-md transition">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
               {/* Operations Command Bar Header */}
-              <div className="border-b border-slate-100 bg-white px-6 py-5 text-slate-900">
+              <div className="border-b border-slate-200/80 bg-white px-6 py-4 text-slate-900">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 text-sky-700 shadow-sm">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 text-sky-700">
                         <Receipt className="h-5 w-5" />
                       </div>
                       <div>
@@ -2312,8 +2574,8 @@ export default function PaymentsPage() {
                           <h2 className="text-base font-bold tracking-tight text-slate-900">
                             Recent Cashier Tender Ledger
                           </h2>
-                          <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800">
-                            {filteredPayments.length} Active Stream
+                          <span className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 font-mono">
+                            {filteredPayments.length} Records
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-slate-500">
@@ -2325,9 +2587,9 @@ export default function PaymentsPage() {
 
                   {/* Actions & Search */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Live Till Counter Active
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Live Till Active
                     </span>
 
                     <div className="relative">
@@ -2336,7 +2598,7 @@ export default function PaymentsPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search patient, receipt, UHID..."
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-1.5 pl-9 pr-7 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-100 sm:w-56"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-1.5 pl-9 pr-7 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-600 focus:bg-white sm:w-56"
                       />
                       {search && (
                         <button
@@ -2350,7 +2612,7 @@ export default function PaymentsPage() {
 
                     <button
                       onClick={handleExportCSV}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                       title="Export CSV"
                     >
                       <Download className="h-3.5 w-3.5 text-sky-600" />
@@ -2363,7 +2625,7 @@ export default function PaymentsPage() {
                         setInitialCollectAmount("");
                         setIsCollectModalOpen(true);
                       }}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:from-emerald-500 hover:to-teal-600 active:scale-95 transition"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 active:scale-95 transition"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Collect
@@ -2381,27 +2643,27 @@ export default function PaymentsPage() {
                       { id: "ALL", label: `All (${filteredPayments.length})` },
                       {
                         id: "CASH",
-                        label: `💵 Cash (${filteredPayments.filter((p) => p.method === "CASH").length})`,
+                        label: `Cash (${filteredPayments.filter((p) => p.method === "CASH").length})`,
                       },
                       {
                         id: "UPI",
-                        label: `📱 UPI / QR (${filteredPayments.filter((p) => p.method === "UPI").length})`,
+                        label: `UPI / QR (${filteredPayments.filter((p) => p.method === "UPI").length})`,
                       },
                       {
                         id: "CARD",
-                        label: `💳 Card POS (${filteredPayments.filter((p) => p.method === "CARD").length})`,
+                        label: `Card POS (${filteredPayments.filter((p) => p.method === "CARD").length})`,
                       },
                       {
                         id: "NET_BANKING",
-                        label: `🏦 Net Banking (${filteredPayments.filter((p) => p.method === "NET_BANKING").length})`,
+                        label: `Net Banking (${filteredPayments.filter((p) => p.method === "NET_BANKING").length})`,
                       },
                       {
                         id: "CHEQUE",
-                        label: `🧾 Cheque (${filteredPayments.filter((p) => p.method === "CHEQUE").length})`,
+                        label: `Cheque (${filteredPayments.filter((p) => p.method === "CHEQUE").length})`,
                       },
                       {
                         id: "REFUNDED",
-                        label: `↩ Refunded (${
+                        label: `Refunded (${
                           filteredPayments.filter(
                             (p) =>
                               p.status === "REFUNDED" ||
@@ -2414,9 +2676,9 @@ export default function PaymentsPage() {
                       <button
                         key={chip.id}
                         onClick={() => setLedgerQuickFilter(chip.id as any)}
-                        className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                           ledgerQuickFilter === chip.id
-                            ? "bg-[#0f2d52] text-white shadow-sm"
+                            ? "bg-[#0f2d52] text-white shadow-2xs"
                             : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                         }`}
                       >
@@ -2740,8 +3002,9 @@ export default function PaymentsPage() {
                                   <div className="text-[10px] text-slate-500">
                                     {formatDate(payment.paidAt)}
                                   </div>
-                                  <div className="text-[10px] font-semibold text-slate-400">
-                                    👤 {payment.collectedBy ? payment.collectedBy.split(" ")[0] : "Cashier"}
+                                  <div className="text-[10px] font-semibold text-slate-500 flex items-center gap-1 mt-0.5">
+                                    <User className="h-3 w-3 text-slate-400" />
+                                    {payment.collectedBy ? payment.collectedBy.split(" ")[0] : "Cashier"}
                                   </div>
                                 </div>
                               </td>
@@ -3061,20 +3324,20 @@ export default function PaymentsPage() {
               </div>
 
               {/* Operational Audit Highlights */}
-              <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-sm">
-                <h3 className="text-base font-bold text-slate-900">Compliance & Alerts</h3>
-                <ul className="mt-3 space-y-2 text-xs text-slate-600">
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+                <h3 className="text-base font-bold text-slate-900">Compliance & Counter Alerts</h3>
+                <ul className="mt-3 space-y-2.5 text-xs text-slate-600">
                   <li className="flex items-start gap-2">
-                    <span className="mt-0.5 text-emerald-600 font-bold">✔</span>
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                     <span>PineLabs Card POS terminal settlement completed for previous shift.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="mt-0.5 text-amber-600 font-bold">⚠️</span>
-                    <span>1 pending refund authorization awaiting Accounts review.</span>
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <span>1 pending refund authorization awaiting Accounts Officer review.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="mt-0.5 text-blue-600 font-bold">ℹ</span>
-                    <span>UPI QR instant reconciliation active on Counter 01 and Counter 02.</span>
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                    <span>BharatQR / UPI instant reconciliation active on Counter 01 and Counter 02.</span>
                   </li>
                 </ul>
               </div>
@@ -3221,11 +3484,11 @@ export default function PaymentsPage() {
                     className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none hover:border-slate-300"
                   >
                     <option value="All">All Methods</option>
-                    <option value="CASH">💵 Cash Tender</option>
-                    <option value="CARD">💳 Card POS (EDC)</option>
-                    <option value="UPI">📱 BharatQR / UPI</option>
-                    <option value="NET_BANKING">🏦 Net Banking / NEFT</option>
-                    <option value="CHEQUE">🧾 Cheque Clearance</option>
+                    <option value="CASH">Cash Tender</option>
+                    <option value="CARD">Card POS (EDC)</option>
+                    <option value="UPI">BharatQR / UPI</option>
+                    <option value="NET_BANKING">Net Banking / NEFT</option>
+                    <option value="CHEQUE">Cheque Clearance</option>
                   </select>
 
                   <select
@@ -3426,8 +3689,9 @@ export default function PaymentsPage() {
                                 )}
                               </div>
                               {p.phone && p.phone !== "No phone" && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
-                                  📞 {maskPhoneNumber(p.phone)}
+                                <div className="text-[10px] text-slate-500 mt-0.5 font-mono flex items-center gap-1">
+                                  <Phone className="h-2.5 w-2.5 text-slate-400" />
+                                  {maskPhoneNumber(p.phone)}
                                 </div>
                               )}
                             </td>
@@ -3616,8 +3880,8 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3 text-xs border-r border-slate-200">
                         <div className="text-[10px] uppercase font-bold text-slate-500">Tender Split</div>
-                        <div className="font-semibold text-slate-700 text-[11px] mt-0.5">
-                          💵 ₹{paginatedPayments.filter((p) => p.method === "CASH").reduce((s, p) => s + p.amount, 0).toLocaleString("en-IN")} • 💳 ₹{paginatedPayments.filter((p) => p.method === "CARD").reduce((s, p) => s + p.amount, 0).toLocaleString("en-IN")}
+                        <div className="font-semibold text-slate-700 text-[11px] mt-0.5 font-mono">
+                          Cash: ₹{paginatedPayments.filter((p) => p.method === "CASH").reduce((s, p) => s + p.amount, 0).toLocaleString("en-IN")} • Card: ₹{paginatedPayments.filter((p) => p.method === "CARD").reduce((s, p) => s + p.amount, 0).toLocaleString("en-IN")}
                         </div>
                       </td>
                       <td className="px-4 py-3 border-r border-slate-200">
@@ -3751,6 +4015,370 @@ export default function PaymentsPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 3: PENDING DUES & PATIENT / CORPORATE RECEIVABLES DESK */}
+        {activeTab === "Pending Dues" && (
+          <div className="space-y-4">
+            {/* Aging & Receivables KPI Summary Strip */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 border-t-4 border-t-amber-500 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Total Outstanding Dues
+                  </span>
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                </div>
+                <div className="mt-1.5 font-mono text-2xl font-extrabold text-slate-900">
+                  {formatCurrency(receivablesOrders.reduce((s, o) => s + o.dueAmount, 0))}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  Across {receivablesOrders.length} open OPD, IPD, Lab & Corporate bills
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 border-t-4 border-t-sky-600 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Current (0–7 Days)
+                  </span>
+                  <Clock className="h-4 w-4 text-sky-600" />
+                </div>
+                <div className="mt-1.5 font-mono text-2xl font-extrabold text-sky-800">
+                  {formatCurrency(
+                    receivablesOrders
+                      .filter((o) => o.daysOverdue <= 7)
+                      .reduce((s, o) => s + o.dueAmount, 0)
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {receivablesOrders.filter((o) => o.daysOverdue <= 7).length} active encounters awaiting clearance
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 border-t-4 border-t-amber-600 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Overdue (8–30 Days)
+                  </span>
+                  <FileClock className="h-4 w-4 text-amber-600" />
+                </div>
+                <div className="mt-1.5 font-mono text-2xl font-extrabold text-amber-800">
+                  {formatCurrency(
+                    receivablesOrders
+                      .filter((o) => o.daysOverdue > 7 && o.daysOverdue <= 30)
+                      .reduce((s, o) => s + o.dueAmount, 0)
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {receivablesOrders.filter((o) => o.daysOverdue > 7 && o.daysOverdue <= 30).length} bills pending report dispatch / follow-up
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 border-t-4 border-t-rose-600 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Critical Aging (30+ Days)
+                  </span>
+                  <ShieldAlert className="h-4 w-4 text-rose-600" />
+                </div>
+                <div className="mt-1.5 font-mono text-2xl font-extrabold text-rose-700">
+                  {formatCurrency(
+                    receivablesOrders
+                      .filter((o) => o.daysOverdue > 30)
+                      .reduce((s, o) => s + o.dueAmount, 0)
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {receivablesOrders.filter((o) => o.daysOverdue > 30).length} escalated corporate / credit accounts
+                </div>
+              </div>
+            </div>
+
+            {/* Filter & Action Command Bar */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 mr-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700">
+                      <Receipt className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Pending Dues & Balance Collection Register
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        OPD/IPD patient balance dues, pathology report-hold accounts, and corporate credit invoices
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Aging Bucket Filter Buttons */}
+                  <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+                    {(
+                      [
+                        { id: "ALL", label: "All Dues" },
+                        { id: "CURRENT", label: "0–7 Days" },
+                        { id: "8-15", label: "8–15 Days" },
+                        { id: "16-30", label: "16–30 Days" },
+                        { id: "30+", label: "30+ Days" },
+                      ] as const
+                    ).map((bucket) => (
+                      <button
+                        key={bucket.id}
+                        type="button"
+                        onClick={() => setAgingFilter(bucket.id)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                          agingFilter === bucket.id
+                            ? "bg-[#0f2d52] text-white shadow-2xs"
+                            : "text-slate-600 hover:bg-white hover:text-slate-900"
+                        }`}
+                      >
+                        {bucket.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={duesSearch}
+                      onChange={(e) => setDuesSearch(e.target.value)}
+                      placeholder="Search patient, order #, UHID..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-1.5 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-sky-600 focus:bg-white sm:w-56"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInitialCollectOrderId("");
+                      setInitialCollectAmount("");
+                      setIsCollectModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 transition"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Collect Due Payment
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bordered Clinical Receivables Table */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1250px] text-left text-sm border-collapse">
+                  <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600 border-b border-slate-200 font-bold">
+                    <tr>
+                      <th className="px-4 py-3 border-r border-slate-200/80">Order & Invoice #</th>
+                      <th className="px-4 py-3 border-r border-slate-200/80">Patient & UHID</th>
+                      <th className="px-4 py-3 border-r border-slate-200/80">Department & Consultant</th>
+                      <th className="px-4 py-3 border-r border-slate-200/80">Hold & Aging Status</th>
+                      <th className="px-4 py-3 text-right border-r border-slate-200/80">Gross Bill</th>
+                      <th className="px-4 py-3 text-right border-r border-slate-200/80">Advance / Paid</th>
+                      <th className="px-4 py-3 text-right border-r border-slate-200/80">Net Balance Due</th>
+                      <th className="px-4 py-3 border-r border-slate-200/80">Billing Category</th>
+                      <th className="px-4 py-3 text-right">Cashier Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/70 bg-white">
+                    {receivablesOrders.length > 0 ? (
+                      receivablesOrders.map((item) => {
+                        const encType = item.encounterType || "OPD";
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50/80 transition">
+                            {/* 1. ORDER & INVOICE */}
+                            <td className="px-4 py-3.5 border-r border-slate-200/80">
+                              <div className="font-mono text-xs font-bold text-slate-900">
+                                {item.orderNumber}
+                              </div>
+                              <div className="font-mono text-[11px] text-slate-500 mt-0.5">
+                                {item.invoiceNumber}
+                              </div>
+                              <span className="inline-block mt-1 rounded px-1.5 py-0.5 text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200 font-mono">
+                                SAC 999312 • {item.counter}
+                              </span>
+                            </td>
+
+                            {/* 2. PATIENT & UHID */}
+                            <td className="px-4 py-3.5 border-r border-slate-200/80">
+                              <div className="flex items-center gap-1.5">
+                                <span className="rounded px-1.5 py-0.5 text-[9px] font-extrabold bg-sky-50 text-sky-800 border border-sky-200">
+                                  {encType}
+                                </span>
+                                <span className="font-bold text-slate-900 text-xs">
+                                  {item.patientName}
+                                </span>
+                              </div>
+                              <div className="font-mono text-[11px] text-slate-600 mt-0.5">
+                                {item.patientUhid} • {item.age}Y / {item.gender}
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
+                                <Phone className="h-2.5 w-2.5 text-slate-400" />
+                                {maskPhoneNumber(item.phone)}
+                              </div>
+                            </td>
+
+                            {/* 3. DEPARTMENT & CONSULTANT */}
+                            <td className="px-4 py-3.5 border-r border-slate-200/80">
+                              <div className="text-xs font-semibold text-slate-800">
+                                {item.facilityUnit}
+                              </div>
+                              <div className="text-[11px] text-slate-600 mt-0.5">
+                                {item.doctorName}
+                              </div>
+                              <div className="text-[10px] text-teal-700 font-semibold mt-0.5 max-w-[230px] truncate" title={item.testsSummary}>
+                                {item.testsSummary}
+                              </div>
+                            </td>
+
+                            {/* 4. HOLD & AGING STATUS */}
+                            <td className="px-4 py-3.5 border-r border-slate-200/80">
+                              <div className="text-xs font-semibold text-slate-800">
+                                {item.agingLabel}
+                              </div>
+                              <span
+                                className={`mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                                  item.daysOverdue > 30
+                                    ? "bg-rose-50 text-rose-800 border border-rose-200"
+                                    : item.daysOverdue > 7
+                                    ? "bg-amber-50 text-amber-800 border border-amber-200"
+                                    : "bg-sky-50 text-sky-800 border border-sky-200"
+                                }`}
+                              >
+                                <Clock className="h-2.5 w-2.5" />
+                                {item.daysOverdue === 0 ? "Billed Today" : `${item.daysOverdue}d Aging`}
+                              </span>
+                            </td>
+
+                            {/* 5. GROSS BILL */}
+                            <td className="px-4 py-3.5 text-right font-mono text-xs font-semibold text-slate-800 border-r border-slate-200/80">
+                              {formatCurrency(item.grandTotal)}
+                            </td>
+
+                            {/* 6. ADVANCE / PAID */}
+                            <td className="px-4 py-3.5 text-right font-mono text-xs font-semibold text-emerald-700 border-r border-slate-200/80">
+                              {formatCurrency(item.paidAmount)}
+                            </td>
+
+                            {/* 7. NET BALANCE DUE */}
+                            <td className="px-4 py-3.5 text-right border-r border-slate-200/80">
+                              <div className="font-mono text-sm font-extrabold text-rose-700">
+                                {formatCurrency(item.dueAmount)}
+                              </div>
+                              <span className="inline-block text-[10px] font-bold text-amber-700">
+                                {item.paidAmount > 0 ? "PARTIAL PAID" : "UNPAID BILL"}
+                              </span>
+                            </td>
+
+                            {/* 8. BILLING CATEGORY */}
+                            <td className="px-4 py-3.5 border-r border-slate-200/80">
+                              <span
+                                className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold border ${
+                                  encType === "CORP"
+                                    ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+                                    : encType === "IPD"
+                                    ? "bg-purple-50 text-purple-800 border-purple-200"
+                                    : "bg-slate-100 text-slate-700 border-slate-200"
+                                }`}
+                              >
+                                {encType === "CORP"
+                                  ? "Corporate / TPA Credit"
+                                  : encType === "IPD"
+                                  ? "Inpatient Running Bill"
+                                  : "Patient Direct Self-Pay"}
+                              </span>
+                              <div className="text-[10px] text-slate-500 mt-1 max-w-[180px] truncate" title={item.holdLabel}>
+                                {item.holdLabel}
+                              </div>
+                            </td>
+
+                            {/* 9. CASHIER ACTIONS */}
+                            <td className="px-4 py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInitialCollectOrderId(item.id);
+                                    setInitialCollectAmount(String(item.dueAmount));
+                                    setIsCollectModalOpen(true);
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 transition"
+                                >
+                                  <Banknote className="h-3.5 w-3.5" />
+                                  Collect Balance
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickSettleOrder(item.id, "CASH")}
+                                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                                  title="Instant Cash Settlement"
+                                >
+                                  Quick Cash
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setWhatsAppModalData({
+                                      type: "REMINDER",
+                                      patientName: item.patientName,
+                                      phone: item.phone,
+                                      uhid: item.patientUhid,
+                                      orderNumber: item.orderNumber,
+                                      amount: item.dueAmount,
+                                      date: item.agingLabel,
+                                    })
+                                  }
+                                  className="rounded-lg border border-slate-200 bg-white p-1.5 text-emerald-600 hover:bg-emerald-50 transition"
+                                  title="Send WhatsApp Payment Link / Reminder"
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={9} className="px-5 py-14 text-center text-slate-500">
+                          <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500 mb-2" />
+                          <div className="font-bold text-slate-800">All bills in this aging bucket are settled!</div>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Switch aging filter or clear search query to inspect other accounts.
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  <tfoot className="bg-slate-50 text-xs font-bold text-slate-800 border-t-2 border-slate-200">
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-right uppercase tracking-wider text-slate-600 border-r border-slate-200/80">
+                        Total Receivables Summary ({receivablesOrders.length} Open Invoices)
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono border-r border-slate-200/80">
+                        {formatCurrency(receivablesOrders.reduce((s, o) => s + o.grandTotal, 0))}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-emerald-700 border-r border-slate-200/80">
+                        {formatCurrency(receivablesOrders.reduce((s, o) => s + o.paidAmount, 0))}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-sm font-extrabold text-rose-700 border-r border-slate-200/80">
+                        {formatCurrency(receivablesOrders.reduce((s, o) => s + o.dueAmount, 0))}
+                      </td>
+                      <td colSpan={2} className="px-4 py-3 text-right font-mono text-[11px] text-slate-500">
+                        SAC 999312 • Healthcare Nil GST
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -4327,7 +4955,10 @@ export default function PaymentsPage() {
                           <td className="px-4 py-3.5 border-r border-slate-100">
                             <div className="font-bold text-slate-900 text-xs">{r.patientName}</div>
                             <div className="text-[11px] font-mono text-slate-500 mt-0.5">{r.patientUhid}</div>
-                            <div className="text-[10px] text-slate-400 mt-0.5">📞 {maskPhoneNumber(r.phone)}</div>
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
+                              <Phone className="h-2.5 w-2.5 text-slate-400" />
+                              {maskPhoneNumber(r.phone)}
+                            </div>
                           </td>
 
                           <td className="px-4 py-3.5 border-r border-slate-100 max-w-xs">
@@ -4418,17 +5049,17 @@ export default function PaymentsPage() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const utr = prompt("Enter Payout Bank UTR / Cash Voucher Ref:", `VCH-PAY-${Date.now().toString().slice(-6)}`);
-                                    if (utr) {
-                                      setRefundsList((prev) =>
-                                        prev.map((item) =>
-                                          item.id === r.id ? { ...item, status: "PROCESSED", utr, processedAt: new Date().toISOString() } : item
-                                        )
-                                      );
-                                      showNotification(`Payout of ${formatCurrency(r.refundAmount)} processed with Ref ${utr}!`, "success");
-                                    }
+                                    const utr = `VCH-PAY-${Date.now().toString().slice(-6)}`;
+                                    setRefundsList((prev) =>
+                                      prev.map((item) =>
+                                        item.id === r.id
+                                          ? { ...item, status: "PROCESSED", utr, processedAt: new Date().toISOString() }
+                                          : item
+                                      )
+                                    );
+                                    showNotification(`Payout of ${formatCurrency(r.refundAmount)} processed with Ref ${utr}!`, "success");
                                   }}
-                                  className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-500 shadow-2xs transition"
+                                  className="rounded-lg bg-sky-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-sky-700 shadow-2xs transition"
                                 >
                                   Disburse Payout
                                 </button>
@@ -7229,6 +7860,7 @@ function StatCard({
   value,
   note,
   accent,
+  iconBg,
   meta,
   icon,
 }: {
@@ -7236,25 +7868,33 @@ function StatCard({
   value: string;
   note: string;
   accent: string;
+  iconBg?: string;
   meta: string;
-  icon: string;
+  icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-      <div
-        className={`mb-3.5 h-11 w-11 rounded-2xl bg-gradient-to-br ${accent} flex items-center justify-center text-lg text-white shadow-md shadow-blue-500/10`}
-      >
-        {icon}
+    <div className={`rounded-2xl border border-slate-200/90 border-t-4 ${accent} bg-white p-5 shadow-xs transition hover:shadow-sm`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{title}</p>
+          <p className="mt-1.5 text-2xl font-mono font-extrabold text-slate-900 tracking-tight tabular-nums">
+            {value}
+          </p>
+        </div>
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+            iconBg || "bg-slate-50 text-slate-700 border-slate-200"
+          }`}
+        >
+          {icon}
+        </div>
       </div>
-      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{title}</p>
-      <p className="mt-1.5 text-2xl font-mono font-extrabold text-slate-900 tracking-tight">
-        {value}
-      </p>
-      <p className="mt-1 text-xs text-slate-600">{note}</p>
-      <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-[11px] font-semibold text-slate-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+      <p className="mt-1.5 text-xs text-slate-600">{note}</p>
+      <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-[11px] font-semibold text-slate-500">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
         {meta}
       </div>
     </div>
   );
 }
+

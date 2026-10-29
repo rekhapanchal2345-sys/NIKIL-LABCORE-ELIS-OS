@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -399,14 +399,69 @@ const menuSections: MenuSection[] = [
         allowedRoles: ["SUPER_ADMIN", "ADMIN", "FRONT_DESK", "RECEPTIONIST", "ACCOUNTANT"],
         accent: ACCENTS.emerald,
         children: [
-          { label: "Cashier Command Desk", href: "/payments" },
-          { label: "Transactions & Tender Ledger", href: "/payments?tab=transactions" },
-          { label: "Shift Till & Cash Drawer", href: "/payments?tab=cash-counter" },
-          { label: "Advances & Patient Wallet", href: "/payments?tab=advances" },
-          { label: "Dual-Custody Refunds", href: "/payments?tab=refunds" },
-          { label: "EDC Card & Gateway Settlements", href: "/payments?tab=settlements" },
-          { label: "Bank Reconciliation", href: "/payments?tab=reconciliation" },
-          { label: "Cashier EOD Reports", href: "/payments?tab=reports" },
+          {
+            label: "Cashier Command Desk",
+            href: "/payments",
+            badge: "LIVE",
+            badgeVariant: "emerald",
+            divider: "COUNTER & COLLECTION DESK",
+          },
+          {
+            label: "Transactions & Tender Ledger",
+            href: "/payments?tab=transactions",
+            badge: "Ledger",
+            badgeVariant: "sky",
+          },
+          {
+            label: "Pending Dues & Balance Desk",
+            href: "/payments?tab=dues",
+            badge: "Due",
+            badgeVariant: "amber",
+          },
+          {
+            label: "Shift Till & Cash Counter",
+            href: "/payments?tab=cash-counter",
+            badge: "Till",
+            badgeVariant: "teal",
+            divider: "TILL, WALLET & REFUNDS",
+          },
+          {
+            label: "Advances & Patient Wallet",
+            href: "/payments?tab=advances",
+            badge: "Escrow",
+            badgeVariant: "violet",
+          },
+          {
+            label: "Refunds & Credit Notes",
+            href: "/payments?tab=refunds",
+            badge: "2-Sign",
+            badgeVariant: "rose",
+          },
+          {
+            label: "EDC Card & UPI Settlements",
+            href: "/payments?tab=settlements",
+            badge: "POS/QR",
+            badgeVariant: "sky",
+            divider: "SETTLEMENT, BANK & AUDIT",
+          },
+          {
+            label: "Bank 3-Way Reconciliation",
+            href: "/payments?tab=reconciliation",
+            badge: "UTR",
+            badgeVariant: "emerald",
+          },
+          {
+            label: "Financial Reports & Day Book",
+            href: "/payments?tab=reports",
+            badge: "EOD",
+            badgeVariant: "amber",
+          },
+          {
+            label: "Statutory Security Audit Log",
+            href: "/payments?tab=audit-log",
+            badge: "ISO",
+            badgeVariant: "teal",
+          },
         ],
       },
     ],
@@ -973,6 +1028,11 @@ export default function Sidebar({
 
     if (hrefPath === "/invoices" && !hrefQuery) {
       return pathname === "/invoices" && !searchParams.get("tab");
+    }
+
+    if (hrefPath === "/payments" && !hrefQuery) {
+      const tab = searchParams.get("tab");
+      return pathname === "/payments" && (!tab || tab === "overview");
     }
 
     if (hrefPath === "/communication" && !hrefQuery) {
