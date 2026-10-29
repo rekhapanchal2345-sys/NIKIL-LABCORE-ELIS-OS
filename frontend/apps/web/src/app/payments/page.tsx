@@ -1957,6 +1957,8 @@ export default function PaymentsPage() {
     }));
   }, [payments]);
 
+  const [agingFilter, setAgingFilter] = useState<"ALL" | "CURRENT" | "8-15" | "16-30" | "30+">("ALL");
+
   // Receivables list & aging buckets
   const receivablesOrders = useMemo(() => {
     return orders
