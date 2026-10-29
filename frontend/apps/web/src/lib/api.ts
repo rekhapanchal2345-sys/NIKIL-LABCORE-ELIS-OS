@@ -469,7 +469,7 @@ function createSafeApiProxy<T extends Record<string, any>>(target: T): T {
 }
 
 export const patientApi = createSafeApiProxy({
-  getAll: async (_query?: string) => ({
+  getAll: async (_query?: any) => ({
     success: true,
     data: {
       patients: DEMO_PATIENTS,
@@ -625,7 +625,7 @@ export const testApi = createSafeApiProxy({
 });
 
 export const orderApi = createSafeApiProxy({
-  getAll: async () => ({
+  getAll: async (_query?: any) => ({
     success: true,
     data: {
       orders: DEMO_ORDERS,
@@ -1016,22 +1016,22 @@ export const authApi = createSafeApiProxy({
 });
 
 export const communicationApi = createSafeApiProxy({
-  getHistory: async () => ({ success: true, data: [] }),
-  sendWhatsApp: async (data: any) => ({ success: true, data }),
-  sendSMS: async (data: any) => ({ success: true, data }),
-  sendEmail: async (data: any) => ({ success: true, data }),
-  testWhatsApp: async () => ({ success: true, message: "WhatsApp gateway verified." }),
-  testSmtp: async () => ({ success: true, message: "SMTP gateway verified." }),
+  getHistory: async (_id?: any) => ({ success: true, data: { communications: [] } as any }),
+  sendWhatsApp: async (data: any) => ({ success: true, data, message: "OK" }),
+  sendSMS: async (data: any) => ({ success: true, data, message: "OK" }),
+  sendEmail: async (data: any) => ({ success: true, data, message: "OK" }),
+  testWhatsApp: async (_data?: any) => ({ success: true, message: "WhatsApp gateway verified." }),
+  testSmtp: async (_data?: any) => ({ success: true, message: "SMTP gateway verified." }),
   updateWhatsAppSettings: async (data: any) => ({ success: true, data }),
   updateSmtpSettings: async (data: any) => ({ success: true, data }),
-  uploadPdf: async () => ({ success: true, data: { url: "/reports.html" } }),
+  uploadPdf: async (_data?: any) => ({ success: true, data: { url: "/reports.html" } }),
 });
 
 export const laboratorySettingsApi = createSafeApiProxy({
-  getSettings: async () => ({ success: true, data: {} }),
+  getSettings: async (_id?: any) => ({ success: true, data: {} as any }),
   updateSettings: async (data: any) => ({ success: true, data }),
-  testWhatsApp: async () => ({ success: true, message: "Connected" }),
-  testSmtp: async () => ({ success: true, message: "Connected" }),
+  testWhatsApp: async (_data?: any) => ({ success: true, message: "Connected" }),
+  testSmtp: async (_data?: any) => ({ success: true, message: "Connected" }),
 });
 
 export const microbiologyApi = createSafeApiProxy({
@@ -1050,7 +1050,14 @@ export const microbiologyApi = createSafeApiProxy({
 });
 
 export const nexusApi = createSafeApiProxy({
-  getFleetStatus: async () => ({ success: true, data: DEMO_ANALYZERS }),
+  getFleetStatus: async (_sec?: any) => ({
+    success: true,
+    data: {
+      fleet: DEMO_ANALYZERS,
+      rejectedMessages: [],
+      unacknowledgedAlerts: [],
+    } as any,
+  }),
 });
 
 export const searchApi = createSafeApiProxy({

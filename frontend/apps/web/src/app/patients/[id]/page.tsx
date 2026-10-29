@@ -3172,49 +3172,18 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
 
       {/* PATIENT REGISTRATION PRINT FORM MODAL */}
       {showPrintRegistrationForm && patient && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-5">
-          <div className="bg-slate-100 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden border border-slate-300 animate-in fade-in zoom-in-95 flex flex-col">
-            <div className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between text-slate-900 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600">
-                  <Printer className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-bold text-slate-900">Patient Registration Form & Identity Dossier</h2>
-                    <span className="font-mono text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
-                      {patient.uhid || "PAT-REG"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    NABL (ISO 15189:2022) Accredited Clinical Intake Sheet • 1-Page A4 Printable Standard
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowPrintRegistrationForm(false)}
-                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1.5 transition-colors cursor-pointer"
-                title="Close Form"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 bg-slate-100/90 p-3 sm:p-5 flex justify-center">
-              <PatientRegistrationPrintForm
-                patientId={patient.uhid || patient.id || id}
-                patientData={registrationFormData}
-                labInfo={{
-                  name: "LabCore ELIS Hospital, Diagnostic Lab & Clinic",
-                  address: "123 Health Avenue, Medical District, Ahmedabad, Gujarat - 380016, India",
-                  phone: "+91 98765 43210",
-                  email: "intake@labcore-health.in",
-                  website: "www.labcore-health.in"
-                }}
-                onClose={() => setShowPrintRegistrationForm(false)}
-              />
-            </div>
-          </div>
-        </div>
+        <PatientRegistrationPrintForm
+          patientId={patient.uhid || patient.id || id}
+          patientData={registrationFormData}
+          labInfo={{
+            name: "LabCore ELIS Hospital, Diagnostic Lab & Clinic",
+            address: "123 Health Avenue, Medical District, Ahmedabad, Gujarat - 380016, India",
+            phone: "+91 98765 43210",
+            email: "intake@labcore-health.in",
+            website: "www.labcore-health.in",
+          }}
+          onClose={() => setShowPrintRegistrationForm(false)}
+        />
       )}
 
       {/* Print Template - Rendered for standard browser print (only when registration form modal is closed) */}

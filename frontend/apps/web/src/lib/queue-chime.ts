@@ -12,6 +12,7 @@ export interface ChimeSettings {
   voiceEnabled: boolean;
   language: AnnouncementLanguage;
   speechRate: number;
+  rate?: number;
   speechPitch: number;
   repeatTwice: boolean;
   muted?: boolean;
@@ -23,6 +24,7 @@ const DEFAULT_CHIME_SETTINGS: ChimeSettings = {
   voiceEnabled: true,
   language: "BILINGUAL",
   speechRate: 0.95,
+  rate: 0.95,
   speechPitch: 1.0,
   repeatTwice: false,
   muted: false,

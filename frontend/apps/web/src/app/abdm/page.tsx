@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
+import OpdTokenA4PrintModal from "@/components/patients/OpdTokenA4PrintModal";
 import {
   Shield,
   ShieldCheck,
@@ -3364,93 +3365,30 @@ function AbdmPageContent() {
         {/* MODAL 1: PRINTABLE OPD / PHLEBOTOMY FAST-TRACK TOKEN SLIP            */}
         {/* ==================================================================== */}
         {tokenSlipPatient && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-slate-800 space-y-4 font-mono text-xs border border-slate-200">
-              <div className="text-center pb-3 border-b border-dashed border-slate-300">
-                <h4 className="font-sans font-black text-sm uppercase tracking-tight text-slate-900">
-                  {status.facilityName}
-                </h4>
-                <p className="font-sans text-[10px] text-slate-500 mt-0.5">
-                  ABDM Fast-Track Reception Desk • {status.hfrId}
-                </p>
-                <div className="my-3 py-2 bg-slate-50 rounded-xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block font-sans">
-                    Fast-Track Queue Token
-                  </span>
-                  <span className="text-2xl font-black text-slate-900 font-mono tracking-wider">
-                    {tokenSlipPatient.token}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-[11px] text-slate-600">
-                <div className="flex justify-between">
-                  <span>Patient Name:</span>
-                  <strong className="text-slate-900 font-bold">{tokenSlipPatient.name}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Age / Gender:</span>
-                  <span>{tokenSlipPatient.age}Y / {tokenSlipPatient.gender}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Mobile:</span>
-                  <span>{tokenSlipPatient.phone}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>ABHA Number:</span>
-                  <strong className="text-emerald-700 font-bold">
-                    {formatAbhaNumber(tokenSlipPatient.abhaNumber)}
-                  </strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>ABHA Address:</span>
-                  <span className="text-blue-700">{tokenSlipPatient.abhaAddress}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Station / Counter:</span>
-                  <strong className="text-slate-900">{tokenSlipPatient.counterId}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Department:</span>
-                  <span>{tokenSlipPatient.department}</span>
-                </div>
-              </div>
-
-              <div className="text-center pt-3 border-t border-dashed border-slate-300">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(tokenSlipPatient.token)}`}
-                  alt="Token QR"
-                  width={90}
-                  height={90}
-                  className="mx-auto block mb-2"
-                />
-                <p className="font-sans text-[10px] text-slate-400">
-                  Please proceed to {tokenSlipPatient.counterId} when your token is called.
-                </p>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setTokenSlipPatient(null)}
-                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold text-xs rounded-xl cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.print();
-                    setTokenSlipPatient(null);
-                  }}
-                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-sans font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Slip</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <OpdTokenA4PrintModal
+            item={{
+              id: tokenSlipPatient.id || tokenSlipPatient.token,
+              tokenNumber: tokenSlipPatient.token,
+              patientName: tokenSlipPatient.name,
+              age: tokenSlipPatient.age || 35,
+              gender: tokenSlipPatient.gender === "M" || tokenSlipPatient.gender === "Male" ? "Male" : tokenSlipPatient.gender === "F" || tokenSlipPatient.gender === "Female" ? "Female" : "Other",
+              phone: tokenSlipPatient.phone || "+91 98765 43210",
+              uhid: tokenSlipPatient.uhid || `LC-2026-${String(tokenSlipPatient.token).replace(/[^0-9]/g, "").padStart(4, "0")}`,
+              abhaAddress: tokenSlipPatient.abhaAddress,
+              department: tokenSlipPatient.department || "General Medicine & Diagnostics",
+              doctorName: "Dr. Rajesh Sharma, MD",
+              roomNumber: tokenSlipPatient.counterId || "OPD Fast-Track Bay 01",
+              visitType: "New Visit",
+              priority: "Normal",
+              status: "Waiting",
+              checkInTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              estimatedWaitMins: 8,
+              vitalsLogged: true,
+              paymentStatus: "Paid",
+              consultationFee: 600,
+            }}
+            onClose={() => setTokenSlipPatient(null)}
+          />
         )}
 
         {/* ==================================================================== */}

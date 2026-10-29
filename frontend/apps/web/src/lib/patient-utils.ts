@@ -87,6 +87,8 @@ export function calculateClinicalAge(
 export interface FormattedIndianPhone {
   raw: string;
   digits: string;
+  rawDigits?: string;
+  e164?: string;
   display: string;
   formatted: string;
   whatsappNumber: string;
@@ -103,6 +105,8 @@ export function formatIndianPhone(phone?: string | null): FormattedIndianPhone {
   return {
     raw,
     digits: ten,
+    rawDigits: ten,
+    e164: ten.length === 10 ? `+91${ten}` : raw,
     display,
     formatted: display,
     whatsappNumber: ten.length === 10 ? `91${ten}` : digits,

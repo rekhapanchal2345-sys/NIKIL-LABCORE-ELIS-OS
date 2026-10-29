@@ -4,6 +4,8 @@ export interface IndiaLocation {
   state: string;
   stateCode: string;
   pincode: string;
+  defaultPincode?: string;
+  pincodes?: string[];
 }
 
 export const INDIAN_STATES: string[] = [

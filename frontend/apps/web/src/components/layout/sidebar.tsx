@@ -69,8 +69,9 @@ interface SubMenuItem {
   label: string;
   href: string;
   badge?: string;
-  badgeVariant?: "red" | "blue" | "amber" | "emerald" | "purple" | "violet" | "teal";
+  badgeVariant?: "red" | "blue" | "amber" | "emerald" | "purple" | "violet" | "teal" | "sky" | "rose";
   isDivider?: boolean;       // Visual group separator
+  divider?: string;          // Section divider label
   dividerLabel?: string;     // Label for divider
   liveKey?: "criticalPatients" | "opdQueue" | "approvalsPending" | "approvalsCritical"; // Live count key
   /** When present, the child is only rendered for these roles. */
@@ -935,9 +936,11 @@ export default function Sidebar({
       try {
         const res = await invoiceApi.getBillingMetrics();
         if (isSubscribed && res?.success && res?.data) {
+          const mData = res.data as any;
+          const pendingAmt = mData.pendingDueAmount ?? mData.pendingDues ?? 0;
           setInvoiceMetrics({
-            pending: res.data.pendingDueAmount > 0 ? 1 : 0,
-            pendingAmount: res.data.pendingDueAmount || 0,
+            pending: pendingAmt > 0 ? 1 : 0,
+            pendingAmount: pendingAmt,
           });
         }
       } catch (err) {

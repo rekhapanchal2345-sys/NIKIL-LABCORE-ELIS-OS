@@ -112,16 +112,39 @@ export function parseNaturalLanguagePatientQuery(query: string) {
   let bloodGroup: string | undefined;
   let isCritical: boolean | undefined;
   let isVip: boolean | undefined;
+  let isSenior: boolean | undefined;
   let minAge: number | undefined;
   let maxAge: number | undefined;
+  const explanations: string[] = [];
 
-  if (tokens.includes("male") || tokens.includes("men")) gender = "MALE";
-  if (tokens.includes("female") || tokens.includes("women")) gender = "FEMALE";
-  if (tokens.includes("critical") || tokens.includes("stat") || tokens.includes("panic")) isCritical = true;
-  if (tokens.includes("vip")) isVip = true;
+  if (tokens.includes("male") || tokens.includes("men")) {
+    gender = "MALE";
+    explanations.push("Gender: Male");
+  }
+  if (tokens.includes("female") || tokens.includes("women")) {
+    gender = "FEMALE";
+    explanations.push("Gender: Female");
+  }
+  if (tokens.includes("critical") || tokens.includes("stat") || tokens.includes("panic")) {
+    isCritical = true;
+    explanations.push("Critical / STAT cases");
+  }
+  if (tokens.includes("senior") || tokens.includes("elderly") || tokens.includes("geriatric")) {
+    isSenior = true;
+    explanations.push("Senior citizens (60+ yrs)");
+  }
+  if (tokens.includes("vip")) {
+    isVip = true;
+    explanations.push("VIP category");
+  }
 
   const bgMatch = raw.match(/\b(A|B|AB|O)[+-]\b/i);
-  if (bgMatch) bloodGroup = bgMatch[0].toUpperCase();
+  if (bgMatch) {
+    bloodGroup = bgMatch[0].toUpperCase();
+    explanations.push(`Blood Group: ${bloodGroup}`);
+  }
+
+  const activeFilterCount = (gender ? 1 : 0) + (bloodGroup ? 1 : 0) + (isCritical ? 1 : 0) + (isVip ? 1 : 0) + (isSenior ? 1 : 0);
 
   return {
     raw,
@@ -130,8 +153,18 @@ export function parseNaturalLanguagePatientQuery(query: string) {
     bloodGroup,
     isCritical,
     isVip,
+    isSenior,
     minAge,
     maxAge,
-    hasStructuredFilters: Boolean(gender || bloodGroup || isCritical || isVip),
+    activeFilterCount,
+    explanation: explanations.join(", ") || "Filtered query",
+    filters: {
+      gender,
+      bloodGroup,
+      isCritical,
+      isVip,
+      isSenior,
+    },
+    hasStructuredFilters: activeFilterCount > 0,
   };
 }

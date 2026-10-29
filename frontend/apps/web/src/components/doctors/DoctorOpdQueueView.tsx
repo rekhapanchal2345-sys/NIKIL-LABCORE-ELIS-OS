@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { showSuccess, showInfo } from "@/lib/notifications";
+import OpdTokenA4PrintModal from "@/components/patients/OpdTokenA4PrintModal";
 
 export interface OpdPatient {
   id: string;
@@ -850,76 +851,32 @@ export default function DoctorOpdQueueView({
 
       {/* ── TOKEN THERMAL SLIP PREVIEW MODAL ── */}
       {tokenSlipPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="text-center border-b border-dashed border-slate-300 pb-4">
-              <div className="text-xs font-black uppercase text-slate-900 tracking-wider">
-                LabCore Enterprise Hospital
-              </div>
-              <div className="text-[10px] text-slate-500 font-medium">
-                OPD Outpatient Consultation Receipt
-              </div>
-              <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                {new Date().toLocaleDateString("en-GB")} • {tokenSlipPatient.checkInTime}
-              </div>
-            </div>
-
-            <div className="text-center py-2 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                Token Number
-              </div>
-              <div className="text-4xl font-black text-slate-900 tracking-tight my-1">
-                {tokenSlipPatient.tokenNumber}
-              </div>
-              <div className="text-xs font-bold text-teal-700">
-                {tokenSlipPatient.chamberNumber}
-              </div>
-            </div>
-
-            <div className="space-y-1.5 text-xs border-b border-dashed border-slate-300 pb-3 font-medium">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Patient:</span>
-                <span className="font-bold text-slate-900">{tokenSlipPatient.patientName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">UHID:</span>
-                <span className="font-mono text-slate-800">{tokenSlipPatient.uhid}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Doctor:</span>
-                <span className="text-slate-800">{tokenSlipPatient.attendingDoctor}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Est. Wait:</span>
-                <span className="font-bold text-sky-700">~{tokenSlipPatient.estimatedWaitMinutes} minutes</span>
-              </div>
-            </div>
-
-            <div className="text-center text-[10px] text-slate-400 font-mono">
-              Please monitor display screen or listen for chime announcement.
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setTokenSlipPatient(null)}
-                className="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Slip</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <OpdTokenA4PrintModal
+          item={{
+            id: tokenSlipPatient.id,
+            tokenNumber: tokenSlipPatient.tokenNumber,
+            patientName: tokenSlipPatient.patientName,
+            age: tokenSlipPatient.age,
+            gender: tokenSlipPatient.gender === "M" ? "Male" : tokenSlipPatient.gender === "F" ? "Female" : "Other",
+            phone: tokenSlipPatient.phone,
+            uhid: tokenSlipPatient.uhid,
+            abhaAddress: tokenSlipPatient.abhaId ? `${tokenSlipPatient.patientName.toLowerCase().replace(/[^a-z0-9]/g, "")}@abdm` : undefined,
+            department: tokenSlipPatient.department,
+            doctorName: tokenSlipPatient.attendingDoctor,
+            roomNumber: tokenSlipPatient.chamberNumber,
+            visitType: tokenSlipPatient.visitType === "Emergency" ? "Urgent" : tokenSlipPatient.visitType === "Walk-In" ? "New Visit" : "Follow-Up",
+            priority: tokenSlipPatient.priority === "STAT" ? "STAT" : tokenSlipPatient.priority === "Priority" ? "VIP" : "Normal",
+            status: "Consulting",
+            checkInTime: tokenSlipPatient.checkInTime,
+            estimatedWaitMins: tokenSlipPatient.estimatedWaitMinutes,
+            vitalsLogged: true,
+            paymentStatus: "Paid",
+            consultationFee: 600,
+            chiefComplaint: tokenSlipPatient.chiefComplaint,
+          }}
+          onClose={() => setTokenSlipPatient(null)}
+        />
       )}
-
     </div>
   );
 }
