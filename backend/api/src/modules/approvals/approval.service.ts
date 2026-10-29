@@ -112,30 +112,47 @@ export const getPendingApprovals = async (
       take: 25,
     });
 
-    for (const ord of ordersWithoutResults) {
-      for (const it of ord.items) {
-        if (!it.testId) continue;
-        const exists = await prisma.result.findUnique({
-          where: { orderId_testId: { orderId: ord.id, testId: it.testId } },
-        });
-        if (!exists) {
-          await prisma.result.create({
-            data: {
-              orderId: ord.id,
-              testId: it.testId,
-              patientId: ord.patientId,
-              status: "PENDING",
-              enteredAt: new Date(),
-              values: {
-                create: (it.test?.parameters || []).map((p: any) => ({
-                  parameterId: p.id,
-                  value: "",
-                  flag: "NORMAL",
-                })),
-              },
-            },
-          });
+    const orderIds = ordersWithoutResults.map((o: any) => o.id);
+    if (orderIds.length > 0) {
+      const existingResults = await prisma.result.findMany({
+        where: { orderId: { in: orderIds } },
+        select: { orderId: true, testId: true },
+      });
+      const existingSet = new Set(existingResults.map((r: any) => `${r.orderId}_${r.testId}`));
+
+      const createPromises: any[] = [];
+      for (const ord of ordersWithoutResults) {
+        for (const it of ord.items) {
+          if (!it.testId) continue;
+
+          const key = `${ord.id}_${it.testId}`;
+          if (!existingSet.has(key)) {
+            existingSet.add(key); // Add to prevent duplicate creations in same loop
+            createPromises.push(
+              prisma.result.create({
+                data: {
+                  orderId: ord.id,
+                  testId: it.testId,
+                  patientId: ord.patientId,
+                  status: "PENDING",
+                  enteredAt: new Date(),
+                  values: {
+                    create: (it.test?.parameters || []).map((p: any) => ({
+                      parameterId: p.id,
+                      value: "",
+                      flag: "NORMAL",
+                    })),
+                  },
+                },
+              })
+            );
+          }
         }
+      }
+
+      if (createPromises.length > 0) {
+        // Use $transaction for concurrent inserts
+        await prisma.$transaction(createPromises);
       }
     }
   } catch (err) {
