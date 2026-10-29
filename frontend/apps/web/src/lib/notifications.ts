@@ -1,84 +1,68 @@
-// Simple notification utility for better user feedback
-export type NotificationType = 'success' | 'error' | 'info' | 'warning';
+export type NotificationType = "success" | "error" | "info" | "warning";
 
 export interface Notification {
   id: string;
   type: NotificationType;
+  title?: string;
   message: string;
   duration?: number;
 }
 
+type Listener = (notifications: Notification[]) => void;
+
 class NotificationManager {
   private notifications: Notification[] = [];
-  private listeners: ((notifications: Notification[]) => void)[] = [];
+  private listeners: Set<Listener> = new Set();
 
-  add(type: NotificationType, message: string, duration: number = 3000): string {
-    const id = Math.random().toString(36).substring(2, 9);
-    const notification: Notification = { id, type, message, duration };
-    
-    this.notifications.push(notification);
-    this.notifyListeners();
-    
-    // Auto-remove after duration
-    if (duration > 0) {
-      setTimeout(() => {
-        this.remove(id);
-      }, duration);
-    }
-    
-    return id;
-  }
-
-  remove(id: string): void {
-    this.notifications = this.notifications.filter(n => n.id !== id);
-    this.notifyListeners();
-  }
-
-  subscribe(listener: (notifications: Notification[]) => void): () => void {
-    this.listeners.push(listener);
+  subscribe(listener: Listener): () => void {
+    this.listeners.add(listener);
+    listener([...this.notifications]);
     return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
+      this.listeners.delete(listener);
     };
   }
 
-  private notifyListeners(): void {
-    this.listeners.forEach(listener => listener([...this.notifications]));
+  private emit() {
+    const copy = [...this.notifications];
+    this.listeners.forEach((l) => l(copy));
   }
 
-  getNotifications(): Notification[] {
-    return [...this.notifications];
+  show(type: NotificationType, message: string, title?: string, duration = 4000): string {
+    const id = `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const item: Notification = { id, type, message, title, duration };
+    this.notifications = [item, ...this.notifications].slice(0, 5);
+    this.emit();
+    if (duration > 0 && typeof window !== "undefined") {
+      setTimeout(() => this.dismiss(id), duration);
+    }
+    return id;
   }
 
-  // Convenience methods
-  success(message: string, duration?: number): string {
-    return this.add('success', message, duration);
+  dismiss(id: string) {
+    this.notifications = this.notifications.filter((n) => n.id !== id);
+    this.emit();
   }
 
-  error(message: string, duration?: number): string {
-    return this.add('error', message, duration);
-  }
-
-  info(message: string, duration?: number): string {
-    return this.add('info', message, duration);
-  }
-
-  warning(message: string, duration?: number): string {
-    return this.add('warning', message, duration);
+  clear() {
+    this.notifications = [];
+    this.emit();
   }
 }
 
-// Global notification manager instance
 export const notificationManager = new NotificationManager();
 
-// Convenience functions
-export const showSuccess = (message: string, duration?: number) => 
-  notificationManager.success(message, duration);
+export function showSuccess(message: string, title = "Success") {
+  return notificationManager.show("success", message, title);
+}
 
-export const showError = (message: string, duration?: number) => 
-  notificationManager.error(message, duration);
+export function showError(message: string, title = "Error") {
+  return notificationManager.show("error", message, title);
+}
 
-export const showInfo = (message: string, duration?: number) => 
-  notificationManager.info(message, duration);
+export function showInfo(message: string, title = "Information") {
+  return notificationManager.show("info", message, title);
+}
 
-export const showWarning = (message: string, duration?: number) => 
-  notificationManager.warning(message, duration);
+export function showWarning(message: string, title = "Warning") {
+  return notificationManager.show("warning", message, title);
+}

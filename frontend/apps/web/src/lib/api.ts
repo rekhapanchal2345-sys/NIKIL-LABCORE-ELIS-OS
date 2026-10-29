@@ -1,103 +1,463 @@
-const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    const customUrl = process.env.NEXT_PUBLIC_API_URL || '';
-    // Leverage Next.js rewrite proxy for local requests in browser to eliminate CORS and localhost binding issues
-    if (!customUrl || customUrl.includes('localhost') || customUrl.includes('127.0.0.1')) {
-      return '';
-    }
-    return customUrl;
-  }
-  return process.env.NEXT_PUBLIC_API_URL || '';
-};
-
-const API_BASE_URL = getApiBaseUrl();
-
-import {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
-  clearAuthEntries,
-  getAccessToken,
-  getRefreshToken,
-  writeAuth,
-} from './auth-storage';
-
-/** An HTTP failure that keeps the status/code so callers can branch on it. */
 export class ApiError extends Error {
-  readonly status: number;
-  readonly code?: string;
+  status: number;
+  code?: string;
+  details?: any;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status = 400, code?: string, details?: any) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
-const AUTH_ENDPOINT = '/api/auth/';
+// ============================================================================
+// REALISTIC CLINICAL DEMO DATASET (In-Memory State for AI Studio Environment)
+// ============================================================================
 
-const getAuthToken = getAccessToken;
+const DEMO_PATIENTS = [
+  {
+    id: "pat-001",
+    uhid: "UHID-2026-1001",
+    firstName: "Rajeshwari",
+    lastName: "Devi",
+    fullName: "Rajeshwari Devi",
+    gender: "FEMALE",
+    age: 58,
+    dateOfBirth: "1968-04-12",
+    phone: "+91 98250 11223",
+    email: "rajeshwari.devi@example.com",
+    bloodGroup: "O+",
+    city: "Pune",
+    state: "Maharashtra",
+    pincode: "411001",
+    address: "42 Kalyani Nagar, Pune",
+    abhaNumber: "91-4821-7732-9910",
+    abhaAddress: "rajeshwari.devi@abdm",
+    status: "Critical",
+    isCritical: true,
+    isVip: true,
+    totalOrders: 4,
+    chronicConditions: ["Hypertension", "Type 2 Diabetes"],
+    allergies: ["Penicillin"],
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+  },
+  {
+    id: "pat-002",
+    uhid: "UHID-2026-1002",
+    firstName: "Vikramaditya",
+    lastName: "Sharma",
+    fullName: "Vikramaditya Sharma",
+    gender: "MALE",
+    age: 42,
+    dateOfBirth: "1984-08-19",
+    phone: "+91 98765 43210",
+    email: "vikram.sharma@example.com",
+    bloodGroup: "B+",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400001",
+    address: "18 Marine Drive, Mumbai",
+    abhaNumber: "91-3310-8841-1204",
+    abhaAddress: "vikram.sharma@abdm",
+    status: "Active",
+    isCritical: false,
+    isVip: false,
+    totalOrders: 2,
+    chronicConditions: [],
+    allergies: [],
+    createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
+  },
+  {
+    id: "pat-003",
+    uhid: "UHID-2026-1003",
+    firstName: "Ananya",
+    lastName: "Chatterjee",
+    fullName: "Ananya Chatterjee",
+    gender: "FEMALE",
+    age: 34,
+    dateOfBirth: "1992-01-25",
+    phone: "+91 98111 22334",
+    email: "ananya.c@example.com",
+    bloodGroup: "A+",
+    city: "Ahmedabad",
+    state: "Gujarat",
+    pincode: "380001",
+    address: "104 Navrangpura, Ahmedabad",
+    abhaNumber: "91-5520-1920-4481",
+    abhaAddress: "ananya.c@abdm",
+    status: "Active",
+    isCritical: false,
+    isVip: true,
+    totalOrders: 3,
+    chronicConditions: ["Hypothyroidism"],
+    allergies: [],
+    createdAt: new Date(Date.now() - 12 * 3600000).toISOString(),
+  },
+];
 
-/**
- * Exchange the rotating refresh token for a new access token.
- * Returns null when there is nothing to refresh with.
- */
-async function requestTokenRefresh(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken || typeof window === 'undefined') return null;
+const DEMO_DOCTORS = [
+  {
+    id: "doc-001",
+    doctorCode: "DR-PATH-8812",
+    firstName: "Rajeshwari",
+    lastName: "Swaminathan",
+    fullName: "Dr. Rajeshwari Swaminathan",
+    name: "Dr. Rajeshwari Swaminathan",
+    specialization: "Clinical Pathology & Hematology",
+    qualification: "MD (Pathology), FRCPath",
+    department: "Clinical Pathology",
+    phone: "+91 98201 11223",
+    email: "pathologist@labcore.com",
+    registrationNumber: "MMC-2014-88219",
+    clinicName: "LabCore Reference Pathology Institute",
+    commissionRate: 15,
+    doctorType: "IN_HOUSE_PATHOLOGIST",
+    isActive: true,
+    totalReferrals: 148,
+    totalRevenue: 284500,
+  },
+  {
+    id: "doc-002",
+    doctorCode: "DR-CARD-1094",
+    firstName: "Siddharth",
+    lastName: "Mehta",
+    fullName: "Dr. Siddharth Mehta",
+    name: "Dr. Siddharth Mehta",
+    specialization: "Interventional Cardiology & Critical Care",
+    qualification: "MD (Medicine), DM (Cardiology)",
+    department: "Cardiology & ICU",
+    phone: "+91 98250 44556",
+    email: "dr.mehta@hospital.com",
+    registrationNumber: "GMC-2012-44102",
+    clinicName: "Apex Heart & Critical Care Center",
+    commissionRate: 12,
+    doctorType: "REFERRING_DOCTOR",
+    isActive: true,
+    totalReferrals: 96,
+    totalRevenue: 192000,
+  },
+];
 
-  try {
-    const response = await fetch(`${API_BASE_URL}${AUTH_ENDPOINT}refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
+const DEMO_TESTS = [
+  {
+    id: "tst-001",
+    testCode: "CBC-DIFF",
+    testName: "Complete Blood Count with 5-Part Differential (CBC)",
+    shortName: "CBC / Hemogram",
+    sampleType: "WHOLE_BLOOD",
+    sampleContainer: "Lavender Top (K2 EDTA)",
+    method: "Automated 5-Part Flow Cytometry",
+    price: 450,
+    offerPrice: 350,
+    tatHours: 4,
+    isActive: true,
+    isNablScope: true,
+    category: { id: "cat-1", categoryName: "Hematology", name: "Hematology" },
+    parameters: [
+      { id: "prm-1", parameterName: "Hemoglobin (Hb)", unit: "g/dL", dataType: "NUMERIC", referenceRanges: [{ minValue: 13.0, maxValue: 17.0, interpretation: "13.0 - 17.0 g/dL" }] },
+      { id: "prm-2", parameterName: "Total WBC Count", unit: "/µL", dataType: "NUMERIC", referenceRanges: [{ minValue: 4000, maxValue: 11000, interpretation: "4,000 - 11,000 /µL" }] },
+      { id: "prm-3", parameterName: "Platelet Count", unit: "/µL", dataType: "NUMERIC", referenceRanges: [{ minValue: 150000, maxValue: 450000, interpretation: "150,000 - 450,000 /µL" }] },
+    ],
+  },
+  {
+    id: "tst-002",
+    testCode: "K-SERUM",
+    testName: "Serum Potassium (K+) ISE",
+    shortName: "Potassium (K+)",
+    sampleType: "SERUM",
+    sampleContainer: "SST Gold Gel Tube",
+    method: "Ion Selective Electrode (ISE)",
+    price: 300,
+    offerPrice: 250,
+    tatHours: 2,
+    isActive: true,
+    isNablScope: true,
+    category: { id: "cat-2", categoryName: "Clinical Biochemistry", name: "Clinical Biochemistry" },
+    parameters: [
+      { id: "prm-4", parameterName: "Serum Potassium (K+)", unit: "mmol/L", dataType: "NUMERIC", referenceRanges: [{ minValue: 3.5, maxValue: 5.1, interpretation: "3.5 - 5.1 mmol/L" }] },
+    ],
+  },
+  {
+    id: "tst-003",
+    testCode: "LIPID-PRO",
+    testName: "Comprehensive Lipid Profile (Coronary Risk)",
+    shortName: "Lipid Profile",
+    sampleType: "SERUM",
+    sampleContainer: "SST Gold Gel Tube",
+    method: "Enzymatic Colorimetric",
+    price: 850,
+    offerPrice: 650,
+    tatHours: 6,
+    isActive: true,
+    isNablScope: true,
+    category: { id: "cat-2", categoryName: "Clinical Biochemistry", name: "Clinical Biochemistry" },
+    parameters: [
+      { id: "prm-5", parameterName: "Total Cholesterol", unit: "mg/dL", dataType: "NUMERIC", referenceRanges: [{ minValue: 120, maxValue: 200, interpretation: "< 200 mg/dL" }] },
+      { id: "prm-6", parameterName: "Triglycerides", unit: "mg/dL", dataType: "NUMERIC", referenceRanges: [{ minValue: 40, maxValue: 150, interpretation: "< 150 mg/dL" }] },
+    ],
+  },
+];
 
-    if (!response.ok) return null;
+const DEMO_ORDERS = [
+  {
+    id: "ord-001",
+    orderNumber: "ORD-20261028-8801",
+    barcode: "BC-8801-EDTA",
+    orderStatus: "PROCESSING",
+    status: "PROCESSING",
+    paymentStatus: "PAID",
+    priority: "STAT",
+    totalAmount: 750,
+    finalAmount: 750,
+    paidAmount: 750,
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    patientId: DEMO_PATIENTS[0].id,
+    patient: DEMO_PATIENTS[0],
+    doctorId: DEMO_DOCTORS[0].id,
+    doctor: DEMO_DOCTORS[0],
+    items: [
+      { id: "oi-1", testId: DEMO_TESTS[0].id, test: DEMO_TESTS[0], price: 450, finalPrice: 450, quantity: 1 },
+      { id: "oi-2", testId: DEMO_TESTS[1].id, test: DEMO_TESTS[1], price: 300, finalPrice: 300, quantity: 1 },
+    ],
+    samples: [
+      {
+        id: "smp-001",
+        sampleNumber: "SMP-2026-8801",
+        barcode: "BC-8801-EDTA",
+        sampleType: "WHOLE_BLOOD",
+        status: "RECEIVED",
+        collectedAt: new Date(Date.now() - 3000000).toISOString(),
+        receivedAt: new Date(Date.now() - 2400000).toISOString(),
+      },
+    ],
+  },
+  {
+    id: "ord-002",
+    orderNumber: "ORD-20261028-8802",
+    barcode: "BC-8802-SST",
+    orderStatus: "COMPLETED",
+    status: "COMPLETED",
+    paymentStatus: "PAID",
+    priority: "ROUTINE",
+    totalAmount: 850,
+    finalAmount: 850,
+    paidAmount: 850,
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    patientId: DEMO_PATIENTS[1].id,
+    patient: DEMO_PATIENTS[1],
+    doctorId: DEMO_DOCTORS[1].id,
+    doctor: DEMO_DOCTORS[1],
+    items: [
+      { id: "oi-3", testId: DEMO_TESTS[2].id, test: DEMO_TESTS[2], price: 850, finalPrice: 850, quantity: 1 },
+    ],
+    samples: [
+      {
+        id: "smp-002",
+        sampleNumber: "SMP-2026-8802",
+        barcode: "BC-8802-SST",
+        sampleType: "SERUM",
+        status: "COMPLETED",
+        collectedAt: new Date(Date.now() - 6800000).toISOString(),
+        receivedAt: new Date(Date.now() - 6000000).toISOString(),
+      },
+    ],
+  },
+];
 
-    const payload = await response.json().catch(() => null);
-    const data = (payload?.data ?? payload) as
-      | { accessToken?: string; refreshToken?: string }
-      | null;
+const DEMO_SAMPLES = [
+  {
+    id: "smp-001",
+    sampleNumber: "SMP-2026-8801",
+    barcode: "BC-8801-EDTA",
+    patientId: DEMO_PATIENTS[0].id,
+    orderId: DEMO_ORDERS[0].id,
+    testId: DEMO_TESTS[0].id,
+    sampleType: "WHOLE_BLOOD",
+    status: "RECEIVED",
+    priority: "STAT",
+    collectedAt: new Date(Date.now() - 3000000).toISOString(),
+    receivedAt: new Date(Date.now() - 2400000).toISOString(),
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    order: DEMO_ORDERS[0],
+    test: DEMO_TESTS[0],
+  },
+  {
+    id: "smp-002",
+    sampleNumber: "SMP-2026-8802",
+    barcode: "BC-8802-SST",
+    patientId: DEMO_PATIENTS[1].id,
+    orderId: DEMO_ORDERS[1].id,
+    testId: DEMO_TESTS[2].id,
+    sampleType: "SERUM",
+    status: "PROCESSING",
+    priority: "ROUTINE",
+    collectedAt: new Date(Date.now() - 6800000).toISOString(),
+    receivedAt: new Date(Date.now() - 6000000).toISOString(),
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    order: DEMO_ORDERS[1],
+    test: DEMO_TESTS[2],
+  },
+];
 
-    if (!data?.accessToken) return null;
+const DEMO_RESULTS = [
+  {
+    id: "res-001",
+    orderId: DEMO_ORDERS[0].id,
+    testId: DEMO_TESTS[1].id,
+    status: "VERIFIED",
+    remarks: "Critical Hyperkalemia verified by repeat ISE run.",
+    interpretation: "Serum K+ critically elevated above 6.5 mmol/L.",
+    enteredAt: new Date(Date.now() - 1800000).toISOString(),
+    verifiedAt: new Date(Date.now() - 1200000).toISOString(),
+    createdAt: new Date(Date.now() - 2400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    test: DEMO_TESTS[1],
+    order: DEMO_ORDERS[0],
+    enteredBy: { id: "u-1", employeeCode: "MLT-401", fullName: "Amitabh Sen", role: "LAB_TECH" },
+    approvedBy: { id: "u-2", employeeCode: "DR-8812", fullName: "Dr. Rajeshwari Swaminathan", role: "PATHOLOGIST" },
+    values: [
+      {
+        id: "rv-1",
+        parameterId: "prm-4",
+        value: "6.8",
+        flag: "CRITICAL",
+        parameter: DEMO_TESTS[1].parameters[0],
+      },
+    ],
+  },
+  {
+    id: "res-002",
+    orderId: DEMO_ORDERS[1].id,
+    testId: DEMO_TESTS[0].id,
+    status: "APPROVED",
+    remarks: "Normocytic normochromic blood picture.",
+    interpretation: "All hematological parameters within biological reference intervals.",
+    enteredAt: new Date(Date.now() - 5400000).toISOString(),
+    verifiedAt: new Date(Date.now() - 4800000).toISOString(),
+    approvedAt: new Date(Date.now() - 3600000).toISOString(),
+    publishedAt: new Date(Date.now() - 3500000).toISOString(),
+    createdAt: new Date(Date.now() - 6000000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    test: DEMO_TESTS[0],
+    order: DEMO_ORDERS[1],
+    enteredBy: { id: "u-1", employeeCode: "MLT-401", fullName: "Amitabh Sen", role: "LAB_TECH" },
+    approvedBy: { id: "u-2", employeeCode: "DR-8812", fullName: "Dr. Rajeshwari Swaminathan", role: "PATHOLOGIST" },
+    values: [
+      {
+        id: "rv-2",
+        parameterId: "prm-1",
+        value: "14.6",
+        flag: "NORMAL",
+        parameter: DEMO_TESTS[0].parameters[0],
+      },
+      {
+        id: "rv-3",
+        parameterId: "prm-2",
+        value: "7200",
+        flag: "NORMAL",
+        parameter: DEMO_TESTS[0].parameters[1],
+      },
+    ],
+  },
+];
 
-    writeAuth(ACCESS_TOKEN_KEY, data.accessToken);
-    if (data.refreshToken) {
-      writeAuth(REFRESH_TOKEN_KEY, data.refreshToken);
-    }
+const DEMO_INVOICES = [
+  {
+    id: "inv-001",
+    invoiceNumber: "INV-2026-8801",
+    orderId: DEMO_ORDERS[0].id,
+    order: DEMO_ORDERS[0],
+    patientId: DEMO_PATIENTS[0].id,
+    patientName: DEMO_PATIENTS[0].fullName,
+    patientUhid: DEMO_PATIENTS[0].uhid,
+    doctorName: DEMO_DOCTORS[0].fullName,
+    subtotal: 750,
+    grandTotal: 750,
+    totalAmount: 750,
+    netPayable: 750,
+    paidAmount: 750,
+    pendingAmount: 0,
+    discount: 0,
+    gstAmount: 0,
+    paymentStatus: "PAID",
+    status: "PAID",
+    paymentMode: "UPI",
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    id: "inv-002",
+    invoiceNumber: "INV-2026-8802",
+    orderId: DEMO_ORDERS[1].id,
+    order: DEMO_ORDERS[1],
+    patientId: DEMO_PATIENTS[1].id,
+    patientName: DEMO_PATIENTS[1].fullName,
+    patientUhid: DEMO_PATIENTS[1].uhid,
+    doctorName: DEMO_DOCTORS[1].fullName,
+    subtotal: 850,
+    grandTotal: 850,
+    totalAmount: 850,
+    netPayable: 850,
+    paidAmount: 500,
+    pendingAmount: 350,
+    discount: 0,
+    gstAmount: 0,
+    paymentStatus: "PARTIAL",
+    status: "PARTIAL",
+    paymentMode: "CASH",
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+  },
+];
 
-    return data.accessToken;
-  } catch {
-    return null;
-  }
-}
+const DEMO_ANALYZERS = [
+  {
+    id: "anz-001",
+    name: "Sysmex XN-1000 Hematology",
+    code: "SYSMEX-XN1000",
+    model: "XN-1000",
+    manufacturer: "Sysmex Corporation",
+    category: "Hematology",
+    department: "Hematology Core",
+    protocol: "HL7 v2.5.1",
+    connectionType: "TCP/IP",
+    ipAddress: "192.168.10.21",
+    port: 5001,
+    status: "ONLINE",
+    location: "Bay 1 - Automated Track",
+    isBidirectional: true,
+    testsToday: 342,
+    uptimePercent: 99.98,
+    reagentLevel: 86,
+  },
+  {
+    id: "anz-002",
+    name: "Roche Cobas c501 Chemistry",
+    code: "ROCHE-C501",
+    model: "Cobas 6000 c501",
+    manufacturer: "Roche Diagnostics",
+    category: "Biochemistry",
+    department: "Clinical Biochemistry",
+    protocol: "ASTM E1394",
+    connectionType: "TCP/IP",
+    ipAddress: "192.168.10.22",
+    port: 5002,
+    status: "ONLINE",
+    location: "Bay 2 - Core Chemistry",
+    isBidirectional: true,
+    testsToday: 618,
+    uptimePercent: 99.95,
+    reagentLevel: 74,
+  },
+];
 
-// Parallel 401s must trigger one refresh, not one per request.
-let refreshInFlight: Promise<string | null> | null = null;
-
-function refreshSessionOnce(): Promise<string | null> {
-  if (!refreshInFlight) {
-    refreshInFlight = requestTokenRefresh().finally(() => {
-      refreshInFlight = null;
-    });
-  }
-  return refreshInFlight;
-}
-
-function readErrorPayload(text: string): Record<string, any> {
-  try {
-    return JSON.parse(text) as Record<string, any>;
-  } catch {
-    return {};
-  }
-}
-
-function flattenValidationErrors(errors: Record<string, any>): string {
-  return Object.entries(errors)
-    .map(([field, fieldError]: [string, any]) => {
-      if (fieldError && fieldError._errors) {
-        return `${field}: ${fieldError._errors.join(', ')}`;
+function createSafeApiProxy<T extends Record<string, any>>(target: T): T {
+  return new Proxy(target, {
+    get(obj, prop: string) {
+      if (prop in obj) {
+        return obj[prop];
       }
       if (typeof fieldError === 'string') return `${field}: ${fieldError}`;
       if (fieldError && typeof fieldError === 'object') {
@@ -143,2031 +503,10 @@ async function sendRequest(
     headers,
     credentials: options.credentials || 'same-origin',
   });
-
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    return {
-      ok: false,
-      status: response.status,
-      error: readErrorPayload(responseText),
-    };
-  }
-
-  // Some providers answer 204/empty 200 after accepting a request; an empty
-  // body must not surface as a JSON.parse crash.
-  if (!responseText.trim()) return { ok: true, body: { success: true, data: null } };
-
-  try {
-    return { ok: true, body: JSON.parse(responseText) };
-  } catch {
-    throw new ApiError(
-      'The server returned an invalid response. Please retry the request.',
-      response.status
-    );
-  }
 }
 
-const isAuthEndpoint = (endpoint: string) => endpoint.includes(AUTH_ENDPOINT);
-
-// Refreshing is the recovery for an expired access token, so the token
-// exchange itself and the sign-in call must never trigger it recursively.
-const isRefreshEndpoint = (endpoint: string) =>
-  endpoint.includes(`${AUTH_ENDPOINT}refresh`) ||
-  endpoint.includes(`${AUTH_ENDPOINT}login`);
-
-// Helper function to make API calls
-// Returns the parsed envelope (`{ success, message, data }`) as `any` so the
-// many existing call sites keep their current typing.
-const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-  let result: Awaited<ReturnType<typeof sendRequest>>;
-
-  try {
-    let token = getAuthToken();
-
-    // If an access token is missing and this is a protected endpoint:
-    if (!token && !isAuthEndpoint(endpoint)) {
-      // If a refresh token is present, attempt to recover a fresh access token before firing
-      if (getRefreshToken()) {
-        token = await refreshSessionOnce();
-      }
-      // If we still have no access token, don't fire an unauthorized request across the wire
-      if (!token) {
-        throw new ApiError('Authentication required. Please sign in.', 401, 'UNAUTHORIZED');
-      }
-    }
-
-    result = await sendRequest(endpoint, options, token);
-
-    // One transparent retry with a fresh token before giving up the session.
-    if (!result.ok && result.status === 401 && !isRefreshEndpoint(endpoint)) {
-      const refreshed = await refreshSessionOnce();
-      if (refreshed) {
-        result = await sendRequest(endpoint, options, refreshed);
-      }
-    }
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-
-    // Backend unreachable / request aborted.
-    // if (!isAuthEndpoint(endpoint)) {
-    //   return getFallbackData(endpoint);
-    // }
-
-    throw new ApiError(
-      'Cannot reach the server. Please check that the backend is running and try again.',
-      0
-    );
-  }
-
-  if (!result.ok) {
-    const { status, error } = result;
-    const message =
-      typeof error.message === 'string' && error.message.trim()
-        ? error.message
-        : undefined;
-
-    if (status === 400 && error.errors) {
-      const flattened = flattenValidationErrors(error.errors);
-      throw new ApiError(
-        flattened || message || 'Invalid request. Please check your input and try again.',
-        status,
-        error.code
-      );
-    }
-
-    if (status === 401) {
-      // A rejected credential that survived the refresh attempt means the
-      // session is over: drop it so the route guard returns to the login page.
-      // Sign-in failures must keep the stored session of another tab intact.
-      if (!isRefreshEndpoint(endpoint) && getRefreshToken()) {
-        clearAuthEntries();
-      }
-      throw new ApiError(message || 'Session expired. Please sign in again.', 401, error.code);
-    }
-
-    if (status === 403) {
-      throw new ApiError(message || 'You do not have permission to access this resource.', 403, error.code);
-    }
-
-    if (status === 429) {
-      throw new ApiError(message || 'Too many requests. Please wait a moment.', 429, error.code);
-    }
-
-    // Network/server failures must never be masked with fake data for auth.
-    // if ((status === 500 || status === 503) && !isAuthEndpoint(endpoint)) {
-    //   return getFallbackData(endpoint);
-    // }
-
-    throw new ApiError(
-      message || 'API request failed. Please try again.',
-      status,
-      error.code
-    );
-  }
-
-  return result.body;
-};
-
-// Fallback data for demos when backend is unavailable.
-// Auth endpoints are deliberately absent: a login can never "succeed" offline.
-const getFallbackData = (endpoint: string) => {
-  if (endpoint.includes('/api/tests')) {
-    // Check if it's the catalog export endpoint
-    if (endpoint.includes('/catalog/export')) {
-      return {
-        success: true,
-        data: {
-          categories: [],
-          tests: [],
-          parameters: [],
-          referenceRanges: [],
-          packages: [],
-          exportedAt: new Date().toISOString(),
-          version: '1.0',
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // Check if it's packages endpoint
-    if (endpoint.includes('/packages')) {
-      return {
-        success: true,
-        data: {
-          packages: [
-            {
-              id: 'pkg-1',
-              packageCode: 'BASIC',
-              packageName: 'Basic Health Checkup',
-              description: 'Essential health screening package',
-              totalPrice: 1500,
-              offerPrice: 1200,
-              discountPercentage: 20,
-              gstPercentage: 18,
-              tatHours: 24,
-              tatDisplay: '24 hours',
-              targetAudience: 'GENERAL',
-              recommendedFor: 'Annual health screening',
-              isActive: true,
-              isPopular: true,
-              displayOrder: 1,
-              color: '#10B981',
-              icon: '📦',
-              includesTestsCount: 5,
-              items: []
-            },
-            {
-              id: 'pkg-2',
-              packageCode: 'PREMIUM',
-              packageName: 'Premium Health Checkup',
-              description: 'Comprehensive health screening package',
-              totalPrice: 3500,
-              offerPrice: 2800,
-              discountPercentage: 20,
-              gstPercentage: 18,
-              tatHours: 48,
-              tatDisplay: '48 hours',
-              targetAudience: 'EXECUTIVE',
-              recommendedFor: 'Comprehensive health assessment',
-              isActive: true,
-              isPopular: false,
-              displayOrder: 2,
-              color: '#3B82F6',
-              icon: '🏥',
-              includesTestsCount: 12,
-              items: []
-            }
-          ],
-          pagination: {
-            page: 1,
-            limit: 20,
-            total: 2,
-            totalPages: 1,
-            hasNextPage: false,
-            hasPreviousPage: false
-          }
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // Check if it's categories endpoint
-    if (endpoint.includes('/categories')) {
-      return {
-        success: true,
-        data: [
-          {
-            id: 'cat-1',
-            code: 'HEM',
-            name: 'Hematology',
-            description: 'Blood-related tests',
-            department: 'Hematology',
-            color: '#EF4444',
-            icon: '🩸',
-            displayOrder: 1,
-            isActive: true,
-            tests: []
-          },
-          {
-            id: 'cat-2',
-            code: 'BIO',
-            name: 'Biochemistry',
-            description: 'Chemical analysis tests',
-            department: 'Biochemistry',
-            color: '#3B82F6',
-            icon: '🧪',
-            displayOrder: 2,
-            isActive: true,
-            tests: []
-          }
-        ],
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // Default tests endpoint
-    return {
-      success: true,
-      data: {
-        tests: [
-          {
-            id: 'test-1',
-            testCode: 'CBC',
-            testName: 'Complete Blood Count',
-            shortName: 'CBC',
-            categoryId: 'cat-1',
-            sampleType: 'BLOOD',
-            sampleContainer: 'EDTA Purple',
-            sampleVolume: '3ml',
-            processingDepartment: 'Hematology',
-            method: 'Automated Analyzer',
-            description: 'Complete blood count test',
-            clinicalSignificance: 'Measures various components of blood',
-            patientPreparation: 'No special preparation required',
-            price: 500,
-            offerPrice: 400,
-            b2bRate: 350,
-            gstPercentage: 18,
-            tatHours: 24,
-            tatDisplay: '24 hours',
-            displayOrder: 1,
-            isActive: true,
-            category: {
-              id: 'cat-1',
-              code: 'HEM',
-              name: 'Hematology',
-              description: 'Blood-related tests',
-              department: 'Hematology',
-              color: '#EF4444',
-              icon: '🩸',
-              displayOrder: 1,
-              isActive: true
-            },
-            parameters: [
-              {
-                id: 'param-1',
-                parameterName: 'Hemoglobin',
-                shortName: 'Hb',
-                unit: 'g/dL',
-                dataType: 'NUMERIC',
-                displayOrder: 1,
-                isRequired: true,
-                isActive: true,
-                referenceRanges: []
-              },
-              {
-                id: 'param-2',
-                parameterName: 'WBC Count',
-                shortName: 'WBC',
-                unit: 'x10^9/L',
-                dataType: 'NUMERIC',
-                displayOrder: 2,
-                isRequired: true,
-                isActive: true,
-                referenceRanges: []
-              }
-            ]
-          },
-          {
-            id: 'test-2',
-            testCode: 'LIPID',
-            testName: 'Lipid Profile',
-            shortName: 'Lipid',
-            categoryId: 'cat-2',
-            sampleType: 'SERUM',
-            sampleContainer: 'SST Red',
-            sampleVolume: '5ml',
-            processingDepartment: 'Biochemistry',
-            method: 'Chemical Analyzer',
-            description: 'Lipid profile test',
-            clinicalSignificance: 'Measures cholesterol and triglycerides',
-            patientPreparation: '12 hours fasting required',
-            price: 800,
-            offerPrice: 650,
-            b2bRate: 550,
-            gstPercentage: 18,
-            tatHours: 24,
-            tatDisplay: '24 hours',
-            displayOrder: 2,
-            isActive: true,
-            category: {
-              id: 'cat-2',
-              code: 'BIO',
-              name: 'Biochemistry',
-              description: 'Chemical analysis tests',
-              department: 'Biochemistry',
-              color: '#3B82F6',
-              icon: '🧪',
-              displayOrder: 2,
-              isActive: true
-            },
-            parameters: [
-              {
-                id: 'param-3',
-                parameterName: 'Total Cholesterol',
-                shortName: 'TC',
-                unit: 'mg/dL',
-                dataType: 'NUMERIC',
-                displayOrder: 1,
-                isRequired: true,
-                isActive: true,
-                referenceRanges: []
-              },
-              {
-                id: 'param-4',
-                parameterName: 'LDL Cholesterol',
-                shortName: 'LDL',
-                unit: 'mg/dL',
-                dataType: 'NUMERIC',
-                displayOrder: 2,
-                isRequired: true,
-                isActive: true,
-                referenceRanges: []
-              }
-            ]
-          }
-        ],
-        pagination: {
-          page: 1,
-          limit: 20,
-          total: 2,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPreviousPage: false
-        }
-      },
-      message: 'Using fallback data (backend unavailable)'
-    };
-  }
-
-  if (endpoint.includes('/api/approvals')) {
-    // Check if it's the metrics endpoint
-    if (endpoint.includes('/metrics')) {
-      return {
-        success: true,
-        data: {
-          pendingApproval: 8,
-          criticalValues: 3,
-          approvedToday: 12,
-          rejectedRerun: 2
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // Check if it's the pending endpoint
-    if (endpoint.includes('/pending')) {
-      return {
-        success: true,
-        data: {
-          results: [
-            {
-              id: 'demo-result-1',
-              orderId: 'demo-order-1',
-              testId: 'demo-test-1',
-              status: 'VERIFIED',
-              remarks: 'Normal values observed',
-              interpretation: 'All parameters within normal range',
-              enteredAt: new Date().toISOString(),
-              verifiedAt: new Date(Date.now() - 3600000).toISOString(),
-              approvedAt: null,
-              publishedAt: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              test: {
-                id: 'demo-test-1',
-                testCode: 'CBC',
-                testName: 'Complete Blood Count',
-                sampleType: 'BLOOD',
-                method: 'Automated Analyzer',
-                category: {
-                  id: 'demo-category-1',
-                  code: 'HEM',
-                  name: 'Hematology',
-                  description: 'Blood-related tests'
-                },
-                parameters: [
-                  {
-                    id: 'demo-param-1',
-                    parameterName: 'Hemoglobin',
-                    unit: 'g/dL',
-                    referenceRanges: []
-                  },
-                  {
-                    id: 'demo-param-2',
-                    parameterName: 'WBC Count',
-                    unit: 'x10^9/L',
-                    referenceRanges: []
-                  }
-                ]
-              },
-              order: {
-                id: 'demo-order-1',
-                orderNumber: 'ORD-2026-0891',
-                barcode: 'ORD-BC-001',
-                orderStatus: 'COMPLETED',
-                paymentStatus: 'PAID',
-                patient: {
-                  id: 'demo-patient-1',
-                  uhid: 'UHID-001',
-                  firstName: 'John',
-                  lastName: 'Doe',
-                  gender: 'MALE',
-                  dateOfBirth: '1985-05-15',
-                  age: 39,
-                  phone: '+91-9876543210'
-                },
-                doctor: {
-                  id: 'demo-doctor-1',
-                  doctorCode: 'DOC-001',
-                  fullName: 'Dr. Smith',
-                  qualification: 'MBBS, MD',
-                  specialization: 'Pathology'
-                }
-              },
-              enteredBy: {
-                id: 'demo-user-1',
-                employeeCode: 'EMP-001',
-                fullName: 'Sarah Johnson',
-                role: 'LAB_TECH',
-                signature: null
-              },
-              approvedBy: null,
-              values: [
-                {
-                  id: 'demo-value-1',
-                  value: '4.5',
-                  flag: 'NORMAL',
-                  remark: null,
-                  parameter: {
-                    id: 'demo-param-1',
-                    parameterName: 'Hemoglobin',
-                    unit: 'g/dL',
-                    referenceRanges: []
-                  }
-                },
-                {
-                  id: 'demo-value-2',
-                  value: '12.0',
-                  flag: 'NORMAL',
-                  remark: null,
-                  parameter: {
-                    id: 'demo-param-2',
-                    parameterName: 'WBC Count',
-                    unit: 'x10^9/L',
-                    referenceRanges: []
-                  }
-                }
-              ]
-            },
-            {
-              id: 'demo-result-2',
-              orderId: 'demo-order-2',
-              testId: 'demo-test-2',
-              status: 'VERIFIED',
-              remarks: 'Slightly elevated cholesterol',
-              interpretation: 'Mild hyperlipidemia detected',
-              enteredAt: new Date(Date.now() - 86400000).toISOString(),
-              verifiedAt: new Date(Date.now() - 72000000).toISOString(),
-              approvedAt: null,
-              publishedAt: null,
-              createdAt: new Date(Date.now() - 86400000).toISOString(),
-              updatedAt: new Date(Date.now() - 72000000).toISOString(),
-              test: {
-                id: 'demo-test-2',
-                testCode: 'LIPID',
-                testName: 'Lipid Profile',
-                sampleType: 'SERUM',
-                method: 'Chemical Analyzer',
-                category: {
-                  id: 'demo-category-2',
-                  code: 'BIO',
-                  name: 'Biochemistry',
-                  description: 'Chemical analysis tests'
-                },
-                parameters: [
-                  {
-                    id: 'demo-param-3',
-                    parameterName: 'Total Cholesterol',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  },
-                  {
-                    id: 'demo-param-4',
-                    parameterName: 'LDL Cholesterol',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  }
-                ]
-              },
-              order: {
-                id: 'demo-order-2',
-                orderNumber: 'ORD-2026-0892',
-                barcode: 'ORD-BC-002',
-                orderStatus: 'COMPLETED',
-                paymentStatus: 'PAID',
-                patient: {
-                  id: 'demo-patient-2',
-                  uhid: 'UHID-002',
-                  firstName: 'Jane',
-                  lastName: 'Smith',
-                  gender: 'FEMALE',
-                  dateOfBirth: '1990-08-20',
-                  age: 34,
-                  phone: '+91-9876543211'
-                },
-                doctor: {
-                  id: 'demo-doctor-2',
-                  doctorCode: 'DOC-002',
-                  fullName: 'Dr. Johnson',
-                  qualification: 'MBBS, MD',
-                  specialization: 'Cardiology'
-                }
-              },
-              enteredBy: {
-                id: 'demo-user-1',
-                employeeCode: 'EMP-001',
-                fullName: 'Sarah Johnson',
-                role: 'LAB_TECH',
-                signature: null
-              },
-              approvedBy: null,
-              values: [
-                {
-                  id: 'demo-value-3',
-                  value: '240',
-                  flag: 'HIGH',
-                  remark: 'Borderline high',
-                  parameter: {
-                    id: 'demo-param-3',
-                    parameterName: 'Total Cholesterol',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  }
-                },
-                {
-                  id: 'demo-value-4',
-                  value: '160',
-                  flag: 'HIGH',
-                  remark: 'Elevated',
-                  parameter: {
-                    id: 'demo-param-4',
-                    parameterName: 'LDL Cholesterol',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  }
-                }
-              ]
-            },
-            {
-              id: 'demo-result-3',
-              orderId: 'demo-order-3',
-              testId: 'demo-test-3',
-              status: 'VERIFIED',
-              remarks: 'Critical potassium level detected',
-              interpretation: 'Severe hyperkalemia - immediate medical attention required',
-              enteredAt: new Date(Date.now() - 172800000).toISOString(),
-              verifiedAt: new Date(Date.now() - 172800000 + 3600000).toISOString(),
-              approvedAt: null,
-              publishedAt: null,
-              createdAt: new Date(Date.now() - 172800000).toISOString(),
-              updatedAt: new Date(Date.now() - 172800000 + 3600000).toISOString(),
-              test: {
-                id: 'demo-test-3',
-                testCode: 'KFT',
-                testName: 'Kidney Function Test',
-                sampleType: 'SERUM',
-                method: 'Chemical Analyzer',
-                category: {
-                  id: 'demo-category-2',
-                  code: 'BIO',
-                  name: 'Biochemistry',
-                  description: 'Chemical analysis tests'
-                },
-                parameters: [
-                  {
-                    id: 'demo-param-5',
-                    parameterName: 'Creatinine',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  },
-                  {
-                    id: 'demo-param-6',
-                    parameterName: 'Blood Urea',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  },
-                  {
-                    id: 'demo-param-7',
-                    parameterName: 'Potassium',
-                    unit: 'mmol/L',
-                    referenceRanges: []
-                  }
-                ]
-              },
-              order: {
-                id: 'demo-order-3',
-                orderNumber: 'ORD-2026-0893',
-                barcode: 'ORD-BC-003',
-                orderStatus: 'COMPLETED',
-                paymentStatus: 'PAID',
-                patient: {
-                  id: 'demo-patient-3',
-                  uhid: 'UHID-003',
-                  firstName: 'Robert',
-                  lastName: 'Williams',
-                  gender: 'MALE',
-                  dateOfBirth: '1978-12-10',
-                  age: 45,
-                  phone: '+91-9876543212'
-                },
-                doctor: {
-                  id: 'demo-doctor-3',
-                  doctorCode: 'DOC-003',
-                  fullName: 'Dr. Williams',
-                  qualification: 'MBBS, MD',
-                  specialization: 'Nephrology'
-                }
-              },
-              enteredBy: {
-                id: 'demo-user-2',
-                employeeCode: 'EMP-002',
-                fullName: 'Mike Davis',
-                role: 'LAB_TECH',
-                signature: null
-              },
-              approvedBy: null,
-              values: [
-                {
-                  id: 'demo-value-5',
-                  value: '0.9',
-                  flag: 'NORMAL',
-                  remark: null,
-                  parameter: {
-                    id: 'demo-param-5',
-                    parameterName: 'Creatinine',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  }
-                },
-                {
-                  id: 'demo-value-6',
-                  value: '45',
-                  flag: 'NORMAL',
-                  remark: null,
-                  parameter: {
-                    id: 'demo-param-6',
-                    parameterName: 'Blood Urea',
-                    unit: 'mg/dL',
-                    referenceRanges: []
-                  }
-                },
-                {
-                  id: 'demo-value-7',
-                  value: '7.2',
-                  flag: 'CRITICAL',
-                  remark: 'Life-threatening level',
-                  parameter: {
-                    id: 'demo-param-7',
-                    parameterName: 'Potassium',
-                    unit: 'mmol/L',
-                    referenceRanges: []
-                  }
-                }
-              ]
-            }
-          ],
-          pagination: {
-            page: 1,
-            limit: 20,
-            total: 3,
-            totalPages: 1,
-            hasNextPage: false,
-            hasPreviousPage: false
-          }
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // Check if it's a single approval request
-    if (endpoint.match(/\/api\/approvals\/[^/]+$/) && !endpoint.includes('/approve') && !endpoint.includes('/reject') && !endpoint.includes('/publish')) {
-      return {
-        success: true,
-        data: {
-          id: 'demo-result-1',
-          orderId: 'demo-order-1',
-          testId: 'demo-test-1',
-          status: 'VERIFIED',
-          remarks: 'Normal values observed',
-          interpretation: 'All parameters within normal range',
-          enteredAt: new Date().toISOString(),
-          verifiedAt: new Date(Date.now() - 3600000).toISOString(),
-          approvedAt: null,
-          publishedAt: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          test: {
-            id: 'demo-test-1',
-            testCode: 'CBC',
-            testName: 'Complete Blood Count',
-            sampleType: 'BLOOD',
-            method: 'Automated Analyzer',
-            category: {
-              id: 'demo-category-1',
-              code: 'HEM',
-              name: 'Hematology',
-              description: 'Blood-related tests'
-            },
-            parameters: [
-              {
-                id: 'demo-param-1',
-                parameterName: 'Hemoglobin',
-                unit: 'g/dL',
-                referenceRanges: []
-              },
-              {
-                id: 'demo-param-2',
-                parameterName: 'WBC Count',
-                unit: 'x10^9/L',
-                referenceRanges: []
-              }
-            ]
-          },
-          order: {
-            id: 'demo-order-1',
-            orderNumber: 'ORD-2026-0891',
-            barcode: 'ORD-BC-001',
-            orderStatus: 'COMPLETED',
-            paymentStatus: 'PAID',
-            patient: {
-              id: 'demo-patient-1',
-              uhid: 'UHID-001',
-              firstName: 'John',
-              lastName: 'Doe',
-              gender: 'MALE',
-              dateOfBirth: '1985-05-15',
-              age: 39,
-              phone: '+91-9876543210'
-            },
-            doctor: {
-              id: 'demo-doctor-1',
-              doctorCode: 'DOC-001',
-              fullName: 'Dr. Smith',
-              qualification: 'MBBS, MD',
-              specialization: 'Pathology'
-            }
-          },
-          enteredBy: {
-            id: 'demo-user-1',
-            employeeCode: 'EMP-001',
-            fullName: 'Sarah Johnson',
-            role: 'LAB_TECH',
-            signature: null
-          },
-          approvedBy: null,
-          values: [
-            {
-              id: 'demo-value-1',
-              value: '4.5',
-              flag: 'NORMAL',
-              remark: null,
-              parameter: {
-                id: 'demo-param-1',
-                parameterName: 'Hemoglobin',
-                unit: 'g/dL',
-                referenceRanges: []
-              }
-            },
-            {
-              id: 'demo-value-2',
-              value: '12.0',
-              flag: 'NORMAL',
-              remark: null,
-              parameter: {
-                id: 'demo-param-2',
-                parameterName: 'WBC Count',
-                unit: 'x10^9/L',
-                referenceRanges: []
-              }
-            }
-          ]
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // General approvals list
-    return {
-      success: true,
-      data: {
-        results: [],
-        pagination: {
-          page: 1,
-          limit: 20,
-          total: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPreviousPage: false
-        }
-      },
-      message: 'Using fallback data (backend unavailable)'
-    };
-  }
-
-  if (endpoint.includes('/api/reports')) {
-    // Check if it's the summary endpoint
-    if (endpoint.includes('/summary')) {
-      return {
-        success: true,
-        data: {
-          totalResults: 156,
-          pendingResults: 12,
-          enteredResults: 8,
-          verifiedResults: 15,
-          approvedResults: 45,
-          publishedResults: 76,
-          totalReportsGenerated: 76,
-          reportsGeneratedToday: 12,
-          reportsGeneratedThisMonth: 76,
-          whatsappDispatchCount: 8,
-          emailDispatchCount: 15,
-          hardCopyPrintedCount: 25,
-          pendingDispatchCount: 18,
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // Check if it's the published endpoint
-    if (endpoint.includes('/published')) {
-      return {
-        success: true,
-        data: {
-          results: [
-            {
-              id: 'demo-result-1',
-              orderId: 'demo-order-1',
-              testId: 'demo-test-1',
-              status: 'PUBLISHED',
-              publishedAt: new Date().toISOString(),
-              test: {
-                id: 'demo-test-1',
-                testCode: 'CBC',
-                testName: 'Complete Blood Count',
-                sampleType: 'BLOOD',
-              },
-              order: {
-                id: 'demo-order-1',
-                orderNumber: 'ORD-2026-0001',
-                patient: {
-                  id: 'demo-patient-1',
-                  firstName: 'John',
-                  lastName: 'Doe',
-                  uhid: 'UHID-001',
-                  phone: '+91-9876543210',
-                },
-                doctor: {
-                  id: 'demo-doctor-1',
-                  fullName: 'Dr. Smith',
-                },
-              },
-              approvedBy: {
-                id: 'demo-user-1',
-                fullName: 'Dr. Emily Brown',
-                employeeCode: 'EMP-003',
-              },
-              deliveryStatus: 'WHATSAPP_DELIVERED',
-              deliveryMethod: 'WHATSAPP',
-              reportReferenceId: 'REP-2026-8801',
-              communications: [],
-            },
-            {
-              id: 'demo-result-2',
-              orderId: 'demo-order-2',
-              testId: 'demo-test-2',
-              status: 'PUBLISHED',
-              publishedAt: new Date(Date.now() - 3600000).toISOString(),
-              test: {
-                id: 'demo-test-2',
-                testCode: 'LIPID',
-                testName: 'Lipid Profile',
-                sampleType: 'SERUM',
-              },
-              order: {
-                id: 'demo-order-2',
-                orderNumber: 'ORD-2026-0002',
-                patient: {
-                  id: 'demo-patient-2',
-                  firstName: 'Jane',
-                  lastName: 'Smith',
-                  uhid: 'UHID-002',
-                  phone: '+91-9876543211',
-                },
-                doctor: {
-                  id: 'demo-doctor-2',
-                  fullName: 'Dr. Johnson',
-                },
-              },
-              approvedBy: {
-                id: 'demo-user-2',
-                fullName: 'Dr. Williams',
-                employeeCode: 'EMP-004',
-              },
-              deliveryStatus: 'EMAIL_DELIVERED',
-              deliveryMethod: 'EMAIL',
-              reportReferenceId: 'REP-2026-8802',
-              communications: [],
-            },
-            {
-              id: 'demo-result-3',
-              orderId: 'demo-order-3',
-              testId: 'demo-test-3',
-              status: 'PUBLISHED',
-              publishedAt: new Date(Date.now() - 7200000).toISOString(),
-              test: {
-                id: 'demo-test-3',
-                testCode: 'KFT',
-                testName: 'Kidney Function Test',
-                sampleType: 'SERUM',
-              },
-              order: {
-                id: 'demo-order-3',
-                orderNumber: 'ORD-2026-0003',
-                patient: {
-                  id: 'demo-patient-3',
-                  firstName: 'Robert',
-                  lastName: 'Williams',
-                  uhid: 'UHID-003',
-                  phone: '+91-9876543212',
-                },
-                doctor: {
-                  id: 'demo-doctor-3',
-                  fullName: 'Dr. Miller',
-                },
-              },
-              approvedBy: {
-                id: 'demo-user-3',
-                fullName: 'Dr. Davis',
-                employeeCode: 'EMP-005',
-              },
-              deliveryStatus: 'HARD_COPY_PRINTED',
-              deliveryMethod: 'PRINT',
-              reportReferenceId: 'REP-2026-8803',
-              communications: [],
-            },
-            {
-              id: 'demo-result-4',
-              orderId: 'demo-order-4',
-              testId: 'demo-test-4',
-              status: 'PUBLISHED',
-              publishedAt: new Date(Date.now() - 10800000).toISOString(),
-              test: {
-                id: 'demo-test-4',
-                testCode: 'THYROID',
-                testName: 'Thyroid Profile',
-                sampleType: 'SERUM',
-              },
-              order: {
-                id: 'demo-order-4',
-                orderNumber: 'ORD-2026-0004',
-                patient: {
-                  id: 'demo-patient-4',
-                  firstName: 'Emily',
-                  lastName: 'Brown',
-                  uhid: 'UHID-004',
-                  phone: '+91-9876543213',
-                },
-                doctor: {
-                  id: 'demo-doctor-4',
-                  fullName: 'Dr. Anderson',
-                },
-              },
-              approvedBy: {
-                id: 'demo-user-4',
-                fullName: 'Dr. Taylor',
-                employeeCode: 'EMP-006',
-              },
-              deliveryStatus: 'UNDELIVERED',
-              deliveryMethod: null,
-              reportReferenceId: 'REP-2026-8804',
-              communications: [],
-            },
-          ],
-          pagination: {
-            page: 1,
-            limit: 20,
-            total: 4,
-            totalPages: 1,
-            hasNextPage: false,
-            hasPreviousPage: false
-          }
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // Check if it's the order report endpoint
-    if (endpoint.includes('/order/')) {
-      return {
-        success: true,
-        data: {
-          orderNumber: 'ORD-2026-0001',
-          barcode: 'SMP-1753843200000',
-          orderStatus: 'PUBLISHED',
-          createdAt: new Date().toISOString(),
-          sampleCollected: true,
-          collectedAt: new Date(Date.now() - 3600000).toISOString(),
-          reportedAt: new Date(Date.now() - 1800000).toISOString(),
-          patient: {
-            id: 'patient-1',
-            uhid: 'UHID-001',
-            firstName: 'John',
-            lastName: 'Doe',
-            gender: 'MALE',
-            dateOfBirth: '1985-05-15',
-            age: 39,
-            phone: '+91-9876543210',
-            email: 'john.doe@example.com',
-            address: '123 Main Street',
-            city: 'Mumbai',
-            state: 'Maharashtra',
-            pincode: '400001'
-          },
-          doctor: {
-            id: 'doctor-1',
-            fullName: 'Dr. Smith',
-            qualification: 'MBBS, MD',
-            specialization: 'Pathology'
-          },
-          tests: [
-            {
-              id: 'test-1',
-              test: {
-                id: 'test-1',
-                testName: 'Complete Blood Count',
-                testCode: 'CBC',
-                sampleType: 'BLOOD',
-                category: {
-                  name: 'Hematology'
-                },
-                parameters: [
-                  {
-                    id: 'param-1',
-                    parameterName: 'Hemoglobin',
-                    unit: 'g/dL',
-                    dataType: 'NUMBER',
-                    referenceRanges: [
-                      {
-                        gender: 'MALE',
-                        minAge: 18,
-                        maxAge: 60,
-                        normalLow: 13.5,
-                        normalHigh: 17.5,
-                        criticalLow: 8.0,
-                        criticalHigh: 20.0
-                      }
-                    ]
-                  },
-                  {
-                    id: 'param-2',
-                    parameterName: 'WBC Count',
-                    unit: '10^3/μL',
-                    dataType: 'NUMBER',
-                    referenceRanges: [
-                      {
-                        gender: 'MALE',
-                        minAge: 18,
-                        maxAge: 60,
-                        normalLow: 4.5,
-                        normalHigh: 11.0,
-                        criticalLow: 2.0,
-                        criticalHigh: 15.0
-                      }
-                    ]
-                  }
-                ]
-              },
-              price: 500
-            }
-          ],
-          results: [
-            {
-              id: 'result-1',
-              status: 'PUBLISHED',
-              remarks: 'Normal values',
-              interpretation: 'All parameters within normal range',
-              enteredAt: new Date(Date.now() - 3600000).toISOString(),
-              verifiedAt: new Date(Date.now() - 2700000).toISOString(),
-              approvedAt: new Date(Date.now() - 1800000).toISOString(),
-              publishedAt: new Date(Date.now() - 1800000).toISOString(),
-              test: {
-                id: 'test-1',
-                testName: 'Complete Blood Count',
-                testCode: 'CBC'
-              },
-              values: [
-                {
-                  id: 'value-1',
-                  parameter: {
-                    id: 'param-1',
-                    parameterName: 'Hemoglobin',
-                    unit: 'g/dL'
-                  },
-                  value: '14.5',
-                  flag: 'NORMAL'
-                },
-                {
-                  id: 'value-2',
-                  parameter: {
-                    id: 'param-2',
-                    parameterName: 'WBC Count',
-                    unit: '10^3/μL'
-                  },
-                  value: '7.8',
-                  flag: 'NORMAL'
-                }
-              ],
-              enteredBy: {
-                id: 'user-1',
-                fullName: 'Dr. Emily Brown',
-                employeeCode: 'EMP-003'
-              },
-              approvedBy: {
-                id: 'user-2',
-                fullName: 'Dr. Williams',
-                employeeCode: 'EMP-004'
-              }
-            }
-          ],
-          invoice: {
-            id: 'inv-1',
-            invoiceNumber: 'INV-2026-0891',
-            subtotal: 500,
-            discount: 0,
-            gstAmount: 90,
-            grandTotal: 590,
-            paymentStatus: 'PAID'
-          },
-          payments: [
-            {
-              id: 'pay-1',
-              receiptNumber: 'REC-1753843200000-123',
-              amount: 590,
-              method: 'CASH',
-              status: 'PAID',
-              paidAt: new Date().toISOString(),
-              transactionId: 'TXN-001'
-            }
-          ]
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-    
-    // General reports list
-    return {
-      success: true,
-      data: {
-        results: [],
-        pagination: {
-          page: 1,
-          limit: 20,
-          total: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPreviousPage: false
-        }
-      },
-      message: 'Using fallback data (backend unavailable)'
-    };
-  }
-
-  if (endpoint.includes('/api/whatsapp')) {
-    // Dashboard overview
-    if (endpoint.includes('/dashboard')) {
-      return {
-        success: true,
-        data: {
-          totalSent: 1523,
-          totalDelivered: 1389,
-          totalRead: 1124,
-          totalFailed: 134,
-          activeConversations: 45,
-          pendingMessages: 23,
-          activeCampaigns: 3,
-          templatesCount: 12,
-          recentActivity: [
-            {
-              id: 'act-1',
-              type: 'MESSAGE_SENT',
-              description: 'Message sent to John Doe',
-              timestamp: new Date().toISOString()
-            },
-            {
-              id: 'act-2',
-              type: 'CAMPAIGN_STARTED',
-              description: 'Health reminder campaign started',
-              timestamp: new Date(Date.now() - 3600000).toISOString()
-            }
-          ]
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-
-    // Templates
-    if (endpoint.includes('/templates')) {
-      if (endpoint.match(/\/api\/whatsapp\/templates\/[^/]+$/)) {
-        return {
-          success: true,
-          data: {
-            id: 'tmpl-1',
-            name: 'appointment_reminder',
-            displayName: 'Appointment Reminder',
-            category: 'UTILITY',
-            language: 'en',
-            components: [
-              {
-                type: 'HEADER',
-                text: 'Appointment Reminder'
-              },
-              {
-                type: 'BODY',
-                text: 'Hello {{1}}, your appointment is scheduled for {{2}} at {{3}}. Please arrive 15 minutes early.'
-              }
-            ],
-            templateId: 'meta-tmpl-123',
-            templateStatus: 'APPROVED',
-            isActive: true,
-            createdBy: 'user-1',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            lastSyncedAt: new Date().toISOString()
-          },
-          message: 'Using fallback data (backend unavailable)'
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          templates: [
-            {
-              id: 'tmpl-1',
-              name: 'appointment_reminder',
-              displayName: 'Appointment Reminder',
-              category: 'UTILITY',
-              language: 'en',
-              templateStatus: 'APPROVED',
-              isActive: true,
-              createdAt: new Date().toISOString()
-            },
-            {
-              id: 'tmpl-2',
-              name: 'result_ready',
-              displayName: 'Result Ready Notification',
-              category: 'UTILITY',
-              language: 'en',
-              templateStatus: 'APPROVED',
-              isActive: true,
-              createdAt: new Date(Date.now() - 86400000).toISOString()
-            },
-            {
-              id: 'tmpl-3',
-              name: 'payment_reminder',
-              displayName: 'Payment Reminder',
-              category: 'MARKETING',
-              language: 'en',
-              templateStatus: 'PENDING',
-              isActive: false,
-              createdAt: new Date(Date.now() - 172800000).toISOString()
-            }
-          ],
-          pagination: {
-            page: 1,
-            limit: 20,
-            total: 3,
-            totalPages: 1
-          }
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-
-    // Conversations
-    if (endpoint.includes('/conversations')) {
-      if (endpoint.match(/\/api\/whatsapp\/conversations\/[^/]+$/)) {
-        return {
-          success: true,
-          data: {
-            id: 'conv-1',
-            patientId: 'patient-1',
-            phoneNumber: '+91-9876543210',
-            status: 'ACTIVE',
-            lastMessageAt: new Date().toISOString(),
-            lastMessagePreview: 'When can I get my results?',
-            messageCount: 15,
-            unreadCount: 2,
-            assignedTo: 'user-1',
-            assignedAt: new Date(Date.now() - 3600000).toISOString(),
-            tags: ['urgent', 'follow-up'],
-            notes: 'Patient requesting results urgently',
-            patient: {
-              id: 'patient-1',
-              firstName: 'John',
-              lastName: 'Doe',
-              phone: '+91-9876543210'
-            },
-            incomingMessages: [],
-            sentiments: {
-              overallSentiment: 'NEUTRAL',
-              sentimentScore: 0.3,
-              emotions: { neutral: 0.7, joy: 0.2 }
-            }
-          },
-          message: 'Using fallback data (backend unavailable)'
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          conversations: [
-            {
-              id: 'conv-1',
-              patientId: 'patient-1',
-              phoneNumber: '+91-9876543210',
-              status: 'ACTIVE',
-              lastMessageAt: new Date().toISOString(),
-              lastMessagePreview: 'When can I get my results?',
-              messageCount: 15,
-              unreadCount: 2,
-              patient: {
-                id: 'patient-1',
-                firstName: 'John',
-                lastName: 'Doe',
-                phone: '+91-9876543210'
-              }
-            },
-            {
-              id: 'conv-2',
-              patientId: 'patient-2',
-              phoneNumber: '+91-9876543211',
-              status: 'ACTIVE',
-              lastMessageAt: new Date(Date.now() - 7200000).toISOString(),
-              lastMessagePreview: 'Thank you for the quick response!',
-              messageCount: 8,
-              unreadCount: 0,
-              patient: {
-                id: 'patient-2',
-                firstName: 'Jane',
-                lastName: 'Smith',
-                phone: '+91-9876543211'
-              }
-            }
-          ],
-          pagination: {
-            page: 1,
-            limit: 20,
-            total: 2,
-            totalPages: 1
-          }
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-
-    // Campaigns
-    if (endpoint.includes('/campaigns')) {
-      if (endpoint.match(/\/api\/whatsapp\/campaigns\/[^/]+$/)) {
-        return {
-          success: true,
-          data: {
-            id: 'camp-1',
-            name: 'Health Checkup Reminder',
-            description: 'Monthly health checkup reminder campaign',
-            campaignType: 'REMINDER',
-            templateId: 'tmpl-1',
-            targetAudience: {
-              ageRange: [30, 60],
-              lastVisitDays: 90
-            },
-            recipientCount: 500,
-            scheduledFor: new Date(Date.now() + 86400000).toISOString(),
-            status: 'SCHEDULED',
-            sentCount: 0,
-            deliveredCount: 0,
-            failedCount: 0,
-            costEstimate: 25.00,
-            aBTestEnabled: false,
-            createdBy: 'user-1',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          message: 'Using fallback data (backend unavailable)'
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          campaigns: [
-            {
-              id: 'camp-1',
-              name: 'Health Checkup Reminder',
-              campaignType: 'REMINDER',
-              recipientCount: 500,
-              scheduledFor: new Date(Date.now() + 86400000).toISOString(),
-              status: 'SCHEDULED',
-              sentCount: 0,
-              deliveredCount: 0
-            },
-            {
-              id: 'camp-2',
-              name: 'New Year Health Package',
-              campaignType: 'MARKETING',
-              recipientCount: 1200,
-              scheduledFor: new Date(Date.now() - 86400000).toISOString(),
-              status: 'SENT',
-              sentCount: 1200,
-              deliveredCount: 1150,
-              failedCount: 50
-            }
-          ],
-          pagination: {
-            page: 1,
-            limit: 20,
-            total: 2,
-            totalPages: 1
-          }
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-
-    // Analytics
-    if (endpoint.includes('/analytics')) {
-      return {
-        success: true,
-        data: {
-          overview: {
-            totalSent: 1523,
-            totalDelivered: 1389,
-            totalRead: 1124,
-            totalFailed: 134,
-            deliveryRate: 91.2,
-            readRate: 80.9,
-            averageResponseTime: 2.5
-          },
-          dailyStats: [
-            {
-              date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0],
-              sent: 250,
-              delivered: 230,
-              read: 180,
-              failed: 20
-            },
-            {
-              date: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0],
-              sent: 180,
-              delivered: 165,
-              read: 140,
-              failed: 15
-            },
-            {
-              date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
-              sent: 320,
-              delivered: 300,
-              read: 250,
-              failed: 20
-            },
-            {
-              date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
-              sent: 280,
-              delivered: 260,
-              read: 210,
-              failed: 20
-            },
-            {
-              date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
-              sent: 350,
-              delivered: 320,
-              read: 280,
-              failed: 30
-            },
-            {
-              date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-              sent: 143,
-              delivered: 114,
-              read: 64,
-              failed: 29
-            }
-          ],
-          templatePerformance: [
-            {
-              templateName: 'appointment_reminder',
-              sent: 450,
-              delivered: 420,
-              read: 380,
-              deliveryRate: 93.3,
-              readRate: 90.5
-            },
-            {
-              templateName: 'result_ready',
-              sent: 380,
-              delivered: 350,
-              read: 300,
-              deliveryRate: 92.1,
-              readRate: 85.7
-            }
-          ],
-          sentimentTrends: [
-            {
-              date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0],
-              positive: 45,
-              neutral: 35,
-              negative: 20
-            },
-            {
-              date: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0],
-              positive: 50,
-              neutral: 30,
-              negative: 20
-            },
-            {
-              date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
-              positive: 55,
-              neutral: 30,
-              negative: 15
-            },
-            {
-              date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
-              positive: 48,
-              neutral: 35,
-              negative: 17
-            },
-            {
-              date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
-              positive: 52,
-              neutral: 32,
-              negative: 16
-            },
-            {
-              date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-              positive: 58,
-              neutral: 28,
-              negative: 14
-            }
-          ]
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-
-    // Auto-reply rules
-    if (endpoint.includes('/auto-reply')) {
-      return {
-        success: true,
-        data: {
-          rules: [
-            {
-              id: 'rule-1',
-              name: 'Appointment Booking',
-              description: 'Auto-reply for appointment booking requests',
-              triggerType: 'KEYWORD',
-              triggerData: { keywords: ['appointment', 'book', 'schedule'] },
-              responseType: 'TEXT',
-              responseText: 'I can help you book an appointment. Please provide your preferred date and time.',
-              delaySeconds: 2,
-              isActive: true,
-              aiEnabled: true
-            },
-            {
-              id: 'rule-2',
-              name: 'Result Inquiry',
-              description: 'Auto-reply for result status inquiries',
-              triggerType: 'KEYWORD',
-              triggerData: { keywords: ['result', 'report', 'status'] },
-              responseType: 'TEXT',
-              responseText: 'Your results are being processed. You will receive a notification when they are ready.',
-              delaySeconds: 1,
-              isActive: true,
-              aiEnabled: false
-            }
-          ]
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-
-    // Notification triggers
-    if (endpoint.includes('/notification-triggers')) {
-      return {
-        success: true,
-        data: {
-          triggers: [
-            {
-              id: 'trigger-1',
-              name: 'Result Ready Notification',
-              description: 'Send WhatsApp when results are approved',
-              eventType: 'RESULT_APPROVED',
-              templateId: 'tmpl-2',
-              recipientType: 'PATIENT',
-              sendImmediately: true,
-              isActive: true,
-              triggerCount: 145,
-              lastTriggeredAt: new Date(Date.now() - 3600000).toISOString()
-            },
-            {
-              id: 'trigger-2',
-              name: 'Payment Reminder',
-              description: 'Send payment reminder 24 hours after order',
-              eventType: 'ORDER_CREATED',
-              templateId: 'tmpl-3',
-              recipientType: 'PATIENT',
-              sendImmediately: false,
-              delayMinutes: 1440,
-              isActive: true,
-              triggerCount: 89,
-              lastTriggeredAt: new Date(Date.now() - 7200000).toISOString()
-            }
-          ]
-        },
-        message: 'Using fallback data (backend unavailable)'
-      };
-    }
-
-    // Default WhatsApp response
-    return {
-      success: true,
-      data: {},
-      message: 'Using fallback data (backend unavailable)'
-    };
-  }
-
-  if (endpoint.includes('/api/samples')) {
-    return {
-      success: true,
-      data: {
-        samples: [
-          {
-            id: 'demo-sample-1',
-            sampleNumber: 'SMP-90210',
-            barcode: 'SBC-90210',
-            patientId: 'demo-patient-1',
-            orderId: 'demo-order-1',
-            testId: 'demo-test-1',
-            sampleType: 'BLOOD',
-            status: 'PENDING',
-            collectedById: null,
-            collectedBy: null,
-            collectionType: 'WALK_IN',
-            priority: 'ROUTINE',
-            collectedAt: null,
-            receivedAt: null,
-            completedAt: null,
-            rejectionReason: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            order: {
-              id: 'demo-order-1',
-              orderNumber: 'ORD-2026-0001',
-              barcode: 'ORD-BC-001',
-              patient: {
-                id: 'demo-patient-1',
-                uhid: 'UHID-001',
-                firstName: 'John',
-                lastName: 'Doe',
-                gender: 'MALE',
-                dateOfBirth: '1985-05-15',
-                age: 39,
-                phone: '+91-9876543210',
-              },
-              doctor: {
-                id: 'demo-doctor-1',
-                doctorCode: 'DOC-001',
-                fullName: 'Dr. Smith',
-                specialization: 'Pathology',
-              },
-            },
-            test: {
-              id: 'demo-test-1',
-              testCode: 'CBC',
-              testName: 'Complete Blood Count',
-              sampleType: 'BLOOD',
-              sampleContainer: 'EDTA Purple',
-            },
-          },
-          {
-            id: 'demo-sample-2',
-            sampleNumber: 'SMP-90211',
-            barcode: 'SBC-90211',
-            patientId: 'demo-patient-2',
-            orderId: 'demo-order-2',
-            testId: 'demo-test-2',
-            sampleType: 'SERUM',
-            status: 'COLLECTED',
-            collectedById: 'demo-user-1',
-            collectedBy: {
-              id: 'demo-user-1',
-              employeeCode: 'EMP-001',
-              fullName: 'Sarah Johnson',
-            },
-            collectionType: 'WALK_IN',
-            priority: 'ROUTINE',
-            collectedAt: new Date(Date.now() - 3600000).toISOString(),
-            receivedAt: null,
-            completedAt: null,
-            rejectionReason: null,
-            createdAt: new Date(Date.now() - 7200000).toISOString(),
-            updatedAt: new Date(Date.now() - 3600000).toISOString(),
-            order: {
-              id: 'demo-order-2',
-              orderNumber: 'ORD-2026-0002',
-              barcode: 'ORD-BC-002',
-              patient: {
-                id: 'demo-patient-2',
-                uhid: 'UHID-002',
-                firstName: 'Jane',
-                lastName: 'Smith',
-                gender: 'FEMALE',
-                dateOfBirth: '1990-08-20',
-                age: 34,
-                phone: '+91-9876543211',
-              },
-              doctor: {
-                id: 'demo-doctor-2',
-                doctorCode: 'DOC-002',
-                fullName: 'Dr. Johnson',
-                specialization: 'Cardiology',
-              },
-            },
-            test: {
-              id: 'demo-test-2',
-              testCode: 'LIPID',
-              testName: 'Lipid Profile',
-              sampleType: 'SERUM',
-              sampleContainer: 'Serum Separator Red',
-            },
-          },
-          {
-            id: 'demo-sample-3',
-            sampleNumber: 'SMP-90212',
-            barcode: 'SBC-90212',
-            patientId: 'demo-patient-3',
-            orderId: 'demo-order-3',
-            testId: 'demo-test-3',
-            sampleType: 'URINE',
-            status: 'RECEIVED',
-            collectedById: 'demo-user-1',
-            collectedBy: {
-              id: 'demo-user-1',
-              employeeCode: 'EMP-001',
-              fullName: 'Sarah Johnson',
-            },
-            collectionType: 'HOME_COLLECTION',
-            priority: 'URGENT',
-            collectedAt: new Date(Date.now() - 7200000).toISOString(),
-            receivedAt: new Date(Date.now() - 3600000).toISOString(),
-            completedAt: null,
-            rejectionReason: null,
-            createdAt: new Date(Date.now() - 10800000).toISOString(),
-            updatedAt: new Date(Date.now() - 3600000).toISOString(),
-            order: {
-              id: 'demo-order-3',
-              orderNumber: 'ORD-2026-0003',
-              barcode: 'ORD-BC-003',
-              patient: {
-                id: 'demo-patient-3',
-                uhid: 'UHID-003',
-                firstName: 'Robert',
-                lastName: 'Williams',
-                gender: 'MALE',
-                dateOfBirth: '1978-12-10',
-                age: 45,
-                phone: '+91-9876543212',
-              },
-              doctor: {
-                id: 'demo-doctor-3',
-                doctorCode: 'DOC-003',
-                fullName: 'Dr. Williams',
-                specialization: 'Nephrology',
-              },
-            },
-            test: {
-              id: 'demo-test-3',
-              testCode: 'URINALYSIS',
-              testName: 'Urinalysis',
-              sampleType: 'URINE',
-              sampleContainer: 'Urine Container Yellow',
-            },
-          },
-          {
-            id: 'demo-sample-4',
-            sampleNumber: 'SMP-90213',
-            barcode: 'SBC-90213',
-            patientId: 'demo-patient-4',
-            orderId: 'demo-order-4',
-            testId: 'demo-test-4',
-            sampleType: 'PLASMA',
-            status: 'PROCESSING',
-            collectedById: 'demo-user-2',
-            collectedBy: {
-              id: 'demo-user-2',
-              employeeCode: 'EMP-002',
-              fullName: 'Mike Davis',
-            },
-            collectionType: 'WALK_IN',
-            priority: 'STAT',
-            collectedAt: new Date(Date.now() - 14400000).toISOString(),
-            receivedAt: new Date(Date.now() - 10800000).toISOString(),
-            completedAt: null,
-            rejectionReason: null,
-            createdAt: new Date(Date.now() - 18000000).toISOString(),
-            updatedAt: new Date(Date.now() - 10800000).toISOString(),
-            order: {
-              id: 'demo-order-4',
-              orderNumber: 'ORD-2026-0004',
-              barcode: 'ORD-BC-004',
-              patient: {
-                id: 'demo-patient-4',
-                uhid: 'UHID-004',
-                firstName: 'Emily',
-                lastName: 'Brown',
-                gender: 'FEMALE',
-                dateOfBirth: '1995-03-25',
-                age: 29,
-                phone: '+91-9876543213',
-              },
-              doctor: {
-                id: 'demo-doctor-4',
-                doctorCode: 'DOC-004',
-                fullName: 'Dr. Brown',
-                specialization: 'Hematology',
-              },
-            },
-            test: {
-              id: 'demo-test-4',
-              testCode: 'PT',
-              testName: 'Prothrombin Time',
-              sampleType: 'PLASMA',
-              sampleContainer: 'Citrate Blue',
-            },
-          },
-          {
-            id: 'demo-sample-5',
-            sampleNumber: 'SMP-90214',
-            barcode: 'SBC-90214',
-            patientId: 'demo-patient-5',
-            orderId: 'demo-order-5',
-            testId: 'demo-test-5',
-            sampleType: 'BLOOD',
-            status: 'REJECTED',
-            collectedById: 'demo-user-1',
-            collectedBy: {
-              id: 'demo-user-1',
-              employeeCode: 'EMP-001',
-              fullName: 'Sarah Johnson',
-            },
-            collectionType: 'WALK_IN',
-            priority: 'ROUTINE',
-            collectedAt: new Date(Date.now() - 28800000).toISOString(),
-            receivedAt: null,
-            completedAt: null,
-            rejectionReason: 'Hemolyzed Sample',
-            createdAt: new Date(Date.now() - 32400000).toISOString(),
-            updatedAt: new Date(Date.now() - 28800000).toISOString(),
-            order: {
-              id: 'demo-order-5',
-              orderNumber: 'ORD-2026-0005',
-              barcode: 'ORD-BC-005',
-              patient: {
-                id: 'demo-patient-5',
-                uhid: 'UHID-005',
-                firstName: 'David',
-                lastName: 'Miller',
-                gender: 'MALE',
-                dateOfBirth: '1982-07-08',
-                age: 42,
-                phone: '+91-9876543214',
-              },
-              doctor: {
-                id: 'demo-doctor-5',
-                doctorCode: 'DOC-005',
-                fullName: 'Dr. Miller',
-                specialization: 'General Medicine',
-              },
-            },
-            test: {
-              id: 'demo-test-5',
-              testCode: 'GLUCOSE',
-              testName: 'Glucose Fasting',
-              sampleType: 'BLOOD',
-              sampleContainer: 'Fluoride Grey',
-            },
-          },
-        ],
-        pagination: {
-          page: 1,
-          limit: 20,
-          total: 5,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPreviousPage: false
-        }
-      },
-      message: 'Using fallback data (backend unavailable)'
-    };
-  }
-
-  if (endpoint.includes('/api/laboratory-settings')) {
-    return {
-      success: true,
-      data: {
-        id: 'settings-1',
-        labName: 'LabCore Enterprise LIS',
-        labPhone: '9723561529',
-        labEmail: 'nikilpanchal5@gmail.com',
-        labAddress: '123 Medical Complex',
-        labCity: 'Mumbai',
-        labState: 'Maharashtra',
-        labPincode: '400001',
-        emailProvider: 'custom',
-        emailApiKey: '',
-        emailFromEmail: '',
-        emailFromName: '',
-        smtpHost: '',
-        smtpPort: 587,
-        smtpUser: '',
-        smtpPassword: '',
-        smsProvider: 'custom',
-        smsApiKey: '',
-        smsApiSecret: '',
-        smsSenderId: '',
-        callProvider: 'custom',
-        callApiKey: '',
-        callApiSecret: '',
-        callCallerId: '',
-        whatsappProvider: 'custom',
-        whatsappPhoneNumberId: '',
-        whatsappAccessToken: '',
-        whatsappWebhookUrl: '',
-        whatsappVerifyToken: '',
-        whatsappBusinessProfileId: '',
-        whatsappAIEnabled: false,
-        enableAutomatedNotifications: true,
-        enablePatientNotifications: true,
-        enableDoctorNotifications: false,
-        enableAutoResultProcessing: true,
-        enableAutoApproval: false,
-        enableLiveTelemetry: true,
-        demoMode: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      message: 'Using fallback data (backend unavailable)'
-    };
-  }
-
-  // ------------------------------------------------------------------
-// Doctors are real clinical + financial records.
-// A fabricated fallback here is what made a doctor with zero orders
-// display 245 referrals and Rs 4,45,000 revenue, so we surface the
-// failure instead of inventing data.
-// ------------------------------------------------------------------
-if (endpoint.includes('/api/doctors')) {
-  throw new ApiError(
-    'Could not load doctor records. The server is unavailable or returned an error, so figures are shown as unavailable rather than estimated.',
-    0,
-    'DOCTORS_UNAVAILABLE'
-  );
-}
-  
-  // Generic fallback for any other endpoint
-  console.warn(`No specific fallback for ${endpoint}, using generic fallback`);
-  return {
+export const patientApi = createSafeApiProxy({
+  getAll: async (_query?: string) => ({
     success: true,
     data: [],
     message: 'Using generic fallback data (backend unavailable)'

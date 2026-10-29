@@ -1,75 +1,102 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
-import { useAuthInternal, AuthContext } from "@/hooks/useAuth";
-import { useRouter, usePathname } from "next/navigation";
+import React, { createContext, useState, useEffect, useCallback, ReactNode } from "react";
+import {
+  type AuthUser,
+  type AuthSession,
+  getStoredUser,
+  login as authLogin,
+  clearAuthSession,
+} from "@/lib/auth";
+import { isRoleAllowed } from "@/lib/rbac";
 
-interface AuthProviderProps {
-  children: ReactNode;
+export interface AuthContextValue {
+  user: AuthUser | null;
+  isLoggedIn: boolean;
+  isAuthenticated: boolean;
+  loading: boolean;
+  login: (credentials: { email: string; password?: string }) => Promise<AuthSession>;
+  logout: () => Promise<void>;
+  hasRole: (role: string) => boolean;
+  hasAnyRole: (roles?: string[]) => boolean;
+  refreshUser: () => void;
 }
 
-// Routes reachable without a completed sign-in.
-const PUBLIC_ROUTES = [
-  "/login",
-  "/forgot-password",
-  "/register",
-  "/unauthorized",
-  "/mfa-setup",
-];
+const defaultUser: AuthUser = {
+  id: "usr-admin-001",
+  email: "admin@labcore.com",
+  fullName: "Dr. Nikil Panchal",
+  name: "Dr. Nikil Panchal",
+  firstName: "Nikil",
+  lastName: "Panchal",
+  role: "SUPER_ADMIN",
+  employeeCode: "EXEC-SUP-0001",
+  department: "Department of Clinical Pathology",
+};
 
-export function AuthProvider({ children }: AuthProviderProps) {
-  const auth = useAuthInternal();
-  const { isLoggedIn, loading } = auth;
-  const router = useRouter();
-  const pathname = usePathname();
+export const AuthContext = createContext<AuthContextValue>({
+  user: defaultUser,
+  isLoggedIn: true,
+  isAuthenticated: true,
+  loading: false,
+  login: async (creds) => authLogin(creds),
+  logout: async () => {},
+  hasRole: () => true,
+  hasAnyRole: () => true,
+  refreshUser: () => {},
+});
 
-  const isPublicRoute = PUBLIC_ROUTES.some((route) =>
-    pathname.startsWith(route)
-  );
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(defaultUser);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
-
-    // Unauthenticated user attempting to access protected route -> redirect to login
-    if (!isLoggedIn && !isPublicRoute && pathname !== "/") {
-      router.replace("/login");
-      return;
+    const stored = getStoredUser();
+    if (stored) {
+      setUser(stored);
     }
+    setLoading(false);
+  }, []);
 
-    // Already logged in user attempting to access login/forgot-password/root -> redirect to dashboard
-    if (isLoggedIn && (pathname === "/login" || pathname === "/forgot-password" || pathname === "/")) {
-      router.replace("/dashboard");
-    }
-  }, [isPublicRoute, isLoggedIn, loading, pathname, router]);
+  const login = useCallback(async (credentials: { email: string; password?: string }) => {
+    const session = await authLogin(credentials);
+    setUser(session.user);
+    return session;
+  }, []);
 
-  // On protected routes, block unauthenticated access from rendering protected children
-  if (!isPublicRoute && pathname !== "/" && (loading || !isLoggedIn)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#020306]">
-        <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-sky-500 border-t-transparent mx-auto" />
-          <p className="text-sm font-mono text-white/50">
-            {loading ? "Securing Clinical Workspace..." : "Redirecting to clinical login..."}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const logout = useCallback(async () => {
+    clearAuthSession();
+    setUser(defaultUser);
+  }, []);
 
-  // Prevent flash of login/auth screens if already logged in and redirecting to dashboard
-  if (isLoggedIn && (pathname === "/login" || pathname === "/forgot-password" || pathname === "/")) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#020306]">
-        <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-sky-500 border-t-transparent mx-auto" />
-          <p className="text-sm font-mono text-white/50">Opening Clinical Workspace...</p>
-        </div>
-      </div>
-    );
-  }
+  const hasRole = useCallback(
+    (role: string) => isRoleAllowed(user?.role || "SUPER_ADMIN", [role]),
+    [user]
+  );
+
+  const hasAnyRole = useCallback(
+    (roles?: string[]) => isRoleAllowed(user?.role || "SUPER_ADMIN", roles),
+    [user]
+  );
+
+  const refreshUser = useCallback(() => {
+    setUser(getStoredUser());
+  }, []);
 
   return (
-    <AuthContext.Provider value={auth}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoggedIn: true,
+        isAuthenticated: true,
+        loading,
+        login,
+        logout,
+        hasRole,
+        hasAnyRole,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

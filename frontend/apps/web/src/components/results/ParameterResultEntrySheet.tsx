@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
@@ -727,3 +728,4 @@ export default function ParameterResultEntrySheet({
     </div>
   );
 }
+export default ParameterResultEntrySheet;

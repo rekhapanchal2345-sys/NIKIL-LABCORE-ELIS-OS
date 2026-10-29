@@ -1,42 +1,27 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { audioAlertEngine, AlertPriority } from "@/lib/audioAlerts";
+import { useState, useCallback, useEffect } from "react";
+import { audioAlertEngine } from "@/lib/audioAlerts";
 
 export function useAudioAlerts() {
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolumeState] = useState(0.8);
 
   useEffect(() => {
-    setIsMuted(audioAlertEngine.getIsMuted());
-    setVolumeState(audioAlertEngine.getVolume());
+    setIsMuted(audioAlertEngine.isMuted());
   }, []);
 
   const toggleMute = useCallback(() => {
-    const nextState = audioAlertEngine.toggleMute();
-    setIsMuted(nextState);
-    return nextState;
+    const next = audioAlertEngine.toggleMute();
+    setIsMuted(next);
   }, []);
 
-  const setVolume = useCallback((vol: number) => {
-    audioAlertEngine.setVolume(vol);
-    setVolumeState(vol);
-  }, []);
-
-  const playAlert = useCallback(async (priority: AlertPriority) => {
-    await audioAlertEngine.playAlert(priority);
-  }, []);
-
-  const testAudio = useCallback(async () => {
-    await audioAlertEngine.playCriticalPanicChime();
+  const testAudio = useCallback(() => {
+    audioAlertEngine.playCriticalPanicChime();
   }, []);
 
   return {
     isMuted,
-    volume,
     toggleMute,
-    setVolume,
-    playAlert,
     testAudio,
   };
 }

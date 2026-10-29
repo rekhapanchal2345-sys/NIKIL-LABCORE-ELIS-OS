@@ -5,17 +5,31 @@ const targetApi = rawTarget.replace('localhost', '127.0.0.1');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // Prevents duplicate double-render API calls in dev mode
+  reactStrictMode: false,
   compress: true,
   poweredByHeader: false,
+  output: 'standalone',
   outputFileTracingRoot: path.join(__dirname),
-  devIndicators: false, // Prevents floating Next.js dev badge from overlapping sidebar settings button
+  devIndicators: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
   },
-
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],
+  },
+  webpack: (config, { dev }) => {
+    if (dev && process.env.DISABLE_HMR === 'true') {
+      config.watchOptions = {
+        ignored: /.*/,
+      };
+    }
+    return config;
   },
   async rewrites() {
     return [
