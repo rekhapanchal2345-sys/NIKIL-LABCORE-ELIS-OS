@@ -16,6 +16,10 @@ interface Parameter {
     gender?: string;
     minAge?: number;
     maxAge?: number;
+    minAgeInHours?: number;
+    maxAgeInHours?: number;
+    minAgeInDays?: number;
+    maxAgeInDays?: number;
     criticalLow?: number;
     normalLow?: number;
     normalHigh?: number;
@@ -34,6 +38,9 @@ interface SmartResultEntryGridProps {
   parameters: Parameter[];
   initialValues?: ResultValue[];
   patientAge?: number;
+  patientAgeInDays?: number;
+  patientAgeInHours?: number;
+  patientDob?: string | Date;
   patientGender?: string;
   onSave: (values: ResultValue[]) => void;
   onCancel: () => void;
@@ -44,6 +51,9 @@ export const SmartResultEntryGrid: React.FC<SmartResultEntryGridProps> = ({
   parameters,
   initialValues = [],
   patientAge,
+  patientAgeInDays,
+  patientAgeInHours,
+  patientDob,
   patientGender,
   onSave,
   onCancel,
@@ -55,6 +65,7 @@ export const SmartResultEntryGrid: React.FC<SmartResultEntryGridProps> = ({
   const [showCriticalModal, setShowCriticalModal] = useState(false);
   const [pendingCriticalParameter, setPendingCriticalParameter] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   type ResultFlag = "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
 
@@ -74,7 +85,27 @@ export const SmartResultEntryGrid: React.FC<SmartResultEntryGridProps> = ({
     setFlags(initialFlagsMap);
   }, [initialValues]);
 
-  // Calculate flag based on value and reference range
+  // Helper to calculate exact neonatal age metrics
+  const getAgeMetrics = useCallback(() => {
+    if (patientDob) {
+      const dobDate = new Date(patientDob);
+      if (!isNaN(dobDate.getTime())) {
+        const now = new Date();
+        const diffMs = Math.max(0, now.getTime() - dobDate.getTime());
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const years = Math.floor(days / 365.25);
+        return { hours, days, years: patientAge ?? years };
+      }
+    }
+    return {
+      hours: patientAgeInHours ?? (patientAgeInDays ? patientAgeInDays * 24 : (patientAge ? patientAge * 365 * 24 : undefined)),
+      days: patientAgeInDays ?? (patientAge ? patientAge * 365 : undefined),
+      years: patientAge
+    };
+  }, [patientAge, patientAgeInDays, patientAgeInHours, patientDob]);
+
+  // Calculate flag based on value and reference range (with neonatal exact hour/day support)
   const calculateFlag = useCallback((
     value: string,
     parameter: Parameter
@@ -88,15 +119,32 @@ export const SmartResultEntryGrid: React.FC<SmartResultEntryGridProps> = ({
       return "NORMAL";
     }
 
-    // Find appropriate reference range based on patient age and gender
+    const { hours, days, years } = getAgeMetrics();
+
+    // Find appropriate reference range based on neonatal hours/days, age, and gender
     const applicableRange = parameter.referenceRanges?.find(range => {
       if (range.gender && range.gender !== patientGender) {
         return false;
       }
-      if (range.minAge && patientAge && patientAge < range.minAge) {
+      // Bug 1.3: Neonatal hour-specific lookup
+      if (range.minAgeInHours != null || range.maxAgeInHours != null) {
+        if (hours === undefined) return false;
+        if (range.minAgeInHours != null && hours < range.minAgeInHours) return false;
+        if (range.maxAgeInHours != null && hours > range.maxAgeInHours) return false;
+        return true;
+      }
+      // Neonatal day-specific lookup
+      if (range.minAgeInDays != null || range.maxAgeInDays != null) {
+        if (days === undefined) return false;
+        if (range.minAgeInDays != null && days < range.minAgeInDays) return false;
+        if (range.maxAgeInDays != null && days > range.maxAgeInDays) return false;
+        return true;
+      }
+      // Standard year lookup
+      if (range.minAge && years && years < range.minAge) {
         return false;
       }
-      if (range.maxAge && patientAge && patientAge > range.maxAge) {
+      if (range.maxAge && years && years > range.maxAge) {
         return false;
       }
       return true;
@@ -122,7 +170,7 @@ export const SmartResultEntryGrid: React.FC<SmartResultEntryGridProps> = ({
     }
 
     return "NORMAL";
-  }, [patientAge, patientGender]);
+  }, [patientAge, patientGender, getAgeMetrics]);
 
   // Handle value change with auto-flagging
   const handleValueChange = (parameterId: string, newValue: string) => {
@@ -149,35 +197,24 @@ export const SmartResultEntryGrid: React.FC<SmartResultEntryGridProps> = ({
     }
   };
 
-  // Handle keyboard navigation (Tab, Enter, Arrow keys)
+  // Handle rapid keypad grid navigation (Bug 6.2: Enter / Arrow navigation without premature submit)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, parameterId: string, index: number) => {
-    const parameterIds = parameters.map(p => p.id);
-    const currentIndex = parameterIds.indexOf(parameterId);
-
     switch (e.key) {
       case "Tab":
-        // Allow default tab behavior but prevent form submission
         break;
       case "Enter":
-        e.preventDefault();
-        // Move to next parameter
-        if (currentIndex < parameterIds.length - 1) {
-          const nextInput = document.querySelector(`input[data-parameter-id="${parameterIds[currentIndex + 1]}"]`) as HTMLInputElement;
-          nextInput?.focus();
-        }
-        break;
       case "ArrowDown":
         e.preventDefault();
-        if (currentIndex < parameterIds.length - 1) {
-          const nextInput = document.querySelector(`input[data-parameter-id="${parameterIds[currentIndex + 1]}"]`) as HTMLInputElement;
-          nextInput?.focus();
+        if (index < parameters.length - 1) {
+          inputRefs.current[index + 1]?.focus();
+          inputRefs.current[index + 1]?.select();
         }
         break;
       case "ArrowUp":
         e.preventDefault();
-        if (currentIndex > 0) {
-          const prevInput = document.querySelector(`input[data-parameter-id="${parameterIds[currentIndex - 1]}"]`) as HTMLInputElement;
-          prevInput?.focus();
+        if (index > 0) {
+          inputRefs.current[index - 1]?.focus();
+          inputRefs.current[index - 1]?.select();
         }
         break;
     }
@@ -339,6 +376,7 @@ export const SmartResultEntryGrid: React.FC<SmartResultEntryGridProps> = ({
                   </td>
                   <td className="px-4 py-3">
                     <input
+                      ref={(el) => { inputRefs.current[index] = el; }}
                       type="text"
                       data-parameter-id={parameter.id}
                       value={value}

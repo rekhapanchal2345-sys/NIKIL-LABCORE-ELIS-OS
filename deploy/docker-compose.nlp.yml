@@ -1,0 +1,72 @@
+# ==============================================================================
+# NIKIL-LABCORE-ELIS-OS: ENTERPRISE DEPLOYMENT TOPOLOGY
+# Microservices: Clinical NLP UI, Backend Orchestrator, PostgreSQL + pgvector
+# ==============================================================================
+version: '3.8'
+
+services:
+  # 1. Ultra-Light White Medical UI
+  elis-nlp-frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../deploy/Dockerfile.nlp-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://elis-nlp-backend:5000/api/v1
+    depends_on:
+      - elis-nlp-backend
+    restart: unless-stopped
+    networks:
+      - elis_secure_net
+
+  # 2. Node.js Orchestrator + Python PyTorch Engine
+  elis-nlp-backend:
+    build:
+      context: ../backend
+      dockerfile: ../deploy/Dockerfile.nlp-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://elis_admin:${DB_PASSWORD}@elis-postgres:5432/clinical_os?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      elis-postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1 # Assigns 1 GPU for BioClinicalBERT Inference
+              capabilities: [gpu]
+    restart: always
+    networks:
+      - elis_secure_net
+
+  # 3. Mission-Critical Database (PostgreSQL)
+  elis-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: elis_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: clinical_os
+    ports:
+      - "5432:5432"
+    volumes:
+      - elis_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elis_admin -d clinical_os"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elis_secure_net
+
+volumes:
+  elis_pg_data:
+
+networks:
+  elis_secure_net:
+    driver: bridge

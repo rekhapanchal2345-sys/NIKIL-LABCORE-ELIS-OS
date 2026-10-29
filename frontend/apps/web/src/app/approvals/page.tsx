@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { AlertCircle, BarChart3, ChevronLeft, ChevronRight, ClipboardCheck, RefreshCw, X } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import ApprovalTable from "@/components/approvals/ApprovalTable";
 import ApprovalFilters from "@/components/approvals/ApprovalFilters";
@@ -11,34 +12,38 @@ import DoctorWorkstationView from "@/components/approvals/DoctorWorkstationView"
 import ApprovalRulesModal from "@/components/approvals/ApprovalRulesModal";
 import CriticalPanicCallModal from "@/components/approvals/CriticalPanicCallModal";
 import BatchApprovalModal from "@/components/approvals/BatchApprovalModal";
+import ApprovalsSubNav from "@/components/approvals/ApprovalsSubNav";
+import { ConfirmDialog, ReasonDialog } from "@/components/approvals/ApprovalDialogs";
+import { isSignableStatus } from "@/components/approvals/approvalUtils";
+import { QUEUES, mapResultToApproval, resolveQueueKey } from "@/components/approvals/approvalQueues";
 import LeveyJenningsChart from "@/components/qc/LeveyJenningsChart";
 import { approvalApi } from "@/lib/api";
+import { showError, showSuccess, showWarning } from "@/lib/notifications";
 import type { Approval } from "@/components/approvals/ApprovalTable";
+
+const PAGE_SIZE = 20;
+const AUTO_REFRESH_MS = 60_000;
+
+type ReasonKind = "reject" | "rerun";
 
 function ApprovalsContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const [queueKey, setQueueKey] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("VERIFIED");
-  const [quickFilter, setQuickFilter] = useState("");
+  const [orderIdFilter, setOrderIdFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [activeFilterKey, setActiveFilterKey] = useState("pending");
+  const [totalResults, setTotalResults] = useState(0);
   const [viewMode, setViewMode] = useState<"workstation" | "table">("table");
-  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
-  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
-  const [callTargetApproval, setCallTargetApproval] = useState<Approval | null>(null);
-  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [isQcModalOpen, setIsQcModalOpen] = useState(false);
-  const [qcTargetTest, setQcTargetTest] = useState("K");
-
 
   const [metrics, setMetrics] = useState({
     pendingApproval: 0,
@@ -47,186 +52,200 @@ function ApprovalsContent() {
     rejectedRerun: 0,
   });
   const [metricsLoading, setMetricsLoading] = useState(true);
+
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedApprovals, setSelectedApprovals] = useState<Set<string | number>>(new Set());
-  const [batchActionLoading, setBatchActionLoading] = useState(false);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
+  const [callTargetApproval, setCallTargetApproval] = useState<Approval | null>(null);
+  const [isQcModalOpen, setIsQcModalOpen] = useState(false);
 
-  // Sync URL search parameters on mount
+  const [reasonDialog, setReasonDialog] = useState<{ kind: ReasonKind; approval: Approval } | null>(null);
+  const [approveTarget, setApproveTarget] = useState<Approval | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+
+  const queue = QUEUES[queueKey] ?? QUEUES.pending;
+
+  /* URL -> state (sidebar links, dashboard cards, triage desk) */
   useEffect(() => {
-    const modeParam = searchParams.get("mode");
-    if (modeParam === "workstation") {
-      setViewMode("workstation");
-    }
-
-    const viewParam = searchParams.get("view");
-    if (viewParam === "rules") {
-      setIsRulesModalOpen(true);
-    }
-
-    const filterParam = searchParams.get("filter");
-    const statusParam = searchParams.get("status");
-
-    if (filterParam === "critical") {
-      setQuickFilter("critical");
-      setStatusFilter("VERIFIED");
-      setActiveFilterKey("critical");
-    } else if (filterParam === "pipeline") {
-      setQuickFilter("pipeline");
-      setStatusFilter("");
-      setActiveFilterKey("pipeline");
-    } else if (filterParam === "normal") {
-      setQuickFilter("normal");
-      setStatusFilter("VERIFIED");
-      setActiveFilterKey("normal");
-    } else if (statusParam === "ENTERED") {
-      setStatusFilter("ENTERED");
-      setQuickFilter("");
-      setActiveFilterKey("rerun");
-    } else if (statusParam === "APPROVED") {
-      setStatusFilter("APPROVED");
-      setQuickFilter("");
-      setActiveFilterKey("approved");
-    }
+    setViewMode(searchParams.get("mode") === "workstation" ? "workstation" : "table");
+    setQueueKey(resolveQueueKey(searchParams.get("filter"), searchParams.get("status")));
+    setOrderIdFilter(searchParams.get("orderId") || "");
+    if (searchParams.get("view") === "rules") setIsRulesModalOpen(true);
+    setSelectedApprovals(new Set());
+    setPage(1);
   }, [searchParams]);
 
+  /* Data loading */
   const fetchMetrics = useCallback(async () => {
     try {
-      setMetricsLoading(true);
       const response = await approvalApi.getMetrics();
-      if (response.success && response.data) {
-        setMetrics(response.data);
+      if (response?.success && response.data) {
+        setMetrics({
+          pendingApproval: response.data.pendingApproval ?? 0,
+          criticalValues: response.data.criticalValues ?? 0,
+          approvedToday: response.data.approvedToday ?? 0,
+          rejectedRerun: response.data.rejectedRerun ?? 0,
+        });
       }
-    } catch (err) {
-      console.error("Failed to fetch metrics:", err);
+    } catch {
+      // The worklist itself reports connection problems; the counters keep their last values.
     } finally {
       setMetricsLoading(false);
     }
   }, []);
 
-  const fetchApprovals = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchApprovals = useCallback(
+    async (options: { silent?: boolean } = {}) => {
+      try {
+        if (!options.silent) setLoading(true);
+        setError(null);
 
-      const queryParams = new URLSearchParams();
-      if (searchTerm) queryParams.append("search", searchTerm);
-      if (statusFilter) queryParams.append("status", statusFilter);
-      if (quickFilter) queryParams.append("filter", quickFilter);
-      if (departmentFilter) queryParams.append("department", departmentFilter);
-      if (dateFrom) queryParams.append("dateFrom", dateFrom);
-      if (dateTo) queryParams.append("dateTo", dateTo);
-      queryParams.append("page", page.toString());
-      queryParams.append("limit", "20");
+        const params = new URLSearchParams();
+        if (searchTerm) params.append("search", searchTerm);
+        // A single-order view must not be limited to one status.
+        const status = orderIdFilter && queueKey === "pending" ? "ALL" : queue.status;
+        if (status) params.append("status", status);
+        if (queue.filter) params.append("filter", queue.filter);
+        if (orderIdFilter) params.append("orderId", orderIdFilter);
+        if (departmentFilter) params.append("department", departmentFilter);
+        if (dateFrom) params.append("dateFrom", dateFrom);
+        if (dateTo) params.append("dateTo", dateTo);
+        params.append("page", String(page));
+        params.append("limit", String(PAGE_SIZE));
 
-      const response = await approvalApi.getPending(queryParams.toString());
+        const response = await approvalApi.getPending(params.toString());
+        if (!response?.success || !response.data) {
+          throw new Error(response?.message || "The server did not return the approval worklist.");
+        }
 
-      if (response.success && response.data) {
-        const transformedApprovals: Approval[] = (response.data.results || []).map((result: any) => {
-          const abnormalCount =
-            result.values?.filter(
-              (v: any) => v.flag === "HIGH" || v.flag === "LOW" || v.flag === "CRITICAL"
-            ).length || 0;
-
-          const criticalValues =
-            result.values
-              ?.filter((v: any) => v.flag === "CRITICAL")
-              .map((v: any) => v.parameter?.parameterName || "Parameter") || [];
-
-          return {
-            id: result.id,
-            resultId: result.id,
-            resultNumber: result.order?.orderNumber || `RES-${result.id}`,
-            orderId: result.orderId,
-            orderNumber: result.order?.orderNumber,
-            barcode: result.order?.barcode,
-            patientId: result.order?.patient?.id,
-            patientName: `${result.order?.patient?.firstName || ""} ${result.order?.patient?.lastName || ""}`.trim() || "Unknown",
-            patientUhid: result.order?.patient?.uhid,
-            patientAge: result.order?.patient?.age,
-            patientGender: result.order?.patient?.gender,
-            testId: result.test?.id,
-            testName: result.test?.testName,
-            testCode: result.test?.testCode,
-            submittedBy: result.enteredBy?.fullName,
-            submittedAt: result.verifiedAt || result.createdAt,
-            assignedPathologist: result.approvedBy?.fullName || "Unassigned",
-            status: result.status === "VERIFIED" ? "Pending" : result.status,
-            abnormalCount,
-            criticalValues,
-          };
-        });
-
-        setApprovals(transformedApprovals);
+        const rows: Approval[] = (response.data.results || []).map(mapResultToApproval);
+        setApprovals(rows);
         setTotalPages(response.data.pagination?.totalPages || 1);
+        setTotalResults(response.data.pagination?.total ?? rows.length);
+        setLastUpdated(new Date());
+      } catch (err) {
+        // Never keep showing a previous list when the server cannot be reached.
+        setApprovals([]);
+        setTotalResults(0);
+        setError(err instanceof Error ? err.message : "Unable to load the approval worklist.");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch approvals");
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, statusFilter, quickFilter, departmentFilter, dateFrom, dateTo, page]);
+    },
+    [searchTerm, queueKey, queue, orderIdFilter, departmentFilter, dateFrom, dateTo, page]
+  );
 
   useEffect(() => {
     fetchMetrics();
+  }, [fetchMetrics]);
+
+  useEffect(() => {
     fetchApprovals();
+  }, [fetchApprovals]);
+
+  // Quiet background refresh while the page is visible.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchMetrics();
+        fetchApprovals({ silent: true });
+      }
+    }, AUTO_REFRESH_MS);
+    return () => window.clearInterval(timer);
   }, [fetchMetrics, fetchApprovals]);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([fetchMetrics(), fetchApprovals()]);
+  }, [fetchMetrics, fetchApprovals]);
+
+  /* Actions */
+  const resultIdOf = (approval: Approval) => String(approval.resultId ?? approval.id);
+  const orderTag = (approval: Approval) => (approval.orderNumber ? ` - ${approval.orderNumber}` : "");
+
+  /** Signs a result. Used by the review modal and workstation, which run their own safety checks. */
   const handleApprove = async (approval: Approval) => {
     try {
-      // Use the actual result ID from the approval object
-      const resultId = String(approval.id || approval.resultId);
-      console.log("Approving result with ID:", resultId);
-      
-      const response = await approvalApi.approve(resultId, {
-        remarks: approval.remarks,
-      });
-      
-      console.log("Approval response:", response);
-      
-      if (response.success) {
-        await fetchApprovals();
-        await fetchMetrics();
-        alert("Result approved successfully!");
-      } else {
-        throw new Error(response.message || "Approval failed");
-      }
+      const response = await approvalApi.approve(resultIdOf(approval), { remarks: approval.remarks });
+      if (!response?.success) throw new Error(response?.message || "Approval failed");
+      showSuccess(`Result signed${orderTag(approval)}.`);
+      await refreshAll();
     } catch (err) {
-      console.error("Approval error:", err);
-      alert(err instanceof Error ? err.message : "Failed to approve result");
+      showError(err instanceof Error ? err.message : "Failed to approve the result.");
     }
   };
 
-  const handleReject = async (approval: Approval) => {
-    const reason = prompt("Please enter the rejection reason:");
-    if (!reason || !reason.trim()) return;
-
-    try {
-      const response = await approvalApi.reject(String(approval.resultId), { remarks: reason.trim() });
-      if (response.success) {
-        await fetchApprovals();
-        await fetchMetrics();
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to reject result");
-    }
-  };
-
-  const handleRerun = async (approval: Approval, reason: string) => {
-    if (!reason || reason.trim() === "") {
-      alert("Please provide a reason for the rerun request");
+  /** Quick approve from the worklist always asks for confirmation first. */
+  const requestQuickApprove = (approval: Approval) => {
+    if (approval.criticalValues && approval.criticalValues.length > 0) {
+      showWarning("Critical values need a documented call-back. Open the review to log it before signing.");
+      setSelectedApproval(approval);
+      setIsReviewModalOpen(true);
       return;
     }
+    setApproveTarget(approval);
+  };
 
+  const confirmQuickApprove = async () => {
+    if (!approveTarget) return;
+    setActionBusy(true);
+    await handleApprove(approveTarget);
+    setActionBusy(false);
+    setApproveTarget(null);
+  };
+
+  /** Sends a result back to the technician with a recorded reason. */
+  const submitReturn = async (approval: Approval, reason: string, kind: ReasonKind) => {
     try {
-      const response = await approvalApi.reject(String(approval.resultId), { remarks: reason });
-      if (response.success) {
-        await fetchApprovals();
-        await fetchMetrics();
-      }
+      const response = await approvalApi.reject(resultIdOf(approval), { remarks: reason });
+      if (!response?.success) throw new Error(response?.message || "The result could not be returned.");
+      showSuccess(
+        kind === "reject"
+          ? `Result sent back for correction${orderTag(approval)}.`
+          : `Rerun requested${orderTag(approval)}.`
+      );
+      await refreshAll();
+      return true;
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to request rerun");
+      showError(err instanceof Error ? err.message : "The result could not be returned.");
+      return false;
     }
+  };
+
+  const handleReject = (approval: Approval) => setReasonDialog({ kind: "reject", approval });
+  const requestRerun = (approval: Approval) => setReasonDialog({ kind: "rerun", approval });
+
+  /** Used by the review modal, which collects the rerun reason itself. */
+  const handleRerun = async (approval: Approval, reason: string) => {
+    if (!reason.trim()) {
+      showWarning("A reason is required to return a result for rerun.");
+      return;
+    }
+    await submitReturn(approval, reason.trim(), "rerun");
+  };
+
+  const confirmReason = async (reason: string) => {
+    if (!reasonDialog) return;
+    setActionBusy(true);
+    const ok = await submitReturn(reasonDialog.approval, reason, reasonDialog.kind);
+    setActionBusy(false);
+    if (ok) setReasonDialog(null);
+  };
+
+  /* Filters and selection */
+  const handleSelectQueue = (key: string) => {
+    if (!QUEUES[key]) return;
+    setQueueKey(key);
+    setSelectedApprovals(new Set());
+    setPage(1);
+  };
+
+  const handleFilterChange = (filters: { dateFrom: string; dateTo: string; department: string }) => {
+    setDateFrom(filters.dateFrom);
+    setDateTo(filters.dateTo);
+    setDepartmentFilter(filters.department);
+    setPage(1);
   };
 
   const handleSearch = (term: string) => {
@@ -234,301 +253,248 @@ function ApprovalsContent() {
     setPage(1);
   };
 
-  const handleFilterChange = (filters: {
-    status: string;
-    dateFrom: string;
-    dateTo: string;
-    department?: string;
-    filter?: string;
-  }) => {
-    setStatusFilter(filters.status || "VERIFIED");
-    setDateFrom(filters.dateFrom);
-    setDateTo(filters.dateTo);
-    if (filters.department !== undefined) setDepartmentFilter(filters.department);
-    if (filters.filter !== undefined) setQuickFilter(filters.filter);
-    setPage(1);
-  };
-
-  const handleSelectFilterPill = (key: string) => {
-    setActiveFilterKey(key);
-    if (key === "pending") {
-      setStatusFilter("VERIFIED");
-      setQuickFilter("");
-    } else if (key === "pipeline") {
-      setStatusFilter("");
-      setQuickFilter("pipeline");
-    } else if (key === "critical") {
-      setStatusFilter("VERIFIED");
-      setQuickFilter("critical");
-    } else if (key === "normal") {
-      setStatusFilter("VERIFIED");
-      setQuickFilter("normal");
-    } else if (key === "abnormal") {
-      setStatusFilter("VERIFIED");
-      setQuickFilter("abnormal");
-    } else if (key === "rerun") {
-      setStatusFilter("ENTERED");
-      setQuickFilter("");
-    } else if (key === "approved") {
-      setStatusFilter("APPROVED");
-      setQuickFilter("");
-    }
-    setPage(1);
-  };
-
-  const handleReview = (approval: Approval) => {
-    setSelectedApproval(approval);
-    setIsReviewModalOpen(true);
-  };
-
   const handleSelectApproval = (approvalId: string | number) => {
-    const newSelected = new Set(selectedApprovals);
-    if (newSelected.has(approvalId)) {
-      newSelected.delete(approvalId);
-    } else {
-      newSelected.add(approvalId);
-    }
-    setSelectedApprovals(newSelected);
+    setSelectedApprovals((previous) => {
+      const next = new Set(previous);
+      if (next.has(approvalId)) next.delete(approvalId);
+      else next.add(approvalId);
+      return next;
+    });
   };
 
   const handleSelectAll = (selected: boolean) => {
-    if (selected) {
-      setSelectedApprovals(new Set(approvals.map((a) => a.id)));
-    } else {
-      setSelectedApprovals(new Set());
-    }
-  };
-
-  const handleBatchApprove = async () => {
-    if (selectedApprovals.size === 0) {
-      alert("Please select at least one approval to batch approve");
-      return;
-    }
-
-    const selectedList = approvals.filter((a) => selectedApprovals.has(a.id));
-    const hasCriticalSelected = selectedList.some(
-      (a) => a.criticalValues && a.criticalValues.length > 0
+    setSelectedApprovals(
+      selected ? new Set(approvals.filter((a) => isSignableStatus(a.status)).map((a) => a.id)) : new Set()
     );
-
-    if (hasCriticalSelected) {
-      const proceed = confirm(
-        "⚠️ Safety Warning: Some selected reports contain Critical / Panic values. Laboratory policy mandates direct verbal communication before release. Unacknowledged critical reports will be skipped.\n\nDo you wish to proceed?"
-      );
-      if (!proceed) return;
-    } else {
-      if (!confirm(`Are you sure you want to batch approve ${selectedApprovals.size} verified report(s)?`)) {
-        return;
-      }
-    }
-
-    try {
-      setBatchActionLoading(true);
-      // Use result IDs instead of approval IDs
-      const ids = Array.from(selectedApprovals).map(id => {
-        const approval = approvals.find(a => a.id === id);
-        return String(approval?.resultId || approval?.id || id);
-      });
-      
-      console.log("Batch approving result IDs:", ids);
-      
-      const res = await approvalApi.batchApprove(ids, "Batch authorization by Pathologist");
-
-      console.log("Batch approval response:", res);
-
-      if (res?.success) {
-        setSelectedApprovals(new Set());
-        await fetchApprovals();
-        await fetchMetrics();
-        alert(`Successfully batch approved ${res.data?.approvedCount || ids.length} report(s)!`);
-      } else {
-        alert(res?.message || "Batch approval completed with warnings");
-      }
-    } catch (err: any) {
-      console.error("Batch approval error:", err);
-      alert(err instanceof Error ? err.message : "Failed to complete batch approval");
-    } finally {
-      setBatchActionLoading(false);
-    }
   };
+
+  const clearOrderFilter = () => {
+    setOrderIdFilter("");
+    setPage(1);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("orderId");
+    window.history.replaceState(null, "", url.toString());
+  };
+
+  const selectedList = approvals.filter((a) => selectedApprovals.has(a.id));
+  const selectedCritical = selectedList.filter((a) => a.criticalValues && a.criticalValues.length > 0).length;
+  const firstRow = totalResults === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastRow = Math.min(page * PAGE_SIZE, totalResults);
 
   return (
-    <DashboardLayout title="Approvals">
-      <div className="space-y-3">
-        {/* Page Title — compact single-line strip */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-5 py-3 shadow-2xl shadow-slate-950/80">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="shrink-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-2 text-cyan-400 shadow-lg shadow-cyan-500/10 text-base">🔬</span>
+    <DashboardLayout title="Pathologist Approvals">
+      <div className="space-y-4">
+        {/* Page header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
+              <ClipboardCheck className="h-5 w-5" />
+            </span>
             <div className="min-w-0">
-              <h1 className="text-base font-black tracking-tight text-white flex flex-wrap items-center gap-2">
-                <span>Pathologist Review &amp; Approval Queue</span>
-                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300">
-                  ISO 15189 / NABL Standard
-                </span>
-              </h1>
-              <p className="text-[11px] text-slate-500 mt-0.5 hidden sm:block">
-                Verify diagnostic findings, review historical delta checks, and digitally sign laboratory results.
+              <h1 className="text-base font-bold text-slate-900">Pathologist Approvals</h1>
+              <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">
+                Review results, document critical-value call-backs and authorize reports for release.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {lastUpdated && (
+              <span className="hidden text-[11px] text-slate-500 md:inline">
+                Updated{" "}
+                {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
+              </span>
+            )}
             <button
-              onClick={() => {
-                setQcTargetTest("K");
-                setIsQcModalOpen(true);
-              }}
-              className="rounded-xl border border-cyan-700/50 bg-cyan-950/40 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-900/60 shadow-sm transition-colors flex items-center gap-1.5"
+              type="button"
+              onClick={() => setIsQcModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
             >
-              <span>📈</span>
-              <span>Daily QC &amp; LJ Chart</span>
-            </button>
-            <a
-              href="/microbiology"
-              className="rounded-xl border border-purple-700/50 bg-purple-950/40 px-3 py-1.5 text-xs font-bold text-purple-300 hover:bg-purple-900/60 shadow-sm transition-colors flex items-center gap-1.5"
-            >
-              <span>🧫</span>
-              <span>Microbiology &amp; AMR</span>
-            </a>
-            <button
-              onClick={() => setIsRulesModalOpen(true)}
-              className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white shadow-sm transition-colors flex items-center gap-1.5"
-            >
-              <span>🛡️</span>
-              <span>Sign-Off Policies</span>
+              <BarChart3 className="h-3.5 w-3.5" />
+              Daily QC chart
             </button>
             <button
-              onClick={() => {
-                fetchMetrics();
-                fetchApprovals();
-              }}
-              className="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-3.5 py-1.5 text-xs font-bold text-white hover:from-cyan-500 hover:to-blue-500 shadow-md shadow-cyan-600/20 transition-all flex items-center gap-1.5"
+              type="button"
+              onClick={refreshAll}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0284C7] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#0369A1]"
             >
-              <span>↻</span>
-              <span>Refresh Queue</span>
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              Refresh
             </button>
           </div>
-
         </div>
 
-        {/* Clinical KPI Metrics Bar */}
+        <ApprovalsSubNav
+          active="worklist"
+          criticalCount={metrics.criticalValues}
+          onOpenPolicies={() => setIsRulesModalOpen(true)}
+        />
+
         <ApprovalMetrics
           pendingApproval={metrics.pendingApproval}
           criticalValues={metrics.criticalValues}
           approvedToday={metrics.approvedToday}
           rejectedRerun={metrics.rejectedRerun}
           loading={metricsLoading}
-          activeFilter={activeFilterKey}
-          onSelectMetric={handleSelectFilterPill}
+          activeFilter={queueKey}
+          onSelectMetric={handleSelectQueue}
         />
 
-        {/* Filter Strip */}
         <ApprovalFilters
           onSearch={handleSearch}
           onFilterChange={handleFilterChange}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          activeFilter={activeFilterKey}
-          onSelectFilterPill={handleSelectFilterPill}
-          onOpenRules={() => setIsRulesModalOpen(true)}
+          activeFilter={queueKey}
+          onSelectFilterPill={handleSelectQueue}
+          searchValue={searchTerm}
         />
 
-        {/* Batch Action Bar */}
+        {/* Single-order scope */}
+        {orderIdFilter && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs text-sky-900">
+            <span>
+              Showing all results for order{" "}
+              <strong className="font-mono">{approvals[0]?.orderNumber || "selected order"}</strong>.
+            </span>
+            <button
+              type="button"
+              onClick={clearOrderFilter}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold text-sky-800 transition-colors hover:bg-sky-100"
+            >
+              <X className="h-3.5 w-3.5" />
+              Show full worklist
+            </button>
+          </div>
+        )}
+
+        {/* Batch action bar */}
         {selectedApprovals.size > 0 && viewMode === "table" && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/50 to-blue-950/50 px-5 py-3.5 shadow-lg shadow-cyan-500/5 animate-in fade-in duration-150">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-xs font-bold text-white shadow-md">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 px-5 py-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 min-w-[28px] items-center justify-center rounded-full bg-[#0284C7] px-2 text-xs font-bold text-white">
                 {selectedApprovals.size}
               </span>
-              <p className="text-xs font-bold text-slate-200">
-                {selectedApprovals.size} report{selectedApprovals.size !== 1 ? "s" : ""} selected for batch review
-              </p>
+              <div>
+                <p className="text-xs font-semibold text-slate-900">
+                  {selectedApprovals.size} result{selectedApprovals.size !== 1 ? "s" : ""} selected for batch sign-off
+                </p>
+                {selectedCritical > 0 && (
+                  <p className="mt-0.5 text-[11px] text-amber-800">
+                    {selectedCritical} contain critical values; these are skipped unless the call-back has been documented.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedApprovals(new Set())}
-                className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                className="rounded-lg border border-transparent px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-200 hover:bg-white hover:text-slate-900"
               >
-                Clear Selection
+                Clear selection
               </button>
               <button
                 type="button"
                 onClick={() => setIsBatchModalOpen(true)}
-                disabled={batchActionLoading}
-                className="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-cyan-600/20 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 transition-all flex items-center gap-2"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700"
               >
-                <span className="text-white font-bold">✓ Batch Sign Selected</span>
+                <ClipboardCheck className="h-3.5 w-3.5" />
+                Batch sign selected
               </button>
             </div>
-
           </div>
         )}
 
+        {/* Connection / load error */}
         {error && (
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 shadow-sm">
-            <p className="text-xs font-bold text-rose-300 flex items-center gap-2">
-              <span>⚠️</span>
-              <span>{error}</span>
-            </p>
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <div>
+                <p className="text-xs font-semibold text-red-900">The approval worklist could not be loaded.</p>
+                <p className="mt-0.5 text-xs text-red-700">{error}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={refreshAll}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Try again
+            </button>
           </div>
         )}
 
-        {/* Dual View Modes */}
+        {/* Worklist / workstation */}
         {viewMode === "workstation" ? (
           <DoctorWorkstationView
             approvals={approvals}
             loading={loading}
             onApprove={handleApprove}
             onReject={handleReject}
-            onRerun={handleRerun}
-            onRefresh={() => {
-              fetchApprovals();
-              fetchMetrics();
-            }}
+            onRequestRerun={requestRerun}
+            onRefresh={refreshAll}
           />
         ) : (
           <>
             <ApprovalTable
               approvals={approvals}
               loading={loading}
-              onApprove={handleApprove}
+              total={totalResults}
+              onApprove={requestQuickApprove}
               onReject={handleReject}
-              onReview={handleReview}
-              onRerun={handleRerun}
+              onReview={(approval) => {
+                setSelectedApproval(approval);
+                setIsReviewModalOpen(true);
+              }}
+              onRequestRerun={requestRerun}
+              onCriticalCall={setCallTargetApproval}
               selectedApprovals={selectedApprovals}
               onSelectApproval={handleSelectApproval}
               onSelectAll={handleSelectAll}
             />
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-2">
+            {totalResults > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                 <p className="text-xs text-slate-500">
-                  Page <strong className="text-slate-200">{page}</strong> of <strong className="text-slate-200">{totalPages}</strong>
+                  Showing <strong className="text-slate-900">{firstRow}-{lastRow}</strong> of{" "}
+                  <strong className="text-slate-900">{totalResults}</strong>
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs font-bold text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:opacity-40 transition-colors shadow-sm"
-                  >
-                    ← Previous
-                  </button>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs font-bold text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:opacity-40 transition-colors shadow-sm"
-                  >
-                    Next →
-                  </button>
-                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">
+                      Page <strong className="text-slate-900">{page}</strong> of{" "}
+                      <strong className="text-slate-900">{totalPages}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Next
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Review Modal */}
       <ApprovalReviewModal
         approval={selectedApproval}
         isOpen={isReviewModalOpen}
@@ -541,68 +507,95 @@ function ApprovalsContent() {
         onRerun={handleRerun}
       />
 
-      {/* Rules Policy Modal */}
-      <ApprovalRulesModal
-        isOpen={isRulesModalOpen}
-        onClose={() => setIsRulesModalOpen(false)}
-      />
+      <ApprovalRulesModal isOpen={isRulesModalOpen} onClose={() => setIsRulesModalOpen(false)} />
 
-      {/* Critical Panic Call Log Modal */}
-      {isCallModalOpen && callTargetApproval && (
+      {callTargetApproval && (
         <CriticalPanicCallModal
-          isOpen={isCallModalOpen}
-          onClose={() => {
-            setIsCallModalOpen(false);
-            setCallTargetApproval(null);
-          }}
+          isOpen
+          onClose={() => setCallTargetApproval(null)}
           resultId={String(callTargetApproval.resultId)}
           orderNumber={callTargetApproval.orderNumber}
           patientName={callTargetApproval.patientName}
           criticalParameters={(callTargetApproval.criticalValues || []).map((name) => ({
             name,
-            value: "Panic Limit Exceeded",
+            value: "Above critical limit",
           }))}
           onSuccess={() => {
-            fetchApprovals();
-            fetchMetrics();
+            setCallTargetApproval(null);
+            showSuccess("Critical value call-back recorded.");
+            refreshAll();
           }}
         />
       )}
 
-      {/* Batch Approval Modal */}
       {isBatchModalOpen && (
         <BatchApprovalModal
           isOpen={isBatchModalOpen}
           onClose={() => setIsBatchModalOpen(false)}
-          selectedApprovals={approvals.filter((a) => selectedApprovals.has(a.id))}
+          selectedApprovals={selectedList}
           onSuccess={(approvedCount, skippedCount) => {
             setSelectedApprovals(new Set());
-            fetchApprovals();
-            fetchMetrics();
-            alert(
-              `Successfully batch approved & certified ${approvedCount} report(s)! ${
-                skippedCount > 0
-                  ? `(${skippedCount} skipped due to unacknowledged critical/panic values)`
-                  : ""
-              }`
-            );
+            refreshAll();
+            showSuccess(`${approvedCount} report${approvedCount === 1 ? "" : "s"} signed.`);
+            if (skippedCount > 0) {
+              showWarning(`${skippedCount} skipped: critical values without a documented call-back.`, 6000);
+            }
           }}
         />
       )}
 
-      {/* Levey-Jennings QC Modal */}
+      <ConfirmDialog
+        open={Boolean(approveTarget)}
+        title="Approve this result?"
+        confirmLabel="Approve & sign"
+        busy={actionBusy}
+        description={
+          approveTarget ? (
+            <>
+              <strong className="text-slate-900">{approveTarget.testName || "Laboratory test"}</strong> for{" "}
+              <strong className="text-slate-900">{approveTarget.patientName}</strong>
+              {approveTarget.orderNumber ? ` (${approveTarget.orderNumber})` : ""} will be signed with your electronic
+              seal and released for reporting.
+            </>
+          ) : null
+        }
+        onConfirm={confirmQuickApprove}
+        onCancel={() => !actionBusy && setApproveTarget(null)}
+      />
+
+      <ReasonDialog
+        open={Boolean(reasonDialog)}
+        tone={reasonDialog?.kind === "reject" ? "danger" : "warning"}
+        title={reasonDialog?.kind === "reject" ? "Reject result" : "Return for rerun"}
+        confirmLabel={reasonDialog?.kind === "reject" ? "Reject result" : "Return for rerun"}
+        label={reasonDialog?.kind === "reject" ? "Reason for rejection" : "Reason for rerun"}
+        placeholder={
+          reasonDialog?.kind === "reject"
+            ? "e.g. Value inconsistent with clinical history; verify and re-enter"
+            : "e.g. Sample hemolysed; request fresh sample"
+        }
+        description={
+          reasonDialog ? (
+            <>
+              {reasonDialog.approval.testName || "Result"} - {reasonDialog.approval.patientName}
+              {reasonDialog.approval.orderNumber ? ` (${reasonDialog.approval.orderNumber})` : ""}. The reason is shown
+              to the technician and kept in the audit trail.
+            </>
+          ) : null
+        }
+        busy={actionBusy}
+        onConfirm={confirmReason}
+        onCancel={() => !actionBusy && setReasonDialog(null)}
+      />
+
       {isQcModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <LeveyJenningsChart
-              testCode={qcTargetTest}
-              onClose={() => setIsQcModalOpen(false)}
-            />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto">
+            <LeveyJenningsChart testCode="K" onClose={() => setIsQcModalOpen(false)} />
           </div>
         </div>
       )}
     </DashboardLayout>
-
   );
 }
 
@@ -610,9 +603,12 @@ export default function ApprovalsPage() {
   return (
     <Suspense
       fallback={
-        <DashboardLayout title="Approvals">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
+        <DashboardLayout title="Pathologist Approvals">
+          <div className="flex min-h-[400px] items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0284C7] border-t-transparent" />
+              <p className="text-xs text-slate-500">Loading approval worklist...</p>
+            </div>
           </div>
         </DashboardLayout>
       }

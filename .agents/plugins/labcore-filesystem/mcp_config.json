@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "labcore-filesystem": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\nikil\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-filesystem\\dist\\index.js",
+        "c:\\Users\\nikil\\Downloads\\NIKIL-LABCORE-ELIS-OS"
+      ]
+    }
+  }
+}

@@ -588,7 +588,15 @@ export const rejectResult = async (req: Request, res: Response, next: NextFuncti
     const params = (req as any).validated?.params || req.params;
     const body = (req as any).validated?.body || req.body;
     const user = (req as any).user;
-    const result = await reject(params.id as string, user?.id || 'SYSTEM', body.reason);
+    const reason = String(body?.remarks ?? body?.reason ?? '').trim();
+    if (!reason) {
+      res.status(400).json({
+        success: false,
+        message: 'A reason is required to send a result back for correction.',
+      });
+      return;
+    }
+    const result = await reject(params.id as string, reason, user?.id);
     res.status(200).json({
       success: true,
       message: 'Result sent back for correction',

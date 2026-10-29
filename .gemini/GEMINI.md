@@ -59,9 +59,16 @@ Key recommendations:
 - **Pro** for complex planning and analysis
 - Large context is available but **search-first** still applies
 
+## Autopilot & Token Conservation Protocol
+
+1. **Auto-Approve Project Work**: Never ask for confirmation before routine file reads, writes, edits, or test execution within this repository.
+2. **Execute First, Report After**: Apply the necessary code changes and run verification commands autonomously in a single turn instead of stalling for user approval.
+3. **Zero Token Waste**: Do not generate back-and-forth approval loops ("Should I proceed?").
+4. **Safety Exception**: Only pause for explicit confirmation on irreversible external destruction (dropping production DB, deleting outside project root).
+
 ---
 
 *GSD Methodology adapted for Google Antigravity*
-*Canonical rules: [PROJECT_RULES.md](../PROJECT_RULES.md)*
+*Canonical rules: [PROJECT_RULES.md](../PROJECT_RULES.md) & [AGENTS.md](../AGENTS.md)*
 *Source: https://github.com/glittercowboy/get-shit-done*
 

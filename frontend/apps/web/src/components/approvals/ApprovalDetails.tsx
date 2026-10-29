@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 
 import { approvalApi } from "@/lib/api";
+import { showError, showSuccess } from "@/lib/notifications";
 import type { Approval } from "./ApprovalTable";
 import LeveyJenningsChart from "../qc/LeveyJenningsChart";
 import ResultAmendmentModal from "./ResultAmendmentModal";
@@ -173,7 +174,7 @@ export default function ApprovalDetails({
         setVerificationStatus(res.data);
       }
     } catch (err: any) {
-      alert("Verification failed: " + (err.message || err));
+      showError("Signature verification failed: " + (err.message || err));
     } finally {
       setVerifying(false);
     }
@@ -823,7 +824,7 @@ export default function ApprovalDetails({
         </div>
 
         {showQcChart && (
-          <div className="p-4 bg-slate-950">
+          <div className="p-4 bg-[#F8FAFC] border-t border-gray-200">
             <LeveyJenningsChart
               approvalId={String(approval.resultId || approval.id)}
               testCode={approval.testName || "K"}
@@ -1032,10 +1033,10 @@ export default function ApprovalDetails({
           onSuccess={(nextVer) => {
             fetchAmendments();
             if (handleVerify) handleVerify();
-            alert(`Diagnostic report successfully amended to Version ${nextVer}.0 and re-signed with Doctor Seal.`);
+            showSuccess(`Report amended to version ${nextVer}.0 and re-signed.`);
           }}
         />
       )}
     </div>
   );
-}
+}

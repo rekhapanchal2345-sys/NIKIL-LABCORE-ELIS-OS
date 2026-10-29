@@ -145,70 +145,71 @@ export const BatchApprovalModal: React.FC<BatchApprovalModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 text-slate-100 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/60 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between border-b border-gray-200 bg-[#F8FAFC] px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#059669]/10 text-[#059669]">
               <FileSignature className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">
-                Transactional Batch Approval & Electronic Seal Engine
+              <h3 className="text-base font-bold text-[#0F172A]">
+                Batch Approval & Electronic Seal Engine
               </h3>
-              <p className="text-xs text-slate-400">
-                NABL ISO 15189:2022 Clause 7.4.2 • Automatic Critical Panic Isolation Active
+              <p className="text-xs text-[#94A3B8]">
+                NABL ISO 15189:2022 Clause 7.4.2 • Critical Panic Isolation Active
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-[#94A3B8] hover:bg-gray-100 hover:text-[#0F172A] transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-6">
-          {/* KPI Summary Boxes */}
+        {/* ── Body ── */}
+        <div className="max-h-[72vh] space-y-5 overflow-y-auto p-6">
+
+          {/* KPI Summary Cards */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5">
-              <span className="text-xs text-slate-400">Total Selected</span>
-              <p className="mt-1 text-2xl font-bold text-white">
+            <div className="rounded-xl border border-gray-200 bg-[#F8FAFC] p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">Total Selected</span>
+              <p className="mt-1.5 text-2xl font-black text-[#0F172A]">
                 {normalizedCandidates.length}
               </p>
             </div>
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3.5">
-              <span className="text-xs text-emerald-300">
-                Cleared for Electronic Seal
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
+                Cleared for Sign-Off
               </span>
-              <p className="mt-1 text-2xl font-bold text-emerald-400">
+              <p className="mt-1.5 text-2xl font-black text-[#059669]">
                 {eligibleForApproval.length}
               </p>
             </div>
-            <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3.5">
-              <span className="text-xs text-rose-300">
-                Isolated Unacknowledged Panics
+            <div className={`rounded-xl border p-4 ${isolatedUnacknowledgedPanics.length > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-[#F8FAFC]'}`}>
+              <span className={`text-[11px] font-semibold uppercase tracking-wider ${isolatedUnacknowledgedPanics.length > 0 ? 'text-red-600' : 'text-[#94A3B8]'}`}>
+                Isolated Panics
               </span>
-              <p className="mt-1 text-2xl font-bold text-rose-400">
+              <p className={`mt-1.5 text-2xl font-black ${isolatedUnacknowledgedPanics.length > 0 ? 'text-[#DC2626]' : 'text-[#0F172A]'}`}>
                 {isolatedUnacknowledgedPanics.length}
               </p>
             </div>
           </div>
 
-          {/* Mandatory Panic Isolation Safeguard Banner */}
+          {/* Critical Panic Isolation Safeguard Banner */}
           {isolatedUnacknowledgedPanics.length > 0 && (
-            <div className="rounded-xl border border-rose-500/50 bg-rose-950/30 p-4">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
               <div className="flex items-start gap-3">
-                <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
+                <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-[#DC2626]" />
                 <div className="flex-1">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-300">
-                    NABL Clause 7.4.2 Safeguard: {isolatedUnacknowledgedPanics.length}{' '}
-                    Critical Panic Result(s) Isolated
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#DC2626]">
+                    NABL Clause 7.4.2: {isolatedUnacknowledgedPanics.length} Critical Panic Result(s) Isolated
                   </h4>
-                  <p className="mt-1 text-xs text-rose-200/90">
+                  <p className="mt-1 text-xs text-red-700">
                     Critical panic values (HH / LL) cannot be batch-approved without a
                     documented telephonic read-back to the ordering physician. These items
                     will be automatically held back while your remaining{' '}
@@ -218,18 +219,19 @@ export const BatchApprovalModal: React.FC<BatchApprovalModalProps> = ({
                     {isolatedUnacknowledgedPanics.map((item) => (
                       <div
                         key={item.resultId}
-                        className="flex items-center justify-between rounded-lg border border-rose-500/30 bg-slate-950/80 px-3 py-2 text-xs"
+                        className="flex items-center justify-between rounded-lg border border-red-200 bg-white px-3 py-2 text-xs shadow-xs"
                       >
                         <div>
-                          <span className="font-bold text-white">{item.patientName}</span>{' '}
-                          <span className="text-slate-400">({item.orderNumber})</span> —{' '}
-                          <span className="font-semibold text-rose-400">{item.testName}</span>
+                          <span className="font-bold text-[#0F172A]">{item.patientName}</span>{' '}
+                          <span className="text-[#94A3B8] font-mono">({item.orderNumber})</span>{' '}
+                          —{' '}
+                          <span className="font-semibold text-[#DC2626]">{item.testName}</span>
                         </div>
                         {onOpenPanicReadBackModal && (
                           <button
                             type="button"
                             onClick={() => onOpenPanicReadBackModal(item)}
-                            className="inline-flex items-center gap-1 rounded-md bg-rose-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-rose-600"
+                            className="inline-flex items-center gap-1 rounded-lg bg-[#DC2626] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#B91C1C] transition-colors"
                           >
                             <PhoneCall className="h-3 w-3" />
                             Log Read-Back
@@ -245,42 +247,42 @@ export const BatchApprovalModal: React.FC<BatchApprovalModalProps> = ({
 
           {/* Eligible Results List */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-[#475569] mb-2">
               Results Ready for Cryptographic Sign-Off ({eligibleForApproval.length})
             </h4>
-            <div className="mt-2 max-h-48 divide-y divide-slate-800 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60">
+            <div className="max-h-48 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-200 bg-white">
               {eligibleForApproval.length === 0 ? (
-                <p className="p-4 text-center text-xs text-slate-500">
+                <p className="p-4 text-center text-xs text-[#94A3B8]">
                   No results in the current selection are cleared for batch sign-off.
                 </p>
               ) : (
                 eligibleForApproval.map((item) => (
                   <div
                     key={item.resultId}
-                    className="flex items-center justify-between px-4 py-2.5 text-xs"
+                    className="flex items-center justify-between px-4 py-2.5 text-xs hover:bg-[#F8FAFC] transition-colors"
                   >
                     <div>
-                      <span className="font-semibold text-slate-100">
+                      <span className="font-semibold text-[#0F172A]">
                         {item.patientName}
                       </span>{' '}
-                      <span className="font-mono text-slate-400">
+                      <span className="font-mono text-[#94A3B8]">
                         [{item.orderNumber}]
                       </span>
-                      <p className="text-[11px] text-slate-400">{item.testName}</p>
+                      <p className="text-[11px] text-[#94A3B8]">{item.testName}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {item.isCriticalPanic && item.readBackCompleted && (
-                        <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
                           Read-Back Verified
                         </span>
                       )}
                       <span
-                        className={`rounded px-2 py-0.5 text-[10px] font-bold ${
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                           item.triageColor === 'RED'
-                            ? 'bg-rose-500/20 text-rose-400'
+                            ? 'bg-red-100 text-red-700'
                             : item.triageColor === 'YELLOW'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-emerald-500/20 text-emerald-400'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-emerald-100 text-emerald-700'
                         }`}
                       >
                         {item.triageColor}
@@ -295,46 +297,51 @@ export const BatchApprovalModal: React.FC<BatchApprovalModalProps> = ({
           {/* Signing Pathologist & Comments */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-[#475569] mb-1.5">
                 Authorizing Pathologist ID
               </label>
               <input
                 type="text"
                 value={doctorId}
                 onChange={(e) => setDoctorId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-[#0F172A] focus:border-[#0284C7] focus:ring-2 focus:ring-[#0284C7]/20 outline-none transition-colors"
                 placeholder="Enter Doctor ID"
               />
-              <p className="mt-1 text-[11px] text-slate-400">
-                Signatory: <strong className="text-cyan-400">{defaultDoctorName}</strong>
+              <p className="mt-1 text-[11px] text-[#94A3B8]">
+                Signatory: <strong className="text-[#0284C7]">{defaultDoctorName}</strong>
               </p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-[#475569] mb-1.5">
                 Batch Sign-Off Clinical Endorsement
               </label>
               <input
                 type="text"
                 value={clinicalComments}
                 onChange={(e) => setClinicalComments(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-[#0F172A] focus:border-[#0284C7] focus:ring-2 focus:ring-[#0284C7]/20 outline-none transition-colors"
               />
             </div>
           </div>
 
+          {/* Error State */}
           {error && (
-            <div className="rounded-xl border border-rose-500/40 bg-rose-950/30 p-3 text-xs text-rose-300">
+            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+              <svg className="w-4 h-4 shrink-0 mt-0.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {error}
             </div>
           )}
 
+          {/* Success Report */}
           {executionReport && (
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4 text-xs text-emerald-200">
-              <div className="flex items-center gap-2 font-bold text-emerald-400">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800">
+              <div className="flex items-center gap-2 font-bold text-[#059669] mb-1">
                 <CheckCircle2 className="h-4 w-4" />
                 Batch Electronic Seal Complete
               </div>
-              <p className="mt-1">
+              <p>
                 Approved: <strong>{executionReport.approvedCount}</strong> • Isolated
                 Panics: <strong>{executionReport.isolatedPanicCount}</strong> • Signed by:{' '}
                 <strong>{executionReport.doctorName}</strong>
@@ -343,17 +350,17 @@ export const BatchApprovalModal: React.FC<BatchApprovalModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-800 bg-slate-950/80 px-6 py-4">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Lock className="h-3.5 w-3.5 text-cyan-400" />
+        {/* ── Footer ── */}
+        <div className="flex items-center justify-between border-t border-gray-200 bg-[#F8FAFC] px-6 py-4">
+          <div className="flex items-center gap-2 text-xs text-[#94A3B8]">
+            <Lock className="h-3.5 w-3.5 text-[#0284C7]" />
             <span>HMAC-SHA256 Tamper-Evident Seal per Result</span>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-gray-50 transition-colors"
             >
               Close
             </button>
@@ -361,7 +368,7 @@ export const BatchApprovalModal: React.FC<BatchApprovalModalProps> = ({
               type="button"
               disabled={submitting || eligibleForApproval.length === 0}
               onClick={handleBatchSignOff}
-              className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-5 py-2 text-xs font-bold text-slate-950 shadow-lg hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#059669] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#047857] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             >
               {submitting ? (
                 <>

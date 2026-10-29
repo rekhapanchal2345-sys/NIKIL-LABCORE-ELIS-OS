@@ -1141,6 +1141,12 @@ export const amendReport = async (
       where: { id: report.id },
       data: {
         status: "PUBLISHED",
+        version: newVersion,
+        isAmended: true,
+        parentReportId: report.id,
+        amendmentReason: reason,
+        amendedAt: new Date(),
+        amendedById: userId,
         reportData: {
           ...previousData,
           amended: true,

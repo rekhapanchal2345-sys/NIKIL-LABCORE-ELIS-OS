@@ -270,17 +270,18 @@ const STAFF_ROSTER = [
     color: "border-emerald-300 text-emerald-800 bg-emerald-50/70",
   },
   {
-    name: "Dr. A. K. Banerjee",
-    degrees: "MD, M.S., FICS",
-    designation: "Medical Superintendent & Hospital Administrator",
+    name: "Nikil Panchal",
+    degrees: "Executive Director & Super Admin",
+    designation: "Chief Executive Officer & Laboratory Director",
     department: "Executive Directorate & IT Governance",
-    roleCategory: "Medical Director / Super Admin",
+    roleCategory: "Super Admin",
     icon: ShieldCheck,
-    email: "ADMIN001",
-    badge: "Executive",
-    code: "EXEC-SUP-0001",
-    clearance: "Level 5 Super Admin",
+    email: "nikilpanchal88@gmail.com",
+    badge: "Super Admin",
+    code: "NIKIL001",
+    clearance: "Level 5 Super Admin Unrestricted",
     color: "border-purple-300 text-purple-800 bg-purple-50/70",
+    defaultPassword: "nikil@704198",
   },
 ];
 
@@ -1073,8 +1074,8 @@ export default function LoginPage() {
   const activeHub = CLINICAL_HUBS[activeHubKey];
 
   // Form State
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("nikilpanchal88@gmail.com");
+  const [password, setPassword] = useState("nikil@704198");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -1210,9 +1211,7 @@ export default function LoginPage() {
     playTactileTone("badge");
     setSelectedStaff(staff);
     setEmail(staff.email);
-    if (!password) {
-      setPassword("Admin@1234");
-    }
+    setPassword((staff as any).defaultPassword || "Admin@1234");
     setError("");
     setTimeout(() => {
       passwordRef.current?.focus();
@@ -2020,7 +2019,7 @@ export default function LoginPage() {
                                       passwordRef.current?.focus();
                                     }
                                   }}
-                                  placeholder="dr.sharma@hospital.org or ADMIN001"
+                                  placeholder="nikilpanchal88@gmail.com or NIKIL001"
                                   required
                                   autoComplete="username"
                                 />

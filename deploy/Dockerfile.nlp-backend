@@ -1,0 +1,46 @@
+# ==============================================================================
+# NIKIL-LABCORE-ELIS-OS: ENTERPRISE HYBRID CONTAINER (NODE.JS + PYTHON)
+# ==============================================================================
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+
+# 1. System Dependencies (Python 3.10 & Node.js 18)
+RUN apt-get update && apt-get install -y \
+    curl \
+    python3.10 \
+    python3-pip \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/backend
+
+# 2. Python ML Dependencies (PyTorch, Transformers, Graph Neural Networks)
+# In production, pin exact versions
+RUN pip3 install --no-cache-dir \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 \
+    transformers \
+    torch-geometric \
+    scikit-learn \
+    numpy
+
+# 3. Node.js Dependencies (Express, Prisma)
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# 4. Copy Architecture & Generate Prisma Client
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY . .
+
+# 5. Build TypeScript
+RUN npm run build
+
+# 6. Enterprise Security: Run as non-root user
+RUN useradd -m elis_svc
+RUN chown -R elis_svc:elis_svc /app
+USER elis_svc
+
+EXPOSE 5000
+
+CMD ["npm", "run", "start"]

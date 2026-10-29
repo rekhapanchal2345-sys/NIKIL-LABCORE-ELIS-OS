@@ -1,3 +1,4 @@
+import { InterParameterValidationEngine } from "../../services/interParameterValidation.service";
 import prisma from '../../../config/database';
 import { panicReadBackService } from '../approvals/panic-readback.service';
 
@@ -7,7 +8,8 @@ export type AutoVerificationFailTag =
   | 'QC_SUSPECT'
   | 'UNVERIFIED_INDEX'
   | 'MACHINE_FLAG'
-  | 'OUT_OF_REF_RANGE';
+  | 'OUT_OF_REF_RANGE'
+  | 'CROSS_PARAMETER_CONTRADICTION';
 
 export interface EvaluateResultAuto10AInput {
   resultId: string;
@@ -29,6 +31,11 @@ export interface EvaluateResultAuto10AInput {
     icterusIndex: number;
     lipemiaIndex: number;
   };
+  panelParameters?: Array<{
+    parameterCode: string;
+    parameterName: string;
+    numericValue: number | null;
+  }>;
   previousResultWithin72h?: {
     numericValue: number;
     reportedAt: string;
@@ -318,13 +325,22 @@ export class AutoVerificationAuto10AService {
         }
       }
 
-      if (previousValue72h !== null && previousValue72h !== 0) {
-        deltaChangePercent = Number(
-          (Math.abs((input.numericValue - previousValue72h) / previousValue72h) * 100).toFixed(2)
-        );
-        if (deltaChangePercent >= rule.maxDeltaPercent72h) {
-          deltaCheckPassed = false;
-          failTags.push('DELTA_BREACH');
+      if (previousValue72h !== null) {
+        if (previousValue72h === 0) {
+          // Bug 3.1: Zero-guard against ZeroDivisionError / Infinity
+          const absDiff = Math.abs(input.numericValue - previousValue72h);
+          if (absDiff > 5.0) {
+            deltaCheckPassed = false;
+            failTags.push('DELTA_BREACH');
+          }
+        } else {
+          deltaChangePercent = Number(
+            (Math.abs((input.numericValue - previousValue72h) / previousValue72h) * 100).toFixed(2)
+          );
+          if (deltaChangePercent >= rule.maxDeltaPercent72h) {
+            deltaCheckPassed = false;
+            failTags.push('DELTA_BREACH');
+          }
         }
       }
     }
@@ -349,6 +365,20 @@ export class AutoVerificationAuto10AService {
     }
 
     // ------------------------------------------------------------------------
+    // GATE 6: Inter-Parameter Cross-Validation (Bug 3.2: LFT, CBC, Lipid rules)
+    // ------------------------------------------------------------------------
+    let crossParamPassed = true;
+    let crossParamViolations: string[] = [];
+    if (input.panelParameters && input.panelParameters.length > 1) {
+      const crossReport = InterParameterValidationEngine.validatePanel(input.panelParameters);
+      if (!crossReport.isValid) {
+        crossParamPassed = false;
+        failTags.push('CROSS_PARAMETER_CONTRADICTION');
+        crossParamViolations = crossReport.violations.map((v) => v.violationMessage);
+      }
+    }
+
+    // ------------------------------------------------------------------------
     // FINAL VERDICT & AUTOMATIC NABL PDF / PANIC HOOKS
     // ------------------------------------------------------------------------
     const allFivePassed =
@@ -357,7 +387,8 @@ export class AutoVerificationAuto10AService {
       withinRefInterval &&
       !isPanic &&
       deltaCheckPassed &&
-      serumIndicesClean;
+      serumIndicesClean &&
+      crossParamPassed;
 
     const verdict = allFivePassed ? 'AUTO_APPROVED' : 'ROUTED_TO_PATHOLOGIST';
     const nablPdfGenerated = allFivePassed;

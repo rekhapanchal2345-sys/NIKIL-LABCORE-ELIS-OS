@@ -37,6 +37,16 @@ export interface DefaultHospitalUser {
 
 export const CANONICAL_RBAC_USERS: DefaultHospitalUser[] = [
   {
+    email: "nikilpanchal88@gmail.com",
+    employeeCode: "NIKIL001",
+    fullName: "Nikil Panchal",
+    role: "SUPER_ADMIN",
+    specialization: "Chief Executive Officer and Laboratory Medicine Directorate",
+    passwordPlainText: "nikil@704198",
+    phone: "9876543210",
+  },
+
+  {
     email: "superadmin@labcore.local",
     employeeCode: "EMP-SA01",
     fullName: "Dr. Rajesh Sharma, MD",

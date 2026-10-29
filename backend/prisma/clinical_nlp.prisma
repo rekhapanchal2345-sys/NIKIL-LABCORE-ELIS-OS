@@ -1,0 +1,116 @@
+// ==============================================================================
+// NIKIL-LABCORE-ELIS-OS: ENTERPRISE DATABASE ARCHITECTURE (PRISMA)
+// COMPLIANCE: NABL ISO 15189:2022 | HIPAA | GDPR
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// 1. HUMAN RESOURCES & NABL COMPLIANCE
+// -----------------------------------------------------------------------------
+model Pathologist {
+  id                  String             @id @default(uuid()) @db.Uuid
+  licenseNumber       String             @unique @db.VarChar(100)
+  fullName            String             @db.VarChar(255)
+  specialization      String             @db.VarChar(255)
+  cryptographicPubKey String             @db.Text // Used for Digital Signatures
+  isActive            Boolean            @default(true)
+  auditLogs           NlpAuditLog[]
+  signatures          DigitalSignature[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([licenseNumber])
+}
+
+// -----------------------------------------------------------------------------
+// 2. RAW DATA INGESTION (HL7/FHIR)
+// -----------------------------------------------------------------------------
+model DocumentIngestion {
+  id             String              @id @default(uuid()) @db.Uuid
+  patientId      String              @db.Uuid
+  sourceSystem   String              @db.VarChar(100) // e.g., 'EPIC', 'CERNER', 'PHYSICAL_SCAN'
+  documentType   DocumentType
+  rawContent     String              @db.Text // Base64 encoded or raw HL7 string
+  hipaaMasked    Boolean             @default(false)
+  ingestionDate  DateTime            @default(now())
+  nlpInferences  ClinicalInference[]
+  auditLogs      NlpAuditLog[]
+}
+
+enum DocumentType {
+  HL7_V2_ORU
+  FHIR_OBSERVATION
+  HISTOPATHOLOGY_PDF_OCR
+  PHYSICIAN_NOTES
+}
+
+// -----------------------------------------------------------------------------
+// 3. AI & NLP INFERENCE ENGINE
+// -----------------------------------------------------------------------------
+model ClinicalInference {
+  id                  String           @id @default(uuid()) @db.Uuid
+  documentId          String           @db.Uuid
+  document            DocumentIngestion @relation(fields: [documentId], references: [id])
+  extractedEntities   Json             @db.JsonB // Stores BERT Output: SNOMED, LOINC, Values
+  gnnInferences       Json             @db.JsonB // Stores Graph Neural Network correlations
+  requiresHumanReview Boolean          @default(true)
+  confidenceScore     Float            @db.DoublePrecision // Calibrated via Isotonic Regression
+  auditLogId          String?          @unique @db.Uuid
+  auditLog            NlpAuditLog?     @relation(fields: [auditLogId], references: [id])
+  signatureId         String?          @unique @db.Uuid
+  signature           DigitalSignature? @relation(fields: [signatureId], references: [id])
+  createdAt           DateTime         @default(now())
+
+  @@index([documentId])
+  @@index([requiresHumanReview])
+}
+
+// -----------------------------------------------------------------------------
+// 4. AUDIT & DIGITAL SIGNATURES (NABL ISO 15189:2022)
+// -----------------------------------------------------------------------------
+model NlpAuditLog {
+  id               String            @id @default(uuid()) @db.Uuid
+  documentId       String            @db.Uuid
+  document         DocumentIngestion @relation(fields: [documentId], references: [id])
+  pathologistId    String?           @db.Uuid
+  pathologist      Pathologist?      @relation(fields: [pathologistId], references: [id])
+  status           InferenceStatus
+  errorLog         String?           @db.Text
+  engineVersion    String            @db.VarChar(50) // e.g., 'v4.2.0-argon'
+  inference        ClinicalInference?
+  timestamp        DateTime          @default(now())
+
+  @@index([status])
+  @@index([timestamp])
+}
+
+enum InferenceStatus {
+  PROCESSING_STARTED
+  ENGINE_FAILURE
+  PENDING_HUMAN_REVIEW
+  AUTO_APPROVED_HIGH_CONFIDENCE
+  COMPLETED_SUCCESSFULLY
+  REJECTED_BY_PATHOLOGIST
+}
+
+model DigitalSignature {
+  id               String            @id @default(uuid()) @db.Uuid
+  pathologistId    String            @db.Uuid
+  pathologist      Pathologist       @relation(fields: [pathologistId], references: [id])
+  inferenceId      String            @unique @db.Uuid
+  inference        ClinicalInference @relation // Removed fields/references here as it's defined on the other side
+  cryptographicHash String           @db.Text // SHA-256 of the ClinicalInference payload
+  signedAt         DateTime          @default(now())
+  ipAddress        String            @db.VarChar(45) // IPv4 or IPv6
+  
+  @@index([pathologistId])
+}

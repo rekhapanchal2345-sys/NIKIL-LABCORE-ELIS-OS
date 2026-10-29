@@ -1,0 +1,5 @@
+{
+  "name": "labcore-filesystem",
+  "description": "Secure Local Filesystem MCP Server for NIKIL-LABCORE-ELIS-OS",
+  "version": "1.0.0"
+}

@@ -1,3 +1,4 @@
+import { buildResultValueSnapshot } from "../../services/referenceRangeSnapshot.service";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { WebSocketService } from "../../lib/websocket";
@@ -227,6 +228,23 @@ export const createResultAmendment = async (
       },
     });
 
+    // Synchronize parent report versioning and revoke digital signature (Bug 1.4 & Bug 4.1)
+    if (result.orderId) {
+      await prisma.report.updateMany({
+        where: { orderId: result.orderId },
+        data: {
+          version: versionNumber,
+          isAmended: true,
+          amendmentReason: data.amendmentReason,
+          amendedAt: new Date(),
+          amendedById: amendedBy,
+          digitalSignatureHash: null,
+          signedAt: null,
+          signedByUserId: null,
+        },
+      });
+    }
+
     return amendment;
   } catch (error) {
     console.error('Error in createResultAmendment:', error);
@@ -320,6 +338,9 @@ export const createResult = async (
     where: {
       id: data.orderId,
     },
+    include: {
+      patient: true,
+    },
   });
 
   if (!order) {
@@ -332,7 +353,11 @@ export const createResult = async (
     },
 
     include: {
-      parameters: true,
+      parameters: {
+        include: {
+          referenceRanges: true,
+        },
+      },
     },
   });
 
@@ -417,18 +442,21 @@ export const createResult = async (
         enteredAt: new Date(),
 
         values: {
-          create: data.values.map(
-            (value) => ({
-              parameterId:
-                value.parameterId,
-
-              value: value.value,
-
-              flag: value.flag,
-
-              remark: value.remark,
-            })
-          ),
+          create: data.values.map((v) => {
+            const param = test.parameters.find((p) => p.id === v.parameterId);
+            if (!param) {
+              return {
+                parameterId: v.parameterId,
+                value: v.value,
+                flag: v.flag,
+                remark: v.remark,
+              };
+            }
+            return buildResultValueSnapshot(v, param, {
+              dateOfBirth: order.patient?.dateOfBirth,
+              gender: order.patient?.gender,
+            });
+          }),
         },
       },
 
@@ -831,15 +859,52 @@ export const updateResult =
     const result =
       await prisma.$transaction(
         async (tx) => {
+          // Fetch test parameters & patient for reference range snapshot
+          const test = await tx.test.findUnique({
+            where: { id: existing.testId },
+            include: { parameters: { include: { referenceRanges: true } } },
+          });
+          const order = await tx.order.findUnique({
+            where: { id: existing.orderId },
+            include: { patient: true },
+          });
+
+          // Bug 4.2: Revoke / Invalidate Digital Signature on result edit or re-opening
+          await tx.report.updateMany({
+            where: { orderId: existing.orderId },
+            data: {
+              digitalSignatureHash: null,
+              signedAt: null,
+              signedByUserId: null,
+              status: "DRAFT",
+            },
+          });
+
           if (data.values) {
-            await tx.resultValue.deleteMany(
-              {
-                where: {
-                  resultId: id,
-                },
-              }
-            );
+            await tx.resultValue.deleteMany({
+              where: {
+                resultId: id,
+              },
+            });
           }
+
+          const snapshotUpdateValues = data.values
+            ? data.values.map((v) => {
+                const param = test?.parameters.find((p) => p.id === v.parameterId);
+                if (!param) {
+                  return {
+                    parameterId: v.parameterId,
+                    value: v.value,
+                    flag: v.flag,
+                    remark: v.remark,
+                  };
+                }
+                return buildResultValueSnapshot(v, param, {
+                  dateOfBirth: order?.patient?.dateOfBirth,
+                  gender: order?.patient?.gender,
+                });
+              })
+            : undefined;
 
           return tx.result.update({
             where: {
@@ -853,26 +918,15 @@ export const updateResult =
                 data.interpretation,
 
               status: "ENTERED",
+              approvedById: null,
+              approvedAt: null,
+              verifiedById: null,
+              verifiedAt: null,
 
-              ...(data.values
+              ...(snapshotUpdateValues
                 ? {
                     values: {
-                      create:
-                        data.values.map(
-                          (value) => ({
-                            parameterId:
-                              value.parameterId,
-
-                            value:
-                              value.value,
-
-                            flag:
-                              value.flag,
-
-                            remark:
-                              value.remark,
-                          })
-                        ),
+                      create: snapshotUpdateValues,
                     },
                   }
                 : {}),
@@ -1175,13 +1229,20 @@ export const calculateDeltaCheck = async (
   const prevValStr = previousResult.values[0].value;
   const prevVal = parseFloat(prevValStr);
 
-  if (isNaN(prevVal) || prevVal === 0) {
-    return { deltaPercentage: 0, isFlagged: false, previousValue: prevVal };
+  if (isNaN(prevVal)) {
+    return { deltaPercentage: 0, isFlagged: false, previousValue: null };
   }
 
-  const deltaPercentage = ((currentValue - prevVal) / prevVal) * 100;
+  // Bug 3.1: Zero-guard against ZeroDivisionError / Infinity
+  if (prevVal === 0) {
+    const absDiff = Math.abs(currentValue - prevVal);
+    const isFlagged = absDiff > 5.0; // Significant shift from zero baseline
+    return { deltaPercentage: 0, isFlagged, previousValue: 0 };
+  }
+
+  const deltaPercentage = Number((((currentValue - prevVal) / prevVal) * 100).toFixed(2));
   
-  // Flag physiologically impossible jumps (e.g., > 50% shift in 72h)
+  // Flag physiologically impossible jumps (e.g., > 50% shift in lookback window)
   const isFlagged = Math.abs(deltaPercentage) > 50;
 
   return { deltaPercentage, isFlagged, previousValue: prevVal };

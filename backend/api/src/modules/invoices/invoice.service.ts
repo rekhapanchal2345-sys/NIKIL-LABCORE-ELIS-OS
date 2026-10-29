@@ -1,6 +1,6 @@
 import prisma from "../../../config/database";
 import { getNextSequenceNumber } from "../../services/sequence.service";
-import { getISTDayBounds, roundHalfUp } from "../../utils/money";
+import { getISTDayBounds, roundHalfUp, rupeesToPaise, paiseToRupees } from "../../utils/money";
 import { HttpError } from "../../utils/http-error";
 
 // =======================================================
@@ -47,56 +47,53 @@ export const createInvoice = async (
       throw new HttpError("Cannot create invoice without order items", 400);
     }
 
-    const subtotal = order.items.reduce(
-      (total, item) => {
-        return total + (Number(item.price) || 0);
-      },
-      0
-    );
+    // Bug 5.4: Use exact integer paise arithmetic to prevent floating point drift and ₹0.01 discrepancies
+    const subtotalPaise = order.items.reduce((total, item) => {
+      return total + rupeesToPaise(Number(item.price) || 0);
+    }, 0);
 
-    if (subtotal <= 0) {
+    if (subtotalPaise <= 0) {
       throw new HttpError("Invalid subtotal amount", 400);
     }
 
-    const discount = Math.max(
-      0,
-      data.discount ?? 0
-    );
-
-    if (discount > subtotal) {
+    const discountPaise = Math.max(0, rupeesToPaise(data.discount ?? 0));
+    if (discountPaise > subtotalPaise) {
       throw new HttpError("Discount cannot be greater than subtotal", 400);
     }
 
-    if (discount > 0 && order.createdById) {
+    if (discountPaise > 0 && order.createdById) {
       const user = await prisma.user.findUnique({ where: { id: order.createdById } });
       const isManagerOrAdmin = user && ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(user.role);
       
       if (!isManagerOrAdmin) {
-        const maxAllowedDiscount = subtotal * 0.10;
-        if (discount > maxAllowedDiscount) {
-          throw new HttpError(`Unauthorized Discount: Front desk cannot exceed 10% (Max allowed: ₹${maxAllowedDiscount}). Manager override required.`, 403);
+        const maxAllowedDiscountPaise = Math.round(subtotalPaise * 0.10);
+        if (discountPaise > maxAllowedDiscountPaise) {
+          throw new HttpError(`Unauthorized Discount: Front desk cannot exceed 10% (Max allowed: ₹${paiseToRupees(maxAllowedDiscountPaise)}). Manager override required.`, 403);
         }
       }
     }
 
-    const taxableAmount = roundHalfUp(subtotal - discount);
-
-    // Configurable GST rate (default 18% or 0% for clinical exemption)
+    const taxablePaise = subtotalPaise - discountPaise;
     const gstPercent = data.gstPercent !== undefined ? data.gstPercent : 18;
-
     if (gstPercent < 0 || gstPercent > 100) {
       throw new HttpError("GST percentage must be between 0 and 100", 400);
     }
 
-    const gstAmount = roundHalfUp((taxableAmount * gstPercent) / 100);
-
-    // Bifurcate tax based on Place of Supply (Intra-state CGST+SGST vs Inter-state IGST)
+    const gstPaise = Math.round((taxablePaise * gstPercent) / 100);
     const isInterState = Boolean(data.isInterState);
-    const cgstAmount = isInterState ? 0 : roundHalfUp(gstAmount / 2);
-    const sgstAmount = isInterState ? 0 : roundHalfUp(gstAmount - cgstAmount);
-    const igstAmount = isInterState ? gstAmount : 0;
+    const cgstPaise = isInterState ? 0 : Math.floor(gstPaise / 2);
+    const sgstPaise = isInterState ? 0 : gstPaise - cgstPaise;
+    const igstPaise = isInterState ? gstPaise : 0;
+    const grandTotalPaise = taxablePaise + gstPaise;
 
-    const grandTotal = roundHalfUp(taxableAmount + gstAmount);
+    const subtotal = paiseToRupees(subtotalPaise);
+    const discount = paiseToRupees(discountPaise);
+    const taxableAmount = paiseToRupees(taxablePaise);
+    const gstAmount = paiseToRupees(gstPaise);
+    const cgstAmount = paiseToRupees(cgstPaise);
+    const sgstAmount = paiseToRupees(sgstPaise);
+    const igstAmount = paiseToRupees(igstPaise);
+    const grandTotal = paiseToRupees(grandTotalPaise);
 
     const invoice = await prisma.$transaction(async (tx) => {
       const series = data.seriesType || "INV";

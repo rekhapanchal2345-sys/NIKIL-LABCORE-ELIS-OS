@@ -216,6 +216,24 @@ TOOLS_DEFINITION = [
             },
             "required": []
         }
+    },
+    {
+        "name": "run_terminal_command",
+        "description": "Execute any command line / terminal command in the workspace directory (e.g. 'npm test', 'tsc --noEmit', 'python test.py', 'git status', 'dir'). Returns stdout, stderr, and exit code.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The command string to execute in PowerShell/Command Prompt."
+                },
+                "timeout_seconds": {
+                    "type": "integer",
+                    "description": "Timeout in seconds (default: 60)."
+                }
+            },
+            "required": ["command"]
+        }
     }
 ]
 
@@ -408,6 +426,35 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> str:
                 return f"No matches found for query: '{query}'"
             return "\n".join(matches)
 
+        elif name == "run_terminal_command":
+            cmd = arguments.get("command", "").strip()
+            if not cmd:
+                return "Error: No command provided."
+            timeout = int(arguments.get("timeout_seconds", 60))
+            import subprocess
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    shell=True,
+                    cwd=str(WORKSPACE_DIR),
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    encoding="utf-8",
+                    errors="replace"
+                )
+                output = []
+                if proc.stdout:
+                    output.append(f"STDOUT:\n{proc.stdout}")
+                if proc.stderr:
+                    output.append(f"STDERR:\n{proc.stderr}")
+                output.append(f"Exit Code: {proc.returncode}")
+                return "\n".join(output) if output else "Command completed with no output."
+            except subprocess.TimeoutExpired:
+                return f"Error: Command timed out after {timeout} seconds."
+            except Exception as e:
+                return f"Error executing command: {str(e)}"
+
         else:
             return f"Unknown tool: {name}"
 
@@ -438,7 +485,36 @@ def handle_jsonrpc(req_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
                 "serverInfo": {
                     "name": "NIKIL-LABCORE-ELIS-OS",
                     "version": "1.1.0"
-                }
+                },
+                "instructions": "Full-control Enterprise Antigravity IDE MCP bridge with zero-friction terminal and file operations."
+            }
+        }
+
+    elif method == "server/discover":
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "resultType": "complete",
+                "protocolVersion": "2024-11-05",
+                "supportedVersions": ["2026-07-28", "2024-11-05", "latest"],
+                "capabilities": {
+                    "tools": {"listChanged": False},
+                    "resources": {"subscribe": False, "listChanged": False},
+                    "prompts": {"listChanged": False}
+                },
+                "serverInfo": {
+                    "name": "NIKIL-LABCORE-ELIS-OS",
+                    "version": "1.1.0"
+                },
+                "_meta": {
+                    "io.modelcontextprotocol/serverInfo": {
+                        "name": "NIKIL-LABCORE-ELIS-OS",
+                        "version": "1.1.0"
+                    }
+                },
+                "tools": TOOLS_DEFINITION,
+                "instructions": "Full-control Enterprise Antigravity IDE MCP bridge with zero-friction terminal and file operations."
             }
         }
 
@@ -515,6 +591,46 @@ def handle_jsonrpc(req_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         return None
 
 
+active_sessions: Dict[str, asyncio.Queue] = {}
+
+
+@app.head("/")
+@app.head("/mcp")
+@app.head("/sse")
+@app.head("/messages")
+async def mcp_head(request: Request):
+    """Handle HEAD requests for preflight and connectivity checks."""
+    is_sse = "sse" in request.url.path or "text/event-stream" in request.headers.get("accept", "")
+    return Response(
+        status_code=200,
+        headers={
+            "Content-Type": "text/event-stream" if is_sse else "application/json",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+
+@app.options("/")
+@app.options("/mcp")
+@app.options("/sse")
+@app.options("/messages")
+async def mcp_options(request: Request):
+    """Handle CORS OPTIONS preflight."""
+    return Response(
+        status_code=204,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
+
+
 @app.get("/")
 @app.get("/mcp")
 @app.get("/sse")
@@ -525,21 +641,44 @@ async def mcp_get(request: Request):
 
     if is_sse:
         session_id = str(uuid.uuid4())
+        queue: asyncio.Queue = asyncio.Queue()
+        active_sessions[session_id] = queue
+
+        # MCP SSE standard endpoint for POST messages
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        proto = request.headers.get("x-forwarded-proto", "https")
+        if host:
+            endpoint_uri = f"{proto}://{host}/messages?sessionId={session_id}"
+        else:
+            endpoint_uri = f"/messages?sessionId={session_id}"
+
         async def event_generator():
-            yield f"event: endpoint\ndata: /mcp?sessionId={session_id}\n\n"
+            # Flush reverse proxy / Cloudflare initial chunk buffer
+            yield ": " + (" " * 1024) + "\n\n"
+            # Send initial endpoint event per MCP SSE spec
+            yield f"event: endpoint\ndata: {endpoint_uri}\n\n"
             try:
                 while True:
-                    await asyncio.sleep(15)
-                    yield ": ping\n\n"
+                    try:
+                        # Wait for message to stream back to client or ping every 15s
+                        msg = await asyncio.wait_for(queue.get(), timeout=15.0)
+                        yield f"event: message\ndata: {json.dumps(msg)}\n\n"
+                    except asyncio.TimeoutError:
+                        yield ": ping\n\n"
             except asyncio.CancelledError:
                 pass
+            finally:
+                active_sessions.pop(session_id, None)
+
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
+                "X-Accel-Buffering": "no",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
             }
         )
 
@@ -547,8 +686,50 @@ async def mcp_get(request: Request):
         "status": "online",
         "service": "NIKIL-LABCORE-ELIS-OS MCP Server for Gemini Spark & Gemini 4 Argon",
         "mcp_endpoint": "/mcp",
+        "sse_endpoint": "/sse",
         "version": "1.1.0",
         "available_tools": [t["name"] for t in TOOLS_DEFINITION]
+    })
+
+
+# ChatGPT / OpenAI well-known configuration routes (to declare no authentication required)
+@app.get("/.well-known/oauth-protected-resource")
+@app.get("/.well-known/oauth-protected-resource/{rest:path}")
+@app.get("/mcp/.well-known/oauth-protected-resource")
+@app.get("/mcp/.well-known/oauth-protected-resource/{rest:path}")
+@app.get("/sse/.well-known/oauth-protected-resource")
+@app.get("/sse/.well-known/oauth-protected-resource/{rest:path}")
+async def oauth_protected_resource():
+    return JSONResponse({
+        "resource": "https://mcp.local",
+        "authorization_servers": []
+    })
+
+@app.get("/.well-known/oauth-authorization-server")
+@app.get("/.well-known/oauth-authorization-server/{rest:path}")
+@app.get("/mcp/.well-known/oauth-authorization-server")
+@app.get("/mcp/.well-known/oauth-authorization-server/{rest:path}")
+@app.get("/sse/.well-known/oauth-authorization-server")
+@app.get("/sse/.well-known/oauth-authorization-server/{rest:path}")
+async def oauth_authorization_server():
+    return JSONResponse({
+        "issuer": "https://mcp.local",
+        "authorization_endpoint": "",
+        "token_endpoint": "",
+        "response_types_supported": ["none"]
+    })
+
+@app.get("/.well-known/openid-configuration")
+@app.get("/.well-known/openid-configuration/{rest:path}")
+@app.get("/mcp/.well-known/openid-configuration")
+@app.get("/mcp/.well-known/openid-configuration/{rest:path}")
+@app.get("/sse/.well-known/openid-configuration")
+@app.get("/sse/.well-known/openid-configuration/{rest:path}")
+async def openid_configuration():
+    return JSONResponse({
+        "issuer": "https://mcp.local",
+        "authorization_endpoint": "",
+        "token_endpoint": ""
     })
 
 
@@ -557,25 +738,39 @@ async def mcp_get(request: Request):
 @app.post("/sse")
 @app.post("/messages")
 async def mcp_post(request: Request):
-    """Handle POST JSON-RPC requests."""
+    """Handle POST JSON-RPC requests with session routing."""
+    session_id = request.query_params.get("sessionId")
+    raw_body = await request.body()
+    if not raw_body or not raw_body.strip():
+        # Handle empty probes from ChatGPT or reverse proxies
+        return JSONResponse({"status": "ok", "service": "NIKIL-LABCORE-ELIS-OS", "mcp": "ready", "tools": len(TOOLS_DEFINITION)})
+
     try:
-        body = await request.json()
+        body = json.loads(raw_body.decode("utf-8", errors="replace"))
     except Exception:
         return Response(status_code=400, content="Invalid JSON body")
 
     if isinstance(body, list):
-        # Batch requests
         responses = []
         for single in body:
             resp = handle_jsonrpc(single)
             if resp:
                 responses.append(resp)
+        if session_id and session_id in active_sessions and responses:
+            for r in responses:
+                await active_sessions[session_id].put(r)
+            return Response(status_code=202, content="Accepted")
         return JSONResponse(responses)
     else:
         resp = handle_jsonrpc(body)
-        if resp is None:
-            return Response(status_code=204)
-        return JSONResponse(resp)
+        if session_id and session_id in active_sessions:
+            if resp is not None:
+                await active_sessions[session_id].put(resp)
+            return Response(status_code=202, content="Accepted")
+        else:
+            if resp is None:
+                return Response(status_code=204)
+            return JSONResponse(resp)
 
 
 if __name__ == "__main__":

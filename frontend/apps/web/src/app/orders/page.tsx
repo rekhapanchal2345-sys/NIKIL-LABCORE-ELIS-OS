@@ -16,7 +16,6 @@ import {
   DoctorCell,
   OrderRowQuickActions,
   QuickAssignDoctorModal,
-  QuickCollectSampleModal,
   AddPaymentModal,
   CancelOrderModal,
   PhlebotomyCollectionSheetModal,
@@ -46,6 +45,7 @@ import SpecimenAccessioningModal from "@/components/orders/SpecimenAccessioningM
 import RegisterOrderWizard from "@/components/orders/RegisterOrderWizard";
 import PhlebotomyBarcodeGeneratorModal from "@/components/orders/PhlebotomyBarcodeGeneratorModal";
 import DiagnosticInvestigationStudio from "@/components/orders/DiagnosticInvestigationStudio";
+import PhlebotomyDrawModal from "@/components/orders/PhlebotomyDrawModal";
 
 import {
   Barcode,
@@ -827,7 +827,7 @@ export default function OrdersPage() {
                 <Timer className="h-3.5 w-3.5 text-teal-600" />
                 <span>Turnaround time</span>
                 {tatData && tatData.breached > 0 && (
-                  <span className="rounded-full bg-rose-600 px-1.5 py-0.2 text-[9px] font-bold text-white animate-pulse">
+                  <span className="rounded-full bg-rose-600 px-1.5 py-0.2 text-[9px] font-bold text-white">
                     {tatData.breached} Breached
                   </span>
                 )}
@@ -1214,7 +1214,7 @@ export default function OrdersPage() {
                                       title={isStat ? "Click to revert to Routine" : "Click to escalate to STAT Emergency"}
                                       className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all flex items-center gap-0.5 cursor-pointer ${
                                         isStat
-                                          ? "bg-rose-600 text-white shadow-2xs hover:bg-rose-700 animate-pulse"
+                                          ? "bg-rose-600 text-white shadow-2xs hover:bg-rose-700"
                                           : "bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-700 border border-slate-200"
                                       }`}
                                     >
@@ -1340,7 +1340,7 @@ export default function OrdersPage() {
                                         setActiveModalOrder(order);
                                         setModalType("collectSample");
                                       }}
-                                      className="rounded-xl bg-purple-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-xs hover:bg-purple-700 transition-all flex items-center gap-1"
+                                      className="rounded-lg bg-sky-700 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-2xs hover:bg-sky-800 transition-colors flex items-center gap-1"
                                       title="Draw Sample / Phlebotomy"
                                     >
                                       <FlaskConical className="h-3 w-3" /> Draw
@@ -1777,7 +1777,7 @@ export default function OrdersPage() {
 
         {/* Collect Sample Modal */}
         {modalType === "collectSample" && activeModalOrder && (
-          <QuickCollectSampleModal
+          <PhlebotomyDrawModal
             order={activeModalOrder as any}
             isOpen={true}
             onClose={() => { setModalType(null); setActiveModalOrder(null); }}
@@ -1785,6 +1785,11 @@ export default function OrdersPage() {
               await orderApi.collectSample(activeModalOrder.id, {
                 barcode: data.barcode,
                 notes: data.notes,
+                collectionType: data.collectionType,
+                priority: data.priority,
+                location: data.location,
+                sampleQuality: data.sampleQuality,
+                sampleVolume: data.sampleVolume,
               });
               showToast("Specimen collected and tube barcode assigned", "success");
               setModalType(null);

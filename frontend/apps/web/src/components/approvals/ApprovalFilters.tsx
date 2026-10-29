@@ -1,16 +1,72 @@
 "use client";
 
-import React, { ChangeEvent, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
+import {
+  AlertOctagon,
+  AlertTriangle,
+  Archive,
+  CheckCircle2,
+  ClipboardCheck,
+  ListChecks,
+  RotateCcw,
+  Search,
+  Stethoscope,
+  Table as TableIcon,
+} from "lucide-react";
 
 interface ApprovalFiltersProps {
   onSearch: (term: string) => void;
-  onFilterChange: (filters: { status: string; dateFrom: string; dateTo: string; department?: string; filter?: string }) => void;
+  onFilterChange: (filters: { dateFrom: string; dateTo: string; department: string; status?: string; filter?: string }) => void;
   viewMode?: "workstation" | "table";
   onViewModeChange?: (mode: "workstation" | "table") => void;
   activeFilter?: string;
   onSelectFilterPill?: (pill: string) => void;
+  /** Controlled search text (lets the page clear or preset it from the URL). */
+  searchValue?: string;
   onOpenRules?: () => void;
 }
+
+type PillTone = "sky" | "slate" | "red" | "emerald" | "amber" | "orange" | "violet";
+
+const QUICK_PILLS: Array<{
+  key: string;
+  label: string;
+  status: string;
+  filter: string;
+  tone: PillTone;
+  Icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { key: "pending", label: "Ready for Sign-Off", status: "VERIFIED", filter: "", tone: "sky", Icon: ClipboardCheck },
+  { key: "pipeline", label: "Lab Pipeline", status: "", filter: "pipeline", tone: "slate", Icon: ListChecks },
+  { key: "critical", label: "Critical Values", status: "VERIFIED", filter: "critical", tone: "red", Icon: AlertOctagon },
+  { key: "abnormal", label: "Abnormal", status: "VERIFIED", filter: "abnormal", tone: "amber", Icon: AlertTriangle },
+  { key: "normal", label: "Normal", status: "VERIFIED", filter: "normal", tone: "emerald", Icon: CheckCircle2 },
+  { key: "rerun", label: "Returned / Rerun", status: "ENTERED", filter: "", tone: "orange", Icon: RotateCcw },
+  { key: "approved", label: "Signed Archive", status: "APPROVED", filter: "", tone: "violet", Icon: Archive },
+];
+
+const PILL_ACTIVE: Record<PillTone, string> = {
+  sky: "border-sky-600 bg-sky-600 text-white",
+  slate: "border-slate-700 bg-slate-700 text-white",
+  red: "border-red-600 bg-red-600 text-white",
+  emerald: "border-emerald-600 bg-emerald-600 text-white",
+  amber: "border-amber-600 bg-amber-600 text-white",
+  orange: "border-orange-600 bg-orange-600 text-white",
+  violet: "border-violet-600 bg-violet-600 text-white",
+};
+
+const DEPARTMENTS = [
+  "Biochemistry",
+  "Hematology",
+  "Microbiology",
+  "Immunology",
+  "Clinical Pathology",
+  "Histopathology",
+];
+
+const fieldLabel = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500";
+const fieldInput =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100";
 
 export default function ApprovalFilters({
   onSearch,
@@ -19,33 +75,16 @@ export default function ApprovalFilters({
   onViewModeChange,
   activeFilter = "pending",
   onSelectFilterPill,
-  onOpenRules,
+  searchValue,
 }: ApprovalFiltersProps) {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [search, setSearch] = useState(searchValue ?? "");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [department, setDepartment] = useState("");
 
-  const quickPills = [
-    { key: "pending", label: "⏳ Ready to Sign (Verified)", status: "VERIFIED", filter: "", accent: "cyan" },
-    { key: "pipeline", label: "📋 All Registered & Lab Pipeline", status: "", filter: "pipeline", accent: "blue" },
-    { key: "critical", label: "🚨 Critical & Panic Only", status: "VERIFIED", filter: "critical", accent: "rose" },
-    { key: "normal", label: "⚡ 100% Normal (Clean)", status: "VERIFIED", filter: "normal", accent: "emerald" },
-    { key: "abnormal", label: "⚠️ Abnormal Values", status: "VERIFIED", filter: "abnormal", accent: "amber" },
-    { key: "rerun", label: "🔄 Returned & Rerun", status: "ENTERED", filter: "", accent: "orange" },
-    { key: "approved", label: "📜 Signed Archive", status: "APPROVED", filter: "", accent: "violet" },
-  ];
-
-  const accentActiveMap: Record<string, string> = {
-    cyan: "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/30 ring-1 ring-cyan-500/40",
-    blue: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 ring-1 ring-blue-500/40",
-    rose: "bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-600/30 ring-1 ring-rose-500/40 animate-pulse",
-    emerald: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-500/40",
-    amber: "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30 ring-1 ring-amber-400/40",
-    orange: "bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md shadow-orange-600/30 ring-1 ring-orange-500/40",
-    violet: "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-violet-600/30 ring-1 ring-violet-500/40",
-  };
+  useEffect(() => {
+    if (searchValue !== undefined) setSearch(searchValue);
+  }, [searchValue]);
 
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -56,183 +95,142 @@ export default function ApprovalFilters({
   const handleDepartmentChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setDepartment(value);
-    onFilterChange({ status, dateFrom, dateTo, department: value });
+    onFilterChange({ dateFrom, dateTo, department: value });
   };
 
   const handleDateFromChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setDateFrom(value);
-    onFilterChange({ status, dateFrom: value, dateTo, department });
+    onFilterChange({ dateFrom: value, dateTo, department });
   };
 
   const handleDateToChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setDateTo(value);
-    onFilterChange({ status, dateFrom, dateTo: value, department });
+    onFilterChange({ dateFrom, dateTo: value, department });
   };
 
-  const handlePillClick = (pill: typeof quickPills[0]) => {
-    setStatus(pill.status);
-    if (onSelectFilterPill) {
-      onSelectFilterPill(pill.key);
-    }
-    onFilterChange({
-      status: pill.status,
-      dateFrom,
-      dateTo,
-      department,
-      filter: pill.filter,
-    });
+  const handlePillClick = (pill: (typeof QUICK_PILLS)[number]) => {
+    onSelectFilterPill?.(pill.key);
   };
 
   const handleReset = () => {
     setSearch("");
-    setStatus("");
     setDateFrom("");
     setDateTo("");
     setDepartment("");
     onSearch("");
-    if (onSelectFilterPill) onSelectFilterPill("pending");
-    onFilterChange({ status: "VERIFIED", dateFrom: "", dateTo: "", department: "", filter: "" });
+    onSelectFilterPill?.("pending");
+    onFilterChange({ dateFrom: "", dateTo: "", department: "" });
   };
 
   const hasFilters =
     Boolean(search) ||
-    Boolean(status && status !== "VERIFIED") ||
     Boolean(dateFrom) ||
     Boolean(dateTo) ||
     Boolean(department);
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-2xl shadow-slate-950/80 space-y-4">
-      {/* Top row: Quick Pills & View Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-        {/* Quick Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {quickPills.map((pill) => {
-            const isPillActive = activeFilter === pill.key;
+    <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      {/* Queue selector + view switch */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Approval queues">
+          {QUICK_PILLS.map((pill) => {
+            const isActive = activeFilter === pill.key;
+            const { Icon } = pill;
             return (
               <button
                 key={pill.key}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => handlePillClick(pill)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-150 flex items-center gap-1.5 ${
-                  isPillActive
-                    ? accentActiveMap[pill.accent]
-                    : "border border-slate-700/60 bg-slate-900/80 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-slate-200"
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  isActive
+                    ? PILL_ACTIVE[pill.tone]
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
+                <Icon className="h-3.5 w-3.5" />
                 {pill.label}
               </button>
             );
           })}
         </div>
 
-        {/* View Mode Switcher & Policy trigger */}
-        <div className="flex items-center gap-2">
-          {onOpenRules && (
+        {onViewModeChange && (
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1 text-xs">
             <button
               type="button"
-              onClick={onOpenRules}
-              className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white shadow-sm transition-colors flex items-center gap-1.5"
+              onClick={() => onViewModeChange("table")}
+              aria-pressed={viewMode === "table"}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-semibold transition-colors ${
+                viewMode === "table" ? "bg-white text-sky-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
             >
-              <span>🛡️</span>
-              <span>Sign-Off Policies</span>
+              <TableIcon className="h-3.5 w-3.5" />
+              Worklist
             </button>
-          )}
-
-          {onViewModeChange && (
-            <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
-              <button
-                type="button"
-                onClick={() => onViewModeChange("workstation")}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition-all ${
-                  viewMode === "workstation"
-                    ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/20"
-                    : "text-slate-500 hover:text-slate-200"
-                }`}
-              >
-                <span>🩺</span>
-                <span>Workstation</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onViewModeChange("table")}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition-all ${
-                  viewMode === "table"
-                    ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/20"
-                    : "text-slate-500 hover:text-slate-200"
-                }`}
-              >
-                <span>📊</span>
-                <span>Dense Table</span>
-              </button>
-            </div>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={() => onViewModeChange("workstation")}
+              aria-pressed={viewMode === "workstation"}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-semibold transition-colors ${
+                viewMode === "workstation" ? "bg-white text-sky-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Stethoscope className="h-3.5 w-3.5" />
+              Workstation
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Main Filter Inputs */}
+      {/* Search + refinements */}
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-2">
-          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Instant Search
+          <label htmlFor="approval-search" className={fieldLabel}>
+            Search
           </label>
           <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
-              🔍
-            </span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
+              id="approval-search"
               type="search"
               value={search}
               onChange={handleSearchChange}
-              placeholder="Search Patient, UHID, Barcode, Test..."
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              placeholder="Patient, UHID, order no., barcode or test"
+              className={`${fieldInput} pl-9`}
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Laboratory Section
+          <label htmlFor="approval-department" className={fieldLabel}>
+            Department
           </label>
-          <select
-            value={department}
-            onChange={handleDepartmentChange}
-            className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
-          >
-            <option value="">All Departments</option>
-            <option value="Biochemistry">Biochemistry</option>
-            <option value="Hematology">Hematology</option>
-            <option value="Microbiology">Microbiology</option>
-            <option value="Immunology">Immunology / Serology</option>
-            <option value="Clinical Pathology">Clinical Pathology</option>
-            <option value="Histopathology">Histopathology</option>
+          <select id="approval-department" value={department} onChange={handleDepartmentChange} className={fieldInput}>
+            <option value="">All departments</option>
+            {DEPARTMENTS.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
           </select>
         </div>
 
         <div>
-          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            From Date
+          <label htmlFor="approval-date-from" className={fieldLabel}>
+            From date
           </label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={handleDateFromChange}
-            className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
-          />
+          <input id="approval-date-from" type="date" value={dateFrom} onChange={handleDateFromChange} className={fieldInput} />
         </div>
 
         <div>
-          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            To Date
+          <label htmlFor="approval-date-to" className={fieldLabel}>
+            To date
           </label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={handleDateToChange}
-            className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
-          />
+          <input id="approval-date-to" type="date" value={dateTo} onChange={handleDateToChange} className={fieldInput} />
         </div>
 
         <div className="flex items-end">
@@ -240,9 +238,9 @@ export default function ApprovalFilters({
             type="button"
             onClick={handleReset}
             disabled={!hasFilters}
-            className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Reset Filters
+            Reset filters
           </button>
         </div>
       </div>

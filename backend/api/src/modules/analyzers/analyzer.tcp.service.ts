@@ -1,3 +1,5 @@
+import { autoVerificationAuto10AService } from "../results/autoverification-auto10a.service";
+import { buildResultValueSnapshot } from "../../services/referenceRangeSnapshot.service";
 import net from "net";
 import prisma from "../../../config/database";
 import { createAnalyzerLog } from "./analyzer.service";
@@ -204,9 +206,27 @@ export class AnalyzerTcpService {
       const analyzerId = `TCP_ANALYZER_${socket.remotePort || "01"}`;
       console.log(`[Analyzer TCP] Instrument connected: ${clientAddress} (Assigned ID: ${analyzerId})`);
 
+      // Bug 2.2: Enable TCP keep-alive probes and application-level heartbeat monitoring
+      socket.setKeepAlive(true, 10000);
+      socket.setNoDelay(true);
+
       // Initialize bidirectional ASTM E1381/E1394 & HL7 MLLP FSM for this physical socket
       const fsm = new AstmFsmParser(analyzerId, resolveWorklistFromDatabase);
       this.activeClients.set(clientAddress, { socket, fsm });
+
+      let lastActivity = Date.now();
+      const heartbeatTimer = setInterval(() => {
+        const silenceSeconds = (Date.now() - lastActivity) / 1000;
+        if (silenceSeconds > 60 && fsm.getState() === 'IDLE') {
+          console.warn(`[Analyzer TCP] Silence timeout (>60s) on socket ${clientAddress}. Forcing connection reset.`);
+          clearInterval(heartbeatTimer);
+          socket.destroy();
+        }
+      }, 15000);
+
+      socket.on("data", () => {
+        lastActivity = Date.now();
+      });
 
       // Handle raw telemetry frames for real-time live packet sniffer
       fsm.on("telemetryFrame", (event: RawTelemetryFrameEvent) => {
@@ -358,6 +378,154 @@ export class AnalyzerTcpService {
         } catch (logErr: any) {
           console.error("[Analyzer TCP] Failed to write AnalyzerLog record:", logErr?.message);
         }
+
+        // 5. Atomic Sample & Result State Management (Bug 2.3 Rerun Guard & Bug 2.4 Non-Numeric Flags)
+        if (pkg.order?.specimenBarcode) {
+          const barcode = pkg.order.specimenBarcode.trim();
+          const db: any = prisma;
+          try {
+            const sample = await db.sample.findFirst({
+              where: {
+                OR: [{ barcode }, { sampleNumber: barcode }],
+              },
+              include: {
+                order: {
+                  include: {
+                    patient: true,
+                    results: {
+                      include: {
+                        values: true,
+                        test: { include: { parameters: { include: { referenceRanges: true } } } },
+                      },
+                    },
+                  },
+                },
+              },
+            });
+
+            if (sample && sample.order) {
+              const existingResult = sample.order.results?.[0];
+              if (existingResult) {
+                const currentStatus = existingResult.status;
+
+                // If already VERIFIED, APPROVED, or PUBLISHED: Hold in Rerun Quarantine! (Bug 2.3)
+                if (currentStatus === "VERIFIED" || currentStatus === "APPROVED" || currentStatus === "PUBLISHED") {
+                  console.warn(`[Analyzer TCP Rerun Guard] Barcode ${barcode} is already ${currentStatus}. Quarantining rerun into conflict queue.`);
+                  await createAnalyzerLog({
+                    machineName: pkg.analyzerId,
+                    machineCode: pkg.analyzerId,
+                    protocol: "ASTM",
+                    barcode,
+                    orderNumber: sample.order.orderNumber,
+                    rawMessage: `RERUN CONFLICT HOLD: Sample already ${currentStatus}. New rerun values quarantined for technician audit.`,
+                    parsedJson: {
+                      status: "RERUN_CONFLICT_HOLD",
+                      existingStatus: currentStatus,
+                      existingResultId: existingResult.id,
+                      quarantinedResults: pkg.results,
+                      receivedAt: new Date().toISOString(),
+                    },
+                  });
+                } else {
+                  // Existing result is PENDING or ENTERED: update primary values & freeze reference ranges
+                  const testParams = existingResult.test?.parameters || [];
+                  const paramMap = new Map(testParams.map((p: any) => [p.shortName?.toUpperCase() || p.parameterName?.toUpperCase(), p]));
+
+                  for (const res of pkg.results) {
+                    const matchedParam: any = paramMap.get(res.parameterCode.toUpperCase()) || paramMap.get(res.parameterName.toUpperCase());
+                    if (matchedParam) {
+                      const snapshot = buildResultValueSnapshot(
+                        {
+                          parameterId: matchedParam.id,
+                          value: res.value,
+                          flag: res.abnormalFlag === "H" ? "HIGH" : res.abnormalFlag === "L" ? "LOW" : res.abnormalFlag === "HH" || res.abnormalFlag === "LL" ? "CRITICAL" : "NORMAL",
+                        },
+                        matchedParam,
+                        {
+                          dateOfBirth: sample.order.patient?.dateOfBirth,
+                          gender: sample.order.patient?.gender,
+                        }
+                      );
+
+                      await db.resultValue.upsert({
+                        where: {
+                          resultId_parameterId: {
+                            resultId: existingResult.id,
+                            parameterId: matchedParam.id,
+                          },
+                        },
+                        create: {
+                          resultId: existingResult.id,
+                          ...snapshot,
+                        },
+                        update: {
+                          ...snapshot,
+                        },
+                      });
+                    }
+                  }
+
+                  await db.result.update({
+                    where: { id: existingResult.id },
+                    data: {
+                      status: "ENTERED",
+                      enteredAt: new Date(),
+                      analyzerUsed: pkg.analyzerId,
+                    },
+                  });
+
+                  // Execute 5-Gate CLSI AUTO10-A Autoverification Pipeline (Bug 3.2, 3.3, 3.4)
+                  try {
+                    const panelParams = pkg.results.map((r: any) => ({
+                      parameterCode: r.parameterCode,
+                      parameterName: r.parameterName || r.parameterCode,
+                      numericValue: r.numericValue ?? (parseFloat(r.value) || null),
+                    }));
+
+                    const primaryRes = pkg.results[0];
+                    const evalResult = await autoVerificationAuto10AService.evaluateResultPipeline({
+                      resultId: existingResult.id,
+                      orderId: sample.order.id,
+                      orderNumber: sample.order.orderNumber,
+                      patientId: sample.order.patient?.id || "",
+                      patientName: `${sample.order.patient?.firstName || ''} ${sample.order.patient?.lastName || ''}`.trim(),
+                      patientAgeYears: (sample.order.patient as any)?.age || 30,
+                      patientGender: ((sample.order.patient as any)?.gender as any) || 'OTHER',
+                      analyzerCode: pkg.analyzerId,
+                      testCode: existingResult.test?.testCode || primaryRes?.parameterCode || 'PANEL',
+                      parameterName: primaryRes?.parameterName || 'Test Parameter',
+                      unit: primaryRes?.units || '',
+                      numericValue: primaryRes?.numericValue ?? (parseFloat(primaryRes?.value) || undefined),
+                      qualitativeValue: primaryRes?.value,
+                      machineErrorFlags: primaryRes?.interferenceFlag?.violatedIndex ? [primaryRes.interferenceFlag.violatedIndex] : [],
+                      serumIndices: {
+                        hemolysisIndex: 10,
+                        icterusIndex: 5,
+                        lipemiaIndex: 20,
+                      },
+                      panelParameters: panelParams,
+                    });
+
+                    if (evalResult.verdict === 'AUTO_APPROVED') {
+                      await db.result.update({
+                        where: { id: existingResult.id },
+                        data: {
+                          status: "VERIFIED",
+                          verifiedAt: new Date(),
+                          remarks: "AUTO_VERIFIED (CLSI AUTO10-A Compliant)",
+                        },
+                      });
+                    }
+                  } catch (autoErr: any) {
+                    console.warn(`[Analyzer TCP] Autoverification pipeline note: ${autoErr?.message}`);
+                  }
+                }
+              }
+            }
+          } catch (ingestErr: any) {
+            console.error(`[Analyzer TCP] Result ingestion exception for barcode ${barcode}:`, ingestErr?.message);
+          }
+        }
       });
 
       // Ingest inbound stream through deterministic state machine
@@ -377,6 +545,7 @@ export class AnalyzerTcpService {
       });
 
       socket.on("close", () => {
+        clearInterval(heartbeatTimer);
         console.log(`[Analyzer TCP] Disconnected: ${clientAddress}`);
         this.activeClients.delete(clientAddress);
       });

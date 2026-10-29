@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -72,7 +72,7 @@ interface SubMenuItem {
   badgeVariant?: "red" | "blue" | "amber" | "emerald" | "purple" | "violet" | "teal";
   isDivider?: boolean;       // Visual group separator
   dividerLabel?: string;     // Label for divider
-  liveKey?: "criticalPatients" | "opdQueue"; // Live count key
+  liveKey?: "criticalPatients" | "opdQueue" | "approvalsPending" | "approvalsCritical"; // Live count key
   /** When present, the child is only rendered for these roles. */
   allowedRoles?: string[];
   children?: {
@@ -516,7 +516,7 @@ const menuSections: MenuSection[] = [
         accent: ACCENTS.emerald,
         children: [
           { label: "Result Entry Worklist", href: "/results", badge: "Pending", badgeVariant: "amber" },
-          { label: "Critical / Panic Values", href: "/results?filter=critical", badge: "🚨 HH/LL", badgeVariant: "red" },
+          { label: "Critical / Panic Values", href: "/results?filter=critical", badge: "HH/LL", badgeVariant: "red" },
           { label: "Abnormal Results", href: "/results?filter=abnormal", badge: "Flag", badgeVariant: "amber" },
           { label: "Auto-Verified (QC Pass)", href: "/results?status=VERIFIED", badge: "Auto", badgeVariant: "emerald" },
           { label: "Delta Check Alerts", href: "/results?filter=delta", badge: "Δ", badgeVariant: "amber" },
@@ -532,14 +532,18 @@ const menuSections: MenuSection[] = [
         allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST"],
         accent: ACCENTS.rose,
         children: [
-          { label: "Approval Queue (Ready)", href: "/approvals", badge: "Sign", badgeVariant: "red" },
-          { label: "Doctor Workstation", href: "/approvals?mode=workstation", badge: "Desk", badgeVariant: "purple" },
-          { label: "Critical & Panic Alerts", href: "/approvals?filter=critical", badge: "🚨", badgeVariant: "red" },
-          { label: "Lab Pipeline (Registered)", href: "/approvals?filter=pipeline" },
-          { label: "Clean Fast-Track", href: "/approvals?filter=normal" },
-          { label: "Returned & Reruns", href: "/approvals?status=ENTERED" },
+          { label: "Sign-Off Worklist", href: "/approvals", liveKey: "approvalsPending" },
+          { label: "Critical Value Triage", href: "/approvals/panic-triage", liveKey: "approvalsCritical" },
+          { label: "Pathologist Workstation", href: "/approvals?mode=workstation" },
+          { isDivider: true, dividerLabel: "RESULT QUEUES", label: "", href: "#" },
+          { label: "Critical Values", href: "/approvals?filter=critical" },
+          { label: "Abnormal Results", href: "/approvals?filter=abnormal" },
+          { label: "Normal Results", href: "/approvals?filter=normal" },
+          { label: "Lab Pipeline", href: "/approvals?filter=pipeline" },
+          { label: "Returned for Rerun", href: "/approvals?status=ENTERED" },
           { label: "Signed Archive", href: "/approvals?status=APPROVED" },
-          { label: "Rules & Policies", href: "/approvals?view=rules" },
+          { isDivider: true, dividerLabel: "REFERENCE", label: "", href: "#" },
+          { label: "Sign-Off Policies", href: "/approvals?view=rules" },
         ],
       },
       {
@@ -749,8 +753,8 @@ export default function Sidebar({
   const searchParams = useSearchParams();
   const router = useRouter();
   const { logout, user } = useAuth();
-  const [userInitials, setUserInitials] = useState('NP');
-  const [userName, setUserName] = useState('Nikil Panchal');
+  const [userInitials, setUserInitials] = useState('U');
+  const [userName, setUserName] = useState('User');
   const [userRole, setUserRole] = useState('ADMIN');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -999,6 +1003,15 @@ export default function Sidebar({
     // does not light up alongside a deeper settings page.
     if (hrefPath === "/settings" && !hrefQuery) {
       return pathname === "/settings" && !searchParams.get("tab");
+    }
+
+    // The approvals worklist owns its queues through query parameters. The bare entry is active
+    // only for the default queue and for result detail pages, never alongside a filtered queue
+    // or the separate triage page.
+    if (hrefPath === "/approvals" && !hrefQuery) {
+      const hasQueueParam = ["filter", "status", "mode", "view"].some((key) => searchParams.get(key));
+      if (pathname === "/approvals") return !hasQueueParam;
+      return pathname.startsWith("/approvals/") && !pathname.startsWith("/approvals/panic-triage");
     }
 
     return pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
@@ -1285,7 +1298,7 @@ export default function Sidebar({
                           <div className="flex items-center gap-1 mr-1">
                             {patientHubMetrics.criticalCount > 0 && (
                               <span
-                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5] animate-pulse"
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]"
                                 title={`${patientHubMetrics.criticalCount} Critical patient(s) need attention`}
                               >
                                 <span className="mr-0.5">!</span>{patientHubMetrics.criticalCount}
@@ -1307,7 +1320,7 @@ export default function Sidebar({
                           <div className="flex items-center gap-1 mr-1">
                             {approvalMetrics.critical > 0 && (
                               <span
-                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5] animate-pulse"
+                                className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]"
                                 title={`${approvalMetrics.critical} Critical panic alert(s)`}
                               >
                                 ! {approvalMetrics.critical}
@@ -1416,7 +1429,11 @@ export default function Sidebar({
                               ? patientHubMetrics.criticalCount
                               : child.liveKey === "opdQueue"
                                 ? patientHubMetrics.todayCount
-                                : 0;
+                                : child.liveKey === "approvalsPending"
+                                  ? approvalMetrics.pending
+                                  : child.liveKey === "approvalsCritical"
+                                    ? approvalMetrics.critical
+                                    : 0;
 
                           return (
                             <div key={`${child.href}-${childIdx}`}>
@@ -1463,9 +1480,11 @@ export default function Sidebar({
                                     {child.liveKey && liveCount > 0 && (
                                       <span
                                         className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${
-                                          child.liveKey === "criticalPatients"
-                                            ? "bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5] animate-pulse"
-                                            : "bg-[#ECFDF5] text-[#059669] border border-emerald-200"
+                                          child.liveKey === "criticalPatients" || child.liveKey === "approvalsCritical"
+                                            ? "bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5]"
+                                            : child.liveKey === "approvalsPending"
+                                              ? "bg-sky-50 text-[#0284C7] border-sky-200"
+                                              : "bg-[#ECFDF5] text-[#059669] border border-emerald-200"
                                         }`}
                                       >
                                         {liveCount}
@@ -1477,7 +1496,7 @@ export default function Sidebar({
                                       <span
                                         className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${
                                           child.badgeVariant === "red"
-                                            ? "bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5] animate-pulse"
+                                            ? "bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5]"
                                             : child.badgeVariant === "emerald"
                                             ? "bg-[#ECFDF5] text-[#059669] border border-emerald-200"
                                             : child.badgeVariant === "amber"
@@ -1493,17 +1512,6 @@ export default function Sidebar({
                                       </span>
                                     )}
 
-                                    {/* Approval module badges */}
-                                    {(child.label.includes("Critical") || child.label.includes("Panic")) && approvalMetrics.critical > 0 && !child.liveKey && (
-                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] animate-pulse border border-[#FCA5A5]">
-                                        {approvalMetrics.critical}
-                                      </span>
-                                    )}
-                                    {child.label.includes("Queue") && approvalMetrics.pending > 0 && !child.liveKey && (
-                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-sky-50 text-[#0284C7] border border-sky-200">
-                                        {approvalMetrics.pending}
-                                      </span>
-                                    )}
                                   </div>
                                 </Link>
                               )}

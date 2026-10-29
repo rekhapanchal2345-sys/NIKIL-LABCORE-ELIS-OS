@@ -1,3 +1,4 @@
+import { getNextDailySequence } from '../../services/atomicSequence.service';
 import prisma from '../../../config/database';
 import { HttpError } from '../../utils/http-error';
 
@@ -239,33 +240,8 @@ export class VacutainerConsolidationService {
    * Generates a deterministic, collision-safe primary tube barcode: SMP-YYYYMMDD-XXXXX
    */
   private async generatePrimaryTubeBarcode(): Promise<string> {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const datePrefix = `SMP-${yyyy}${mm}${dd}-`;
-
-    const latestTube = await (prisma as any).specimenTube.findFirst({
-      where: {
-        primaryBarcode: {
-          startsWith: datePrefix,
-        },
-      },
-      orderBy: {
-        primaryBarcode: 'desc',
-      },
-    });
-
-    let nextSeq = 1;
-    if (latestTube && latestTube.primaryBarcode) {
-      const parts = latestTube.primaryBarcode.split('-');
-      const lastNum = parseInt(parts[2] || '0', 10);
-      if (!Number.isNaN(lastNum)) {
-        nextSeq = lastNum + 1;
-      }
-    }
-
-    return `${datePrefix}${String(nextSeq).padStart(5, '0')}`;
+    const seqResult = await getNextDailySequence('SMP');
+    return seqResult.formattedCode;
   }
 
   /**

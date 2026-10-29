@@ -1671,9 +1671,10 @@ export const analyzeClinicalNlp = async (
   req: NlpAnalysisRequest
 ): Promise<NlpAnalysisResult> => {
   const text = req.clinicalText || "";
-  const analysis = ClinicalNlpEngine.analyzeText(text);
+  const analysis = ClinicalNlpEngine.analyzeText(text, req);
 
   return {
+    ...(analysis as any),
     wordCount: analysis.wordCount,
     extractedEntitiesCount: analysis.extractedEntitiesCount,
     entities: analysis.entities,

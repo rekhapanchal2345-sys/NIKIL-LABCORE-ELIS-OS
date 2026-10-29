@@ -1,3 +1,4 @@
+import { createAuditLog } from "../../utils/compliance";
 import prisma from "../../../config/database";
 import { HttpError } from "../../utils/http-error";
 import { cacheService, CacheKeys, CacheTags, CacheTTL } from "../cache/cache.service";
@@ -720,7 +721,7 @@ export const deleteParameter = async (id: string) => {
   return { id, deleted: true };
 };
 
-export const deleteReferenceRange = async (id: string) => {
+export const deleteReferenceRange = async (id: string, userId?: string) => {
   const range = await prisma.referenceRange.findUnique({
     where: { id },
   });
@@ -729,11 +730,26 @@ export const deleteReferenceRange = async (id: string) => {
     throw new Error("Reference range not found");
   }
 
-  await prisma.referenceRange.delete({
+  // Soft delete to protect NABL audit trail and avoid corrupting historical reports (Bug 7.2)
+  const updatedRange = await (prisma.referenceRange as any).update({
     where: { id },
+    data: {
+      isActive: false,
+      isDeleted: true,
+      deletedAt: new Date(),
+    },
   });
 
-  return { id, deleted: true };
+  await createAuditLog({
+    userId: userId || "SYSTEM",
+    module: "REFERENCE_RANGE_MASTER",
+    action: "SOFT_DELETE",
+    recordId: id,
+    oldData: range,
+    newData: { isActive: false, isDeleted: true, deletedAt: updatedRange.deletedAt },
+  });
+
+  return { id, deleted: true, softDeleted: true };
 };
 
 // =======================================================

@@ -868,6 +868,7 @@ export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [methodFilter, setMethodFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
+  const [agingFilter, setAgingFilter] = useState<string>("ALL");
   const [summary, setSummary] = useState<SummaryStats>(defaultSummary);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);

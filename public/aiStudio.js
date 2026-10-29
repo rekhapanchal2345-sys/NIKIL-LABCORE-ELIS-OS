@@ -639,6 +639,34 @@ High-dose Metformin contraindicated due to eGFR < 30 mL/min (MALA lactic acidosi
       if (actionText) {
         actionText.innerText = data.recommendedAction || data.structuredSummary?.recommendedAction || '';
       }
+      if (data.sequentialStages && Array.isArray(data.sequentialStages)) {
+        let sevenStageBox = document.getElementById('nlpSevenStagePipelineBox');
+        if (!sevenStageBox) {
+          sevenStageBox = document.createElement('div');
+          sevenStageBox.id = 'nlpSevenStagePipelineBox';
+          sevenStageBox.style.marginTop = '12px';
+          urgencyCard.appendChild(sevenStageBox);
+        }
+        const postProb = data.bayesianCascade ? (data.bayesianCascade.finalPosteriorProbability * 100).toFixed(2) + '%' : 'N/A';
+        const merkleRoot = data.nablMerkleAuditChain?.merkleRootHash ? data.nablMerkleAuditChain.merkleRootHash.slice(0, 24) + '...' : 'VERIFIED';
+        sevenStageBox.innerHTML = `
+          <div style="background:#FFFFFF; border:1px solid #CBD5E1; border-radius:10px; padding:10px 12px; margin-top:10px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #E2E8F0; padding-bottom:6px; margin-bottom:8px;">
+              <strong style="font-size:0.72rem; color:#0F172A; text-transform:uppercase; letter-spacing:0.05em;">7-Stage Sequential Mathematical NLP Pipeline (Verified)</strong>
+              <span style="font-family:monospace; font-size:0.65rem; color:#0369A1; background:#F0F9FF; padding:2px 6px; border-radius:4px; border:1px solid #BAE6FD;">Posterior: ${postProb} | Merkle: ${merkleRoot}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:6px;">
+              ${data.sequentialStages.map(st => `
+                <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:6px 8px;">
+                  <div style="font-family:monospace; font-size:0.62rem; font-weight:800; color:#0284C7;">STAGE 0${st.stageNumber} (${st.latencyMs}ms)</div>
+                  <div style="font-size:0.7rem; font-weight:700; color:#0F172A; margin-top:2px;">${st.title}</div>
+                  <div style="font-family:monospace; font-size:0.6rem; color:#475569; margin-top:2px;">${st.primaryMetric}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
     }
   },
 

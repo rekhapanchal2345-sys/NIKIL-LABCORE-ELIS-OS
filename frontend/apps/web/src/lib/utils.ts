@@ -128,6 +128,12 @@ export function clamp(
    DATE UTILITIES
 ======================================================= */
 
+export const DEFAULT_CLINICAL_TIMEZONE = "Asia/Kolkata";
+
+/**
+ * Bug 6.3: Formats date with explicit Asia/Kolkata timezone to prevent
+ * Next.js SSR / Client hydration mismatches (UTC server vs IST client).
+ */
 export function formatDate(
   value: string | Date | null | undefined,
   options?: Intl.DateTimeFormatOptions
@@ -140,18 +146,22 @@ export function formatDate(
     return "-";
   }
 
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    timeZone: DEFAULT_CLINICAL_TIMEZONE,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  };
+
   return new Intl.DateTimeFormat(
     "en-IN",
-    options ?? {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
+    options ? { timeZone: DEFAULT_CLINICAL_TIMEZONE, ...options } : defaultOptions
   ).format(date);
 }
 
 export function formatDateTime(
-  value: string | Date | null | undefined
+  value: string | Date | null | undefined,
+  options?: Intl.DateTimeFormatOptions
 ): string {
   if (!value) return "-";
 
@@ -161,20 +171,24 @@ export function formatDateTime(
     return "-";
   }
 
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    timeZone: DEFAULT_CLINICAL_TIMEZONE,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+
   return new Intl.DateTimeFormat(
     "en-IN",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
+    options ? { timeZone: DEFAULT_CLINICAL_TIMEZONE, ...options } : defaultOptions
   ).format(date);
 }
 
 export function formatTime(
-  value: string | Date | null | undefined
+  value: string | Date | null | undefined,
+  options?: Intl.DateTimeFormatOptions
 ): string {
   if (!value) return "-";
 
@@ -184,12 +198,15 @@ export function formatTime(
     return "-";
   }
 
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    timeZone: DEFAULT_CLINICAL_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+
   return new Intl.DateTimeFormat(
     "en-IN",
-    {
-      hour: "2-digit",
-      minute: "2-digit",
-    }
+    options ? { timeZone: DEFAULT_CLINICAL_TIMEZONE, ...options } : defaultOptions
   ).format(date);
 }
 
@@ -204,15 +221,13 @@ export function toDateInputValue(
     return "";
   }
 
-  const year = date.getFullYear();
-  const month = String(
-    date.getMonth() + 1
-  ).padStart(2, "0");
-  const day = String(
-    date.getDate()
-  ).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  // Format in Asia/Kolkata date format YYYY-MM-DD
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DEFAULT_CLINICAL_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 export function getAge(

@@ -9,10 +9,16 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
-const connectionString = process.env.DATABASE_URL;
+let connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
   throw new Error("DATABASE_URL is not defined");
+}
+
+// Ensure connection pool limits and timeouts to prevent pool exhaustion (Bug 5.3)
+if (!connectionString.includes("connection_limit=")) {
+  const separator = connectionString.includes("?") ? "&" : "?";
+  connectionString = `${connectionString}${separator}connection_limit=20&pool_timeout=15`;
 }
 
 const globalForDb = globalThis as unknown as {
@@ -24,10 +30,10 @@ export const pool =
   globalForDb.pool ??
   new pg.Pool({
     connectionString,
-    max: Number(process.env.DB_POOL_MAX || 30),
-    min: Number(process.env.DB_POOL_MIN || 5),
-    idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS || 30000),
-    connectionTimeoutMillis: Number(process.env.DB_CONNECT_TIMEOUT_MS || 5000),
+    max: Number(process.env.DB_POOL_MAX || 20),
+    min: Number(process.env.DB_POOL_MIN || 2),
+    idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS || 15000),
+    connectionTimeoutMillis: Number(process.env.DB_CONNECT_TIMEOUT_MS || 15000),
   });
 
 // Prevent unhandled idle client errors from crashing the Node.js process in production
@@ -44,10 +50,9 @@ const prisma =
     log: ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.prisma = prisma;
-  globalForDb.pool = pool;
-}
+// Unconditionally preserve singleton across Next.js dev hot-reloads and serverless lambdas
+globalForDb.prisma = prisma;
+globalForDb.pool = pool;
 
 export async function closeDatabasePool(): Promise<void> {
   try {

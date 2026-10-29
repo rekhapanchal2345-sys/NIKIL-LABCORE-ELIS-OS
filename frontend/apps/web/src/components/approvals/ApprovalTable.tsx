@@ -1,7 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {
+  AlertOctagon,
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardList,
+  Eye,
+  FileSignature,
+  PencilLine,
+  PhoneCall,
+  RotateCcw,
+  XCircle,
+} from "lucide-react";
+import {
+  WAITING_TONE_CLASSES,
+  formatAgeSex,
+  formatDateTime,
+  formatWaiting,
+  getStatusChipClasses,
+  getStatusLabel,
+  getWaitingTone,
+  isAwaitingEntryStatus,
+  isSignableStatus,
+  isSignedStatus,
+  minutesSince,
+} from "./approvalUtils";
 
 export interface Approval {
   id: string | number;
@@ -37,74 +62,52 @@ export interface Approval {
 interface ApprovalTableProps {
   approvals: Approval[];
   loading?: boolean;
+  /** Total number of matching results on the server (all pages). */
+  total?: number;
   onApprove?: (approval: Approval) => void;
   onReject?: (approval: Approval) => void;
   onReview?: (approval: Approval) => void;
-  onRerun?: (approval: Approval, reason: string) => void;
+  /** Opens the "return for rerun" reason dialog owned by the page. */
+  onRequestRerun?: (approval: Approval) => void;
+  onRerun?: (approval: Approval) => void;
+  /** Opens the critical-value call-back log for an approval. */
+  onCriticalCall?: (approval: Approval) => void;
   selectedApprovals?: Set<string | number>;
   onSelectApproval?: (approvalId: string | number) => void;
   onSelectAll?: (selected: boolean) => void;
 }
 
-function formatDate(date?: string) {
-  if (!date) return "—";
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return date;
-  return parsed.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const COLUMN_COUNT = 9;
 
-function statusBadge(status?: string) {
-  const value = status?.toLowerCase();
-  if (value === "approved" || value === "completed") {
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-  }
-  if (value === "rejected" || value === "cancelled") {
-    return "border-rose-500/30 bg-rose-500/10 text-rose-300";
-  }
-  if (value?.includes("verified") || value === "ready") {
-    return "border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-bold";
-  }
-  if (
-    value?.includes("pending") ||
-    value?.includes("entry") ||
-    value === "submitted" ||
-    value === "under_review" ||
-    value === "registered"
-  ) {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-  }
-  return "border-slate-700 bg-slate-800 text-slate-400";
-}
+const iconButton =
+  "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300";
 
-function getAbnormalityBadge(count?: number, criticalValues?: string[]) {
-  if (criticalValues && criticalValues.length > 0) {
+function FindingsBadge({ count, critical }: { count?: number; critical?: string[] }) {
+  if (critical && critical.length > 0) {
     return (
-      <div className="flex flex-col gap-0.5 items-start">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[11px] font-bold text-rose-300 animate-pulse">
-          🚨 {criticalValues.length} Critical Panic
+      <div className="space-y-1">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+          <AlertOctagon className="h-3 w-3" />
+          {critical.length} critical
         </span>
-        <span className="text-[10px] text-rose-400 font-semibold truncate max-w-[140px]" title={criticalValues.join(", ")}>
-          {criticalValues.join(", ")}
-        </span>
+        <p className="max-w-[160px] truncate text-[11px] text-red-600" title={critical.join(", ")}>
+          {critical.join(", ")}
+        </p>
       </div>
     );
   }
   if (count && count > 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300">
-        ⚠️ {count} Abnormal
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+        <AlertTriangle className="h-3 w-3" />
+        {count} abnormal
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300">
-      ⚡ Normal
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+      <CheckCircle2 className="h-3 w-3" />
+      Within limits
     </span>
   );
 }
@@ -113,10 +116,10 @@ function LoadingRows() {
   return (
     <>
       {Array.from({ length: 6 }).map((_, row) => (
-        <tr key={row} className="border-t border-slate-800">
-          {Array.from({ length: 9 }).map((__, cell) => (
+        <tr key={row}>
+          {Array.from({ length: COLUMN_COUNT }).map((__, cell) => (
             <td key={cell} className="px-4 py-4">
-              <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+              <div className="h-4 w-full max-w-[110px] animate-pulse rounded bg-slate-100" />
             </td>
           ))}
         </tr>
@@ -128,283 +131,303 @@ function LoadingRows() {
 export default function ApprovalTable({
   approvals,
   loading = false,
+  total,
   onApprove,
   onReject,
   onReview,
+  onRequestRerun,
   onRerun,
+  onCriticalCall,
   selectedApprovals = new Set(),
   onSelectApproval,
   onSelectAll,
 }: ApprovalTableProps) {
-  const [selectAll, setSelectAll] = useState(false);
+  // Re-render once a minute so the "Waiting" column stays accurate.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-  const handleSelectAll = (checked: boolean) => {
-    setSelectAll(checked);
-    if (onSelectAll) onSelectAll(checked);
-  };
+  const signable = approvals.filter((a) => isSignableStatus(a.status));
+  const selectedSignable = signable.filter((a) => selectedApprovals.has(a.id)).length;
+  const allSelected = signable.length > 0 && selectedSignable === signable.length;
+  const someSelected = selectedSignable > 0 && !allSelected;
 
-  const handleSelectApproval = (approvalId: string | number) => {
-    if (onSelectApproval) onSelectApproval(approvalId);
-  };
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected;
+  }, [someSelected]);
+
+  const criticalCount = approvals.filter((a) => a.criticalValues && a.criticalValues.length > 0).length;
+  const showing = total && total > approvals.length ? `${approvals.length} of ${total}` : `${approvals.length}`;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-slate-950/80">
-      {/* Table command bar */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 px-5 py-4 flex items-center justify-between gap-4">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      {/* Worklist header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
         <div className="flex items-center gap-3">
-          <span className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-2.5 text-cyan-400 shadow-lg shadow-cyan-500/10">
-            📋
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
+            <ClipboardList className="h-[18px] w-[18px]" />
           </span>
           <div>
-            <h2 className="text-sm font-bold text-white tracking-wide">Pathologist Approval Queue</h2>
-            <p className="text-xs text-slate-400">Sign-off verification and clinical review lane</p>
+            <h2 className="text-sm font-bold text-slate-900">Approval Worklist</h2>
+            <p className="text-xs text-slate-500">Review, authorize or return laboratory results</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
-          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-300 shadow-sm">
-            {approvals.length} in queue
+        <div className="flex items-center gap-2 text-xs">
+          <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
+            {showing} result{approvals.length === 1 && !total ? "" : "s"}
           </span>
-          <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-rose-300 shadow-sm">
-            {approvals.filter(a => a.criticalValues && a.criticalValues.length > 0).length} critical
-          </span>
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300 shadow-sm">
-            {approvals.filter(a => !a.abnormalCount || a.abnormalCount === 0).length} normal
-          </span>
+          {criticalCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 font-semibold text-red-700">
+              <AlertOctagon className="h-3 w-3" />
+              {criticalCount} critical
+            </span>
+          )}
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full">
-          <thead className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
-            <tr>
-              <th className="border-r border-slate-800 px-4 py-3 text-left">
+        <table className="min-w-full text-left">
+          <thead className="border-b border-slate-200 bg-slate-50">
+            <tr className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <th scope="col" className="w-10 px-4 py-2.5">
                 <input
+                  ref={selectAllRef}
                   type="checkbox"
-                  checked={selectAll}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-cyan-500"
+                  checked={allSelected}
+                  disabled={signable.length === 0}
+                  onChange={(e) => onSelectAll?.(e.target.checked)}
+                  aria-label="Select all results ready for sign-off"
+                  className="h-4 w-4 rounded border-slate-300 accent-sky-600 disabled:opacity-40"
                 />
               </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Order / Report ID</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Accession chain</span>
-              </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Patient Info</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Identity + UHID</span>
-              </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Test / Panel Name</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Clinical scope</span>
-              </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Abnormalities</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Flag severity</span>
-              </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Assigned Pathologist</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Sign-off owner</span>
-              </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Submission Time</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Verified at</span>
-              </th>
-              <th className="border-r border-slate-800 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Status</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Queue state</span>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-300">
-                <div>Actions</div>
-                <span className="text-[9px] font-medium normal-case tracking-normal text-cyan-400">Workflow controls</span>
-              </th>
+              <th scope="col" className="px-4 py-2.5">Order / Sample</th>
+              <th scope="col" className="px-4 py-2.5">Patient</th>
+              <th scope="col" className="px-4 py-2.5">Investigation</th>
+              <th scope="col" className="px-4 py-2.5">Findings</th>
+              <th scope="col" className="px-4 py-2.5">Entered by</th>
+              <th scope="col" className="px-4 py-2.5">Waiting</th>
+              <th scope="col" className="px-4 py-2.5">Status</th>
+              <th scope="col" className="px-4 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-800/70">
+          <tbody className="divide-y divide-slate-100">
             {loading ? (
               <LoadingRows />
             ) : approvals.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-16 text-center">
-                  <div className="text-3xl text-slate-600">✓</div>
-                  <p className="mt-2 text-sm font-semibold text-slate-300">No approvals found</p>
-                  <p className="mt-1 text-sm text-slate-500">Results waiting for review will appear here.</p>
+                <td colSpan={COLUMN_COUNT} className="px-6 py-14 text-center">
+                  <CheckCircle2 className="mx-auto h-8 w-8 text-slate-300" />
+                  <p className="mt-2 text-sm font-semibold text-slate-700">No results in this queue</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Results that match the selected queue and filters will be listed here.
+                  </p>
                 </td>
               </tr>
             ) : (
               approvals.map((approval) => {
-                const pending =
-                  !approval.status ||
-                  approval.status.toLowerCase() === "pending" ||
-                  approval.status.toLowerCase() === "submitted" ||
-                  approval.status.toLowerCase() === "under_review" ||
-                  approval.status.toLowerCase() === "verified";
-
-                const isCritical = approval.criticalValues && approval.criticalValues.length > 0;
+                const isCritical = Boolean(approval.criticalValues && approval.criticalValues.length > 0);
+                const canSign = isSignableStatus(approval.status);
+                const awaitingEntry = isAwaitingEntryStatus(approval.status);
+                const signed = isSignedStatus(approval.status);
                 const isSelected = selectedApprovals.has(approval.id);
+
+                const waitingMinutes = signed ? null : minutesSince(approval.submittedAt, now);
+                const waitingTone = getWaitingTone(waitingMinutes, isCritical);
 
                 return (
                   <tr
                     key={approval.id}
-                    className={`group transition-colors ${
+                    className={`transition-colors ${
                       isCritical
-                        ? "border-l-4 border-l-rose-500 bg-rose-950/10 hover:bg-rose-950/20"
+                        ? "bg-red-50/50 hover:bg-red-50"
                         : isSelected
-                          ? "border-l-4 border-l-cyan-500 bg-cyan-950/10"
-                          : "bg-slate-950 hover:bg-slate-900/60"
+                          ? "bg-sky-50/60"
+                          : "bg-white hover:bg-slate-50"
                     }`}
                   >
-                    <td className="border-r border-slate-800 px-4 py-4">
+                    {/* Selection - the left rule marks critical rows */}
+                    <td className={`px-4 py-3.5 ${isCritical ? "border-l-4 border-l-red-500" : "border-l-4 border-l-transparent"}`}>
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => handleSelectApproval(approval.id)}
-                        className="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-cyan-500"
+                        disabled={!canSign}
+                        onChange={() => onSelectApproval?.(approval.id)}
+                        aria-label={`Select ${approval.orderNumber || "result"}`}
+                        className="h-4 w-4 rounded border-slate-300 accent-sky-600 disabled:opacity-30"
                       />
                     </td>
 
-                    <td className="border-r border-slate-800 px-4 py-4">
-                      <div className="space-y-1">
-                        {approval.orderNumber && (
+                    {/* Order / sample */}
+                    <td className="px-4 py-3.5">
+                      {approval.orderNumber ? (
+                        approval.orderId ? (
                           <Link
                             href={`/orders/${approval.orderId}`}
-                            className="font-mono text-sm font-bold text-white hover:text-cyan-300 transition-colors"
+                            className="font-mono text-[13px] font-semibold text-slate-900 transition-colors hover:text-sky-700"
                           >
                             {approval.orderNumber}
                           </Link>
-                        )}
-                        {approval.barcode && (
-                          <p className="font-mono text-xs text-slate-500">
-                            {approval.barcode}
-                          </p>
-                        )}
-                      </div>
+                        ) : (
+                          <span className="font-mono text-[13px] font-semibold text-slate-900">{approval.orderNumber}</span>
+                        )
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                      {approval.barcode && <p className="mt-0.5 font-mono text-[11px] text-slate-500">{approval.barcode}</p>}
                     </td>
 
-                    <td className="border-r border-slate-800 px-4 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="h-7 w-7 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white font-bold text-[10px] ring-1 ring-cyan-500/30 shadow-md shadow-cyan-600/20 shrink-0">
-                            {(approval.patientName || "?").slice(0, 2).toUpperCase()}
-                          </span>
-                          {approval.patientId ? (
-                            <Link
-                              href={`/patients/${approval.patientId}`}
-                              className="text-sm font-semibold text-slate-200 hover:text-cyan-300 transition-colors"
-                            >
-                              {approval.patientName || `Patient #${approval.patientId}`}
-                            </Link>
-                          ) : (
-                            <span className="text-sm text-slate-300">
-                              {approval.patientName || "—"}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 pl-9">
-                          {approval.patientUhid && (
-                            <span className="font-mono">{approval.patientUhid}</span>
-                          )}
-                          {approval.patientAge && (
-                            <>
-                              <span>•</span>
-                              <span>{approval.patientAge}Y</span>
-                            </>
-                          )}
-                          {approval.patientGender && (
-                            <>
-                              <span>•</span>
-                              <span>{approval.patientGender}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="border-r border-slate-800 px-4 py-4">
-                      <p className="text-sm font-semibold text-slate-200">
-                        {approval.testName || "Laboratory Test"}
+                    {/* Patient */}
+                    <td className="px-4 py-3.5">
+                      {approval.patientId ? (
+                        <Link
+                          href={`/patients/${approval.patientId}`}
+                          className="text-[13px] font-semibold text-slate-900 transition-colors hover:text-sky-700"
+                        >
+                          {approval.patientName || `Patient #${approval.patientId}`}
+                        </Link>
+                      ) : (
+                        <span className="text-[13px] font-semibold text-slate-900">{approval.patientName || "—"}</span>
+                      )}
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {[approval.patientUhid, formatAgeSex(approval.patientAge, approval.patientGender)]
+                          .filter(Boolean)
+                          .join("  •  ") || "—"}
                       </p>
-                      {approval.testCode && (
-                        <p className="mt-1 font-mono text-xs text-slate-500">
-                          {approval.testCode}
-                        </p>
+                    </td>
+
+                    {/* Investigation */}
+                    <td className="px-4 py-3.5">
+                      <p className="text-[13px] font-medium text-slate-800">{approval.testName || "Laboratory test"}</p>
+                      {approval.testCode && <p className="mt-0.5 font-mono text-[11px] text-slate-500">{approval.testCode}</p>}
+                    </td>
+
+                    {/* Findings */}
+                    <td className="px-4 py-3.5">
+                      {awaitingEntry ? (
+                        <span className="text-xs text-slate-400">Not entered yet</span>
+                      ) : (
+                        <FindingsBadge count={approval.abnormalCount} critical={approval.criticalValues} />
                       )}
                     </td>
 
-                    <td className="border-r border-slate-800 px-4 py-4">
-                      {getAbnormalityBadge(approval.abnormalCount, approval.criticalValues)}
+                    {/* Entered by */}
+                    <td className="px-4 py-3.5 text-xs text-slate-600">{approval.submittedBy || "—"}</td>
+
+                    {/* Waiting */}
+                    <td className="px-4 py-3.5">
+                      {signed ? (
+                        <>
+                          <p className="text-xs text-slate-700">{formatDateTime(approval.approvedAt)}</p>
+                          {approval.assignedPathologist && approval.assignedPathologist !== "Unassigned" && (
+                            <p className="mt-0.5 text-[11px] text-slate-500">{approval.assignedPathologist}</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className={`text-xs tabular-nums ${WAITING_TONE_CLASSES[waitingTone]}`}>
+                            {formatWaiting(waitingMinutes)}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-slate-400" title="Time the result was submitted for review">
+                            since {formatDateTime(approval.submittedAt)}
+                          </p>
+                        </>
+                      )}
                     </td>
 
-                    <td className="border-r border-slate-800 px-4 py-4 text-sm text-slate-400">
-                      {approval.assignedPathologist || "—"}
-                    </td>
-
-                    <td className="border-r border-slate-800 px-4 py-4 font-mono text-xs text-slate-400">
-                      {formatDate(approval.submittedAt)}
-                    </td>
-
-                    <td className="border-r border-slate-800 px-4 py-4">
+                    {/* Status */}
+                    <td className="px-4 py-3.5">
                       <span
-                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${statusBadge(approval.status)}`}
+                        className={`inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-semibold ${getStatusChipClasses(approval.status)}`}
                       >
-                        {approval.status || "Pending"}
+                        {getStatusLabel(approval.status)}
                       </span>
                     </td>
 
-                    <td className="px-4 py-4">
-                      <div className="flex justify-end gap-2">
-                        {approval.status?.toLowerCase().includes("pending") || approval.status === "PENDING" ? (
+                    {/* Actions */}
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {awaitingEntry && (
                           <Link
                             href="/results"
-                            className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition-colors inline-flex items-center gap-1.5 shadow-sm"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100"
                           >
-                            <span>✍️</span>
-                            <span>Enter Results</span>
+                            <PencilLine className="h-3.5 w-3.5" />
+                            Enter results
                           </Link>
-                        ) : (
+                        )}
+
+                        {signed && (
+                          <Link
+                            href={`/approvals/${approval.id}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View report
+                          </Link>
+                        )}
+
+                        {canSign && (
                           <>
                             {onReview && (
                               <button
                                 type="button"
                                 onClick={() => onReview(approval)}
-                                className="rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:from-cyan-500 hover:to-blue-500 shadow-md shadow-cyan-600/20 transition-all"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0284C7] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#0369A1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
                               >
-                                Review & Sign
+                                <FileSignature className="h-3.5 w-3.5" />
+                                Review &amp; sign
                               </button>
                             )}
 
-                            {pending && onApprove && (
+                            {isCritical && onCriticalCall && (
+                              <button
+                                type="button"
+                                onClick={() => onCriticalCall(approval)}
+                                title="Log critical value call-back"
+                                aria-label="Log critical value call-back"
+                                className={`${iconButton} border-red-200 bg-white text-red-600 hover:bg-red-50`}
+                              >
+                                <PhoneCall className="h-4 w-4" />
+                              </button>
+                            )}
+
+                            {!isCritical && onApprove && (
                               <button
                                 type="button"
                                 onClick={() => onApprove(approval)}
-                                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 shadow-sm transition-colors"
+                                title="Approve without opening the review"
+                                aria-label="Approve result"
+                                className={`${iconButton} border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50`}
                               >
-                                Quick Approve
+                                <CheckCircle2 className="h-4 w-4" />
                               </button>
                             )}
 
-                            {pending && onRerun && (
+                            {(onRequestRerun || onRerun) && (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const reason = prompt("Please enter the rerun reason (required):");
-                                  if (reason && reason.trim()) {
-                                    onRerun(approval, reason);
-                                  }
-                                }}
-                                className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
+                                onClick={() => (onRequestRerun || onRerun)!(approval)}
+                                title="Return for rerun"
+                                aria-label="Return for rerun"
+                                className={`${iconButton} border-amber-200 bg-white text-amber-700 hover:bg-amber-50`}
                               >
-                                Rerun Sample
+                                <RotateCcw className="h-4 w-4" />
                               </button>
                             )}
 
-                            {pending && onReject && (
+                            {onReject && (
                               <button
                                 type="button"
                                 onClick={() => onReject(approval)}
-                                className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition-colors"
+                                title="Reject result"
+                                aria-label="Reject result"
+                                className={`${iconButton} border-red-200 bg-white text-red-600 hover:bg-red-50`}
                               >
-                                Reject
+                                <XCircle className="h-4 w-4" />
                               </button>
                             )}
                           </>

@@ -8292,6 +8292,23 @@ function solveTwoCompartmentTdmOde() {
 }
 
 window.onload = function() {
+  // INDT-X evidence-first API synchronization. The console must not present
+  // synthetic operational values as if they were live enterprise telemetry.
+  async function refreshEnterpriseEvidence() {
+    try {
+      const response = await fetch('/api/digital-twin/lndt-x/state', { credentials: 'include' });
+      if (!response.ok) return;
+      const payload = await response.json();
+      window.__INDTX_LIVE_STATE__ = payload;
+      const badge = document.querySelector('[data-lndt-live-status]');
+      if (badge) badge.textContent = payload.dataFreshness === 'LAST_24_HOURS' ? 'LIVE • OBSERVED DATA' : 'DATA STATUS';
+    } catch (_) {
+      const badge = document.querySelector('[data-lndt-live-status]');
+      if (badge) badge.textContent = 'API UNAVAILABLE • NO LIVE CLAIM';
+    }
+  }
+  refreshEnterpriseEvidence();
+
   // Tab Switching
   function switchTab(target) {
     if (!target) return;

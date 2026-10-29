@@ -1,3 +1,4 @@
+import { puppeteerBrowserPool } from "../../services/puppeteerPool.service";
 import crypto from 'crypto';
 import puppeteer, { Browser } from 'puppeteer';
 import QRCode from 'qrcode';
@@ -830,7 +831,7 @@ export async function generateOrderReportHtml(
       const parameterName = param?.parameterName || 'Diagnostic Parameter';
       const unit = param?.unit || '';
       const loincCode = param?.loincCode || null;
-      const candidateRanges: ReferenceRangeCandidate[] = (
+      let candidateRanges: ReferenceRangeCandidate[] = (
         param?.referenceRanges || []
       ).map((rr) => ({
         id: rr.id,
@@ -845,6 +846,25 @@ export async function generateOrderReportHtml(
         criticalHigh: rr.criticalHigh,
         interpretation: rr.interpretation,
       }));
+
+      // Bug 1.1 & 1.2: Check if ResultValue has frozen reference range snapshot
+      const snapshotMin = (rv as any).snapshotReferenceMin;
+      const snapshotMax = (rv as any).snapshotReferenceMax;
+      if (snapshotMin != null || snapshotMax != null) {
+        candidateRanges = [{
+          id: 'FROZEN_SNAPSHOT',
+          parameterId: rv.parameterId,
+          gender: (rv as any).snapshotGender || patientGender,
+          minAge: 0,
+          maxAge: 150,
+          ageGroup: (rv as any).snapshotAgeText || null,
+          normalLow: snapshotMin,
+          normalHigh: snapshotMax,
+          criticalLow: null,
+          criticalHigh: null,
+          interpretation: null,
+        }];
+      }
 
       const evaluated = evaluateParameterAgainstRange(
         rv.value,
@@ -961,6 +981,15 @@ export async function generateOrderReportHtml(
 
   // Document Checksum & Verification QR
   const latestReport = order.reports?.[0] ?? null;
+  const isAmendedReport = Boolean(
+    latestReport?.isAmended ||
+    (latestReport?.version && latestReport.version > 1) ||
+    (latestReport?.reportData as any)?.amended
+  );
+  const reportVersion = latestReport?.version || (latestReport?.reportData as any)?.version || 1;
+  const supersededDate = latestReport?.createdAt || order.createdAt;
+  const supersededDateStr = supersededDate instanceof Date ? supersededDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : String(supersededDate);
+  const amendmentReasonText = latestReport?.amendmentReason || (latestReport?.reportData as any)?.amendment?.reason || null;
   const reportIdentifier = latestReport?.id || order.id;
   const reportNumber = latestReport?.reportNumber || `RPT-${order.orderNumber}`;
   const checksumSha256 = computeReportChecksum({
@@ -1614,6 +1643,21 @@ export async function generateOrderReportHtml(
 </head>
 <body>
   <div class="a4-report-container">
+    ${isAmendedReport ? `
+      <div style="background:#fee2e2; border:2px solid #ef4444; border-radius:6px; padding:10px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="color:#b91c1c; font-size:11pt; font-weight:900; letter-spacing:0.5px;">
+            ⚠️ AMENDED REPORT (VERSION ${reportVersion})
+          </div>
+          <div style="color:#7f1d1d; font-size:8pt; font-weight:700; margin-top:2px;">
+            SUPERSEDES REPORT DATED ${escapeXml(supersededDateStr)} ${amendmentReasonText ? `| REASON: ${escapeXml(amendmentReasonText)}` : ''}
+          </div>
+        </div>
+        <div style="background:#b91c1c; color:#ffffff; font-size:7pt; font-weight:800; padding:4px 8px; border-radius:4px; text-transform:uppercase;">
+          NABL ISO 15189 §5.8 AMENDMENT
+        </div>
+      </div>
+    ` : ''}
     <!-- 1. NABL ISO 15189:2022 OFFICIAL LETTERHEAD -->
     <header class="nabl-letterhead">
       <div class="letterhead-left">
@@ -1899,27 +1943,9 @@ export async function generateOrderPdf(
   const reportNumber = orderMeta.reports?.[0]?.reportNumber || `RPT-${orderMeta.orderNumber}`;
   const nablCert = options.nablCertificateNumber || process.env.NABL_CERT_NUMBER || 'MC-4892';
 
-  let browser: Browser | null = null;
-
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--font-render-hinting=none',
-      ],
-    });
-
-    const page = await browser.newPage();
-    await page.setContent(html, {
-      waitUntil: 'networkidle0',
-      timeout: 30000,
-    });
-
-    const pdfUint8Array = await page.pdf({
+    // Bug 4.3: Singleton browser pool eliminates Puppeteer RAM leaks and OOM crashes
+    const pdfBuffer = await puppeteerBrowserPool.htmlToPdf(html, {
       format: 'A4',
       landscape: false,
       printBackground: true,
@@ -1941,7 +1967,7 @@ export async function generateOrderPdf(
     });
 
     return {
-      buffer: Buffer.from(pdfUint8Array),
+      buffer: pdfBuffer,
       orderId: orderMeta.id,
       orderNumber: orderMeta.orderNumber,
       reportNumber,
@@ -1949,8 +1975,8 @@ export async function generateOrderPdf(
       generatedAt: new Date().toISOString(),
       usedFallbackRenderer: false,
     };
-  } catch {
-    // Resilient fallback when headless Chrome binary is not installed in CI/CD
+  } catch (err: any) {
+    console.warn('[PDF Renderer] Puppeteer pool note:', err?.message);
     const fallbackBuffer = buildResilientFallbackPdfBuffer({
       orderNumber: orderMeta.orderNumber,
       reportNumber,
@@ -1969,10 +1995,6 @@ export async function generateOrderPdf(
       generatedAt: new Date().toISOString(),
       usedFallbackRenderer: true,
     };
-  } finally {
-    if (browser) {
-      await browser.close().catch(() => undefined);
-    }
   }
 }
 
@@ -2170,7 +2192,7 @@ export class ReportPdfService {
     dateOfBirth?: Date | null
   ): StratifiedReferenceRange {
     const detailed = calculateDetailedAge(dateOfBirth, patientAgeYears);
-    const candidateRanges: ReferenceRangeCandidate[] = (parameter.referenceRanges || []).map((r) => ({
+    let candidateRanges: ReferenceRangeCandidate[] = (parameter.referenceRanges || []).map((r) => ({
       parameterId: 'dyn',
       gender: r.gender,
       minAge: r.ageMin,
@@ -2486,7 +2508,6 @@ export class ReportPdfService {
 
     const expectedPageCount = panels.length >= 4 || parameterSnapshot.length >= 18 ? 2 : 1;
 
-    let browser: Browser | null = null;
     let compiledBuffer: Buffer;
 
     try {
@@ -2495,20 +2516,8 @@ export class ReportPdfService {
         baseVerificationUrl: this.baseVerificationUrl,
       });
 
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--font-render-hinting=none',
-        ],
-      });
-
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0', timeout: 30000 });
-
-      const rawPdfBytes = await page.pdf({
+      // Bug 4.3: Singleton browser pool eliminates Puppeteer RAM leaks and OOM crashes
+      compiledBuffer = await puppeteerBrowserPool.htmlToPdf(htmlContent, {
         format: 'A4',
         printBackground: true,
         displayHeaderFooter: true,
@@ -2531,9 +2540,8 @@ export class ReportPdfService {
           right: '10mm',
         },
       });
-
-      compiledBuffer = Buffer.from(rawPdfBytes);
-    } catch {
+    } catch (err: any) {
+      console.warn('[PDF Renderer] Puppeteer pool note:', err?.message);
       compiledBuffer = buildResilientFallbackPdfBuffer({
         orderNumber: order.orderNumber,
         reportNumber,
@@ -2543,10 +2551,6 @@ export class ReportPdfService {
         checksumSha256,
         pageCount: expectedPageCount,
       });
-    } finally {
-      if (browser) {
-        await browser.close().catch(() => undefined);
-      }
     }
 
     const actualPages = this.countPdfPagesFromBuffer(compiledBuffer);

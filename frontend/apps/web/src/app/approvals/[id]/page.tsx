@@ -7,6 +7,8 @@ import ApprovalDetails from "@/components/approvals/ApprovalDetails";
 import ApprovalTimeline from "@/components/approvals/ApprovalTimeline";
 import DeltaCheckViewer from "@/components/approvals/DeltaCheckViewer";
 import { approvalApi } from "@/lib/api";
+import { showError, showSuccess } from "@/lib/notifications";
+import { ConfirmDialog, ReasonDialog } from "@/components/approvals/ApprovalDialogs";
 import type { Approval } from "@/components/approvals/ApprovalTable";
 
 export default function ApprovalDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +23,8 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
   const [interpretation, setInterpretation] = useState<string>("");
   const [comments, setComments] = useState<string>("");
   const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
   const [laboratoryInfo, setLaboratoryInfo] = useState<any>(null);
   const [orderInfo, setOrderInfo] = useState<any>(null);
   const [sampleInfo, setSampleInfo] = useState<any>(null);
@@ -183,18 +186,22 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
 
   const handleApprove = async () => {
     if (!approval) return;
-    
-    const confirmed = confirm("Are you sure you want to approve this result?");
-    if (!confirmed) return;
-    
+    setShowApproveConfirm(true);
+  };
+
+  const handleApproveConfirm = async () => {
+    if (!approval) return;
+    setActionBusy(true);
     try {
-      const response = await approvalApi.approve(approval.resultId as string, {});
-      if (response.success) {
-        alert("Result approved successfully!");
-        router.push("/approvals");
-      }
+      const response = await approvalApi.approve(String(approval.resultId), {});
+      if (!response?.success) throw new Error(response?.message || "Approval failed");
+      showSuccess("Result approved and signed.");
+      router.push("/approvals");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to approve result");
+      showError(err instanceof Error ? err.message : "Failed to approve the result.");
+    } finally {
+      setActionBusy(false);
+      setShowApproveConfirm(false);
     }
   };
 
@@ -202,22 +209,19 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
     setShowRejectDialog(true);
   };
 
-  const handleRejectConfirm = async () => {
-    if (!approval || !rejectReason.trim()) {
-      alert("Please provide a rejection reason");
-      return;
-    }
-    
+  const handleRejectConfirm = async (reason: string) => {
+    if (!approval) return;
+    setActionBusy(true);
     try {
-      const response = await approvalApi.reject(approval.resultId as string, { remarks: rejectReason });
-      if (response.success) {
-        setShowRejectDialog(false);
-        setRejectReason("");
-        alert("Result rejected and sent back for correction!");
-        router.push("/approvals");
-      }
+      const response = await approvalApi.reject(String(approval.resultId), { remarks: reason });
+      if (!response?.success) throw new Error(response?.message || "The result could not be returned.");
+      showSuccess("Result sent back for correction.");
+      router.push("/approvals");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to reject result");
+      showError(err instanceof Error ? err.message : "The result could not be returned.");
+    } finally {
+      setActionBusy(false);
+      setShowRejectDialog(false);
     }
   };
 
@@ -263,7 +267,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
           onClick={() => router.push("/approvals")}
           className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          ← Back to Approvals
+          Back to approvals
         </button>
 
         <DeltaCheckViewer resultId={id} />
@@ -287,42 +291,27 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
 
         <ApprovalTimeline events={timelineEvents} />
 
-        {showRejectDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-xl max-w-md w-full">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Reject Result
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Please provide a reason for rejecting this result. This will be sent back for correction.
-              </p>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Enter rejection reason..."
-                rows={4}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100 mb-4"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setShowRejectDialog(false);
-                    setRejectReason("");
-                  }}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRejectConfirm}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                >
-                  Reject Result
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmDialog
+          open={showApproveConfirm}
+          title="Approve this result?"
+          confirmLabel="Approve & sign"
+          busy={actionBusy}
+          description="The result will be signed with your electronic seal and released for reporting."
+          onConfirm={handleApproveConfirm}
+          onCancel={() => !actionBusy && setShowApproveConfirm(false)}
+        />
+
+        <ReasonDialog
+          open={showRejectDialog}
+          tone="danger"
+          title="Reject result"
+          confirmLabel="Reject result"
+          label="Reason for rejection"
+          description="The reason is shown to the technician and kept in the audit trail."
+          busy={actionBusy}
+          onConfirm={handleRejectConfirm}
+          onCancel={() => !actionBusy && setShowRejectDialog(false)}
+        />
       </div>
     </DashboardLayout>
   );

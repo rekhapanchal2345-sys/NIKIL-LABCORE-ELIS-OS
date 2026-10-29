@@ -827,25 +827,42 @@ class ClinicalNlpEngine {
     // STEP 12: HL7 FHIR R4 Bundle Construction
     const fhirR4Bundle = this.generateFhirR4Bundle(clinicalText, contextualizedEntities, icd10Matches, loincMatches, rxNormMatches, urgency, clinicalRiskScores);
 
-    // STEP 13: Mathematical Rigor & Empirical Telemetry (CRF Viterbi, Attention Shannon Entropy, Bayesian ECE)
-    const deepLearningTelemetry = this.computeMathematicalTelemetry(words.length, contextualizedEntities, knowledgeGraph);
+    // STEP 13: 7-Stage Enterprise Sequential Mathematical Pipeline (Viterbi CRF, Fraser-Harris RCV, Causal GNN do(X), PAVA Isotonic, Bayesian Cascade, Split-Conformal, HL7 v2.5.1 & SHA-256 Merkle Chain)
+    const enterpriseSuite = this.executeSevenStageEnterprisePipeline(
+      clinicalText,
+      words,
+      deidentification,
+      contextualizedEntities,
+      loincMatches,
+      icd10Matches,
+      snomedMatches,
+      rxNormMatches,
+      knowledgeGraph,
+      clinicalRiskScores,
+      pharmacovigilance,
+      urgency,
+      fhirR4Bundle,
+      options
+    );
+
+    const deepLearningTelemetry = enterpriseSuite.deepLearningTelemetry;
 
     return {
       wordCount: words.length,
       extractedEntitiesCount: contextualizedEntities.length,
       entities: contextualizedEntities,
-      suggestedICD10: icd10Matches,
-      icd10Codes: icd10Matches,
-      loincCodes: loincMatches,
+      suggestedICD10: enterpriseSuite.calibratedIcd10Matches,
+      icd10Codes: enterpriseSuite.calibratedIcd10Matches,
+      loincCodes: enterpriseSuite.enrichedLoincMatches,
       snomedCodes: snomedMatches,
       rxNormCodes: rxNormMatches,
       sections,
       relations: knowledgeGraph.edges,
-      knowledgeGraph,
+      knowledgeGraph: enterpriseSuite.enrichedKnowledgeGraph,
       phenotypes,
       clinicalRiskScores,
-      pharmacovigilance,
-      deidentification,
+      pharmacovigilance: enterpriseSuite.enrichedPharmacovigilance,
+      deidentification: enterpriseSuite.deidentification,
       deepLearningTelemetry,
       fhirR4Bundle,
       urgency,
@@ -853,7 +870,18 @@ class ClinicalNlpEngine {
       keyBiomarkersIdentified: structuredSummary.keyAnalytesIdentified,
       recommendedAction: structuredSummary.recommendedAction,
       structuredSummary,
-      disclaimer: "CLINICAL DECISION SUPPORT SYSTEM: Processed under CAP / NABL / CLIA / ISO-15189 reference models. Electronic sign-off by board-certified pathologist or attending physician required prior to medical record release."
+      // New Enterprise 7-Stage Mathematical & Clinical Informatics Outputs
+      sequentialStages: enterpriseSuite.sequentialStages,
+      viterbiLattice: enterpriseSuite.viterbiLattice,
+      rcvDeltaVelocity: enterpriseSuite.rcvDeltaVelocity,
+      drugAssayInterferences: enterpriseSuite.drugAssayInterferences,
+      causalCounterfactuals: enterpriseSuite.causalCounterfactuals,
+      isotonicCalibration: enterpriseSuite.isotonicCalibration,
+      bayesianCascade: enterpriseSuite.bayesianCascade,
+      conformalPredictionSet: enterpriseSuite.conformalPredictionSet,
+      hl7OruR01Message: enterpriseSuite.hl7OruR01Message,
+      nablMerkleAuditChain: enterpriseSuite.nablMerkleAuditChain,
+      disclaimer: "CLINICAL DECISION SUPPORT SYSTEM: Processed under CAP / NABL / CLIA / ISO-15189:2022 reference models. Electronic sign-off by board-certified pathologist or attending physician required prior to medical record release."
     };
   }
 
@@ -1913,6 +1941,11 @@ class ClinicalNlpEngine {
   // ──────────────────────────────────────────────────────────────────────────
   // 13. MATHEMATICAL RIGOR & DEEP LEARNING TELEMETRY
   // ──────────────────────────────────────────────────────────────────────────
+  static executeSevenStageEnterprisePipeline(...args) {
+    const { executeSevenStageEnterprisePipeline } = require("./clinicalNlpMathStages");
+    return executeSevenStageEnterprisePipeline(...args);
+  }
+
   static computeMathematicalTelemetry(tokenCount, entities, knowledgeGraph) {
     // 1. Token Attention Shannon Entropy H(A) = - sum(p * log2(p))
     // Calculated across entities distribution

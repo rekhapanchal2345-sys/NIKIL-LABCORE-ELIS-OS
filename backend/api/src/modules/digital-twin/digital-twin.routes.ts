@@ -155,7 +155,8 @@ router.get('/lndt-x/state', lndtXController.getOperationalState);
 router.post('/lndt-x/forecast', lndtXController.predictTat);
 router.post('/lndt-x/simulate', lndtXController.runSimulation);
 router.get('/lndt-x/recommendations', lndtXController.listRecommendations);
+router.get('/lndt-x/graph', lndtXController.getGraph);
 router.post('/lndt-x/recommendations/:id/review', lndtXController.reviewRecommendation);
 router.post('/lndt-x/feature-flag', lndtXController.toggleFeatureFlag);
 
-export default router;
+export default router;

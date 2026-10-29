@@ -219,21 +219,21 @@ export const PathologistSignOffModal: React.FC<PathologistSignOffModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-4xl w-full shadow-xl border border-gray-200 overflow-hidden my-8">
         {/* Top Modal Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-emerald-950 px-6 py-4 text-white flex items-center justify-between">
+        <div className="bg-[#F8FAFC] border-b border-gray-200 px-6 py-4 text-[#0F172A] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-400/30">
-              <Fingerprint className="w-6 h-6 text-emerald-300" />
+            <div className="p-2 rounded-xl bg-teal-50 border border-teal-200 text-[#0F766E]">
+              <Fingerprint className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-base font-bold">
+              <h2 className="text-base font-bold text-[#0F172A]">
                 Pathologist Cryptographic Sign-Off &amp; NABL Electronic Seal
               </h2>
-              <p className="text-xs text-slate-300">
-                Patient: <strong className="text-white">{patientName}</strong> ({patientUhid}) • Test:{' '}
-                <strong className="text-emerald-300">{testName}</strong>
+              <p className="text-xs text-slate-500">
+                Patient: <strong className="text-[#0F172A]">{patientName}</strong> ({patientUhid}) • Test:{' '}
+                <strong className="text-[#0284C7]">{testName}</strong>
                 {sampleBarcode ? ` • Barcode: ${sampleBarcode}` : ''}
               </p>
             </div>
@@ -242,9 +242,9 @@ export const PathologistSignOffModal: React.FC<PathologistSignOffModalProps> = (
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg"
+            className="flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-slate-400 hover:bg-gray-100 hover:text-slate-700 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 

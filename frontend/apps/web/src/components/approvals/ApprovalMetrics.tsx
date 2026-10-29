@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { AlertOctagon, CheckCircle2, ClipboardCheck, RotateCcw } from "lucide-react";
 
 interface ApprovalMetricsProps {
   pendingApproval?: number;
@@ -21,76 +22,65 @@ export default function ApprovalMetrics({
   activeFilter = "",
   onSelectMetric,
 }: ApprovalMetricsProps) {
+  const hasCritical = criticalValues > 0;
+
   const metrics = [
     {
       key: "pending",
-      title: "Pending Approval",
+      title: "Pending Sign-Off",
       value: pendingApproval,
-      description: "Awaiting pathologist digital sign-off",
-      icon: "⏳",
-      accentBorder: "border-l-cyan-500",
-      iconBg: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300 shadow-cyan-500/10",
-      valueColor: "text-white",
-      badgeCn: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
-      badge: "In Queue",
-      glow: "shadow-cyan-500/10",
+      description: "Results waiting for pathologist authorization",
+      Icon: ClipboardCheck,
+      accentBorder: "border-l-sky-600",
+      iconWrap: "border-sky-100 bg-sky-50 text-sky-700",
+      valueColor: "text-slate-900",
     },
     {
       key: "critical",
-      title: "Critical / Panic Values",
+      title: "Critical Values",
       value: criticalValues,
-      description: "Verbal doctor call notification required",
-      icon: "🚨",
-      accentBorder: "border-l-rose-500",
-      iconBg: "border-rose-500/30 bg-rose-500/10 text-rose-300 shadow-rose-500/10",
-      valueColor: criticalValues > 0 ? "text-rose-300" : "text-white",
-      badgeCn: criticalValues > 0 ? "border-rose-500/30 bg-rose-500/10 text-rose-300 animate-pulse" : "border-slate-700 bg-slate-800 text-slate-400",
-      badge: criticalValues > 0 ? "URGENT ATTENTION" : "All Normal",
-      isAlert: criticalValues > 0,
-      glow: criticalValues > 0 ? "shadow-rose-500/10" : "shadow-slate-950/50",
+      description: "Require documented read-back before release",
+      Icon: AlertOctagon,
+      accentBorder: hasCritical ? "border-l-red-600" : "border-l-slate-300",
+      iconWrap: hasCritical ? "border-red-100 bg-red-50 text-red-600" : "border-slate-200 bg-slate-50 text-slate-500",
+      valueColor: hasCritical ? "text-red-700" : "text-slate-900",
     },
     {
       key: "approved",
-      title: "Approved & Released",
+      title: "Approved Today",
       value: approvedToday,
-      description: "Signed reports ready for patient dispatch",
-      icon: "✓",
-      accentBorder: "border-l-emerald-500",
-      iconBg: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shadow-emerald-500/10",
-      valueColor: "text-white",
-      badgeCn: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-      badge: "Today's TAT: 98%",
-      glow: "shadow-emerald-500/10",
+      description: "Reports signed since midnight",
+      Icon: CheckCircle2,
+      accentBorder: "border-l-emerald-600",
+      iconWrap: "border-emerald-100 bg-emerald-50 text-emerald-700",
+      valueColor: "text-slate-900",
     },
     {
       key: "rerun",
-      title: "Returned & Reruns",
+      title: "Returned for Rerun",
       value: rejectedRerun,
-      description: "Re-sampling or technician clarification",
-      icon: "↺",
+      description: "Sent back for correction or re-sampling",
+      Icon: RotateCcw,
       accentBorder: "border-l-amber-500",
-      iconBg: "border-amber-500/30 bg-amber-500/10 text-amber-300 shadow-amber-500/10",
-      valueColor: "text-white",
-      badgeCn: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-      badge: "Rework Queue",
-      glow: "shadow-amber-500/10",
+      iconWrap: "border-amber-100 bg-amber-50 text-amber-700",
+      valueColor: "text-slate-900",
     },
   ];
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-2xl border border-slate-800 bg-slate-950 p-5 space-y-3 border-l-4 border-l-slate-700"
+            className="rounded-xl border border-l-4 border-slate-200 border-l-slate-200 bg-white p-4 shadow-sm"
           >
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 animate-pulse rounded-xl bg-slate-800" />
-              <div className="h-8 w-16 animate-pulse rounded bg-slate-800" />
+              <div className="h-9 w-9 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-7 w-12 animate-pulse rounded bg-slate-100" />
             </div>
-            <div className="h-4 w-28 animate-pulse rounded bg-slate-800" />
-            <div className="h-3 w-40 animate-pulse rounded bg-slate-900" />
+            <div className="mt-3 h-3.5 w-28 animate-pulse rounded bg-slate-100" />
+            <div className="mt-2 h-3 w-40 animate-pulse rounded bg-slate-50" />
           </div>
         ))}
       </div>
@@ -98,55 +88,34 @@ export default function ApprovalMetrics({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {metrics.map((metric) => {
-        const isSelected = activeFilter === metric.key;
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {metrics.map(({ key, title, value, description, Icon, accentBorder, iconWrap, valueColor }) => {
+        const isSelected = activeFilter === key;
 
         return (
-          <div
-            key={metric.key}
-            onClick={() => onSelectMetric && onSelectMetric(metric.key)}
-            className={`group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-2xl transition-all duration-200 cursor-pointer border-l-4 ${metric.accentBorder} ${metric.glow} ${
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelectMetric?.(key)}
+            aria-pressed={isSelected}
+            className={`group rounded-xl border border-l-4 bg-white p-4 text-left shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 ${accentBorder} ${
               isSelected
-                ? "ring-1 ring-cyan-500/30 shadow-lg -translate-y-0.5"
-                : "hover:border-slate-700 hover:shadow-xl hover:-translate-y-0.5"
+                ? "border-sky-300 bg-sky-50/40"
+                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
             }`}
           >
-            {/* Top glow pulse for selected/critical */}
-            {(isSelected || metric.isAlert) && (
-              <div className={`absolute top-0 left-0 right-0 h-px ${metric.isAlert ? "bg-rose-500/60" : "bg-cyan-500/40"}`} />
-            )}
-
-            <div className="flex items-start justify-between">
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-xl font-bold shadow-md ${metric.iconBg} ${
-                  metric.isAlert ? "animate-pulse" : ""
-                }`}
-              >
-                {metric.icon}
-              </div>
-
-              <div className="text-right">
-                <div className={`font-mono text-3xl font-black tracking-tight ${metric.valueColor}`}>
-                  {metric.value}
-                </div>
-                <span
-                  className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${metric.badgeCn}`}
-                >
-                  {metric.badge}
-                </span>
-              </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className={`flex h-9 w-9 items-center justify-center rounded-lg border ${iconWrap}`}>
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
+              <span className={`font-mono text-2xl font-bold tabular-nums tracking-tight ${valueColor}`}>
+                {value}
+              </span>
             </div>
 
-            <div className="mt-3">
-              <h3 className="text-sm font-bold text-slate-200 group-hover:text-cyan-300 transition-colors">
-                {metric.title}
-              </h3>
-              <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">
-                {metric.description}
-              </p>
-            </div>
-          </div>
+            <h3 className="mt-3 text-[13px] font-bold text-slate-800">{title}</h3>
+            <p className="mt-0.5 text-xs leading-snug text-slate-500">{description}</p>
+          </button>
         );
       })}
     </div>

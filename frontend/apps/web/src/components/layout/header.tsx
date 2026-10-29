@@ -20,10 +20,13 @@ import {
   Volume2,
   VolumeX,
   QrCode,
+  AlertOctagon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleLabel } from "@/lib/auth";
 import NotificationCenter from "./NotificationCenter";
+import Breadcrumbs from "./Breadcrumbs";
+import { approvalApi } from "@/lib/api";
 import GlobalSearchModal from "./GlobalSearchModal";
 import LogoutModal from "@/components/auth/LogoutModal";
 import QuickCommunicationSlideover from "@/components/communication/QuickCommunicationSlideover";
@@ -47,10 +50,10 @@ export default function Header({
   const [showProfile, setShowProfile] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { isMuted, toggleMute, testAudio } = useAudioAlerts();
-  const [unreadCount, setUnreadCount] = useState(3);
-  const [hasCriticalAlert, setHasCriticalAlert] = useState(true);
-  const [userInitials, setUserInitials] = useState('JA');
-  const [userName, setUserName] = useState('Jaya Ashapurama');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [hasCriticalAlert, setHasCriticalAlert] = useState(false);
+  const [userInitials, setUserInitials] = useState('U');
+  const [userName, setUserName] = useState('User');
   const [userRole, setUserRole] = useState('ADMIN');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -59,6 +62,26 @@ export default function Header({
   const [branches, setBranches] = useState<Array<{ id: string; code: string; name: string; isMainBranch: boolean }>>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [showBranchMenu, setShowBranchMenu] = useState(false);
+  const [criticalCount, setCriticalCount] = useState(0);
+
+  // Real critical-value count from the approvals module (no placeholder data).
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await approvalApi.getMetrics();
+        if (active && res?.success && res.data) setCriticalCount(res.data.criticalValues || 0);
+      } catch {
+        if (active) setCriticalCount(0);
+      }
+    };
+    load();
+    const timer = setInterval(load, 60000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -187,33 +210,26 @@ export default function Header({
             <h1 className="m-0 text-sm lg:text-base font-extrabold text-[#0F172A] flex items-center gap-2">
               {title}
             </h1>
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-[#0F766E] border border-teal-200">
-              NABL ISO 15189
-            </span>
           </div>
 
-          <div className="text-[11px] text-[#475569] hidden sm:block">
-            Clinical Diagnostic Laboratory Information System • Central Facility
-          </div>
+          <Breadcrumbs className="hidden sm:flex mt-0.5" />
         </div>
       </div>
 
       {/* RIGHT: Global Search, Quick Hospital Badges, Notifications & Profile */}
       <div className="flex items-center gap-2 lg:gap-3">
-        {/* Live NABL Critical Panic Alert Ticker */}
-        <div
-          onClick={() => setShowQuickComms(true)}
-          className="hidden 2xl:flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-bold cursor-pointer hover:bg-rose-100 transition-colors shadow-2xs select-none"
-          title="Click to view & verbally confirm NABL Critical Panic Values (Ctrl+M)"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
-          </span>
-          <span className="text-rose-900 font-extrabold uppercase tracking-tight">🚨 Critical Panic SLA:</span>
-          <span>Serum K+ = 6.8 mmol/L (UHID: 88399)</span>
-          <span className="rounded bg-rose-200/90 px-1.5 py-0.2 text-[9px] font-mono font-extrabold text-rose-950">6m SLA</span>
-        </div>
+        {/* Live critical value indicator (real count from approvals) */}
+        {criticalCount > 0 && (
+          <button
+            type="button"
+            onClick={() => router.push("/approvals/panic-triage")}
+            className="hidden xl:inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-semibold text-red-800 transition-colors hover:bg-red-100"
+            title="Open critical value triage"
+          >
+            <AlertOctagon className="h-3.5 w-3.5 text-red-600" />
+            {criticalCount} critical value{criticalCount === 1 ? "" : "s"} awaiting action
+          </button>
+        )}
 
         {/* Hospital Facility / Multi-Branch Dropdown Selector */}
         <div className="relative hidden xl:block">
@@ -263,22 +279,15 @@ export default function Header({
           )}
         </div>
 
-        {/* ABDM Central Gateway Live Status Pill & Fast-Track Token Desk */}
+        {/* ABDM desk shortcut */}
         <button
           type="button"
           onClick={() => router.push("/abdm?tab=scan-share")}
-          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/90 text-[11px] text-[#334155] hover:bg-white hover:border-emerald-400 hover:text-[#0F172A] transition-all shadow-2xs group cursor-pointer"
-          title="ABDM National Digital Health Gateway: Connected to NHA (Click to open Scan & Share Token Desk)"
+          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[11px] font-semibold text-[#334155] hover:bg-white hover:border-slate-300 hover:text-[#0F172A] transition-colors cursor-pointer"
+          title="Open the ABDM Scan & Share desk"
         >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-          </span>
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-105 transition-transform" />
-          <span className="font-bold text-[#0F172A]">ABDM Gateway</span>
-          <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-100/80 text-emerald-800">
-            ONLINE
-          </span>
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <span>ABDM Desk</span>
         </button>
 
         {/* Global Spotlight Search Trigger */}
@@ -332,9 +341,6 @@ export default function Header({
           title="Quick Clinical Communication & Panic Desk (Ctrl+M)"
         >
           <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[9px] font-extrabold text-white bg-[#0F766E] shadow-2xs">
-            2
-          </span>
         </button>
 
         {/* Sound / Panic Alarm Toggle */}
@@ -371,11 +377,11 @@ export default function Header({
                 : "border-slate-200 bg-[#F8FAFC] text-slate-600 hover:bg-white hover:text-[#0F172A]"
             }`}
           >
-            <Bell className={`w-4 h-4 lg:w-5 lg:h-5 ${hasCriticalAlert && unreadCount > 0 ? "text-[#DC2626] animate-bounce" : ""}`} />
+            <Bell className={`w-4 h-4 lg:w-5 lg:h-5 ${hasCriticalAlert && unreadCount > 0 ? "text-[#DC2626]" : ""}`} />
 
             {unreadCount > 0 && (
               <span className={`absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[9px] font-extrabold text-white ${
-                hasCriticalAlert ? "bg-[#DC2626] animate-pulse" : "bg-[#0284C7]"
+                hasCriticalAlert ? "bg-[#DC2626]" : "bg-[#0284C7]"
               }`}>
                 {unreadCount}
               </span>
@@ -412,7 +418,7 @@ export default function Header({
                 {userAvatar ? (
                   <img src={userAvatar} alt="Avatar" className="h-full w-full object-cover" />
                 ) : (
-                  isMounted ? userInitials : 'JA'
+                  isMounted ? userInitials : 'U'
                 )}
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-[#059669]">
@@ -423,19 +429,12 @@ export default function Header({
             <div className="hidden sm:flex flex-col items-start leading-tight text-left">
               <div className="flex items-center gap-1">
                 <span className="text-xs font-bold text-[#0F172A]">
-                  {isMounted ? userName : 'Jaya Ashapurama'}
-                </span>
-                <span title="NABL Verified Authorized Signatory" className="inline-flex shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#059669]" />
+                  {isMounted ? userName : 'User'}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="rounded bg-white px-1.5 py-0.2 text-[9px] font-bold text-slate-600 border border-slate-200">
                   {isMounted ? userRole : 'ADMIN'}
-                </span>
-                <span className="rounded bg-teal-50 px-1.5 py-0.2 text-[9px] font-bold text-[#0F766E] border border-teal-200 flex items-center gap-0.5">
-                  <ShieldCheck className="w-2.5 h-2.5 text-[#0F766E]" />
-                  Verified
                 </span>
               </div>
             </div>
@@ -454,7 +453,7 @@ export default function Header({
                       {userAvatar ? (
                         <img src={userAvatar} alt="Avatar" className="h-full w-full object-cover" />
                       ) : (
-                        isMounted ? userInitials : 'JA'
+                        isMounted ? userInitials : 'U'
                       )}
                     </div>
                     <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#059669]"></span>
@@ -463,43 +462,34 @@ export default function Header({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <h4 className="font-extrabold text-sm text-[#0F172A] truncate">
-                        {isMounted ? userName : 'Jaya Ashapurama'}
+                        {isMounted ? userName : 'User'}
                       </h4>
                       <ShieldCheck className="w-4 h-4 text-[#059669] shrink-0" />
                     </div>
                     <p className="text-[11px] text-[#475569] truncate mt-0.5">
-                      Chief Administrator &amp; Pathologist
+                      {isMounted ? userRole : ""}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <span className="rounded bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-700 border border-slate-200">
                         {isMounted ? userRole : 'ADMIN'}
-                      </span>
-                      <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-[#0F766E] border border-teal-200 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-[#0F766E]" />
-                        NABL Authorized
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Verified Clinical Credentials & License Card */}
+              {/* Account details */}
               <div className="p-3 bg-white text-xs space-y-1.5 border-b border-slate-100">
                 <div className="flex items-center justify-between text-[#475569]">
-                  <span className="font-medium text-[11px]">Accreditation ID:</span>
-                  <span className="font-mono font-bold text-[#0F172A] text-[11px]">MED-DIR-2026-9182</span>
+                  <span className="font-medium text-[11px]">Role</span>
+                  <span className="font-bold text-[#0F172A] text-[11px]">{isMounted ? userRole : ""}</span>
                 </div>
-                <div className="flex items-center justify-between text-[#475569]">
-                  <span className="font-medium text-[11px]">Digital Signature:</span>
-                  <span className="font-bold text-[#059669] text-[11px] flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#059669]" />
-                    Cryptographically Bound
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[#475569]">
-                  <span className="font-medium text-[11px]">Lab Facility:</span>
-                  <span className="font-bold text-[#0F172A] text-[11px]">Central Diagnostics Hub</span>
-                </div>
+                {user?.email && (
+                  <div className="flex items-center justify-between gap-3 text-[#475569]">
+                    <span className="font-medium text-[11px]">Email</span>
+                    <span className="truncate font-semibold text-[#0F172A] text-[11px]">{user.email}</span>
+                  </div>
+                )}
               </div>
 
               {/* Quick Actions Menu */}
@@ -510,7 +500,7 @@ export default function Header({
                   className="w-full px-3 py-2 rounded-lg text-left text-xs font-semibold text-[#0F172A] hover:bg-teal-50 hover:text-[#0F766E] transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
                   <User className="w-4 h-4 text-[#0F766E]" />
-                  <span>Executive Profile &amp; Credentials</span>
+                  <span>My profile</span>
                 </button>
 
                 <button
@@ -522,7 +512,7 @@ export default function Header({
                   className="w-full px-3 py-2 rounded-lg text-left text-xs font-semibold text-[#0F172A] hover:bg-teal-50 hover:text-[#0F766E] transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
                   <FileCheck className="w-4 h-4 text-[#059669]" />
-                  <span>Medical Sign-off &amp; Verifications</span>
+                  <span>Pathologist approvals</span>
                 </button>
 
                 <button
@@ -531,7 +521,7 @@ export default function Header({
                   className="w-full px-3 py-2 rounded-lg text-left text-xs font-semibold text-[#0F172A] hover:bg-slate-100 transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
                   <Settings className="w-4 h-4 text-slate-500" />
-                  <span>LIS Configurations &amp; Security</span>
+                  <span>Settings</span>
                 </button>
               </div>
 
@@ -543,7 +533,7 @@ export default function Header({
                   className="w-full px-3 py-2 rounded-lg text-left text-xs font-bold text-[#DC2626] hover:bg-[#FEF2F2] transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4 text-[#DC2626]" />
-                  <span>Secure Sign Out</span>
+                  <span>Sign out</span>
                 </button>
               </div>
             </div>

@@ -138,6 +138,7 @@ async function sendRequest(
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    cache: options.cache || 'no-store',
     ...options,
     headers,
     credentials: options.credentials || 'same-origin',
@@ -2833,10 +2834,10 @@ export const aiApi = {
     });
   },
 
-  analyzeNlp: async (clinicalText: string) => {
+  analyzeNlp: async (clinicalText: string, options: Record<string, any> = {}) => {
     return apiCall('/api/ai/nlp/analyze', {
       method: 'POST',
-      body: JSON.stringify({ clinicalText }),
+      body: JSON.stringify({ clinicalText, ...options }),
     });
   },
 
@@ -5418,40 +5419,20 @@ export const reportsApi = {
 export const approvalsApi = {
   getAll: async (params = '') => {
     const queryString = params ? `?${params}` : '';
-    try {
-      return await apiCall(`/api/approvals${queryString}`);
-    } catch (error) {
-      console.error('Approvals API error, using fallback:', error);
-      return getFallbackData(`/api/approvals${queryString}`);
-    }
+    return await apiCall(`/api/approvals${queryString}`);
   },
 
   getMetrics: async () => {
-    try {
-      return await apiCall('/api/approvals/metrics');
-    } catch (error) {
-      console.error('Approval metrics API error, using fallback:', error);
-      return getFallbackData('/api/approvals/metrics');
-    }
+    return await apiCall('/api/approvals/metrics');
   },
 
   getPending: async (params = '') => {
     const queryString = params ? (params.startsWith('?') ? params : `?${params}`) : '';
-    try {
-      return await apiCall(`/api/approvals/pending${queryString}`);
-    } catch (error) {
-      console.error('Pending approvals API error, using fallback:', error);
-      return getFallbackData(`/api/approvals/pending${queryString}`);
-    }
+    return await apiCall(`/api/approvals/pending${queryString}`);
   },
 
   getById: async (id: string) => {
-    try {
-      return await apiCall(`/api/approvals/${id}`);
-    } catch (error) {
-      console.error('Approval detail API error, using fallback:', error);
-      return getFallbackData(`/api/approvals/${id}`);
-    }
+    return await apiCall(`/api/approvals/${id}`);
   },
 
   getHistory: async (id: string) => {

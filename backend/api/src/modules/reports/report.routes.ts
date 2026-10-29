@@ -587,6 +587,29 @@ router.get(
         });
       }
 
+      // Bug 7.3: Sensitive Test Masking (HIV / STD / VIP / Confidential profiles)
+      const userRole = (req as any).user?.role;
+      const isClinician = ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST", "DOCTOR", "LAB_DIRECTOR"].includes(userRole);
+
+      if (!isClinician && report.order?.results) {
+        report.order.results = report.order.results.map((r: any) => {
+          if (r.test?.isConfidential) {
+            return {
+              ...r,
+              remarks: "CONFIDENTIAL (SEALED) — Authorized Signatory Only",
+              interpretation: "SEALED",
+              values: (r.values || []).map((v: any) => ({
+                ...v,
+                value: "[CONFIDENTIAL - SEALED]",
+                flag: null,
+                remark: "Restricted Access",
+              })),
+            };
+          }
+          return r;
+        });
+      }
+
       res.status(200).json({
         success: true,
         message: "Report fetched successfully",

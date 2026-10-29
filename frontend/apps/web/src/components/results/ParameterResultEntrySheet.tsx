@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Activity,
   AlertCircle,
@@ -62,6 +62,10 @@ export interface Parameter {
     gender?: string;
     minAge?: number;
     maxAge?: number;
+    minAgeInHours?: number;
+    maxAgeInHours?: number;
+    minAgeInDays?: number;
+    maxAgeInDays?: number;
     criticalLow?: number;
     normalLow?: number;
     normalHigh?: number;
@@ -80,6 +84,9 @@ interface ParameterResultEntrySheetProps {
   parameters: Parameter[];
   initialValues?: ParameterValue[];
   patientAge?: number;
+  patientAgeInDays?: number;
+  patientAgeInHours?: number;
+  patientDob?: string | Date;
   patientGender?: string;
   patientName?: string;
   testName?: string;
@@ -88,23 +95,62 @@ interface ParameterResultEntrySheetProps {
   loading?: boolean;
 }
 
+function calculateAgeMetrics(age?: number, ageInDays?: number, ageInHours?: number, dob?: string | Date) {
+  if (dob) {
+    const dobDate = new Date(dob);
+    if (!isNaN(dobDate.getTime())) {
+      const now = new Date();
+      const diffMs = Math.max(0, now.getTime() - dobDate.getTime());
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const years = Math.floor(days / 365.25);
+      return { hours, days, years: age ?? years };
+    }
+  }
+  return {
+    hours: ageInHours ?? (ageInDays ? ageInDays * 24 : (age ? age * 365 * 24 : undefined)),
+    days: ageInDays ?? (age ? age * 365 : undefined),
+    years: age
+  };
+}
+
 function getReferenceRange(
   parameter: Parameter,
   age?: number,
-  gender?: string
+  gender?: string,
+  ageInDays?: number,
+  ageInHours?: number,
+  dob?: string | Date
 ): { criticalLow?: number; normalLow?: number; normalHigh?: number; criticalHigh?: number } | null {
   if (!parameter.referenceRanges || parameter.referenceRanges.length === 0) {
     return null;
   }
 
-  const matchingRange = parameter.referenceRanges.find((range) => {
+  const { hours, days, years } = calculateAgeMetrics(age, ageInDays, ageInHours, dob);
+
+  const matchingRange = parameter.referenceRanges.find((range: any) => {
     if (range.gender && gender && range.gender !== gender) {
       return false;
     }
-    if (range.minAge && age && age < range.minAge) {
+    // Bug 1.3: Neonatal exact hour match (e.g. Bilirubin in first 24-72 hours)
+    if (range.minAgeInHours != null || range.maxAgeInHours != null) {
+      if (hours === undefined) return false;
+      if (range.minAgeInHours != null && hours < range.minAgeInHours) return false;
+      if (range.maxAgeInHours != null && hours > range.maxAgeInHours) return false;
+      return true;
+    }
+    // Neonatal/Infant exact day match
+    if (range.minAgeInDays != null || range.maxAgeInDays != null) {
+      if (days === undefined) return false;
+      if (range.minAgeInDays != null && days < range.minAgeInDays) return false;
+      if (range.maxAgeInDays != null && days > range.maxAgeInDays) return false;
+      return true;
+    }
+    // Standard year match
+    if (range.minAge != null && years != null && years < range.minAge) {
       return false;
     }
-    if (range.maxAge && age && age > range.maxAge) {
+    if (range.maxAge != null && years != null && years > range.maxAge) {
       return false;
     }
     return true;
@@ -152,6 +198,9 @@ function formatReferenceRange(range: { criticalLow?: number; normalLow?: number;
 }
 
 export default function ParameterResultEntrySheet({
+  patientAgeInDays,
+  patientAgeInHours,
+  patientDob,
   parameters,
   initialValues = [],
   patientAge,
@@ -162,6 +211,7 @@ export default function ParameterResultEntrySheet({
   onCancel,
   loading = false,
 }: ParameterResultEntrySheetProps) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [values, setValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     initialValues.forEach((iv) => {
@@ -453,7 +503,7 @@ export default function ParameterResultEntrySheet({
 
             <tbody className="divide-y divide-slate-800/80 text-xs">
               {parameters.map((param, index) => {
-                const refRange = getReferenceRange(param, patientAge, patientGender);
+                const refRange = getReferenceRange(param, patientAge, patientGender, patientAgeInDays, patientAgeInHours, patientDob);
                 const flag = flags[param.id];
                 const value = values[param.id] || "";
                 const remark = remarks[param.id] || "";
@@ -490,9 +540,25 @@ export default function ParameterResultEntrySheet({
                     <td className="px-4 py-3.5 border-r border-slate-800">
                       <div className="relative">
                         <input
+                          ref={(el) => { inputRefs.current[index] = el; }}
                           type="text"
                           value={value}
                           onChange={(e) => handleValueChange(param.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === "ArrowDown") {
+                              e.preventDefault();
+                              if (index < parameters.length - 1) {
+                                inputRefs.current[index + 1]?.focus();
+                                inputRefs.current[index + 1]?.select();
+                              }
+                            } else if (e.key === "ArrowUp") {
+                              e.preventDefault();
+                              if (index > 0) {
+                                inputRefs.current[index - 1]?.focus();
+                                inputRefs.current[index - 1]?.select();
+                              }
+                            }
+                          }}
                           placeholder="e.g. 14.8"
                           className={`w-full rounded-xl border px-3.5 py-2 font-mono text-sm font-bold text-white shadow-inner focus:outline-none transition ${
                             isCrit

@@ -692,6 +692,28 @@ export const downloadOrderReportPdf = async (
       orderId = report.orderId;
     }
 
+    // Bug 7.1: IDOR Guard - Verify Ownership & RBAC access
+    const currentUser = (req as any).user;
+    if (currentUser) {
+      const orderRecord = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { patient: true },
+      });
+      if (!orderRecord) {
+        res.status(404).json({ success: false, error: "Order not found" });
+        return;
+      }
+      if (currentUser.role === "PATIENT") {
+        const isOwner = orderRecord.patientId === currentUser.id ||
+                        (orderRecord.patient as any)?.userId === currentUser.id ||
+                        orderRecord.patient?.uhid === currentUser.uhid;
+        if (!isOwner) {
+          res.status(403).json({ success: false, error: "Forbidden: You are not authorized to download another patient's diagnostic report" });
+          return;
+        }
+      }
+    }
+
     // Enforce Day 2 Report Dispatch Guard
     await assertOrderClearedForReportDispatch(orderId);
 
@@ -1094,4 +1116,4 @@ export const reportController = {
   getAddendums,
   batchPrintReports,
 };
-export default reportController;
+export default reportController;

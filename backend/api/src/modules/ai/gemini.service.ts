@@ -51,6 +51,9 @@ export interface GeminiClinicalAnalysis {
   recommendedActions: string[];
   icd10Suggestions: Array<{ code: string; title: string }>;
   source: "GEMINI_LIVE_AI" | "CLINICAL_RULE_FALLBACK";
+  aiDraftStatus: "REQUIRES_PATHOLOGIST_SIGN_OFF";
+  disclaimer: string;
+  isAutoPrintable: boolean;
   generatedAt: string;
 }
 
@@ -330,6 +333,9 @@ export async function interpretOrderWithGemini(orderId: string): Promise<GeminiC
       recommendedActions: geminiResult.recommendedActions || [],
       icd10Suggestions: geminiResult.icd10Suggestions || [],
       source: "GEMINI_LIVE_AI",
+      aiDraftStatus: "REQUIRES_PATHOLOGIST_SIGN_OFF",
+      disclaimer: "DRAFT CLINICAL AI INTERPRETATION - FOR PATHOLOGIST REVIEW ONLY. NOT A FINAL DIAGNOSIS. CANNOT BE DISPATCHED OR PRINTED WITHOUT PATHOLOGIST SIGN-OFF.",
+      isAutoPrintable: false,
       generatedAt: new Date().toISOString(),
     };
   }
@@ -365,6 +371,9 @@ export async function interpretOrderWithGemini(orderId: string): Promise<GeminiC
     recommendedActions: smartReport.recommendations,
     icd10Suggestions: smartReport.autoIcd10Codes.map((c) => ({ code: c.code, title: c.description })),
     source: "CLINICAL_RULE_FALLBACK",
+    aiDraftStatus: "REQUIRES_PATHOLOGIST_SIGN_OFF",
+    disclaimer: "DRAFT CLINICAL AI INTERPRETATION - FOR PATHOLOGIST REVIEW ONLY. NOT A FINAL DIAGNOSIS. CANNOT BE DISPATCHED OR PRINTED WITHOUT PATHOLOGIST SIGN-OFF.",
+    isAutoPrintable: false,
     generatedAt: new Date().toISOString(),
   };
 }
