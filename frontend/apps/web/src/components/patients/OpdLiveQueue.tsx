@@ -45,6 +45,7 @@ import OpdWaitingRoomTvDisplay from './OpdWaitingRoomTvDisplay';
 import QuickTokenModal from './QuickTokenModal';
 import TransferStationModal from './TransferStationModal';
 import ChimeSettingsModal from './ChimeSettingsModal';
+import OpdTokenA4PrintModal from './OpdTokenA4PrintModal';
 
 export type QueueStage =
   | 'WAITING_VITALS'
@@ -542,7 +543,7 @@ export default function OpdLiveQueue() {
 
   return (
     <div className="space-y-6 bg-slate-50/60 p-1 rounded-3xl">
-      {/* ── Professional Hospital Header Ribbon (Medical White & Surgical Teal) ── */}
+      {/* -- Professional Hospital Header Ribbon (Medical White & Surgical Teal) -- */}
       <div className="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
           {/* Medical Shield Logo */}
@@ -564,7 +565,7 @@ export default function OpdLiveQueue() {
               <span className="text-[11px] font-bold text-slate-400">NABL ISO 15189 Certified</span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Ambulatory Care Orchestrator: Registration ➔ Vitals ➔ Phlebotomy ➔ OPD Doctor Consultations ➔ Lab Core ➔ Billing
+              Ambulatory Care Orchestrator: Registration  Vitals  Phlebotomy  OPD Doctor Consultations  Lab Core  Billing
             </p>
           </div>
         </div>
@@ -633,7 +634,7 @@ export default function OpdLiveQueue() {
         </div>
       </div>
 
-      {/* ── KPI Hospital Metrics Strip (Pristine Light White & Color Badges) ── */}
+      {/* -- KPI Hospital Metrics Strip (Pristine Light White & Color Badges) -- */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3.5">
         <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Registered</p>
@@ -692,7 +693,7 @@ export default function OpdLiveQueue() {
         </div>
       </div>
 
-      {/* ── Active "Now Serving" Calling Bay ─────────────────── */}
+      {/* -- Active "Now Serving" Calling Bay ------------------- */}
       {currentlyServing ? (
         <div className="p-6 rounded-3xl bg-gradient-to-r from-teal-50/90 via-white to-cyan-50/50 border-2 border-teal-500/60 shadow-md flex flex-col md:flex-row items-center justify-between gap-5 relative overflow-hidden">
           <div className="flex items-center gap-5">
@@ -726,8 +727,8 @@ export default function OpdLiveQueue() {
               </div>
 
               <p className="text-xs text-slate-600 mt-1 flex items-center gap-2">
-                <span>{currentlyServing.gender} · {currentlyServing.age} yrs</span>
-                <span>•</span>
+                <span>{currentlyServing.gender} &middot; {currentlyServing.age} yrs</span>
+                <span></span>
                 <span>
                   Current Station:{' '}
                   <strong className="text-teal-800 font-bold bg-teal-100/80 px-2 py-0.5 rounded">
@@ -736,7 +737,7 @@ export default function OpdLiveQueue() {
                 </span>
                 {currentlyServing.doctorName && (
                   <>
-                    <span>•</span>
+                    <span></span>
                     <span className="text-slate-700 font-semibold">{currentlyServing.doctorName}</span>
                   </>
                 )}
@@ -757,6 +758,13 @@ export default function OpdLiveQueue() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setSelectedTokenForSlip(currentlyServing)}
+              className="px-3.5 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-xs font-bold text-sky-800 border border-sky-200 shadow-2xs transition flex items-center gap-1.5"
+            >
+              <Printer size={15} className="text-sky-700" /> A4 Token Slip
+            </button>
             <button
               type="button"
               onClick={() => announceToken(currentlyServing)}
@@ -803,7 +811,7 @@ export default function OpdLiveQueue() {
         </div>
       ) : null}
 
-      {/* ── Filters, Stage Tabs, Search & View Mode Switcher ──── */}
+      {/* -- Filters, Stage Tabs, Search & View Mode Switcher ---- */}
       <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Stage Tabs */}
@@ -912,7 +920,7 @@ export default function OpdLiveQueue() {
         </div>
       </div>
 
-      {/* ── Main Data View: Cards Grid OR Dense Table ──────── */}
+      {/* -- Main Data View: Cards Grid OR Dense Table -------- */}
       {viewMode === 'TABLE' ? (
         /* Clinical Dense Table View */
         <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -962,7 +970,7 @@ export default function OpdLiveQueue() {
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-800">{token.patientName}</div>
                       <div className="text-[11px] text-slate-400 font-mono">
-                        {token.uhid} · {token.gender} · {token.age}y
+                        {token.uhid} &middot; {token.gender} &middot; {token.age}y
                       </div>
                     </td>
 
@@ -1109,7 +1117,7 @@ export default function OpdLiveQueue() {
                             )}
                           </div>
                           <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                            {token.uhid} · {token.gender} · {token.age}y
+                            {token.uhid} &middot; {token.gender} &middot; {token.age}y
                           </p>
                         </div>
                       </div>
@@ -1241,7 +1249,7 @@ export default function OpdLiveQueue() {
         </div>
       )}
 
-      {/* ── Waiting Hall TV Kiosk Display Modal ───────────────── */}
+      {/* -- Waiting Hall TV Kiosk Display Modal ----------------- */}
       {isTvKioskOpen && (
         <OpdWaitingRoomTvDisplay
           tokens={tokens}
@@ -1256,7 +1264,7 @@ export default function OpdLiveQueue() {
         />
       )}
 
-      {/* ── Walk-in Quick Token Modal ────────────────────────── */}
+      {/* -- Walk-in Quick Token Modal -------------------------- */}
       <QuickTokenModal
         isOpen={isQuickTokenOpen}
         onClose={() => setIsQuickTokenOpen(false)}
@@ -1264,7 +1272,7 @@ export default function OpdLiveQueue() {
         existingPatients={rawPatients}
       />
 
-      {/* ── Transfer Station Modal ───────────────────────────── */}
+      {/* -- Transfer Station Modal ----------------------------- */}
       <TransferStationModal
         isOpen={Boolean(transferToken)}
         token={transferToken}
@@ -1272,97 +1280,18 @@ export default function OpdLiveQueue() {
         onTransfer={handleConfirmTransfer}
       />
 
-      {/* ── Audio Chime & Speech Settings Modal ──────────────── */}
+      {/* -- Audio Chime & Speech Settings Modal ---------------- */}
       <ChimeSettingsModal
         isOpen={isChimeSettingsOpen}
         onClose={() => setIsChimeSettingsOpen(false)}
       />
 
-      {/* ── Thermal Slip Print Modal with 2D QR Code ──────────── */}
-      {selectedTokenForSlip && (
-        <div className="dr-overlay" role="dialog" aria-modal="true" aria-label="Print token slip">
-          <div className="dr-panel max-w-sm bg-white p-6 rounded-3xl shadow-2xl space-y-4">
-            <div className="text-center pb-3 border-b border-dashed border-slate-300">
-              <h3 className="font-black text-slate-900 text-base tracking-tight">
-                LABCORE MEDICAL DIAGNOSTICS & HOSPITAL
-              </h3>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-                OPD Queue Token Slip (NABL ISO 15189)
-              </p>
-
-              <div className="my-3 py-2 bg-slate-100 rounded-2xl">
-                <span className="text-3xl font-black text-slate-900 tracking-tight font-mono">
-                  {selectedTokenForSlip.tokenNumber}
-                </span>
-              </div>
-
-              <p className="text-xs font-bold text-slate-800">{selectedTokenForSlip.patientName}</p>
-              <p className="text-[11px] text-slate-500 font-mono">
-                UHID: {selectedTokenForSlip.uhid} · {selectedTokenForSlip.gender} · {selectedTokenForSlip.age}y
-              </p>
-            </div>
-
-            {/* Live Mobile Tracking QR Code */}
-            {slipQrDataUrl && (
-              <div className="flex flex-col items-center justify-center p-2 bg-slate-50 rounded-2xl border border-slate-200">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={slipQrDataUrl} alt="Queue Tracker QR Code" className="w-28 h-28" />
-                <span className="text-[10px] font-bold text-slate-600 mt-1 flex items-center gap-1">
-                  <QrCode size={11} className="text-teal-600" />
-                  Scan with Phone to Track Live Turn
-                </span>
-              </div>
-            )}
-
-            <div className="space-y-1.5 text-xs text-slate-600 py-1 font-medium">
-              <div className="flex justify-between">
-                <span>Station:</span>
-                <strong className="text-slate-900 font-bold">{selectedTokenForSlip.counterName}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span>Issued At:</span>
-                <span className="font-mono">
-                  {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Triage Priority:</span>
-                <span className="font-bold text-teal-700">{selectedTokenForSlip.priority}</span>
-              </div>
-              {selectedTokenForSlip.fastingStatus && (
-                <div className="flex justify-between">
-                  <span>Fasting Status:</span>
-                  <span className="font-semibold text-slate-700">{selectedTokenForSlip.fastingStatus}</span>
-                </div>
-              )}
-            </div>
-
-            <p className="text-[10px] text-center text-slate-400 italic">
-              Please watch your token number on the waiting room digital screens. You will also receive an SMS/WhatsApp reminder when your turn is next.
-            </p>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setSelectedTokenForSlip(null)}
-                className="flex-1 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  window.print();
-                  setSelectedTokenForSlip(null);
-                }}
-                className="flex-1 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md"
-              >
-                <Printer size={13} /> Print Slip
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* -- Thermal Slip Print Modal with 2D QR Code ------------ */}
+      <OpdTokenA4PrintModal
+        token={selectedTokenForSlip}
+        qrDataUrl={slipQrDataUrl}
+        onClose={() => setSelectedTokenForSlip(null)}
+      />
     </div>
   );
 }
