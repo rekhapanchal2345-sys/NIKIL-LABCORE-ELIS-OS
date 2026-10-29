@@ -1202,6 +1202,10 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   // Prepared data for PatientRegistrationPrintForm (unconditional hook)
   const registrationFormData = useMemo<PatientFormData>(() => {
     return {
+      uhid: patient?.uhid || "",
+      age: (patient as any)?.age,
+      abhaNumber: (patient as any)?.abhaNumber || (patient as any)?.abhaId || "",
+      abhaAddress: (patient as any)?.abhaAddress || "",
       firstName: patient?.firstName || "",
       middleName: patient?.middleName || "",
       lastName: patient?.lastName || "",
@@ -3197,14 +3201,14 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             </div>
             <div className="overflow-y-auto flex-1 bg-slate-100/90 p-3 sm:p-5 flex justify-center">
               <PatientRegistrationPrintForm
-                patientId={patient.id || patient.uhid || id}
+                patientId={patient.uhid || patient.id || id}
                 patientData={registrationFormData}
                 labInfo={{
-                  name: "LabCore ELIS Laboratory Information System",
+                  name: "LabCore ELIS Hospital, Diagnostic Lab & Clinic",
                   address: "123 Health Avenue, Medical District, Ahmedabad, Gujarat - 380016, India",
                   phone: "+91 98765 43210",
-                  email: "info@labcore.in",
-                  website: "www.labcore.in"
+                  email: "intake@labcore-health.in",
+                  website: "www.labcore-health.in"
                 }}
                 onClose={() => setShowPrintRegistrationForm(false)}
               />
