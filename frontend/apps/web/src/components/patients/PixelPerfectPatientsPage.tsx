@@ -14,6 +14,7 @@ import AbhaCardModal from "@/components/abdm/AbhaCardModal";
 import PatientRegistrationPrintForm from "@/components/patients/PatientRegistrationPrintForm";
 import TransferStationModal from "@/components/patients/TransferStationModal";
 import BedAllocationModal from "@/components/patients/BedAllocationModal";
+import IpdWardCensusWorkspace from "@/components/patients/IpdWardCensusWorkspace";
 import { QueueToken, QueueStage } from "@/components/patients/OpdLiveQueue";
 import { queueAudio } from "@/lib/queue-chime";
 import BarcodeLabelModal, { BarcodeLabelItem } from "@/components/barcodes/BarcodeLabelModal";
@@ -3094,159 +3095,11 @@ export default function PixelPerfectPatientsPage() {
 
             {/* ═══ WORKSPACE 2: INPATIENT (IPD) BED CENSUS & WARD MATRIX ═══ */}
             {activeChip === "IPD" && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
-                      <Bed className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-extrabold text-slate-900">Inpatient (IPD) Bed Census &amp; Ward Matrix</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Floor-by-floor bed allocation, oxygen port readiness, attending physician rounds, and admission roster.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Bed Occupancy</span>
-                      <span className="text-sm font-black text-slate-900">16 / 24 Beds (67%)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsQuickRegisterOpen(true)}
-                      className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 shadow-xs transition-all"
-                    >
-                      + Admit Patient to Ward
-                    </button>
-                  </div>
-                </div>
-
-                {/* 3 Ward Matrices */}
-                <div className="space-y-4">
-                  {([
-                    { wardName: "Floor 1: General Medical Ward (Ward A)", totalBeds: 10, occupied: 7, beds: [
-                      { num: "Bed #101", occupied: true, ptIdx: 0, o2: true, critical: false },
-                      { num: "Bed #102", occupied: true, ptIdx: 1, o2: true, critical: false },
-                      { num: "Bed #103", occupied: false, ptIdx: 0, o2: false, critical: false },
-                      { num: "Bed #104", occupied: true, ptIdx: 2, o2: false, critical: false },
-                      { num: "Bed #105", occupied: true, ptIdx: 3, o2: true, critical: false },
-                      { num: "Bed #106", occupied: false, ptIdx: 0, o2: false, critical: false },
-                      { num: "Bed #107", occupied: true, ptIdx: 4, o2: false, critical: false },
-                      { num: "Bed #108", occupied: true, ptIdx: 5, o2: true, critical: false },
-                      { num: "Bed #109", occupied: false, ptIdx: 0, o2: false, critical: false },
-                      { num: "Bed #110", occupied: true, ptIdx: 6, o2: true, critical: false },
-                    ]},
-                    { wardName: "Floor 2: Semi-Private Ward (Ward B)", totalBeds: 8, occupied: 5, beds: [
-                      { num: "Room #201", occupied: true, ptIdx: 1, o2: true, critical: false },
-                      { num: "Room #202", occupied: false, ptIdx: 0, o2: false, critical: false },
-                      { num: "Room #203", occupied: true, ptIdx: 3, o2: true, critical: false },
-                      { num: "Room #204", occupied: true, ptIdx: 5, o2: false, critical: false },
-                      { num: "Room #205", occupied: false, ptIdx: 0, o2: false, critical: false },
-                      { num: "Room #206", occupied: true, ptIdx: 0, o2: true, critical: false },
-                      { num: "Room #207", occupied: true, ptIdx: 2, o2: true, critical: false },
-                      { num: "Room #208", occupied: false, ptIdx: 0, o2: false, critical: false },
-                    ]},
-                    { wardName: "Floor 3: Intensive Care Unit (ICU / CCU)", totalBeds: 6, occupied: 4, beds: [
-                      { num: "ICU Bed #1", occupied: true, ptIdx: 0, o2: true, critical: true },
-                      { num: "ICU Bed #2", occupied: true, ptIdx: 2, o2: true, critical: true },
-                      { num: "ICU Bed #3", occupied: false, ptIdx: 0, o2: false, critical: false },
-                      { num: "ICU Bed #4", occupied: true, ptIdx: 4, o2: true, critical: true },
-                      { num: "ICU Bed #5", occupied: false, ptIdx: 0, o2: false, critical: false },
-                      { num: "ICU Bed #6", occupied: true, ptIdx: 1, o2: true, critical: true },
-                    ]},
-                  ] as Array<{
-                    wardName: string;
-                    totalBeds: number;
-                    occupied: number;
-                    beds: Array<{ num: string; occupied: boolean; ptIdx: number; o2: boolean; critical: boolean }>;
-                  }>).map((w, wIdx) => (
-                    <div key={wIdx} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-2xs">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-blue-600" />
-                          <h4 className="text-sm font-extrabold text-slate-900">{w.wardName}</h4>
-                        </div>
-                        <span className="text-xs font-bold text-slate-600">
-                          {w.occupied} Occupied • {w.totalBeds - w.occupied} Vacant
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                        {w.beds.map((b: any, bIdx) => {
-                          const patient = b.occupied && filteredPatients.length > 0 && b.ptIdx !== undefined ? filteredPatients[b.ptIdx % filteredPatients.length] : null;
-                          return (
-                            <div
-                              key={bIdx}
-                              className={`rounded-xl border p-3 transition-all ${
-                                b.occupied
-                                  ? b.critical
-                                    ? "border-rose-300 bg-rose-50/40"
-                                    : "border-blue-200 bg-blue-50/30"
-                                  : "border-dashed border-emerald-300 bg-emerald-50/20"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-mono text-xs font-black text-slate-800">{b.num}</span>
-                                {b.occupied ? (
-                                  <span className={`h-2 w-2 rounded-full ${b.critical ? "bg-rose-500 animate-pulse" : "bg-blue-500"}`} />
-                                ) : (
-                                  <span className="text-[10px] font-bold text-emerald-700">Vacant</span>
-                                )}
-                              </div>
-
-                              {patient ? (
-                                <div className="mt-2 space-y-1">
-                                  <p className="font-bold text-xs text-slate-900 truncate">
-                                    {formatPatientFullName(patient)}
-                                  </p>
-                                  <p className="text-[10px] font-mono text-slate-500">{patient.uhid}</p>
-                                  <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 pt-1">
-                                    <div className="flex items-center gap-1 truncate">
-                                      {b.o2 && <span className="font-bold text-blue-700 bg-blue-100/70 px-1 rounded shrink-0">O2</span>}
-                                      <span className="truncate">{patient.attendingDoctor || "Dr. Rajesh Sharma"}</span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenBedModal(patient, w.wardName, b.num);
-                                      }}
-                                      className="text-blue-700 font-bold hover:underline shrink-0 text-[10px]"
-                                      title="Transfer to another bed or ward"
-                                    >
-                                      Transfer &rarr;
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="mt-3 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const candidate = filteredPatients.find(p => p.patientType !== "IPD") || filteredPatients[0];
-                                      if (candidate) {
-                                        handleOpenBedModal(candidate, w.wardName, b.num);
-                                      } else {
-                                        setIsQuickRegisterOpen(true);
-                                      }
-                                    }}
-                                    className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-2 py-1 shadow-2xs transition-all flex items-center justify-center gap-1 mx-auto cursor-pointer"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                    <span>Assign Bed</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <IpdWardCensusWorkspace
+                patients={filteredPatients.length > 0 ? filteredPatients : patients}
+                onOpenBedModal={(pt, prefWard, prefBed) => handleOpenBedModal(pt, prefWard, prefBed)}
+                onOpenQuickRegister={() => setIsQuickRegisterOpen(true)}
+              />
             )}
 
             {/* ═══ WORKSPACE 3: STAT EMERGENCY & CRITICAL PANIC VALUES BOARD ═══ */}
