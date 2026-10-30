@@ -1,0 +1,3 @@
+## 2024-10-31 - [N+1 DB Query Bottlenecks in Prisma Transactions]
+**Learning:** Performing database writes sequentially inside a loop (`for (const item of items) { await tx.model.update(...) }`) within a Prisma interactive transaction causes significant N+1 query bottlenecks and prolongs transaction durations, increasing the risk of transaction timeout.
+**Action:** When performing bulk edits/writes inside a Prisma transaction, always execute the operation concurrently utilizing `await Promise.all(items.map(...))` rather than a sequential loop when the order of writes is not strictly dependent.
