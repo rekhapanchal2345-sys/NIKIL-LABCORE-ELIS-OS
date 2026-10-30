@@ -1070,40 +1070,43 @@ export const createPatientWithOrder = async (
         },
       });
 
-      for (const [index, item] of order.items.entries()) {
-        const sampleSuffix = `${orderSuffix}${String(index).padStart(2, "0")}`;
-        const sample = await tx.sample.create({
-          data: {
-            sampleNumber: `SMP-${stamp}-${sampleSuffix}`,
-            barcode: `BC-SMP-${stamp}-${sampleSuffix}`,
-            patientId: patient.id,
-            orderId: order.id,
-            testId: item.testId!,
-            sampleType: item.test?.sampleType ?? "BLOOD",
-            status: "PENDING",
-            collectionType: orderData.collectionType ?? null,
-            priority: orderData.priority ?? "ROUTINE",
-            collectedById: validCollectedById,
-          },
-        });
-
-        await tx.sampleTrackingHistory.create({
-          data: {
-            sampleId: sample.id,
-            orderId: order.id,
-            patientId: patient.id,
-            eventType: "ORDER_REGISTERED",
-            status: "REGISTERED",
-            notes: `Order ${orderNumber} registered for ${item.test?.testName ?? "Test"}`,
-            performedById: validCreatedById,
-            metadata: {
-              orderNumber,
-              sampleNumber: sample.sampleNumber,
-              barcode: sample.barcode,
+      // ⚡ Bolt Optimization: Use Promise.all to avoid N+1 query problem during bulk sample creation
+      await Promise.all(
+        order.items.map(async (item, index) => {
+          const sampleSuffix = `${orderSuffix}${String(index).padStart(2, "0")}`;
+          const sample = await tx.sample.create({
+            data: {
+              sampleNumber: `SMP-${stamp}-${sampleSuffix}`,
+              barcode: `BC-SMP-${stamp}-${sampleSuffix}`,
+              patientId: patient.id,
+              orderId: order.id,
+              testId: item.testId!,
+              sampleType: item.test?.sampleType ?? "BLOOD",
+              status: "PENDING",
+              collectionType: orderData.collectionType ?? null,
+              priority: orderData.priority ?? "ROUTINE",
+              collectedById: validCollectedById,
             },
-          },
-        });
-      }
+          });
+
+          await tx.sampleTrackingHistory.create({
+            data: {
+              sampleId: sample.id,
+              orderId: order.id,
+              patientId: patient.id,
+              eventType: "ORDER_REGISTERED",
+              status: "REGISTERED",
+              notes: `Order ${orderNumber} registered for ${item.test?.testName ?? "Test"}`,
+              performedById: validCreatedById,
+              metadata: {
+                orderNumber,
+                sampleNumber: sample.sampleNumber,
+                barcode: sample.barcode,
+              },
+            },
+          });
+        })
+      );
 
       await createAuditLog({
         userId: validCreatedById ?? undefined,
