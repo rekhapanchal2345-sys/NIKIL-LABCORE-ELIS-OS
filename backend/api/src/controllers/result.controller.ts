@@ -724,38 +724,41 @@ export const enterResult = async (
           /*
            * Upsert every parameter value.
            */
-          for (const item of calculatedValues) {
-            await tx.resultValue.upsert({
-              where: {
-                resultId_parameterId: {
+          // ⚡ Bolt: Execute upserts concurrently using Promise.all to avoid N+1 query bottlenecks in transaction
+          await Promise.all(
+            calculatedValues.map((item) =>
+              tx.resultValue.upsert({
+                where: {
+                  resultId_parameterId: {
+                    resultId:
+                      resultRecord.id,
+                    parameterId:
+                      (item.parameter as TestParameter).id,
+                  },
+                },
+
+                create: {
                   resultId:
                     resultRecord.id,
+
                   parameterId:
                     (item.parameter as TestParameter).id,
+
+                  value: item.value,
+
+                  flag: item.flag,
+
+                  remark: item.remark,
                 },
-              },
 
-              create: {
-                resultId:
-                  resultRecord.id,
-
-                parameterId:
-                  (item.parameter as TestParameter).id,
-
-                value: item.value,
-
-                flag: item.flag,
-
-                remark: item.remark,
-              },
-
-              update: {
-                value: item.value,
-                flag: item.flag,
-                remark: item.remark,
-              },
-            });
-          }
+                update: {
+                  value: item.value,
+                  flag: item.flag,
+                  remark: item.remark,
+                },
+              })
+            )
+          );
 
           const completeResult =
             await tx.result.findUnique({
