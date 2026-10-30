@@ -516,7 +516,7 @@ export default function RegisterOrderWizard({
       showSuccess(`Order #${created?.orderNumber || 'New'} created successfully!`);
       
       try {
-        localStorage.removeItem(ORDER_DRAFT_KEY);
+        localStorage.removeItem(`${ORDER_DRAFT_KEY}::${(JSON.parse(localStorage.getItem("labcore_auth_user") || "{}")?.email || "anonymous").toLowerCase()}`);
       } catch {
         // ignore
       }

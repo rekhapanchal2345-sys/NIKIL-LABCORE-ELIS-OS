@@ -237,7 +237,7 @@ export const valuesFromDoctor = (d: DoctorProfile): DoctorFormValues => ({
   availableTime: d.availableTime ?? '',
 });
 
-const DRAFT_KEY = 'labcore.doctor.draft.v1';
+const getDoctorDraftKey = () => { try { const u = JSON.parse(window.localStorage.getItem("labcore_auth_user") || "{}"); return `labcore.doctor.draft.v1::${(u?.email || "anonymous").toLowerCase()}`; } catch { return "labcore.doctor.draft.v1"; } };
 
 // ------------------------------------------------------------------
 // Client-side validation rules
@@ -547,7 +547,7 @@ export default function RegisterDoctorWizard({
     }
 
     try {
-      const raw = window.localStorage.getItem(DRAFT_KEY);
+      const raw = window.localStorage.getItem(getDoctorDraftKey());
       if (raw) {
         setValues({ ...EMPTY, ...(JSON.parse(raw) as DoctorFormValues) });
         setDirty(true);
@@ -581,7 +581,7 @@ export default function RegisterDoctorWizard({
     if (!isOpen || isEditing || !dirty) return;
     const timer = setTimeout(() => {
       try {
-        window.localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+        window.localStorage.setItem(getDoctorDraftKey(), JSON.stringify(values));
         setDraftSavedAt(new Date());
       } catch {
         /* storage blocked */
@@ -671,7 +671,7 @@ export default function RegisterDoctorWizard({
 
   const clearDraft = () => {
     try {
-      window.localStorage.removeItem(DRAFT_KEY);
+      window.localStorage.removeItem(getDoctorDraftKey());
     } catch {
       /* nothing */
     }

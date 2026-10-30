@@ -36,7 +36,13 @@ class QueueAudioEngine {
   getSettings(): ChimeSettings {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("labcore_chime_settings");
+        const userRaw = localStorage.getItem("labcore_auth_user");
+        let emailKey = "anonymous";
+        if (userRaw) {
+          const parsed = JSON.parse(userRaw);
+          if (parsed?.email) emailKey = String(parsed.email).trim().toLowerCase();
+        }
+        const raw = localStorage.getItem(`labcore_chime_settings::${emailKey}`);
         if (raw) {
           this.settings = { ...DEFAULT_CHIME_SETTINGS, ...JSON.parse(raw) };
         }
@@ -49,7 +55,13 @@ class QueueAudioEngine {
     this.settings = { ...this.getSettings(), ...partial };
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("labcore_chime_settings", JSON.stringify(this.settings));
+        const userRaw = localStorage.getItem("labcore_auth_user");
+        let emailKey = "anonymous";
+        if (userRaw) {
+          const parsed = JSON.parse(userRaw);
+          if (parsed?.email) emailKey = String(parsed.email).trim().toLowerCase();
+        }
+        localStorage.setItem(`labcore_chime_settings::${emailKey}`, JSON.stringify(this.settings));
       } catch {}
     }
     return { ...this.settings };

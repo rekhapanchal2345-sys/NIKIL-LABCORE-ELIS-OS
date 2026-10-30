@@ -6,73 +6,118 @@ import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboardlayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import RegisterPatientWizard from "@/components/patients/RegisterPatientWizard";
-import { ArrowLeft, UserPlus, Sparkles, Heart, ShieldCheck, Activity } from "lucide-react";
+import PatientRegistrationPrintForm from "@/components/patients/PatientRegistrationPrintForm";
+import { ClinicalFacilityLogo } from "@/components/patients/PatientSheetLetterhead";
+import { ArrowLeft, Printer, ShieldCheck, UserPlus } from "lucide-react";
 
 export default function NewPatientPage() {
   const router = useRouter();
   const [wizardOpen, setWizardOpen] = useState(true);
+  const [showBlankA4Sheet, setShowBlankA4Sheet] = useState(true);
 
   return (
-    <ProtectedRoute requiredRoles={["ADMIN", "SUPER_ADMIN", "BRANCH_ADMIN", "FRONT_DESK", "LAB_TECH", "DOCTOR", "PATHOLOGIST"]}>
+    <ProtectedRoute
+      requiredRoles={[
+        "ADMIN",
+        "SUPER_ADMIN",
+        "BRANCH_ADMIN",
+        "FRONT_DESK",
+        "LAB_TECH",
+        "DOCTOR",
+        "PATHOLOGIST",
+      ]}
+    >
       <DashboardLayout title="Register New Patient">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* Back Link */}
-          <Link
-            href="/patients"
-            className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Patient Directory
-          </Link>
+        <div className="mx-auto max-w-6xl space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link
+              href="/patients"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-sky-700 transition-colors hover:text-sky-900"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Clinical Patient Directory
+            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBlankA4Sheet((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 shadow-2xs transition hover:bg-slate-50"
+              >
+                <Printer className="h-3.5 w-3.5 text-sky-700" />
+                {showBlankA4Sheet ? "Hide A4 Registration Sheet" : "Preview / Print A4 Registration Sheet"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setWizardOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0284c7] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#0369a1]"
+              >
+                <UserPlus className="h-3.5 w-3.5" /> Open Digital Intake Wizard
+              </button>
+            </div>
+          </div>
 
-          {/* Hero Banner */}
-          <div className="rounded-3xl bg-gradient-to-r from-blue-700 via-sky-700 to-indigo-900 p-8 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute -right-8 -bottom-8 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
-                <UserPlus className="w-8 h-8" />
-              </div>
+          {/* Hospital / Lab / Clinic Professional Light-White Banner */}
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-2xs">
+            <div className="flex items-center gap-4">
+              <ClinicalFacilityLogo size={48} />
               <div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-sky-100 uppercase tracking-wider inline-flex items-center gap-1 mb-1">
-                  <Sparkles className="w-3 h-3" /> NABL & ABDM Enterprise LIS
-                </span>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Register New Diagnostic Subject</h1>
-                <p className="text-xs text-sky-100 mt-1 max-w-xl">
-                  Register patients with NABL demographics, ABHA health records, emergency contacts, clinical allergies, and statutory DPDP Act 2023 consents.
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-lg font-bold tracking-tight text-slate-900">
+                    Clinical Patient Registration &amp; Master Intake Desk
+                  </h1>
+                  <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-800">
+                    <ShieldCheck className="h-3.5 w-3.5 text-sky-600" /> NABL ISO 15189 &bull; ABDM / ABHA &bull; DPDP Act 2023
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-600">
+                  Hospital, Diagnostic Laboratory &amp; Outpatient Clinic (OPD / IPD) standardized patient registration with instant A4 printable intake record.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Action card if modal was closed */}
-          {!wizardOpen && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-4 shadow-sm">
-              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                <Activity className="w-6 h-6" />
+          {showBlankA4Sheet && (
+            <PatientRegistrationPrintForm
+              isModal={false}
+              patientData={{
+                uhid: "UHID-2026-1001",
+                consentForTreatment: true,
+                dpdpDigitalCommConsent: true,
+              }}
+            />
+          )}
+
+          {!wizardOpen && !showBlankA4Sheet && (
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-8 text-center shadow-2xs">
+              <h3 className="text-sm font-bold text-slate-900">Digital Registration Form is Closed</h3>
+              <p className="text-xs text-slate-500">
+                Reopen the digital intake wizard or preview the printable A4 hospital registration sheet above.
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setWizardOpen(true)}
+                  className="rounded-lg bg-[#0284c7] px-5 py-2 text-xs font-bold text-white transition hover:bg-[#0369a1]"
+                >
+                  Open Digital Intake Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBlankA4Sheet(true)}
+                  className="rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  View A4 Printable Sheet
+                </button>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Ready to register a new patient?</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  The 7-step wizard handles personal demographics, contact, emergency kin, clinical allergies, insurance, and ABDM/DPDP consents.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setWizardOpen(true)}
-                className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition shadow-md"
-              >
-                Open Registration Wizard
-              </button>
             </div>
           )}
 
-          {/* 7-Step Enterprise Patient Wizard Modal (Exact styling of Doctor Wizard) */}
           <RegisterPatientWizard
             isOpen={wizardOpen}
             onClose={() => {
               setWizardOpen(false);
               router.push("/patients");
             }}
-            onSuccess={(createdPatient) => {
+            onSuccess={() => {
               router.push("/patients");
             }}
           />

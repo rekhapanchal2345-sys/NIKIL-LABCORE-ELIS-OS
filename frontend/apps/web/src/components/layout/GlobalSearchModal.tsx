@@ -33,6 +33,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { searchApi } from "@/lib/api";
+import { getUserScopedStorageKey } from "@/lib/auth";
 
 export interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -327,7 +328,7 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
   // Load Recent Searches from localStorage (Max 10)
   const loadRecentSearches = useCallback(() => {
     try {
-      const saved = localStorage.getItem("labcore_recent_searches_v2");
+      const saved = localStorage.getItem(getUserScopedStorageKey("labcore_recent_searches_v2"));
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
@@ -346,7 +347,7 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
       setRecentSearches((prev) => {
         const updated = [cleanTerm, ...prev.filter((s) => s.toLowerCase() !== cleanTerm.toLowerCase())].slice(0, 10);
         try {
-          localStorage.setItem("labcore_recent_searches_v2", JSON.stringify(updated));
+          localStorage.setItem(getUserScopedStorageKey("labcore_recent_searches_v2"), JSON.stringify(updated));
         } catch {}
         return updated;
       });
@@ -358,7 +359,7 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
     setRecentSearches((prev) => {
       const updated = prev.filter((s) => s.toLowerCase() !== termToRemove.toLowerCase());
       try {
-        localStorage.setItem("labcore_recent_searches_v2", JSON.stringify(updated));
+        localStorage.setItem(getUserScopedStorageKey("labcore_recent_searches_v2"), JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -367,7 +368,7 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
   const clearRecentSearches = () => {
     setRecentSearches([]);
     try {
-      localStorage.removeItem("labcore_recent_searches_v2");
+      localStorage.removeItem(getUserScopedStorageKey("labcore_recent_searches_v2"));
     } catch {}
   };
 

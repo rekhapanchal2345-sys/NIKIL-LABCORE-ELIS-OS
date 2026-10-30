@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Registration Form & Identity Dossier • LabCore ELIS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Public Sans', sans-serif; background-color: #0f172a; }
+    h1, h2, h3, .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+    @page { size: A4 portrait; margin: 0; }
+    @media print {
+      body { background: white !important; }
+      .no-print { display: none !important; }
+      #printable-sheet {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 210mm !important;
+        min-height: 297mm !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 8mm !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 flex justify-center items-start min-h-screen">
+
+  <div class="w-full max-w-[1050px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+    <!-- Top Modal Header -->
+    <div class="no-print p-5 border-b border-slate-200 flex items-start justify-between bg-white">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-lg font-extrabold text-slate-900 tracking-tight">Patient Registration Form & Identity Dossier</h1>
+          <span class="text-xs font-extrabold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">UHID-2026-1001</span>
+        </div>
+        <p class="text-xs text-slate-500">NABL (ISO 15189:2022) Accredited Clinical Intake Sheet • 1-Page A4 Printable Standard</p>
+      </div>
+      <button onclick="window.history.back()" class="text-slate-400 hover:text-slate-700 font-bold p-1">✕</button>
+    </div>
+
+    <!-- Facility Header Bar & Actions -->
+    <div class="no-print px-5 py-3 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-extrabold text-slate-700 tracking-wider">FACILITY HEADER:</span>
+        <div class="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-100">
+          <button class="px-3 py-1 text-xs font-bold rounded-md bg-white text-sky-700 shadow-sm border border-sky-300">Hospital + Lab + Clinic</button>
+          <button class="px-3 py-1 text-xs font-bold rounded-md text-slate-600">Diagnostic Lab</button>
+          <button class="px-3 py-1 text-xs font-bold rounded-md text-slate-600">Polyclinic / OPD</button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="window.open('https://wa.me/919825011223?text=LabCore%20Patient%20Dossier%20UHID-2026-1001','_blank')" class="px-3 py-1.5 bg-[#16a34a] text-white text-xs font-bold rounded-lg flex items-center gap-1.5">WhatsApp</button>
+        <button onclick="alert('Email dispatched with A4 PDF attachment!')" class="px-3 py-1.5 bg-[#0284c7] text-white text-xs font-bold rounded-lg flex items-center gap-1.5">Email</button>
+        <button onclick="window.print()" class="px-3 py-1.5 bg-white border border-slate-300 text-slate-800 text-xs font-bold rounded-lg flex items-center gap-1.5">Download A4 PDF</button>
+        <button onclick="window.print()" class="px-3.5 py-1.5 bg-[#0f172a] text-white text-xs font-bold rounded-lg flex items-center gap-1.5">Print A4 Form</button>
+      </div>
+    </div>
+
+    <!-- A4 Printable Sheet -->
+    <div class="p-5 bg-slate-50 flex justify-center">
+      <div id="printable-sheet" class="bg-white text-slate-900 w-full max-w-[960px] p-5 rounded-lg border border-slate-300 shadow-sm space-y-3 text-xs">
+        
+        <!-- Letterhead -->
+        <header class="border border-slate-300 rounded-lg p-3 bg-white flex items-center justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <svg width="48" height="48" viewBox="0 0 56 56" class="shrink-0"><rect x="2" y="2" width="52" height="52" rx="12" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.8"/><path d="M28 8L44 14V26C44 37.2 37.1 45.8 28 49C18.9 45.8 12 37.2 12 26V14L28 8Z" fill="#ffffff" stroke="#0369a1" stroke-width="1.6"/><rect x="25" y="17" width="6" height="22" rx="1.5" fill="#0284c7"/><rect x="17" y="25" width="22" height="6" rx="1.5" fill="#0284c7"/><circle cx="28" cy="28" r="2.2" fill="#ffffff"/></svg>
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xl font-black text-slate-900 font-display">LabCore <span class="bg-sky-600 text-white text-[11px] font-extrabold px-1.5 py-0.2 rounded font-sans">ELIS</span></span>
+                <span class="text-[9.5px] font-extrabold text-sky-700 bg-sky-50 border border-sky-300 px-2 py-0.5 rounded-full uppercase">HOSPITAL • LAB • CLINIC</span>
+              </div>
+              <div class="text-[10px] font-bold text-slate-700 uppercase">MULTI-SPECIALTY HOSPITAL, DIAGNOSTIC LABORATORY & CLINIC</div>
+              <div class="text-[9px] font-extrabold text-[#0284c7]">NABL Accredited (ISO 15189: 2022) • NABH Clinical Standards • CAP Certified • ABDM / ABHA Integrated</div>
+              <div class="text-[9px] text-slate-600"><strong>Regd. Facility:</strong> 123 Health Avenue, Medical District, Ahmedabad, Gujarat - 380016, India</div>
+              <div class="text-[9px] text-slate-600"><strong>Helpline:</strong> +91 98765 43210 &nbsp; <strong>Email:</strong> intake@labcore-health.in</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0 border border-slate-300 bg-slate-50/60 rounded-md p-2">
+            <div class="space-y-1 text-right text-[9.5px] pr-2 border-r border-slate-300">
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">UHID / MRN NO.</span><div class="text-xs font-mono font-black text-[#0284c7]">UHID-2026-1001</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">REG. DATE & TIME</span><div class="font-semibold text-slate-800">29 Oct 2026 • 07:59 am</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">CLINICAL UNIT</span><div class="font-semibold text-slate-800">CENTRAL OPD / DIAG...</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">DOCUMENT CONTROL</span><div class="font-mono text-[8.5px] text-slate-600">HIS - LIS / FORM - A4 / R...</div></div>
+            </div>
+            <div class="w-14 h-14 bg-white border border-slate-300 p-1 flex items-center justify-center font-mono text-[7px] text-slate-800 text-center font-bold">QR VERIFY<br>UHID-2026-1001</div>
+          </div>
+        </header>
+
+        <!-- Title Banner -->
+        <div class="flex items-center justify-between border-b-2 border-sky-600 pb-1.5 pt-0.5">
+          <div class="flex items-center gap-2">
+            <div class="w-1.5 h-6 bg-[#0284c7] rounded-full"></div>
+            <div>
+              <h2 class="text-[13px] font-black uppercase text-slate-900 tracking-wider">PATIENT REGISTRATION & CLINICAL INTAKE DOSSIER</h2>
+              <p class="text-[9px] text-slate-500 font-medium">OPD • IPD • Diagnostic Pathology Specimen & Triage Record</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-extrabold text-[#0284c7] uppercase">A4 OFFICIAL MEDICAL RECORD • PAGE 1 OF 1</span>
+        </div>
+
+        <!-- 6-Col Key Strip -->
+        <div class="border border-slate-300 rounded-md bg-white grid grid-cols-6 divide-x divide-slate-300 text-[9.5px]">
+          <div class="p-2"><span class="text-[8px] font-bold uppercase text-slate-500">PATIENT FULL LEGAL NAME</span><div class="text-xs font-black text-slate-900 mt-0.5">Rajeshwari Devi</div></div>
+          <div class="p-2"><span class="text-[8px] font-bold uppercase text-slate-500">UHID / MRN</span><div class="text-xs font-mono font-black text-[#0284c7] mt-0.5">UHID-2026-1001</div></div>
+          <div class="p-2"><span class="text-[8px] font-bold uppercase text-slate-500">DATE OF BIRTH / AGE</span><div class="text-xs font-bold text-slate-900 mt-0.5">12 Apr 1968 (58 Yrs)</div></div>
+          <div class="p-2"><span class="text-[8px] font-bold uppercase text-slate-500">BIOLOGICAL SEX</span><div class="text-xs font-black text-slate-900 mt-0.5">FEMALE</div></div>
+          <div class="p-2"><span class="text-[8px] font-bold uppercase text-slate-500">ABO / RH BLOOD GROUP</span><div class="text-xs font-black text-[#0284c7] mt-0.5">O+ (Rh Positive)</div></div>
+          <div class="p-2"><span class="text-[8px] font-bold uppercase text-slate-500">PRIMARY MOBILE</span><div class="text-xs font-mono font-black text-[#0284c7] mt-0.5">+91 98250 11223</div></div>
+        </div>
+
+        <!-- Section 01 -->
+        <div class="border border-slate-300 rounded-md overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-1 bg-slate-100 border-b border-slate-300">
+            <div class="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-900">
+              <span class="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center text-[9px] font-black">01</span>
+              <span>PERSONAL DEMOGRAPHICS & PATIENT IDENTIFICATION</span>
+            </div>
+            <span class="text-[8.5px] font-bold text-slate-500">Mandatory Identity & Demographic Particulars (HIS / LIS Master Index)</span>
+          </div>
+          <div class="p-2.5 grid grid-cols-4 gap-2.5 text-[9.5px]">
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">FIRST NAME *</span><div class="font-bold text-slate-900 mt-0.5">Rajeshwari</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">MIDDLE NAME</span><div class="font-bold text-slate-900 mt-0.5">—</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">LAST NAME / SURNAME *</span><div class="font-bold text-slate-900 mt-0.5">Devi</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">DATE OF BIRTH & AGE *</span><div class="font-bold text-slate-900 mt-0.5">12 Apr 1968 (58 Yrs)</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">BIOLOGICAL SEX / GENDER *</span><div class="font-bold text-slate-900 mt-0.5">FEMALE</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">ABO / RH BLOOD GROUP</span><div class="font-bold text-[#0284c7] mt-0.5">O+ (Rh Positive)</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">MARITAL STATUS</span><div class="font-bold text-slate-900 mt-0.5">SINGLE</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">NATIONALITY / CITIZENSHIP</span><div class="font-bold text-slate-900 mt-0.5">Indian</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">PATIENT VISIT CATEGORY</span><div class="font-bold text-slate-900 mt-0.5">REGULAR</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">ABHA / NATIONAL HEALTH ID</span><div class="font-mono font-bold text-slate-900 mt-0.5">91-4821-7732-9910</div></div>
+            <div class="col-span-2"><span class="text-[8px] font-bold uppercase text-slate-500">CLINICAL REFERRAL / INTAKE REMARKS</span><div class="font-medium text-slate-800 mt-0.5">Walk-in / Outpatient Diagnostic & Clinical Consultation</div></div>
+          </div>
+        </div>
+
+        <!-- Section 02 -->
+        <div class="border border-slate-300 rounded-md overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-1 bg-slate-100 border-b border-slate-300">
+            <div class="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-900">
+              <span class="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center text-[9px] font-black">02</span>
+              <span>CONTACT & RESIDENTIAL ADDRESS PARTICULARS</span>
+            </div>
+            <span class="text-[8.5px] font-bold text-slate-500">Verified Communication & Permanent Domicile Coordinates</span>
+          </div>
+          <div class="p-2.5 grid grid-cols-4 gap-2.5 text-[9.5px]">
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">PRIMARY MOBILE NUMBER *</span><div class="font-mono font-black text-slate-900 mt-0.5">+91 98250 11223</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">EMAIL ADDRESS</span><div class="flex items-center gap-1 mt-0.5"><span class="font-semibold text-slate-900 truncate">rajeshwari.devi@example.com</span> <span class="text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-300 px-1 rounded font-bold">VERIFIED</span></div></div>
+            <div class="col-span-2"><span class="text-[8px] font-bold uppercase text-slate-500">RESIDENTIAL STREET ADDRESS / LANDMARK *</span><div class="font-semibold text-slate-900 mt-0.5">42 Kalyani Nagar , Pune</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">CITY / DISTRICT *</span><div class="font-semibold text-slate-900 mt-0.5">Pune</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">STATE / PROVINCE *</span><div class="font-semibold text-slate-900 mt-0.5">Maharashtra</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">POSTAL CODE / PIN *</span><div class="font-mono font-semibold text-slate-900 mt-0.5">411006</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">COUNTRY *</span><div class="font-semibold text-slate-900 mt-0.5">India</div></div>
+          </div>
+        </div>
+
+        <!-- Sections 03 & 04 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="border border-slate-300 rounded-md overflow-hidden">
+            <div class="flex items-center justify-between px-3 py-1 bg-slate-100 border-b border-slate-300">
+              <span class="text-[9.5px] font-extrabold uppercase text-slate-900">03 EMERGENCY / NEXT-OF-KIN CONTACT</span>
+              <span class="text-[8px] font-bold text-slate-500">Critical Value Escalation</span>
+            </div>
+            <div class="p-2.5 grid grid-cols-2 gap-2 text-[9.5px]">
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">KIN / CONTACT NAME *</span><div class="font-bold text-slate-900 mt-0.5">Authorized Family Member</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">EMERGENCY PHONE *</span><div class="font-mono font-bold text-slate-900 mt-0.5">+91 98250 11223</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">RELATIONSHIP TO PATIENT</span><div class="font-semibold text-slate-900 mt-0.5">Family</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">CONTACT ADDRESS</span><div class="font-semibold text-slate-900 mt-0.5">Same as Patient</div></div>
+            </div>
+          </div>
+          <div class="border border-slate-300 rounded-md overflow-hidden">
+            <div class="flex items-center justify-between px-3 py-1 bg-slate-100 border-b border-slate-300">
+              <span class="text-[9.5px] font-extrabold uppercase text-slate-900">04 HEALTH INSURANCE, TPA & SPONSOR</span>
+              <span class="text-[8px] font-bold text-slate-500">Payor & Cashless Billing</span>
+            </div>
+            <div class="p-2.5 grid grid-cols-2 gap-2 text-[9.5px]">
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">INSURANCE / TPA PROVIDER</span><div class="font-bold text-slate-900 mt-0.5">Direct Self-Pay</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">POLICY / MEMBER CARD NO.</span><div class="font-mono font-bold text-slate-900 mt-0.5">SELF-PAY</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">CORPORATE / GROUP ID</span><div class="font-semibold text-slate-900 mt-0.5">N/A</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">POLICY VALIDITY / EXPIRY</span><div class="font-semibold text-slate-900 mt-0.5">Active / Self</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 05 -->
+        <div class="border border-slate-300 rounded-md overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-1 bg-slate-100 border-b border-slate-300">
+            <span class="text-[10px] font-extrabold uppercase text-slate-900">05 CLINICAL HISTORY, ALLERGIES & PRE-ANALYTICAL TRIAGE ALERTS</span>
+            <span class="text-[8.5px] font-bold text-slate-500">Patient Safety & Phlebotomy / Diagnostic Precautions</span>
+          </div>
+          <div class="p-2.5 grid grid-cols-3 gap-3 text-[9.5px]">
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">KNOWN DRUG / FOOD / LATEX ALLERGIES</span><div class="mt-1"><span class="px-2 py-0.5 rounded border border-rose-300 bg-rose-50/70 text-rose-700 font-extrabold">⚠ Penicillin</span></div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">CHRONIC CONDITIONS / CLINICAL DIAGNOSES</span><div class="font-semibold text-slate-800 mt-1">None Reported at Intake</div></div>
+            <div><span class="text-[8px] font-bold uppercase text-slate-500">CURRENT MEDICATIONS / ANTICOAGULANTS</span><div class="font-semibold text-slate-800 mt-1">None Reported at Intake</div></div>
+          </div>
+        </div>
+
+        <!-- Section 06 -->
+        <div class="border border-slate-300 rounded-md overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-1 bg-slate-100 border-b border-slate-300">
+            <span class="text-[10px] font-extrabold uppercase text-slate-900">06 STATUTORY MEDICAL CONSENT & REPORT DELIVERY CHANNELS</span>
+            <span class="text-[8.5px] font-bold text-slate-500">DISHA • HIPAA • ISO 15189:2022 Patient Authorization</span>
+          </div>
+          <div class="p-2.5 space-y-2 text-[9.5px]">
+            <div class="grid grid-cols-3 gap-2">
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">PREFERRED LANGUAGE</span><div class="font-bold text-slate-900 mt-0.5">English</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">PRIMARY REPORT DISPATCH MODE</span><div class="font-bold text-slate-900 mt-0.5">SMS</div></div>
+              <div><span class="text-[8px] font-bold uppercase text-slate-500">AUTHORIZED DIAGNOSTIC REPORT & CRITICAL ALERT CHANNELS</span><div class="flex gap-2 mt-1 font-bold text-slate-800"><span>☑ SMS Alert</span> <span>☑ Email PDF</span> <span>☑ WhatsApp PDF</span> <span>☑ Clinical Critical Call</span></div></div>
+            </div>
+            <div class="pt-1.5 border-t border-slate-200">
+              <strong class="text-slate-900">☑ INFORMED CLINICAL & DIAGNOSTIC CONSENT:</strong> I hereby authorize LabCore ELIS Hospital, Diagnostic Lab & Clinic to collect necessary biological specimens, perform requested diagnostic investigations / clinical procedures, and archive my Electronic Medical Record (EMR) in accordance with NABL (ISO 15189:2022), NABH, HIPAA, and DISHA healthcare data protection standards.
+            </div>
+          </div>
+        </div>
+
+        <!-- 3-Box Sign-off -->
+        <div class="grid grid-cols-3 gap-3 pt-1">
+          <div class="border border-slate-300 rounded-md p-2 bg-slate-50/50 flex flex-col justify-between h-24">
+            <div><div class="text-[8.5px] font-black uppercase text-slate-700">01. PATIENT / LEGAL GUARDIAN ATTESTATION</div><div class="text-[8px] text-slate-500 mt-0.5">"I confirm that the demographic, contact, and clinical history particulars recorded above are verified and accurate."</div></div>
+            <div class="pt-1 border-t border-slate-300 flex justify-between text-[9px] font-bold text-slate-800"><span>Rajeshwari Devi</span><span>Date: 29 Oct 2026</span></div>
+          </div>
+          <div class="border border-slate-300 rounded-md p-2 bg-slate-50/50 flex flex-col justify-between h-24">
+            <div><div class="text-[8.5px] font-black uppercase text-slate-700">02. CLINICAL INTAKE OFFICER / PHLEBOTOMIST</div><div class="text-[8px] text-slate-500 mt-0.5">"Patient identity verified against government photo ID and indexed in HIS/LIS Master Patient Index."</div></div>
+            <div class="pt-1 border-t border-slate-300 flex justify-between text-[9px] font-bold text-slate-800"><span>Desk ID: REG-OPD-01</span><span>Verified: 07:59 am</span></div>
+          </div>
+          <div class="border border-dashed border-slate-400 rounded-md p-2 bg-slate-50/50 flex flex-col items-center justify-center text-center h-24">
+            <div class="text-[8.5px] font-black uppercase text-slate-700">OFFICIAL HOSPITAL / LAB / CLINIC SEAL</div>
+            <div class="text-[8px] text-slate-500 mt-1">LabCore ELIS • NABL ISO 15189:2022 • Verified Registration Stamp</div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="pt-2 border-t border-slate-300 text-[8px] text-slate-500 space-y-0.5">
+          <div class="flex justify-between">
+            <span>NABL ISO 15189:2022 Accredited Lab • NABH • HIPAA & DISHA Compliant • intake@labcore-health.in • +91 98765 43210</span>
+            <span class="font-extrabold text-slate-700">Page 1 of 1 • A4 Printable Clinical Registration Dossier</span>
+          </div>
+          <div>123 Health Avenue, Medical District, Ahmedabad, Gujarat - 380016, India</div>
+          <div>Electronic Medical Record (EMR) • Authenticated by LabCore ELIS HIS/LIS • UHID: UHID-2026-1001</div>
+        </footer>
+
+      </div>
+    </div>
+
+    <!-- Modal Footer Actions -->
+    <div class="no-print p-4 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+      <button onclick="window.history.back()" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg">Close Preview</button>
+      <div class="flex gap-2">
+        <button onclick="window.open('https://wa.me/919825011223?text=LabCore%20Patient%20Dossier%20UHID-2026-1001','_blank')" class="px-4 py-2 bg-[#16a34a] text-white text-xs font-bold rounded-lg">WhatsApp Form</button>
+        <button onclick="alert('Email dispatched with A4 PDF attachment!')" class="px-4 py-2 bg-[#0284c7] text-white text-xs font-bold rounded-lg">Email Form</button>
+        <button onclick="window.print()" class="px-4 py-2 bg-white border border-slate-300 text-slate-800 text-xs font-bold rounded-lg">Download A4 PDF</button>
+        <button onclick="window.print()" class="px-4.5 py-2 bg-[#0f172a] text-white text-xs font-bold rounded-lg">Print A4 Form</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

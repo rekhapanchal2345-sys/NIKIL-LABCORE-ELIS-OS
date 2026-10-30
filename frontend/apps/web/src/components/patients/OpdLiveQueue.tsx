@@ -38,6 +38,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { patientApi } from '@/lib/api';
+import { getUserScopedStorageKey } from '@/lib/auth';
 import { showSuccess, showInfo, showError } from '@/lib/notifications';
 import { calculatePatientRiskScore } from '@/lib/patient-intelligence';
 import { queueAudio } from '@/lib/queue-chime';
@@ -165,7 +166,7 @@ export default function OpdLiveQueue() {
     setTokens(newTokens);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newTokens));
+        localStorage.setItem(getUserScopedStorageKey(STORAGE_KEY), JSON.stringify(newTokens));
         if ('BroadcastChannel' in window) {
           const bc = new BroadcastChannel('labcore_opd_sync');
           bc.postMessage({ type: 'SYNC_TOKENS', tokens: newTokens });
@@ -185,7 +186,7 @@ export default function OpdLiveQueue() {
       // Check localStorage
       let storedTokens: QueueToken[] | null = null;
       if (typeof window !== 'undefined') {
-        const local = localStorage.getItem(STORAGE_KEY);
+        const local = localStorage.getItem(getUserScopedStorageKey(STORAGE_KEY));
         if (local) {
           try {
             const parsed = JSON.parse(local);

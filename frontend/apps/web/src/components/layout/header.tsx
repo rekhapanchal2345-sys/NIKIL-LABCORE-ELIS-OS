@@ -23,7 +23,7 @@ import {
   AlertOctagon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getRoleLabel } from "@/lib/auth";
+import { getRoleLabel, getUserScopedStorageKey } from "@/lib/auth";
 import NotificationCenter from "./NotificationCenter";
 import Breadcrumbs from "./Breadcrumbs";
 import { approvalApi } from "@/lib/api";
@@ -118,32 +118,9 @@ export default function Header({
   useEffect(() => {
     setIsMounted(true);
     
-    // Check local profile settings
-    try {
-      const raw = localStorage.getItem("labcore_settings_profile");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.firstName || parsed.lastName) {
-          const fn = `${parsed.firstName || ""} ${parsed.lastName || ""}`.trim();
-          if (fn) {
-            setUserName(fn);
-            const names = fn.split(" ");
-            setUserInitials(names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0]);
-          }
-        }
-        if (parsed.profileImage) {
-          setUserAvatar(parsed.profileImage);
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-
     if (user?.fullName) {
-      const names = user.fullName.split(' ');
-      setUserInitials(names.length > 1 
-        ? names[0][0] + names[names.length - 1][0]
-        : names[0][0]);
+      const names = user.fullName.split(" ");
+      setUserInitials(names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0]);
       setUserName(user.fullName);
     } else if (user?.email) {
       setUserInitials(user.email[0].toUpperCase());
@@ -154,11 +131,31 @@ export default function Header({
     }
     setUserRole(getRoleLabel(user?.role, "ADMIN"));
 
+    // Check per-user scoped profile settings override
+    try {
+      const raw = localStorage.getItem(getUserScopedStorageKey("labcore_settings_profile"));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const fn = parsed.fullName || `${parsed.firstName || ""} ${parsed.lastName || ""}`.trim();
+        if (fn) {
+          setUserName(fn);
+          const names = fn.split(" ");
+          setUserInitials(names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0]);
+        }
+        if (parsed.profileImage || parsed.avatar) {
+          setUserAvatar(parsed.profileImage || parsed.avatar);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
     const handleProfileUpdated = (e: any) => {
       const updated = e.detail;
-      if (updated?.fullName) {
-        setUserName(updated.fullName);
-        const names = updated.fullName.split(" ");
+      const fn = updated?.fullName || `${updated?.firstName || ""} ${updated?.lastName || ""}`.trim();
+      if (fn) {
+        setUserName(fn);
+        const names = fn.split(" ");
         setUserInitials(names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0]);
       }
       if (updated?.avatar || updated?.profileImage) {

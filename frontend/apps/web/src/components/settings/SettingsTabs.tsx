@@ -1,11 +1,29 @@
 "use client";
+
 import React from "react";
+import {
+  User,
+  Sliders,
+  Users,
+  Building2,
+  CreditCard,
+  Bell,
+  ShieldCheck,
+  Cpu,
+  Terminal,
+  Archive,
+  Palette,
+  HardDriveDownload,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 export type SettingsTab =
   | "profile"
   | "general"
-  | "laboratory"
   | "users"
+  | "laboratory"
   | "billing"
   | "notifications"
   | "security"
@@ -15,45 +33,253 @@ export type SettingsTab =
   | "branding"
   | "backup";
 
-const ALL_TABS: SettingsTab[] = [
-  "profile",
-  "general",
-  "laboratory",
-  "users",
-  "billing",
-  "notifications",
-  "security",
-  "integrations",
-  "advanced",
-  "data_retention",
-  "branding",
-  "backup",
-];
-
-export function isSettingsTab(val: any): val is SettingsTab {
-  return typeof val === "string" && ALL_TABS.includes(val as SettingsTab);
+interface SettingsTabsProps {
+  activeTab: SettingsTab;
+  onTabChange: (tab: SettingsTab) => void;
 }
 
-export function SettingsTabs({ activeTab, onTabChange, tabs }: any) {
-  const list: SettingsTab[] = Array.isArray(tabs) && tabs.length > 0 ? tabs : ALL_TABS;
+interface TabDefinition {
+  id: SettingsTab;
+  code: string;
+  label: string;
+  sublabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+  verified?: boolean;
+}
+
+export const SETTINGS_TAB_DEFINITIONS: TabDefinition[] = [
+  {
+    id: "profile",
+    code: "01",
+    label: "Doctor / Staff Profile",
+    sublabel: "Credentials & Sign-off",
+    icon: User,
+    verified: true,
+  },
+  {
+    id: "laboratory",
+    code: "02",
+    label: "Lab & Accreditation",
+    sublabel: "NABL • NABH • Barcodes",
+    icon: Building2,
+    badge: "NABL",
+    verified: true,
+  },
+  {
+    id: "general",
+    code: "03",
+    label: "Facility & OPD Setup",
+    sublabel: "Hospital • Clinic • Timings",
+    icon: Sliders,
+  },
+  {
+    id: "users",
+    code: "04",
+    label: "Staff, Roles & Roster",
+    sublabel: "Directory • Shifts • Stamp Vault",
+    icon: Users,
+  },
+  {
+    id: "billing",
+    code: "05",
+    label: "Billing, Tariffs & Taxes",
+    sublabel: "SAC 9993 • TPA • Discounts",
+    icon: CreditCard,
+  },
+  {
+    id: "notifications",
+    code: "06",
+    label: "Clinical Alerts & Dispatch",
+    sublabel: "Panic SLA • WhatsApp • DLT",
+    icon: Bell,
+    badge: "Live",
+  },
+  {
+    id: "security",
+    code: "07",
+    label: "Security, 2FA & Audit",
+    sublabel: "DPDP • HIPAA • Sessions",
+    icon: ShieldCheck,
+    verified: true,
+  },
+  {
+    id: "branding",
+    code: "08",
+    label: "Report Letterhead & Print",
+    sublabel: "A4 Dossier • NABL Crest",
+    icon: Palette,
+  },
+  {
+    id: "integrations",
+    code: "09",
+    label: "Analyzers, HL7 & ABDM",
+    sublabel: "ASTM • MLLP • PACS • HFR",
+    icon: Cpu,
+  },
+  {
+    id: "data_retention",
+    code: "10",
+    label: "Specimen & Record Archival",
+    sublabel: "Serum • Blocks • EMR Lifecycle",
+    icon: Archive,
+  },
+  {
+    id: "backup",
+    code: "11",
+    label: "Disaster Recovery & Vault",
+    sublabel: "AES-256 Snapshot • S3/NAS",
+    icon: HardDriveDownload,
+    badge: "Daily",
+  },
+  {
+    id: "advanced",
+    code: "12",
+    label: "System Engine & Capacity",
+    sublabel: "Session • Rate Limit • Logs",
+    icon: Terminal,
+  },
+];
+
+export const SETTINGS_TABS: readonly SettingsTab[] = SETTINGS_TAB_DEFINITIONS.map(
+  (tab) => tab.id
+);
+
+export function isSettingsTab(value: string | null): value is SettingsTab {
+  return value !== null && (SETTINGS_TABS as readonly string[]).includes(value);
+}
+
+export default function SettingsTabs({
+  activeTab,
+  onTabChange,
+}: SettingsTabsProps) {
+  const navRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (navRef.current) {
+      const activeEl = navRef.current.querySelector('[data-active="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      }
+    }
+  }, [activeTab]);
+
+  const scroll = (direction: "left" | "right") => {
+    if (navRef.current) {
+      const amount = direction === "left" ? -280 : 280;
+      navRef.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
+
   return (
-    <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3 mb-6">
-      {list.map((tab) => (
+    <div className="relative rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden group">
+      {/* Top Clinical Accent Line */}
+      <div className="h-1 w-full bg-gradient-to-r from-[#0284c7] via-[#0d9488] to-[#0284c7]" />
+
+      <div className="relative px-2 py-2 bg-slate-50/60">
         <button
-          key={tab}
           type="button"
-          onClick={() => onTabChange?.(tab)}
-          className={`px-3.5 py-2 rounded-lg text-sm font-medium capitalize transition ${
-            activeTab === tab
-              ? "bg-blue-600 text-white shadow-sm"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-          }`}
+          onClick={() => scroll("left")}
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-slate-300 text-slate-700 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 cursor-pointer"
+          aria-label="Scroll left"
         >
-          {tab.replace(/_/g, " ")}
+          <ChevronLeft className="h-4 w-4" />
         </button>
-      ))}
+
+        <nav
+          ref={navRef}
+          className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-1"
+          aria-label="Clinical settings navigation"
+        >
+          {SETTINGS_TAB_DEFINITIONS.map((tab) => {
+            const active = activeTab === tab.id;
+            const Icon = tab.icon;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                data-active={active}
+                onClick={() => onTabChange(tab.id)}
+                className={`group/tab relative flex shrink-0 items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left transition-all duration-150 cursor-pointer border ${
+                  active
+                    ? "bg-white text-[#0f172a] border-[#0284c7] shadow-xs ring-2 ring-[#0284c7]/10"
+                    : "bg-white/70 text-slate-600 border-slate-200/90 hover:bg-white hover:text-slate-900 hover:border-slate-300"
+                }`}
+              >
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                    active
+                      ? "bg-[#0284c7] text-white border-[#0284c7]"
+                      : "bg-slate-50 text-slate-500 border-slate-200 group-hover/tab:text-[#0284c7] group-hover/tab:border-sky-200 group-hover/tab:bg-sky-50/60"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-wider px-1 py-0.2 rounded ${
+                        active
+                          ? "bg-sky-100 text-[#0284c7]"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {tab.code}
+                    </span>
+                    <span
+                      className={`text-xs whitespace-nowrap tracking-tight ${
+                        active
+                          ? "font-black text-[#0f172a]"
+                          : "font-bold text-slate-700"
+                      }`}
+                    >
+                      {tab.label}
+                    </span>
+
+                    {tab.badge && (
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider uppercase ${
+                          active
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+
+                    {tab.verified && (
+                      <CheckCircle2
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          active ? "text-[#059669]" : "text-emerald-600/70"
+                        }`}
+                      />
+                    )}
+                  </div>
+                  <div className="text-[10px] font-medium text-slate-400 truncate mt-0.5">
+                    {tab.sublabel}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </nav>
+
+        <button
+          type="button"
+          onClick={() => scroll("right")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-slate-300 text-slate-700 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 cursor-pointer"
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
-
-export default SettingsTabs;

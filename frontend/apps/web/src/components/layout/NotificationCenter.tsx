@@ -22,6 +22,7 @@ import {
   Filter
 } from "lucide-react";
 import { dashboardApi } from "@/lib/api";
+import { getUserScopedStorageKey } from "@/lib/auth";
 import { audioAlertEngine } from "@/lib/audioAlerts";
 
 export interface NotificationItem {
@@ -73,8 +74,8 @@ export default function NotificationCenter({
         dashboardApi.getStats(),
       ]);
 
-      const storedReadIds = JSON.parse(localStorage.getItem("labcore_read_notifications") || "[]");
-      const storedDismissedIds = JSON.parse(localStorage.getItem("labcore_dismissed_notifications") || "[]");
+      const storedReadIds = JSON.parse(localStorage.getItem(getUserScopedStorageKey("labcore_read_notifications")) || "[]");
+      const storedDismissedIds = JSON.parse(localStorage.getItem(getUserScopedStorageKey("labcore_dismissed_notifications")) || "[]");
 
       const items: NotificationItem[] = [];
 
@@ -314,35 +315,39 @@ export default function NotificationCenter({
     setNotifications((prev) =>
       prev.map((item) => (item.id === id ? { ...item, read: true } : item))
     );
-    const storedReadIds = JSON.parse(localStorage.getItem("labcore_read_notifications") || "[]");
+    const readKey = getUserScopedStorageKey("labcore_read_notifications");
+    const storedReadIds = JSON.parse(localStorage.getItem(readKey) || "[]");
     if (!storedReadIds.includes(id)) {
-      localStorage.setItem("labcore_read_notifications", JSON.stringify([...storedReadIds, id]));
+      localStorage.setItem(readKey, JSON.stringify([...storedReadIds, id]));
     }
   };
 
   // Mark all as read
   const markAllAsRead = () => {
+    const readKey = getUserScopedStorageKey("labcore_read_notifications");
     setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
     const allIds = notifications.map((n) => n.id);
-    localStorage.setItem("labcore_read_notifications", JSON.stringify(allIds));
+    localStorage.setItem(readKey, JSON.stringify(allIds));
     playChime("normal");
   };
 
   // Dismiss / remove notification
   const dismissNotification = (id: string, e?: React.MouseEvent) => {
+    const dismissedKey = getUserScopedStorageKey("labcore_dismissed_notifications");
     e?.stopPropagation();
     setNotifications((prev) => prev.filter((item) => item.id !== id));
-    const storedDismissedIds = JSON.parse(localStorage.getItem("labcore_dismissed_notifications") || "[]");
+    const storedDismissedIds = JSON.parse(localStorage.getItem(dismissedKey) || "[]");
     if (!storedDismissedIds.includes(id)) {
-      localStorage.setItem("labcore_dismissed_notifications", JSON.stringify([...storedDismissedIds, id]));
+      localStorage.setItem(dismissedKey, JSON.stringify([...storedDismissedIds, id]));
     }
   };
 
   // Clear all
   const clearAll = () => {
+    const dismissedKey = getUserScopedStorageKey("labcore_dismissed_notifications");
     const allIds = notifications.map((n) => n.id);
     setNotifications([]);
-    localStorage.setItem("labcore_dismissed_notifications", JSON.stringify(allIds));
+    localStorage.setItem(dismissedKey, JSON.stringify(allIds));
   };
 
   // Filtered list

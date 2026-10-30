@@ -42,6 +42,8 @@ import scimRoutes from "./modules/auth/scim.routes";
 import { oauthTokenHandler } from "./modules/auth/m2m-gateway.controller";
 import digitalTwinRoutes from "./modules/digital-twin/digital-twin.routes";
 import nexusRoutes from "./modules/nexus/nexus.routes";
+import aetherGenomicsRoutes from "./modules/aether-genomics/aether-genomics.routes";
+import chronosOmegaRoutes from "./modules/chronos-omega/chronos-omega.routes";
 import enterpriseWorkflowsRoutes from "./modules/enterprise-workflows/enterprise-workflows.routes";
 import enterpriseTier2Routes from "./modules/enterprise-workflows-tier2/enterprise-tier2.routes";
 import branchRoutes from "./modules/branches/branch.routes";
@@ -516,6 +518,20 @@ app.use("/digital-twin", digitalTwinRoutes);
 app.use("/api/v1/nexus", nexusRoutes);
 app.use("/api/nexus", nexusRoutes);
 app.use("/nexus", nexusRoutes);
+
+// =======================================================
+// AETHER-GENOMICS & NEURO-PATHOMICS NEXUS™ (MULTI-OMICS & WSI)
+// =======================================================
+app.use("/api/v1/aether-genomics", aetherGenomicsRoutes);
+app.use("/api/aether-genomics", aetherGenomicsRoutes);
+app.use("/aether-genomics", aetherGenomicsRoutes);
+
+// =======================================================
+// CHRONOS-HEMODYNAMICS & QUANTUM-BIOFLUIDICS NEXUS™
+// =======================================================
+app.use("/api/v1/chronos-omega", chronosOmegaRoutes);
+app.use("/api/chronos-omega", chronosOmegaRoutes);
+app.use("/chronos-omega", chronosOmegaRoutes);
 
 // =======================================================
 // ENTERPRISE CLINICAL WORKFLOWS (TIER 1)

@@ -223,7 +223,7 @@ const DISCOVERED_DEVICES = [
   { ip: "192.168.1.189", port: 5000, mfg: "Abbott", model: "Alinity ci-series", protocol: "HL7", latency: "22ms", desc: "Abbott Alinity Broadcast Hub" },
 ];
 
-const DRAFT_KEY = "labcore_add_analyzer_draft";
+const getAnalyzerDraftKey = () => { try { const u = JSON.parse(localStorage.getItem("labcore_auth_user") || "{}"); return `labcore_add_analyzer_draft::${(u?.email || "anonymous").toLowerCase()}`; } catch { return "labcore_add_analyzer_draft"; } };
 
 export default function AddAnalyzerModal({ isOpen, onClose, onSuccess }: AddAnalyzerModalProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -305,7 +305,7 @@ export default function AddAnalyzerModal({ isOpen, onClose, onSuccess }: AddAnal
   useEffect(() => {
     if (isOpen) {
       try {
-        const draft = localStorage.getItem(DRAFT_KEY);
+        const draft = localStorage.getItem(getAnalyzerDraftKey());
         if (draft) {
           const parsed = JSON.parse(draft);
           setFormData((prev) => ({ ...prev, ...parsed.formData }));
@@ -321,14 +321,14 @@ export default function AddAnalyzerModal({ isOpen, onClose, onSuccess }: AddAnal
 
   const saveDraft = () => {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ formData, mappings, selectedProfile, step }));
+      localStorage.setItem(getAnalyzerDraftKey(), JSON.stringify({ formData, mappings, selectedProfile, step }));
       setDraftSaved(true);
       setTimeout(() => setDraftSaved(false), 2000);
     } catch { }
   };
 
   const clearDraft = () => {
-    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(getAnalyzerDraftKey());
   };
 
   const validateStep1 = () => {

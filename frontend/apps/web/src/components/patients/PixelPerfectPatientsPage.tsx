@@ -1530,6 +1530,27 @@ export default function PixelPerfectPatientsPage() {
               </Link>
 
               <button
+                type="button"
+                onClick={() => setActivePrintPatient({
+                  id: "NEW",
+                  uhid: "NEW-INTAKE",
+                  firstName: "",
+                  lastName: "",
+                  gender: "MALE",
+                  age: null,
+                  phone: "",
+                  email: "",
+                  address: "",
+                  bloodGroup: null,
+                } as any)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-300 bg-sky-50 px-3.5 py-2 text-xs font-bold text-sky-800 shadow-2xs hover:bg-sky-100 hover:border-sky-400 active:scale-95 transition-all"
+                title="Print Hospital, Diagnostic Lab, or Clinic A4 Patient Registration Sheet"
+              >
+                <Printer className="h-3.5 w-3.5 text-sky-600" />
+                <span>A4 Printable Sheet</span>
+              </button>
+
+              <button
                 onClick={() => setIsQuickTokenOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition-all"
               >

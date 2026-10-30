@@ -35,7 +35,10 @@ import {
   X,
   Sparkles,
   RefreshCw,
+  Printer,
 } from 'lucide-react';
+import { ClinicalFacilityLogo } from './PatientSheetLetterhead';
+import PatientRegistrationPrintForm from './PatientRegistrationPrintForm';
 
 import { patientApi, ApiError } from '@/lib/api';
 import { showSuccess, showError } from '@/lib/notifications';
@@ -219,7 +222,7 @@ export const WIZARD_STEPS = [
   { key: 'review',    label: 'Review & Submit',  icon: 'FileText' },
 ] as const;
 
-const DRAFT_KEY = 'labcore.patient.draft.v3';
+const getPatientDraftKey = () => { try { const u = JSON.parse(localStorage.getItem("labcore_auth_user") || "{}"); return `labcore.patient.draft.v3::${(u?.email || "anonymous").toLowerCase()}`; } catch { return "labcore.patient.draft.v3"; } };
 
 // ------------------------------------------------------------------
 // Helper Sanitizers
@@ -339,7 +342,7 @@ const Field: React.FC<{
   className?: string;
 }> = ({ label, required, hint, error, children, className = '' }) => (
   <div className={className}>
-    <label className={`dr-label${required ? ' dr-required' : ''}`}>{label}</label>
+    <label className={`text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1`}>{label}{required && <span className="text-rose-500">*</span>}</label>
     {children}
     {error ? (
       <p className="dr-error-text" role="alert">
@@ -352,7 +355,7 @@ const Field: React.FC<{
   </div>
 );
 
-const inputClass = (error?: string) => `dr-input${error ? ' dr-input-error' : ''}`;
+const inputClass = (error?: string) => `dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 ${error ? ' border-rose-500 focus:border-rose-500 focus:ring-rose-500/15' : ''}`;
 
 // ------------------------------------------------------------------
 // Main Wizard Component
@@ -378,6 +381,7 @@ export default function RegisterPatientWizard({
   const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showA4Preview, setShowA4Preview] = useState(false);
 
   // Pincode & City/State 2-way auto-sync state
   const [lookingUpPincode, setLookingUpPincode] = useState(false);
@@ -634,7 +638,7 @@ export default function RegisterPatientWizard({
     }
 
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
+      const raw = localStorage.getItem(getPatientDraftKey());
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
@@ -656,7 +660,7 @@ export default function RegisterPatientWizard({
       try {
         const now = new Date();
         localStorage.setItem(
-          DRAFT_KEY,
+          getPatientDraftKey(),
           JSON.stringify({ values, step, savedAt: now.toISOString() })
         );
         setDraftSavedAt(now);
@@ -669,7 +673,7 @@ export default function RegisterPatientWizard({
 
   const clearDraft = useCallback(() => {
     try {
-      localStorage.removeItem(DRAFT_KEY);
+      localStorage.removeItem(getPatientDraftKey());
     } catch {
       // ignore
     }
@@ -1001,7 +1005,7 @@ export default function RegisterPatientWizard({
         result = await patientApi.create(payload);
         showSuccess('Patient registered successfully');
         try {
-          localStorage.removeItem(DRAFT_KEY);
+          localStorage.removeItem(getPatientDraftKey());
         } catch {
           // ignore
         }
@@ -1030,35 +1034,56 @@ export default function RegisterPatientWizard({
   const progress = ((step + 1) / WIZARD_STEPS.length) * 100;
 
   return (
-    <div className="dr-overlay" role="dialog" aria-modal="true" aria-label="Register patient">
-      <div className="dr-panel dr-panel-mid">
-        {/* ---------- Header (Off-white #f8fafc) ---------- */}
-        <div className="flex items-center justify-between gap-4 px-7 py-4 bg-[#f8fafc] border-b border-slate-200">
-          <div>
-            <h2 className="text-[17px] font-bold text-slate-900 tracking-tight">
-              {isEditing ? 'Edit Patient Record' : 'Register New Patient'}
-            </h2>
-            <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-              <span>Step {step + 1} of {WIZARD_STEPS.length} · {WIZARD_STEPS[step]!.label}</span>
-              {!isEditing && draftSavedAt ? (
-                <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                  <Save size={11} aria-hidden /> Draft saved{' '}
-                  {draftSavedAt.toLocaleTimeString('en-IN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-md p-4 sm:p-8 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Register patient">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/80 w-full max-w-[1050px] flex flex-col overflow-hidden ring-1 ring-slate-900/5">
+        {/* Clinical Top Accent Bar */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-[#0284c7] via-[#0d9488] to-[#0284c7]" />
+        {/* ---------- Hospital / Lab / Clinic Professional Header (Pure Light-White & Clinical Slate) ---------- */}
+        <div className="flex items-center justify-between gap-4 px-8 py-5 bg-white border-b border-slate-200">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <ClinicalFacilityLogo size={42} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-black text-[#0f172a] uppercase tracking-wide">
+                  {isEditing ? 'Update Clinical Patient Record' : 'Clinical Patient Registration (OPD / Lab / Clinic)'}
+                </h2>
+                <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-[#0284c7] bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-md shadow-sm">
+                  NABL ISO 15189 &bull; ABDM
                 </span>
-              ) : null}
-            </p>
+              </div>
+              <p className="text-xs text-slate-500 font-medium flex flex-wrap items-center gap-1.5 mt-0.5">
+                <span className="text-slate-700 font-semibold">Step {step + 1} of {WIZARD_STEPS.length} · {WIZARD_STEPS[step]!.label}</span>
+                <span>&bull;</span>
+                <span>Hospital, Diagnostic Laboratory &amp; Multi-Specialty Clinic Intake</span>
+                {!isEditing && draftSavedAt ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                    <Save size={11} aria-hidden /> Draft saved{' '}
+                    {draftSavedAt.toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                ) : null}
+              </p>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={requestClose}
-            aria-label="Close"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowA4Preview(true)}
+              className="px-3 py-1.5 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg inline-flex items-center gap-1.5 transition"
+            >
+              <Printer size={13} /> A4 Printable Sheet
+            </button>
+            <button
+              type="button"
+              onClick={requestClose}
+              aria-label="Close"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* ---------- Progress Bar ---------- */}
@@ -1080,7 +1105,7 @@ export default function RegisterPatientWizard({
 
         {/* ---------- Horizontal Stepper Chips (Crisp White + Bottom Border) ---------- */}
         <div
-          className="flex items-center gap-1.5 overflow-x-auto px-6 py-2.5 bg-white border-b border-slate-200/80"
+          className="flex items-center gap-2 overflow-x-auto px-8 py-3 bg-slate-50 border-b border-slate-200 shadow-sm"
           style={{ scrollbarWidth: 'none' }}
         >
           {WIZARD_STEPS.map((s, i) => (
@@ -1105,7 +1130,7 @@ export default function RegisterPatientWizard({
 
         {/* ---------- Step Body (Crisp Pure White Content) ---------- */}
         <div
-          className="px-7 py-6 overflow-y-auto bg-white"
+          className="px-8 py-7 overflow-y-auto bg-white"
           style={{ maxHeight: 'min(62vh, 620px)' }}
         >
           {/* STEP 0: Personal */}
@@ -1114,7 +1139,7 @@ export default function RegisterPatientWizard({
               {/* Row 1: Demographics Baseline */}
               <Field label="Title" className="dr-col-2">
                 <select
-                  className="dr-select font-medium"
+                  className="dr-select bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 py-2"
                   value={values.title}
                   onChange={(e) => set('title', e.target.value)}
                 >
@@ -1147,7 +1172,7 @@ export default function RegisterPatientWizard({
 
               <Field label="Gender" required error={errors.gender} className="dr-col-2">
                 <select
-                  className="dr-select font-medium"
+                  className="dr-select bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 py-2"
                   value={values.gender}
                   onChange={(e) => set('gender', e.target.value)}
                 >
@@ -1197,7 +1222,7 @@ export default function RegisterPatientWizard({
 
               <Field label="Blood Group" className="dr-col-3">
                 <select
-                  className="dr-select font-medium"
+                  className="dr-select bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 py-2"
                   value={values.bloodGroup}
                   onChange={(e) => set('bloodGroup', e.target.value)}
                 >
@@ -1212,7 +1237,7 @@ export default function RegisterPatientWizard({
 
               <Field label="Patient Category" className="dr-col-4">
                 <select
-                  className="dr-select font-medium"
+                  className="dr-select bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 py-2"
                   value={values.patientType}
                   onChange={(e) => set('patientType', e.target.value)}
                 >
@@ -1228,7 +1253,7 @@ export default function RegisterPatientWizard({
 
               <Field label="Marital Status" className="dr-col-3">
                 <select
-                  className="dr-select font-medium"
+                  className="dr-select bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 py-2"
                   value={values.maritalStatus}
                   onChange={(e) => set('maritalStatus', e.target.value)}
                 >
@@ -1243,7 +1268,7 @@ export default function RegisterPatientWizard({
               {/* Row 3: Nationality & Language */}
               <Field label="Nationality" className="dr-col-4">
                 <input
-                  className="dr-input"
+                  className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.nationality}
                   onChange={(e) => set('nationality', e.target.value)}
                   placeholder="Indian"
@@ -1252,7 +1277,7 @@ export default function RegisterPatientWizard({
 
               <Field label="Languages Spoken" className="dr-col-8">
                 <input
-                  className="dr-input"
+                  className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.languages}
                   onChange={(e) => set('languages', e.target.value)}
                   placeholder="English, Hindi, Gujarati"
@@ -1317,7 +1342,7 @@ export default function RegisterPatientWizard({
 
               <Field label="Street / Residential Address" className="dr-col-12">
                 <input
-                  className="dr-input"
+                  className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.address}
                   onChange={(e) => set('address', e.target.value)}
                   placeholder="House / Flat No, Street, Landmark"
@@ -1515,7 +1540,7 @@ export default function RegisterPatientWizard({
             <div className="dr-grid">
               <Field label="Emergency Contact Name" className="dr-col-4">
                 <input
-                  className="dr-input"
+                  className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.emergencyContactName}
                   onChange={(e) => set('emergencyContactName', e.target.value)}
                   placeholder="Kin or Guardian Full Name"
@@ -1555,7 +1580,7 @@ export default function RegisterPatientWizard({
 
               <Field label="Emergency Address / Special Remarks" className="dr-col-12">
                 <textarea
-                  className="dr-textarea"
+                  className="dr-textarea bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.emergencyContactAddress}
                   onChange={(e) => set('emergencyContactAddress', e.target.value)}
                   placeholder="Residence or specific instructions in case of medical emergency..."
@@ -1573,7 +1598,7 @@ export default function RegisterPatientWizard({
                 hint="e.g. Penicillin, Sulfa, Peanuts, Latex"
               >
                 <textarea
-                  className="dr-textarea"
+                  className="dr-textarea bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.allergies}
                   onChange={(e) => set('allergies', e.target.value)}
                   placeholder="None known or enter specific allergies..."
@@ -1587,7 +1612,7 @@ export default function RegisterPatientWizard({
                 hint="e.g. Type 2 Diabetes, Hypertension, Thyroid"
               >
                 <textarea
-                  className="dr-textarea"
+                  className="dr-textarea bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.medicalConditions}
                   onChange={(e) => set('medicalConditions', e.target.value)}
                   placeholder="e.g. Diabetes, Hypertension..."
@@ -1600,7 +1625,7 @@ export default function RegisterPatientWizard({
                 hint="Medications that might interfere with reference ranges (e.g., Blood thinners, Steroids, Insulin)"
               >
                 <textarea
-                  className="dr-textarea"
+                  className="dr-textarea bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.currentMedications}
                   onChange={(e) => set('currentMedications', e.target.value)}
                   placeholder="e.g. Metformin 500mg, Telmisartan 40mg..."
@@ -1651,7 +1676,7 @@ export default function RegisterPatientWizard({
 
                   <Field label="Policy / TPA Card Number" className="dr-col-6">
                     <input
-                      className="dr-input"
+                      className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                       value={values.insuranceNumber}
                       onChange={(e) => set('insuranceNumber', e.target.value)}
                       placeholder="e.g. POL-9842104"
@@ -1660,7 +1685,7 @@ export default function RegisterPatientWizard({
 
                   <Field label="Corporate / Group Policy ID" className="dr-col-6">
                     <input
-                      className="dr-input"
+                      className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                       value={values.insuranceGroupNumber}
                       onChange={(e) => set('insuranceGroupNumber', e.target.value)}
                       placeholder="Optional Group ID"
@@ -1670,7 +1695,7 @@ export default function RegisterPatientWizard({
                   <Field label="Policy Expiry Date" className="dr-col-6">
                     <input
                       type="date"
-                      className="dr-input"
+                      className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                       value={values.insuranceExpiryDate}
                       onChange={(e) => set('insuranceExpiryDate', e.target.value)}
                     />
@@ -1710,7 +1735,7 @@ export default function RegisterPatientWizard({
                 >
                   <div className="relative">
                     <input
-                      className="dr-input"
+                      className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                       value={values.ayushmanBharatId}
                       onChange={(e) => set('ayushmanBharatId', e.target.value)}
                       placeholder="e.g. PMJAY-GUJ-10294812"
@@ -1732,7 +1757,7 @@ export default function RegisterPatientWizard({
                 >
                   <div className="relative">
                     <input
-                      className="dr-input"
+                      className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                       value={values.esicNumber}
                       onChange={(e) => set('esicNumber', e.target.value)}
                       placeholder="e.g. 37001234560001001"
@@ -1824,7 +1849,7 @@ export default function RegisterPatientWizard({
                   hint="14-digit ABDM ID (XX-XXXX-XXXX-XXXX)"
                 >
                   <input
-                    className="dr-input"
+                    className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                     value={values.abhaNumber}
                     onChange={(e) => set('abhaNumber', e.target.value)}
                     placeholder="e.g. 12-3456-7890-1234"
@@ -1837,7 +1862,7 @@ export default function RegisterPatientWizard({
                   hint="Patient PHR handle (e.g. patient@abdm)"
                 >
                   <input
-                    className="dr-input"
+                    className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                     value={values.abhaAddress}
                     onChange={(e) => set('abhaAddress', e.target.value)}
                     placeholder="patient@abdm"
@@ -1957,7 +1982,7 @@ export default function RegisterPatientWizard({
               <div className="dr-grid">
                 <Field label="Referral Channel Source" required className="dr-col-6">
                   <select
-                    className="dr-select font-medium"
+                    className="dr-select bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 py-2"
                     value={values.referralSource}
                     onChange={(e) => set('referralSource', e.target.value as any)}
                   >
@@ -1972,7 +1997,7 @@ export default function RegisterPatientWizard({
 
                 <Field label="Collection Center / Phlebotomy Unit" className="dr-col-6">
                   <select
-                    className="dr-select font-medium"
+                    className="dr-select bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900 py-2"
                     value={values.collectionCenter}
                     onChange={(e) => set('collectionCenter', e.target.value)}
                   >
@@ -2004,7 +2029,7 @@ export default function RegisterPatientWizard({
 
                     <Field label="Doctor Contact Phone" className="dr-col-3">
                       <input
-                        className="dr-input"
+                        className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                         value={values.referringDoctorPhone}
                         onChange={(e) => set('referringDoctorPhone', e.target.value)}
                         placeholder="9876543210"
@@ -2014,7 +2039,7 @@ export default function RegisterPatientWizard({
 
                     <Field label="Referring Clinic / Hospital" className="dr-col-3">
                       <input
-                        className="dr-input"
+                        className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                         value={values.referringHospital}
                         onChange={(e) => set('referringHospital', e.target.value)}
                         placeholder="City Care Hospital"
@@ -2026,7 +2051,7 @@ export default function RegisterPatientWizard({
                 {values.referralSource === 'CAMP' && (
                   <Field label="Health Camp / Outreach Campaign Name" className="dr-col-12">
                     <input
-                      className="dr-input"
+                      className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                       value={values.campaignName}
                       onChange={(e) => set('campaignName', e.target.value)}
                       placeholder="e.g. PALANPUR_MEGA_DIABETES_CAMP_2026"
@@ -2038,7 +2063,7 @@ export default function RegisterPatientWizard({
                 {values.referralSource === 'CORPORATE' && (
                   <Field label="Corporate Partner Organization Name" className="dr-col-12">
                     <input
-                      className="dr-input"
+                      className="dr-input bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                       value={values.campaignName}
                       onChange={(e) => set('campaignName', e.target.value)}
                       placeholder="e.g. Reliance Industries Annual Executive Health Check"
@@ -2213,7 +2238,7 @@ export default function RegisterPatientWizard({
               {/* Internal Remarks */}
               <Field label="Registration & Clinical Remarks (Internal Notes)" className="dr-col-12">
                 <textarea
-                  className="dr-textarea"
+                  className="dr-textarea bg-slate-50 border-slate-300 focus:bg-white focus:border-[#0284c7] focus:ring-4 focus:ring-[#0284c7]/15 transition-all rounded-lg shadow-sm text-[13px] font-semibold text-slate-900"
                   value={values.notes}
                   onChange={(e) => set('notes', e.target.value)}
                   placeholder="Optional internal remarks, VIP instructions or doctor referral notes..."
@@ -2255,7 +2280,7 @@ export default function RegisterPatientWizard({
         </div>
 
         {/* ---------- Footer Bar (Light Slate-50) ---------- */}
-        <div className="flex items-center justify-between px-7 py-4 bg-[#f8fafc] border-t border-slate-200">
+        <div className="flex items-center justify-between px-8 py-4 bg-slate-50 border-t border-slate-200 shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)]">
           <div>
             {!isEditing && dirty ? (
               <button
@@ -2270,6 +2295,13 @@ export default function RegisterPatientWizard({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowA4Preview(true)}
+              className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg shadow-2xs inline-flex items-center gap-1.5 transition"
+            >
+              <Printer size={13} className="text-sky-700" /> Print A4 Form
+            </button>
             <button
               type="button"
               onClick={requestClose}
@@ -2319,6 +2351,19 @@ export default function RegisterPatientWizard({
           </div>
         </div>
       </div>
+
+      {showA4Preview && (
+        <PatientRegistrationPrintForm
+          isModal={true}
+          onClose={() => setShowA4Preview(false)}
+          patientData={{
+            ...values,
+            uhid: patientToEdit?.uhid || "UHID-2026-1001",
+            preferredLanguage: values.preferredLanguage || values.languages || "English",
+            createdAt: patientToEdit?.createdAt || new Date().toISOString(),
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { getRoleLabel, getUserRole } from "@/lib/auth";
+import { getRoleLabel, getUserRole, getUserScopedStorageKey } from "@/lib/auth";
 import {
   LayoutDashboard,
   Users,
@@ -215,6 +215,40 @@ const menuSections: MenuSection[] = [
         ],
       },
       {
+        id: "aether-genomics",
+        label: "Aether-Genomics™",
+        name: "aether-genomics",
+        href: "/aether-genomics",
+        icon: Brain,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST", "DOCTOR"],
+        accent: ACCENTS.teal,
+        children: [
+          { label: "Ruifrok & Delaunay Pathomics", href: "/aether-genomics?tab=wsi", badge: "Beer-Lambert", badgeVariant: "blue" },
+          { label: "Phenoconversion & 7-Organ PBPK", href: "/aether-genomics?tab=pgx", badge: "ODE", badgeVariant: "red" },
+          { label: "VUS-Eliminator & Folding ΔΔG", href: "/aether-genomics?tab=acmg", badge: "Biophysics", badgeVariant: "purple" },
+          { label: "Subclonal Lotka-Volterra & HRD", href: "/aether-genomics?tab=mtb", badge: "PFS+", badgeVariant: "amber" },
+          { label: "mRNA Vaccine & ctDNA MRD", href: "/aether-genomics?tab=immuno-mrd", badge: "Lead-Time", badgeVariant: "emerald" },
+          { label: "GA4GH Phenopackets v2 HPO", href: "/aether-genomics?tab=phenopackets", badge: "DAG", badgeVariant: "teal" },
+          { label: "ISO 15189 Sovereign Dossier", href: "/aether-genomics?tab=dossier", badge: "SHA-256", badgeVariant: "teal" },
+        ],
+      },
+      {
+        id: "chronos-omega",
+        label: "Chronos-Omega™",
+        name: "chronos-omega",
+        href: "/chronos-omega",
+        icon: HeartPulse,
+        allowedRoles: ["SUPER_ADMIN", "ADMIN", "PATHOLOGIST", "DOCTOR"],
+        accent: ACCENTS.rose,
+        children: [
+          { label: "Closed-Loop RK4 TDM", href: "/chronos-omega?tab=tdm", badge: "ICU", badgeVariant: "emerald" },
+          { label: "Stewart Quantitative ABG", href: "/chronos-omega?tab=stewart", badge: "Newton", badgeVariant: "blue" },
+          { label: "Liquid Biopsy cfDNA Simplex", href: "/chronos-omega?tab=cfdna", badge: "12 Organs", badgeVariant: "purple" },
+          { label: "5-PL Hook-Effect Interceptor", href: "/chronos-omega?tab=hook", badge: "Prozone", badgeVariant: "amber" },
+          { label: "Graph-Laplacian PBRTQC", href: "/chronos-omega?tab=pbrtqc", badge: "Lock", badgeVariant: "rose" },
+        ],
+      },
+      {
         id: "lndt-x",
         label: "LNDT-X Operational Twin",
         name: "lndt-x",
@@ -260,9 +294,9 @@ const menuSections: MenuSection[] = [
           { label: "Today's Registrations", href: "/patients?chip=TODAY", badge: "Today", badgeVariant: "teal" },
           { label: "STAT & Critical Watchlist", href: "/patients?chip=CRITICAL", badge: "Urgent", badgeVariant: "red", liveKey: "criticalPatients" },
           { label: "Inpatient (IPD) / Wards", href: "/patients?chip=IPD", badge: "Beds", badgeVariant: "blue" },
-          { label: "Phlebotomy Accession Desk", href: "/patients?chip=PHLEBOTOMY", badge: "Tubes", badgeVariant: "teal" },
-          { label: "Home Collection Logistics", href: "/patients?chip=HOME_COLLECTION", badge: "Field", badgeVariant: "teal" },
-          { label: "Cashless TPA & Billing Desk", href: "/patients?chip=BILLING", badge: "Claims", badgeVariant: "amber" },
+          { label: "Phlebotomy Accession Desk", href: "/samples?view=collection", badge: "Tubes", badgeVariant: "teal" },
+          { label: "Home Collection Logistics", href: "/logistics?tab=home-phlebo", badge: "Field", badgeVariant: "teal" },
+          { label: "Cashless TPA & Billing Desk", href: "/invoices", badge: "Claims", badgeVariant: "amber" },
           { label: "Pending Diagnostic Roster", href: "/patients?chip=PENDING", badge: "Pending", badgeVariant: "amber" },
           { isDivider: true, dividerLabel: "NATIONAL DIGITAL HEALTH", label: "", href: "#" },
           { label: "ABDM / ABHA Digital Desk", href: "/abdm", badge: "ABHA", badgeVariant: "purple" },
@@ -821,7 +855,7 @@ export default function Sidebar({
     setIsMounted(true);
 
     try {
-      const raw = localStorage.getItem("labcore_settings_profile");
+      const raw = localStorage.getItem(getUserScopedStorageKey("labcore_settings_profile"));
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.firstName || parsed.lastName) {
@@ -968,6 +1002,8 @@ export default function Sidebar({
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
     "Operations Dashboard": pathname.startsWith("/dashboard"),
     "Diagnostic Intelligence (Nexus)": pathname.startsWith("/nexus"),
+    "Aether-Genomics™": pathname.startsWith("/aether-genomics"),
+    "Chronos-Omega™": pathname.startsWith("/chronos-omega"),
     "Patient Master Index (MPI)": pathname.startsWith("/patients"),
     "Patient Hub": pathname.startsWith("/patients"),
     Patients: pathname.startsWith("/patients"),
