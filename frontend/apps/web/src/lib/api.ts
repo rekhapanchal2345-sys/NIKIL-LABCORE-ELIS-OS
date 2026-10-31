@@ -1376,6 +1376,31 @@ export const authApi = createSafeApiProxy({
   resetPassword: async () => ({ success: true, message: "Password updated." }),
   verifyMfa: async () => ({ success: true, data: {} }),
   verifyOwner: async () => ({ success: true, data: {} }),
+  updateProfile: async (data: any) => ({ success: true, data, message: "Profile updated successfully." }),
+  changePassword: async (..._args: any[]) => ({ success: true, message: "Password updated successfully." }),
+  sessions: async () => ({
+    success: true,
+    data: [
+      { id: "sess-1", device: "Chrome on Windows 11", ip: "192.168.10.104", location: "Hospital LAN", current: true, lastActive: "Active Now" },
+      { id: "sess-2", device: "Safari on iPad Pro", ip: "192.168.10.118", location: "Ward Wi-Fi", current: false, lastActive: "15 mins ago" },
+    ],
+  }),
+  revokeSession: async (id: string) => ({ success: true, message: `Session ${id} revoked.` }),
+});
+
+export const auditApi = createSafeApiProxy({
+  getLogs: async () => ({
+    success: true,
+    data: [
+      { id: "aud-1", timestamp: new Date().toISOString(), action: "LOGIN_SUCCESS", user: "Admin", ip: "192.168.10.104" },
+    ],
+  }),
+  getMyActivity: async () => ({
+    success: true,
+    data: [
+      { id: "aud-1", timestamp: new Date().toISOString(), action: "LOGIN_SUCCESS", user: "Admin", ip: "192.168.10.104" },
+    ],
+  }),
 });
 
 export const communicationApi = createSafeApiProxy({
@@ -1507,6 +1532,7 @@ export const userApi = createSafeApiProxy({
     if (u) softArchiveRecord("users", u);
     return { success: true, data: { id, archived: true } };
   },
+  updateProfile: async (id: string, data: any) => ({ success: true, data: { id, ...data } }),
 });
 
 export const whatsappApi = createSafeApiProxy({

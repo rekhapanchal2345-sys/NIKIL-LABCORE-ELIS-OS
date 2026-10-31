@@ -234,6 +234,28 @@ TOOLS_DEFINITION = [
             },
             "required": ["command"]
         }
+    },
+    {
+        "name": "run_indtx_clinical_engine",
+        "description": "Execute INDT-X Enterprise Clinical Core v4.2 deterministic calculation (CKD-EPI 2021 eGFR, MELD-Na, Westgard Six-Sigma QC, and metabolic risk).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "age": {"type": "number", "description": "Patient age in years (default: 64)"},
+                "sex": {"type": "string", "description": "'M' or 'F' (default: 'M')"},
+                "serumCreatinineMgDl": {"type": "number", "description": "Serum creatinine in mg/dL (default: 1.84)"},
+                "bilirubinMgDl": {"type": "number", "description": "Total bilirubin in mg/dL (default: 1.95)"},
+                "inr": {"type": "number", "description": "INR (default: 1.38)"},
+                "serumSodiumMmolL": {"type": "number", "description": "Serum sodium in mmol/L (default: 133.0)"},
+                "lactateMmolL": {"type": "number", "description": "Arterial lactate in mmol/L (default: 2.75)"},
+                "qcHistory": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "description": "List of QC observations for Westgard evaluation"
+                }
+            },
+            "required": []
+        }
     }
 ]
 
@@ -454,6 +476,14 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> str:
                 return f"Error: Command timed out after {timeout} seconds."
             except Exception as e:
                 return f"Error executing command: {str(e)}"
+
+        elif name == "run_indtx_clinical_engine":
+            try:
+                from backend.indtx_clinical_engine import run_indtx_full_diagnostic_report
+                report = run_indtx_full_diagnostic_report(arguments)
+                return json.dumps(report, indent=2)
+            except Exception as e:
+                return f"Error executing INDT-X Clinical Engine: {str(e)}"
 
         else:
             return f"Unknown tool: {name}"

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { AlertCircle } from "lucide-react";
 
 interface SettingsFieldProps {
   label: string;
@@ -22,28 +23,31 @@ export default function SettingsField({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="block text-xs font-bold tracking-tight text-slate-700 dark:text-slate-300 uppercase">
+        <label className="block text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
           {label}
-          {required && <span className="ml-1 text-rose-500 font-bold">*</span>}
+          {required && (
+            <span className="ml-1 text-red-500 font-bold" aria-hidden="true">
+              *
+            </span>
+          )}
         </label>
         {badge && (
-          <span className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+          <span className="text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-100 rounded px-1.5 py-0.5">
             {badge}
           </span>
         )}
       </div>
 
       {description && (
-        <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-          {description}
-        </p>
+        <p className="text-[11px] leading-relaxed text-slate-400">{description}</p>
       )}
 
       <div className="relative pt-0.5">{children}</div>
 
       {error && (
-        <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-          <span>⚠</span> {error}
+        <p className="text-[11px] font-medium text-red-600 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {error}
         </p>
       )}
     </div>

@@ -1,0 +1,159 @@
+<USER_REQUEST>
+# SYSTEM ROLE & DIRECTIVE: PRINCIPAL HEALTHCARE SYSTEMS ARCHITECT & MEDICAL UI/UX LEAD
+
+You are a Principal Enterprise Systems Architect and Senior Clinical UI/UX Engineer specializing in Hospital Information Systems (HIS), Laboratory Information Systems (LIS/ELIS), and Electronic Health Records (EHR). Your systems run in single-practitioner clinics, standalone diagnostic pathology labs, and 1,500+ bed tertiary-care multi-specialty enterprise hospitals.
+
+---
+
+## 🎯 MISSION OBJECTIVE
+Architect, refactor, and implement an end-to-end, enterprise-grade **Settings Module & Navigation System** for `NIKIL-LABCORE-ELIS-OS` (built with Next.js 15 App Router, React 18/19, TypeScript, and Tailwind CSS).
+
+The implementation must be:
+1. **100% Real-World & Production-Ready**: No fake mockups, no placeholder gimmicks, no sci-fi/futuristic bloat. Every field, toggle, table, and dropdown must reflect real clinical, administrative, statutory, and diagnostic workflows.
+2. **Scalable from Clinic to Enterprise**: Seamlessly accommodate a small 1-room collection center/clinic up to a multi-branch, multi-tenant hospital chain.
+3. **Ultra-Light White Clinical Aesthetics**: A clean, sterile, high-density hospital-grade UI.
+4. **Fully Integrated Navigation**: Two-tier/split-pane layout with instant fuzzy search (`Cmd/Ctrl + K`), category breadcrumbs, unsaved-changes dirty state tracker, role-based visibility (RBAC), and persistent deep-linking via URL query params.
+
+---
+
+## 🎨 UI/UX DESIGN SYSTEM SPECIFICATIONS: "ULTRA-LIGHT WHITE CLINICAL"
+Strictly adhere to the following visual hierarchy. Reject dark themes, neon gradients, glowing borders, or frivolous animations.
+
+- **Background & Canvas**:
+  - Primary Base: `#FFFFFF` (Pure Hospital White).
+  - Subtle Page/Sub-panel Background: `#F8FAFC` (Slate 50) and `#F1F5F9` (Slate 100).
+- **Borders & Dividers**:
+  - Crisp, ultra-thin hairline borders: `#E2E8F0` (Slate 200) and `#CBD5E1` (Slate 300).
+  - Subtle focus rings: `#0284C7` (Sky/Medical Cyan) with `ring-1 ring-offset-1`.
+- **Typography & Hierarchy**:
+  - Font: Clean geometric sans-serif (Inter, SF Pro, or Geist).
+  - Primary Labels/Headings: `#0F172A` (Slate 900) font-semibold / font-medium.
+  - Secondary Descriptive Text: `#475569` (Slate 600) font-normal text-xs/text-sm.
+  - Micro-metadata & Badges: `#64748B` (Slate 500) font-mono uppercase tracking-wider.
+- **Clinical Accent Palette**:
+  - Primary Action / Medical Brand: `#0284C7` (Clinical Sky Blue) or `#0369A1`.
+  - Validated / Accredited / Safe State: `#059669` (Clinical Emerald 600) / `#ECFDF5` background.
+  - Critical / Panic / Danger State: `#DC2626` (Medical Red 600) / `#FEF2F2` background.
+  - Regulatory / Warning State: `#D97706` (Amber 600) / `#FFFBEB` background.
+- **Layout Density**:
+  - High information density (compact tables, structured key-value property lists, clean segmented switches, tabular data grids).
+  - Form inputs must have distinct, tactile input borders (`border border-slate-300 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 bg-white rounded-md text-slate-900 text-sm py-1.5 px-3`).
+
+---
+
+## 🏛️ NAVIGATION & SETTINGS DOMAIN ARCHITECTURE
+
+Reorganize and implement the Settings Navigation into **6 Real-World Clinical Domains** with structured sub-categories:
+
+### Domain 1: Facility, Branches & Operational Scheduling
+- **Facility Identity**:
+  - Hospital/Lab Legal Name, Trade Name, Clinical Establishment Act Registration Number, State Medical Directorate License No.
+  - Geo-location coordinates, Branch Code, Multi-branch switcher (Head Office vs Satellite Collection Centers).
+- **Operational Timings & Shifts**:
+  - OPD / IPD Consultation hours, 24x7 Emergency / Trauma triage toggle, Sample Collection cutoff timings.
+  - Shift Rosters: Morning, Evening, Night & On-call emergency pathologist slots.
+- **Departments & Physical Units**:
+  - Department Master: Biochemistry, Hematology, Microbiology, Histopathology, Molecular Biology, Radiology, Phlebotomy.
+  - Physical Wards / Room Categories (for hospitals): ICU, CCU, NICU, General Ward, Private Deluxe, Daycare beds.
+
+### Domain 2: Diagnostic & Laboratory Governance (NABL / NABH Standards)
+- **Accreditation & Quality Control**:
+  - NABL (ISO 15189:2022) Certificate Number, Validity Period, Scope of Testing.
+  - Internal Quality Control (IQC) Rules: Westgard Rules configuration (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10x auto-hold triggers).
+  - EQAS / PT (External Quality Assurance Scheme) Provider details (CMC Vellore, AIIMS, Bio-Rad EQAS).
+- **Panic / Critical Value SLAs**:
+  - Critical Value Alert Threshold Master (e.g., Potassium < 2.5 or > 6.5 mmol/L, Platelets < 20,000 /µL, Troponin-I elevation).
+  - Mandatory Panic Value Telephonic Notification Log protocol with auto-escalation timer (15 min SLA).
+  - Delta Check Thresholds (% variance from patient's previous historical report within 48-72 hours).
+- **Specimen & Barcode Engine**:
+  - Barcode Symbology: Code 128, GS1-128, DataMatrix 2D, QR Code.
+  - Vacutainer Tube Color Code Master (EDTA Purple, Sodium Citrate Blue, SST Gold/Yellow, Fluoride Grey, Plain Red).
+  - Tube volume validation & sample accessioning prefix rules (e.g., `LAB-2026-XXXXX`).
+
+### Domain 3: Doctor, Staff & Signature/Stamp Vault
+- **Digital Signatures & Stamp Vault**:
+  - Dual-Signatory Sign-off logic: Junior Resident / Lab Tech preliminary entry + Senior Pathologist / MD final sign-off.
+  - High-resolution encrypted digital signature & medical council seal upload with PIN/Biometric sign-off authorization.
+  - State Medical Council / MCI / NMC Registration number printing on reports.
+- **Granular Role-Based Access Control (RBAC)**:
+  - Strict hierarchical permission matrix:
+    - `HOSPITAL_SUPER_ADMIN`: Full systemic & billing override.
+    - `SENIOR_PATHOLOGIST / CHIEF_BIOCHEMIST`: Clinical authorization, delta override, IQC approval.
+    - `LAB_TECHNICIAN`: Result entry, analyzer batch loading (no final release privilege).
+    - `PHLEBOTOMIST`: Accessioning, specimen accept/reject, barcode printing.
+    - `BILLING_CASHIER`: Invoicing, receipt generation, refund requests (zero clinical view).
+    - `NURSE / OPD_COORDINATOR`: Sample dispatch, patient status tracking.
+
+### Domain 4: Billing, Tariffs, Insurance & Statutory Taxes
+- **Tariff Schedules & Rate Lists**:
+  - Multi-tier Tariff Master: General Walk-in, In-house IPD, Corporate Tie-ups, TPA/Cashless Insurance rates.
+  - Government Scheme integration: CGHS, ECHS, Ayushman Bharat (AB-PMJAY), State Health Cards.
+- **Statutory Taxes & Invoicing Rules**:
+  - GST / SAC Code rules (Healthcare services under SAC 9993 - GST exempt vs taxable wellness packages).
+  - PAN, GSTIN, TAN configuration, automated invoice numbering sequence with financial year prefix (e.g., `INV/26-27/0001`).
+  - Maximum allowable discount percentage threshold before requiring Admin OTP/Supervisory override.
+- **Payment Gateways & Hardware Terminals**:
+  - Static & Dynamic UPI QR codes (NPCI compliant with invoice parameter embedding).
+  - POS Machine / Card Terminal IP & Merchant IDs (PineLabs, Paytm, Razorpay POS).
+
+### Domain 5: Medical Hardware, Interoperability & LIS Interfacing
+- **Bi-directional & Uni-directional Analyzer Interfacing**:
+  - ASTM E1381 / ASTM E1394 and HL7 v2.x protocol engines.
+  - Supported Instrument Drivers: Mindray, Sysmex, Roche Cobas, Beckman Coulter, Horiba, Abbott Architect.
+  - COM Port (RS-232), TCP/IP Socket (IP:Port), and Baud Rate/Data bits/Parity communication setup.
+  - Worklist auto-query (Host Query Mode) vs batch push mode.
+- **Hospital Interoperability**:
+  - HL7 v2.5.1 Message handlers: `ADT_A01` (Admit), `ORM_O01` (Lab Order), `ORU_R01` (Observation Result).
+  - FHIR R4 REST API endpoints for diagnostic reports (`DiagnosticReport`, `Observation`, `Patient`, `Specimen`).
+  - PACS / DICOM Bridge: Modality Worklist (MWL) and Storage SCU/SCP settings for radiology reporting.
+
+### Domain 6: Stationery, Report Header/Footer & System Security
+- **Report Canvas & Pre-Printed Stationery**:
+  - Header Height (mm/pt), Footer Height (mm/pt), Left/Right margins for pre-printed letterheads.
+  - Full Digital PDF mode (system prints hospital logo, NABH/NABL logo, accreditation credentials) vs Pre-Printed Sheet mode (system suppresses header/footer and only prints clinical test data).
+  - Dynamic Verification QR Code position (top-right or bottom footer) linking to instant verification portal.
+  - Watermark controls ("PRELIMINARY REPORT", "CONFIDENTIAL", "DUPLICATE COPY").
+- **Security, Compliance & Audit Trail**:
+  - Immutable Audit Log: Every modification, test cancellation, discount override, or result recalculation logged with User ID, Timestamp, IP, and Previous Value vs New Value.
+  - HIPAA & DISHA (India Digital Information Security in Healthcare Act) compliant idle session timeout (auto-logout at 5 / 15 / 30 mins).
+  - Backup & Disaster Recovery: Automated daily encrypted database snapshot to local NAS and secondary cloud bucket (S3 / GCS), with verifiable SHA-256 integrity checks.
+
+---
+
+## 🛠️ TECHNICAL & CODE LEVEL REQUIREMENTS
+
+1. **Navigation Component (`SettingsNavigation.tsx` / `SettingsTabs.tsx`)**:
+   - Provide a clean two-column or left-sidebar split view:
+     - Left column (~280px to 320px): Grouped categories, search filter, item count, active state indicator (`border-l-2 border-sky-600 bg-sky-50/50 text-sky-900 font-medium`).
+     - Right column (Flex-1): Active setting module with clean breadcrumbs (`Settings > Diagnostic & Lab > Panic Values & Critical SLAs`).
+   - Sticky Top Bar: Search bar (`Cmd+K` keyboard shortcut), Facility Switcher badge, and Global Save/Discard Status Bar.
+2. **State Management & Unsaved Changes**:
+   - Track `isDirty` state across form inputs.
+   - If user makes changes, display a non-intrusive floating or sticky bottom action bar:
+     *"You have unsaved changes in [Section Name] — [Discard / Reset] [Save Changes]"*.
+   - Add `beforeunload` browser alert protection if `isDirty` is true.
+3. **URL Synchronization**:
+   - Sync active category & sub-tab via URL search params (e.g., `/settings?domain=diagnostic&tab=critical-slas`).
+   - Back/Forward browser navigation must work seamlessly without full page remounts.
+4. **Strict Typing & Modular Code Structure**:
+   - Define comprehensive TypeScript interfaces for all configuration schemas.
+   - Separate concerns cleanly: Types, Navigation components, Section forms, and Storage/API hooks.
+   - Use Lucide-React icons tailored for clinical contexts (`Stethoscope`, `Building2`, `ShieldCheck`, `FileText`, `CreditCard`, `Cpu`, `Activity`, `Database`, `Key`, `Printer`).
+
+---
+
+## 📤 OUTPUT DELIVERABLE REQUIREMENTS
+Deliver the complete, fully written, compilable TypeScript & Tailwind CSS code:
+1. **`SettingsNavigation.tsx`**: The enterprise navigation sidebar with search, grouping, badges, and URL routing.
+2. **`SettingsLayout.tsx` / `page.tsx`**: The main container implementing the sticky top header, breadcrumb path, content canvas, and sticky unsaved-changes bar.
+3. **Key Sub-module implementation (e.g., Diagnostic & NABL Governance or Facility & OPD Setup)**: Fully populated with real medical fields, toggles, time pickers, and validation rules to set the standard for the entire system.
+
+Write pristine, production-grade code without placeholders or shortcuts.
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-31T09:48:20+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Claude Sonnet 4.6 (Thinking). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

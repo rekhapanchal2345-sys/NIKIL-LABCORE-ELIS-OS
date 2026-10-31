@@ -176,16 +176,20 @@ export default function SettingsTabs({
   };
 
   return (
-    <div className="relative rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden group">
-      {/* Top Clinical Accent Line */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#0284c7] via-[#0d9488] to-[#0284c7]" />
+    <div className="relative rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_0_rgb(0,0,0,0.06)] overflow-hidden group">
+      {/* Clinical Top Accent Line */}
+      <div
+        className="h-0.5 w-full bg-gradient-to-r from-sky-700 via-cyan-500 to-sky-700"
+        aria-hidden="true"
+      />
 
       <div className="relative px-2 py-2 bg-slate-50/60">
+        {/* Scroll Left Arrow */}
         <button
           type="button"
           onClick={() => scroll("left")}
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-slate-300 text-slate-700 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 cursor-pointer"
-          aria-label="Scroll left"
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 cursor-pointer"
+          aria-label="Scroll tabs left"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -194,6 +198,7 @@ export default function SettingsTabs({
           ref={navRef}
           className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-1"
           aria-label="Clinical settings navigation"
+          role="tablist"
         >
           {SETTINGS_TAB_DEFINITIONS.map((tab) => {
             const active = activeTab === tab.id;
@@ -203,40 +208,44 @@ export default function SettingsTabs({
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={active}
                 data-active={active}
                 onClick={() => onTabChange(tab.id)}
                 className={`group/tab relative flex shrink-0 items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left transition-all duration-150 cursor-pointer border ${
                   active
-                    ? "bg-white text-[#0f172a] border-[#0284c7] shadow-xs ring-2 ring-[#0284c7]/10"
-                    : "bg-white/70 text-slate-600 border-slate-200/90 hover:bg-white hover:text-slate-900 hover:border-slate-300"
+                    ? "bg-white text-slate-900 border-sky-700 shadow-sm ring-2 ring-sky-500/10"
+                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-white hover:text-slate-900 hover:border-slate-300"
                 }`}
               >
+                {/* Icon box — 32×32 */}
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
                     active
-                      ? "bg-[#0284c7] text-white border-[#0284c7]"
-                      : "bg-slate-50 text-slate-500 border-slate-200 group-hover/tab:text-[#0284c7] group-hover/tab:border-sky-200 group-hover/tab:bg-sky-50/60"
+                      ? "bg-sky-700 text-white border-sky-700"
+                      : "bg-white text-slate-500 border-slate-200 group-hover/tab:text-sky-700 group-hover/tab:border-sky-200 group-hover/tab:bg-sky-50/60"
                   }`}
+                  aria-hidden="true"
                 >
                   <Icon className="h-4 w-4" />
                 </div>
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
+                    {/* Code pill */}
                     <span
-                      className={`text-[9px] font-black uppercase tracking-wider px-1 py-0.2 rounded ${
+                      className={`text-[9px] font-bold px-1 rounded ${
                         active
-                          ? "bg-sky-100 text-[#0284c7]"
+                          ? "bg-sky-50 text-sky-700"
                           : "bg-slate-100 text-slate-500"
                       }`}
                     >
                       {tab.code}
                     </span>
+                    {/* Label */}
                     <span
-                      className={`text-xs whitespace-nowrap tracking-tight ${
-                        active
-                          ? "font-black text-[#0f172a]"
-                          : "font-bold text-slate-700"
+                      className={`text-[11px] font-bold whitespace-nowrap ${
+                        active ? "text-slate-900" : "text-slate-700"
                       }`}
                     >
                       {tab.label}
@@ -244,10 +253,10 @@ export default function SettingsTabs({
 
                     {tab.badge && (
                       <span
-                        className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider uppercase ${
+                        className={`rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase border ${
                           active
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
                         }`}
                       >
                         {tab.badge}
@@ -257,12 +266,14 @@ export default function SettingsTabs({
                     {tab.verified && (
                       <CheckCircle2
                         className={`h-3.5 w-3.5 shrink-0 ${
-                          active ? "text-[#059669]" : "text-emerald-600/70"
+                          active ? "text-emerald-600" : "text-emerald-600/70"
                         }`}
+                        aria-label="Verified"
                       />
                     )}
                   </div>
-                  <div className="text-[10px] font-medium text-slate-400 truncate mt-0.5">
+                  {/* Sublabel */}
+                  <div className="text-[9px] text-slate-400 truncate mt-0.5">
                     {tab.sublabel}
                   </div>
                 </div>
@@ -271,11 +282,12 @@ export default function SettingsTabs({
           })}
         </nav>
 
+        {/* Scroll Right Arrow */}
         <button
           type="button"
           onClick={() => scroll("right")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-slate-300 text-slate-700 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 cursor-pointer"
-          aria-label="Scroll right"
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 cursor-pointer"
+          aria-label="Scroll tabs right"
         >
           <ChevronRight className="h-4 w-4" />
         </button>

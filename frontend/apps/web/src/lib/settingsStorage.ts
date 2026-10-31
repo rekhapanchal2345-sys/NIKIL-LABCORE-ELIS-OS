@@ -292,8 +292,8 @@ export function getStoredSettings(tab: string): any {
   return { ...base };
 }
 
-export function setStoredSettings(tab: string, data: any): void {
-  if (typeof window === "undefined") return;
+export function setStoredSettings<T = any>(tab: string, data: T): T {
+  if (typeof window === "undefined") return data;
   try {
     const scopedKey = getUserScopedStorageKey(`labcore_settings_${tab}`);
     localStorage.setItem(scopedKey, JSON.stringify(data));
@@ -301,4 +301,5 @@ export function setStoredSettings(tab: string, data: any): void {
       window.dispatchEvent(new CustomEvent("labcore:profile-updated", { detail: data }));
     }
   } catch {}
+  return data;
 }

@@ -50,6 +50,7 @@ import {
   Siren,
   Waypoints,
   HeartPulse,
+  Truck,
 } from "lucide-react";
 import { approvalApi, invoiceApi, patientApi } from "@/lib/api";
 import LabCoreLogo from "@/components/common/LabCoreLogo";
@@ -528,6 +529,22 @@ const menuSections: MenuSection[] = [
         ],
       },
       {
+        id: "logistics",
+        label: "Cold-Chain Logistics",
+        name: "logistics",
+        href: "/logistics",
+        icon: Truck,
+        accent: ACCENTS.teal,
+        children: [
+          { label: "Live GPS Fleet Radar", href: "/logistics?tab=radar", badge: "Live Radar", badgeVariant: "blue" },
+          { label: "Hospital Ward STAT Runs", href: "/logistics?tab=ward-stat", badge: "STAT 15m", badgeVariant: "red" },
+          { label: "Hub-Spoke Consignments & Dock", href: "/logistics?tab=manifests", badge: "IATA 650", badgeVariant: "teal" },
+          { label: "Home Phlebotomy Fleet", href: "/logistics?tab=home-phlebo", badge: "Dual-OTP", badgeVariant: "emerald" },
+          { label: "Cold-Chain IoT (2°C–8°C)", href: "/logistics?tab=coldchain", badge: "MKT Calc", badgeVariant: "teal" },
+          { label: "Fleet & Courier Roster", href: "/logistics?tab=fleet", badge: "Roster", badgeVariant: "purple" },
+        ],
+      },
+      {
         id: "analyzers",
         label: "Analyzers & QC",
         name: "analyzers",
@@ -673,6 +690,7 @@ const menuSections: MenuSection[] = [
         accent: ACCENTS.sapphire,
         children: [
           { label: "Reagent Register", href: "/inventory", badge: "Live", badgeVariant: "blue" },
+          { label: "Carousel Interlock & CPT Suite", href: "/inventory/reagent-cpt", badge: "Interlock", badgeVariant: "purple" },
           { label: "Critical Stock & Reorder", href: "/inventory?tab=reorder&filter=CRITICAL", badge: "STAT", badgeVariant: "red" },
           { label: "Low Buffer Items", href: "/inventory?tab=reorder&filter=LOW", badge: "Low", badgeVariant: "amber" },
           { label: "FEFO & Lot Validation", href: "/inventory?tab=fefo", badge: "CLSI", badgeVariant: "blue" },
@@ -821,14 +839,13 @@ const menuSections: MenuSection[] = [
         allowedRoles: SETTINGS_VIEW_ROLES,
         accent: ACCENTS.slate,
         children: [
-          { label: "General Settings", href: "/settings" },
-          { label: "Users & Roles", href: "/settings?tab=users", allowedRoles: SETTINGS_ADMIN_ROLES },
-          { label: "Lab Profile & NABL", href: "/settings?tab=lab" },
-          { label: "Branch Management", href: "/settings?tab=branches" },
+          { label: "Facility & Operations", href: "/settings?domain=facility&item=facility-identity" },
+          { label: "Diagnostic & NABL Governance", href: "/settings?domain=diagnostic&item=diagnostic-accreditation", badge: "NABL", badgeVariant: "emerald" },
+          { label: "Staff, Roles & NMC Credentials", href: "/settings?domain=staff&item=staff-rbac", allowedRoles: SETTINGS_ADMIN_ROLES },
+          { label: "Billing, Tariffs & TPA Schemes", href: "/settings?domain=billing&item=billing-tariffs" },
+          { label: "Analyzer & Hardware LIS", href: "/settings?domain=hardware&item=hardware-analyzers" },
+          { label: "Stationery, Security & Audit", href: "/settings?domain=security&item=security-audit" },
           { label: "Communication Providers", href: "/settings/communications", allowedRoles: SETTINGS_EDIT_ROLES },
-          { label: "Security & 2FA", href: "/settings?tab=security" },
-          { label: "Audit Log Viewer", href: "/settings?tab=audit" },
-          { label: "System Health", href: "/settings?tab=health", badge: "API", badgeVariant: "emerald" },
         ],
       },
     ],

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/dashboardlayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -13,7 +14,7 @@ import {
   Boxes, Sparkles, Building2, PhoneCall, ExternalLink, Activity,
   ArrowUpRight, ShieldCheck, DollarSign, Award, Layers, Radio,
   SlidersHorizontal, ChevronDown, Scale, ClipboardCheck,
-  TrendingUp, Lock, HelpCircle
+  TrendingUp, Lock, HelpCircle, Cpu
 } from 'lucide-react';
 
 // ============================================================================
@@ -1130,6 +1131,15 @@ function InventoryWorkstationCore() {
 
             {/* Quick Actions */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <Link
+                href="/inventory/reagent-cpt"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 text-xs sm:text-sm font-semibold transition-colors shadow-sm"
+                title="Open Reagent CPT & Automated Carousel Interlock Engine"
+              >
+                <Cpu className="w-4 h-4 text-teal-600" />
+                <span>CPT &amp; Interlock Engine</span>
+              </Link>
+
               <button
                 onClick={() => setIsSimulateConsumptionModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50/80 text-purple-700 hover:bg-purple-100 text-xs sm:text-sm font-medium transition-colors shadow-sm"

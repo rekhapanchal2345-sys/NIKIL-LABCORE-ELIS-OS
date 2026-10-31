@@ -81,6 +81,9 @@ export default function LiveFleetRadarView({
       IN_TRANSIT: { label: 'In Transit', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500 animate-pulse' },
       DELIVERED: { label: 'Delivered / Accessioned', cls: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-400' },
       DELAYED: { label: 'Breach / Delayed', cls: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500 animate-pulse' },
+      ON_HOLD_EXCURSION: { label: 'Hold / Excursion Alert', cls: 'bg-rose-50 text-rose-800 border-rose-300', dot: 'bg-rose-600 animate-ping' },
+      CANCELLED: { label: 'Cancelled Run', cls: 'bg-slate-100 text-slate-500 border-slate-200', dot: 'bg-slate-400' },
+      RETURNED: { label: 'Returned to Spoke', cls: 'bg-zinc-100 text-zinc-700 border-zinc-300', dot: 'bg-zinc-500' },
     };
     const conf = map[status] || { label: status, cls: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
     return (
@@ -92,6 +95,14 @@ export default function LiveFleetRadarView({
   };
 
   const getPriorityBadge = (priority: PriorityLevel) => {
+    if (priority === 'CRITICAL_ORGAN') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase bg-purple-700 text-white shadow-sm animate-pulse border border-purple-500">
+          <Zap className="w-3 h-3 fill-amber-300 text-amber-300" />
+          CRITICAL ORGAN / PERFUSION
+        </span>
+      );
+    }
     if (priority === 'STAT') {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold uppercase bg-red-600 text-white shadow-xs animate-pulse">
@@ -122,6 +133,9 @@ export default function LiveFleetRadarView({
       INTER_LAB: { label: 'Inter-Lab Referral', icon: '✈️', cls: 'text-purple-700 bg-purple-50 border-purple-200' },
       SUPPLY_DELIVERY: { label: 'Reagent Supply', icon: '🧪', cls: 'text-slate-700 bg-slate-50 border-slate-200' },
       REPORT_COURIER: { label: 'Report Courier', icon: '📄', cls: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+      ORGAN_TRANSPORT: { label: 'Transplant Specimen', icon: '🫀', cls: 'text-rose-800 bg-rose-50 border-rose-300 font-black' },
+      CRYOGENIC_TRANSFER: { label: 'LN2 Cryogenic (-196°C)', icon: '❄️', cls: 'text-cyan-800 bg-cyan-50 border-cyan-300' },
+      REFERENCE_LAB_REFERRAL: { label: 'Apex Ref Lab (Airfreight)', icon: '🌐', cls: 'text-violet-800 bg-violet-50 border-violet-200' },
     };
     const c = map[type] || { label: type, icon: '🚚', cls: 'text-slate-700 bg-slate-50 border-slate-200' };
     return (
@@ -397,6 +411,14 @@ export default function LiveFleetRadarView({
                         {s.destination}
                       </span>
                     </div>
+
+                    {/* Pre-Analytical Stability Window Badge per CLSI GP44-A4 */}
+                    {s.status === 'IN_TRANSIT' && s.tempRequirement === '2_TO_8_C' && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md w-fit">
+                        <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                        <span>CLSI GP44-A4: Serum gel separation required within ~{Math.max(15, 120 - (s.etaMinutes + 25))}m (Max allowable transport time)</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column: Temperature, Courier, Countdown, Fast Action Buttons */}
@@ -416,7 +438,7 @@ export default function LiveFleetRadarView({
                           <Thermometer className="w-3 h-3" />
                           {s.currentTempCelsius > 0 ? `+${s.currentTempCelsius}°C` : `${s.currentTempCelsius}°C`}
                           <span className="text-[10px] font-normal opacity-75">
-                            ({s.tempRequirement === '2_TO_8_C' ? '2°C–8°C Cold' : s.tempRequirement === 'FROZEN_MINUS_20' ? 'Frozen -20°C' : 'Ambient'})
+                            ({s.tempRequirement === '2_TO_8_C' ? '2°C–8°C Cold' : s.tempRequirement === 'FROZEN_MINUS_20' ? 'Frozen -20°C' : s.tempRequirement === 'CRYO_LN2_MINUS_196' ? 'Cryo -196°C' : 'Ambient'})
                           </span>
                         </span>
                       </div>
@@ -456,7 +478,7 @@ export default function LiveFleetRadarView({
                     </div>
 
                     {/* Action Bar */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <select
                         value={s.status}
                         onChange={(e) => onUpdateStatus(s.id, e.target.value as TripStatus)}
@@ -477,6 +499,15 @@ export default function LiveFleetRadarView({
                       >
                         <FileText className="w-3.5 h-3.5" />
                         Slip
+                      </button>
+
+                      <button
+                        onClick={() => onTriggerExcursion(s.id)}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        title="Simulate Cold-Chain Thermal Excursion"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                        Excursion
                       </button>
 
                       <button

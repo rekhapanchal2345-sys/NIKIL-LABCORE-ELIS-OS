@@ -1,9 +1,27 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboardlayout";
-import SettingsTabs, { SettingsTab, isSettingsTab } from "@/components/settings/SettingsTabs";
+import SettingsLayout from "@/components/settings/SettingsLayout";
+import FacilityOperationsSettings from "@/components/settings/FacilityOperationsSettings";
+import DiagnosticGovernanceSettings from "@/components/settings/DiagnosticGovernanceSettings";
+import BillingInsuranceSettings from "@/components/settings/BillingInsuranceSettings";
+import HardwareInteroperabilitySettings from "@/components/settings/HardwareInteroperabilitySettings";
+import StationerySecuritySettings from "@/components/settings/StationerySecuritySettings";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { SETTINGS_VIEW_ROLES } from "@/components/settings/settingsAccess";
+import {
+  getStoredSettings,
+  setStoredSettings,
+} from "@/lib/settingsStorage";
+import { laboratorySettingsApi } from "@/lib/api";
+
+// ─── Sub-module router ────────────────────────────────────────────────────────
+// Maps the URL `item` param to a React component for that settings section.
+// Legacy tabs (profile, billing, etc.) continue to work via the old SettingsTabs
+// system; new domain items render via SettingsLayout.
+
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import GeneralSettings from "@/components/settings/GeneralSettings";
 import UsersSettings from "@/components/settings/UsersSettings";
@@ -16,361 +34,299 @@ import AdvancedSettings from "@/components/settings/AdvancedSettings";
 import DataRetentionSettings from "@/components/settings/DataRetentionSettings";
 import BrandingSettings from "@/components/settings/BrandingSettings";
 import BackupSettings from "@/components/settings/BackupSettings";
-import { 
-  getStoredSettings, 
-  setStoredSettings, 
-  defaultSettings
-} from "@/lib/settingsStorage";
-import { laboratorySettingsApi } from "@/lib/api";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { SETTINGS_VIEW_ROLES } from "@/components/settings/settingsAccess";
-import { 
-  ShieldCheck, 
-  CheckCircle2, 
-  Check, 
-  RotateCcw, 
-  Sliders
-} from "lucide-react";
+import type { SettingsDomain } from "@/types/settings";
 
+// ─── Inner page (needs useSearchParams inside Suspense) ───────────────────────
 function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
 
-  // The URL is the single source of truth for the active tab, so a refresh or a
-  // deep link lands on the same tab and browser Back walks the tab history.
-  const activeTab: SettingsTab = isSettingsTab(tabParam) ? tabParam : "profile";
-  const [saving, setSaving] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  // Bumped on reset so the active tab remounts and re-reads storage
-  // instead of forcing a full page reload.
-  const [resetToken, setResetToken] = useState(0);
+  // Legacy tab param backwards compatibility mapping
+  const legacyTab = searchParams.get("tab");
+  let resolvedItem = searchParams.get("item") ?? "";
+  let resolvedDomain = (searchParams.get("domain") as SettingsDomain) || null;
 
-  // Drop an unknown ?tab= from the URL so the address bar always shows a real tab.
-  useEffect(() => {
-    if (tabParam !== null && !isSettingsTab(tabParam)) {
-      router.replace("/settings", { scroll: false });
+  if (!resolvedItem && legacyTab) {
+    if (legacyTab === "users") {
+      resolvedDomain = "staff";
+      resolvedItem = "staff-rbac";
+    } else if (legacyTab === "lab") {
+      resolvedDomain = "diagnostic";
+      resolvedItem = "diagnostic-accreditation";
+    } else if (legacyTab === "branches") {
+      resolvedDomain = "facility";
+      resolvedItem = "facility-branches";
+    } else if (legacyTab === "security") {
+      resolvedDomain = "security";
+      resolvedItem = "security-audit";
+    } else if (legacyTab === "audit") {
+      resolvedDomain = "security";
+      resolvedItem = "security-auditlog";
+    } else if (legacyTab === "billing") {
+      resolvedDomain = "billing";
+      resolvedItem = "billing-tariffs";
+    } else if (legacyTab === "integrations") {
+      resolvedDomain = "hardware";
+      resolvedItem = "hardware-analyzers";
     }
-  }, [tabParam, router]);
+  }
 
-  const handleTabChange = useCallback(
-    (tab: SettingsTab) => {
-      router.replace(`/settings?tab=${tab}`, { scroll: false });
+  // Domain-based URL params
+  const itemParam = resolvedItem || (searchParams.get("item") ?? "");
+  const domainParam = (resolvedDomain || (searchParams.get("domain") ?? "facility")) as SettingsDomain;
+
+  // Dirty state tracking
+  const [isDirty, setIsDirty] = useState(false);
+  const [dirtySection, setDirtySection] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  // Settings data per section key
+  const [sectionData, setSectionData] = useState<Record<string, any>>({});
+
+  const handleDirtyChange = useCallback(
+    (dirty: boolean, sectionId?: string) => {
+      setIsDirty(dirty);
+      if (sectionId) setDirtySection(sectionId);
     },
-    [router]
+    []
   );
 
-  const triggerGlobalSave = () => {
-    // Read current settings for active tab and trigger save
-    const current = getStoredSettings(activeTab);
-    handleSave(activeTab, current);
-  };
-
-  // Global Ctrl+S / Cmd+S save shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        triggerGlobalSave();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
-
-  const handleSave = async (settingsType: SettingsTab, data: any) => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      // 1. Dual-Write to local storage & broadcast change events
-      setStoredSettings(settingsType, data);
-
-      // 2. Persist to backend database API
-      if (settingsType === "laboratory" || settingsType === "general" || settingsType === "notifications") {
-        try {
-          await laboratorySettingsApi.updateSettings(data);
-        } catch (apiErr) {
-          console.warn("Backend API sync notice:", apiErr);
+      const data = sectionData[itemParam];
+      if (data) {
+        setStoredSettings(itemParam, data);
+        // Try backend sync for laboratory-adjacent sections
+        if (
+          ["facility-identity", "diagnostic-accreditation", "laboratory"].includes(
+            itemParam
+          )
+        ) {
+          try {
+            await laboratorySettingsApi.updateSettings(data);
+          } catch (apiErr) {
+            console.warn("Backend API sync:", apiErr);
+          }
         }
       }
-
-      // 3. Network handshake completion
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      setHasUnsavedChanges(false);
-      showToast(`✓ ${getTabTitle(settingsType)} successfully saved & synced!`);
+      await new Promise((r) => setTimeout(r, 300));
+      setIsDirty(false);
+      setDirtySection("");
     } catch (err) {
-      console.error("Save error in page:", err);
-      showToast("⚠ Failed to save settings. Please try again.");
+      console.error("Save error:", err);
     } finally {
       setSaving(false);
     }
-  };
+  }, [itemParam, sectionData]);
 
-  const resetActiveTabToDefaults = () => {
-    if (confirm(`Reset ${getTabTitle(activeTab)} back to system factory defaults?`)) {
-      const defaultVal = defaultSettings[activeTab];
-      setStoredSettings(activeTab, defaultVal);
-      setHasUnsavedChanges(false);
-      setResetToken((token) => token + 1);
-      showToast(`Reset ${getTabTitle(activeTab)} to defaults.`);
+  const handleDiscard = useCallback(() => {
+    // Force remount by toggling a key
+    setSectionData((prev) => {
+      const next = { ...prev };
+      delete next[itemParam];
+      return next;
+    });
+    setIsDirty(false);
+    setDirtySection("");
+  }, [itemParam]);
+
+  // ── Section renderer ───────────────────────────────────────────────────────
+  const renderSection = (activeItemId: string, domain: SettingsDomain) => {
+    // Domain 1: Facility & Operations
+    if (domain === "facility" || activeItemId.startsWith("facility-")) {
+      return (
+        <FacilityOperationsSettings
+          key={activeItemId}
+          subSection={activeItemId}
+          initialValues={getStoredSettings(activeItemId)}
+          saving={saving}
+          onDirtyChange={(dirty) => handleDirtyChange(dirty, activeItemId)}
+          onSave={(data) => {
+            setSectionData((prev) => ({ ...prev, [activeItemId]: data }));
+          }}
+        />
+      );
     }
-  };
 
-  const renderSettingsContent = () => {
-    switch (activeTab) {
-      case "profile":
-        return (
-          <ProfileSettings
-            saving={saving}
-            initialValues={getStoredSettings("profile")}
-            onSave={(data) => handleSave("profile", data)}
-          />
-        );
-      case "laboratory":
-        return (
-          <LaboratorySettings
-            saving={saving}
-            initialValues={getStoredSettings("laboratory")}
-            onSave={(data) => handleSave("laboratory", data)}
-          />
-        );
-      case "general":
-        return (
-          <GeneralSettings
-            saving={saving}
-            initialValues={getStoredSettings("general")}
-            onSave={(data) => handleSave("general", data)}
-          />
-        );
-      case "users":
-        return (
-          <UsersSettings
-            saving={saving}
-            initialValues={getStoredSettings("users")}
-            onSave={(data) => handleSave("users", data)}
-          />
-        );
-      case "billing":
-        return (
-          <BillingSettings
-            saving={saving}
-            initialValues={getStoredSettings("billing")}
-            onSave={(data) => handleSave("billing", data)}
-          />
-        );
+    // Domain 2: Diagnostic & Lab Governance
+    if (domain === "diagnostic" || activeItemId.startsWith("diagnostic-")) {
+      return (
+        <DiagnosticGovernanceSettings
+          key={activeItemId}
+          subSection={activeItemId}
+          initialValues={getStoredSettings(activeItemId)}
+          saving={saving}
+          onDirtyChange={(dirty) => handleDirtyChange(dirty, activeItemId)}
+          onSave={(data) => {
+            setSectionData((prev) => ({ ...prev, [activeItemId]: data }));
+          }}
+        />
+      );
+    }
+
+    // Domain 3: Doctor, Staff, Roles & Digital Signatures
+    if (
+      domain === "staff" ||
+      activeItemId.startsWith("staff-") ||
+      activeItemId === "users"
+    ) {
+      return (
+        <UsersSettings
+          key={activeItemId}
+          subSection={activeItemId}
+          saving={saving}
+          initialValues={getStoredSettings("users")}
+          onSave={(data) => setStoredSettings("users", data)}
+        />
+      );
+    }
+
+    // Domain 4: Billing, Tariffs, Insurance & Statutory Taxes
+    if (
+      domain === "billing" ||
+      activeItemId.startsWith("billing-") ||
+      activeItemId === "billing"
+    ) {
+      return (
+        <BillingInsuranceSettings
+          key={activeItemId}
+          subSection={activeItemId}
+          saving={saving}
+          initialValues={getStoredSettings("billing")}
+          onDirtyChange={(dirty) => handleDirtyChange(dirty, activeItemId)}
+          onSave={(data) => {
+            setSectionData((prev) => ({ ...prev, [activeItemId]: data }));
+            setStoredSettings("billing", data);
+          }}
+        />
+      );
+    }
+
+    // Domain 5: Medical Hardware, Interoperability & LIS Interfacing
+    if (
+      domain === "hardware" ||
+      activeItemId.startsWith("hardware-") ||
+      activeItemId === "integrations"
+    ) {
+      return (
+        <HardwareInteroperabilitySettings
+          key={activeItemId}
+          subSection={activeItemId}
+          saving={saving}
+          initialValues={getStoredSettings("integrations")}
+          onDirtyChange={(dirty) => handleDirtyChange(dirty, activeItemId)}
+          onSave={(data) => {
+            setSectionData((prev) => ({ ...prev, [activeItemId]: data }));
+            setStoredSettings("integrations", data);
+          }}
+        />
+      );
+    }
+
+    // Domain 6: Stationery, Report Header/Footer & System Security
+    if (
+      domain === "security" ||
+      activeItemId.startsWith("security-") ||
+      activeItemId === "security" ||
+      activeItemId === "branding" ||
+      activeItemId === "backup" ||
+      activeItemId === "data_retention"
+    ) {
+      return (
+        <StationerySecuritySettings
+          key={activeItemId}
+          subSection={activeItemId}
+          saving={saving}
+          initialReportLayout={getStoredSettings("branding")}
+          initialSecurityData={getStoredSettings("security")}
+          onDirtyChange={(dirty) => handleDirtyChange(dirty, activeItemId)}
+          onSave={(reportLayout, security) => {
+            setSectionData((prev) => ({
+              ...prev,
+              [activeItemId]: { reportLayout, security },
+            }));
+            setStoredSettings("branding", reportLayout);
+            setStoredSettings("security", security);
+          }}
+        />
+      );
+    }
+
+    // ── Fallback to legacy settings components ─────────────────────────────
+    switch (activeItemId) {
       case "notifications":
         return (
           <NotificationSettings
+            key={activeItemId}
             saving={saving}
             initialValues={getStoredSettings("notifications")}
-            onSave={(data) => handleSave("notifications", data)}
+            onSave={(data) => setStoredSettings("notifications", data)}
           />
         );
-      case "security":
-        return (
-          <SecuritySettings
-            saving={saving}
-            initialValues={getStoredSettings("security")}
-            onSave={(data) => handleSave("security", data)}
-          />
-        );
-      case "integrations":
-        return (
-          <IntegrationSettings
-            saving={saving}
-            initialValues={getStoredSettings("integrations")}
-            onSave={(data) => handleSave("integrations", data)}
-          />
-        );
+
       case "advanced":
         return (
           <AdvancedSettings
+            key={activeItemId}
             saving={saving}
             initialValues={getStoredSettings("advanced")}
-            onSave={(data) => handleSave("advanced", data)}
+            onSave={(data) => setStoredSettings("advanced", data)}
           />
         );
-      case "data_retention":
+
+      case "general":
         return (
-          <DataRetentionSettings
+          <GeneralSettings
+            key={activeItemId}
             saving={saving}
-            initialValues={getStoredSettings("data_retention")}
-            onSave={(data) => handleSave("data_retention", data)}
+            initialValues={getStoredSettings("general")}
+            onSave={(data) => setStoredSettings("general", data)}
           />
         );
-      case "branding":
-        return (
-          <BrandingSettings
-            saving={saving}
-            initialValues={getStoredSettings("branding")}
-            onSave={(data) => handleSave("branding", data)}
-          />
-        );
-      case "backup":
-        return (
-          <BackupSettings
-            saving={saving}
-            initialValues={getStoredSettings("backup")}
-            onSave={(data) => handleSave("backup", data)}
-          />
-        );
+
+      case "profile":
       default:
         return (
           <ProfileSettings
+            key={activeItemId}
             saving={saving}
             initialValues={getStoredSettings("profile")}
-            onSave={(data) => handleSave("profile", data)}
+            onSave={(data) => setStoredSettings("profile", data)}
           />
         );
     }
   };
 
-  const getTabTitle = (tab: SettingsTab) => {
-    const titles: Record<SettingsTab, string> = {
-      profile: "Practitioner Profile & Signature",
-      laboratory: "Laboratory & Accreditation",
-      general: "General System Settings",
-      users: "Users, Roles & Access Control",
-      billing: "Billing, Tariffs & GST Rules",
-      notifications: "Alerts, SMS & WhatsApp Gateways",
-      security: "Security Policy & Multi-Factor Auth",
-      integrations: "Analyzers, HL7 & API Integrations",
-      advanced: "Advanced System Engine & Caching",
-      data_retention: "Data Retention & Compliance",
-      branding: "Report Letterhead & Visual Branding",
-      backup: "Disaster Recovery & Automated Cloud Backup",
-    };
-    return titles[tab];
-  };
+  // Read NABL status from stored lab settings
+  const labSettings = getStoredSettings("laboratory");
+  const nablStatus = labSettings?.nablStatus ?? "ACTIVE";
+  const facilityName =
+    getStoredSettings("general")?.laboratoryName ??
+    getStoredSettings("laboratory")?.labName ??
+    "LabCore Central Lab";
 
   return (
     <DashboardLayout title="Settings & Administration">
-      <div className="space-y-6 pb-36">
-        {/* Toast Alert Banner */}
-        {toastMessage && (
-          <div className="fixed top-20 right-6 z-[1000] flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-slate-900/95 px-5 py-3 text-xs font-bold text-white shadow-2xl backdrop-blur-md animate-in slide-in-from-top-4">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-            <span>{toastMessage}</span>
-          </div>
-        )}
-
-        {/* Luxury Enterprise Header Banner */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 text-white shadow-xl">
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20 text-cyan-400 border border-indigo-400/30">
-                  <Sliders className="h-4 w-4" />
-                </span>
-                <h1 className="text-xl font-extrabold tracking-tight text-white">
-                  System Settings & Administration
-                </h1>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300 border border-emerald-500/40">
-                  <ShieldCheck className="h-3 w-3" />
-                  NABL & ISO 15189 Verified
-                </span>
-              </div>
-              <p className="text-xs text-slate-300">
-                Configure practitioner credentials, digital report signatures, regulatory accreditations, and automated clinical workflows.
-              </p>
-            </div>
-
-            {/* Quick Badges */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">License Status</span>
-                <span className="font-semibold text-emerald-400">MC-4819 (Active)</span>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">LIS Engine</span>
-                <span className="font-semibold text-cyan-400">LabCore v3.2 PRO</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Navigation Strip */}
-        <SettingsTabs activeTab={activeTab} onTabChange={handleTabChange} />
-
-        {/* Main Tab Content */}
-        <div className="min-h-[500px]">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>{getTabTitle(activeTab)}</span>
-            </h2>
-            <button
-              type="button"
-              onClick={resetActiveTabToDefaults}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-rose-600 transition-colors"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset Tab Defaults
-            </button>
-          </div>
-
-          <div key={`${activeTab}-${resetToken}`}>{renderSettingsContent()}</div>
-        </div>
-
-        {/* Luxury Floating Action Bar */}
-        <div className="fixed bottom-6 inset-x-0 z-50 flex justify-center pointer-events-none px-4">
-          <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border border-slate-700/60 bg-slate-950/90 px-5 py-3 shadow-2xl backdrop-blur-xl text-white">
-            <div className="flex items-center gap-2.5 text-xs">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-slate-300 font-medium">
-                {hasUnsavedChanges ? "Unsaved changes detected" : "All changes synchronized"}
-              </span>
-            </div>
-
-            <div className="h-4 w-px bg-slate-800" />
-
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={resetActiveTabToDefaults}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all"
-              >
-                <RotateCcw className="h-3 w-3" />
-                Reset
-              </button>
-
-              <button
-                type="button"
-                onClick={triggerGlobalSave}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 px-5 py-1.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all"
-              >
-                {saving ? (
-                  <>
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-3.5 w-3.5" />
-                    Save Changes
-                    <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.5 text-[9px] font-mono">
-                      Ctrl+S
-                    </kbd>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="h-full w-full min-h-0 flex flex-col overflow-hidden">
+        <SettingsLayout
+          nablStatus={nablStatus}
+          facilityName={facilityName}
+          isDirty={isDirty}
+          dirtySection={dirtySection}
+          sectionLabel={dirtySection || undefined}
+          saving={saving}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        >
+          {(activeItemId, domain) => renderSection(activeItemId, domain)}
+        </SettingsLayout>
       </div>
     </DashboardLayout>
   );
 }
 
+// ─── Public export with Suspense boundary ────────────────────────────────────
 export default function SettingsPage() {
   return (
     <ProtectedRoute requiredRoles={SETTINGS_VIEW_ROLES}>
@@ -378,7 +334,7 @@ export default function SettingsPage() {
         fallback={
           <DashboardLayout title="Settings & Administration">
             <div className="flex items-center justify-center min-h-[400px]">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-sky-600 border-t-transparent" />
             </div>
           </DashboardLayout>
         }

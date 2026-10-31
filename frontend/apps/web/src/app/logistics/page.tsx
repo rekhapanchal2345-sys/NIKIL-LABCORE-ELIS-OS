@@ -18,6 +18,7 @@ import {
   INITIAL_SHIPMENTS,
   MOCK_COLD_CHAIN_SENSORS,
   MOCK_PNEUMATIC_STATIONS,
+  MOCK_LOGISTICS_KPI,
 } from '@/components/logistics/mockLogisticsData';
 import { ShipmentTrip, TripStatus, PneumaticTubeStation, ColdChainSensor } from '@/components/logistics/logistics.types';
 import {

@@ -155,9 +155,9 @@ export default function SecuritySettings({
     try {
       const res = await authApi.sessions();
       const rawList: SessionItem[] = Array.isArray(res.data) 
-        ? res.data 
+        ? (res.data as any) 
         : Array.isArray(res) 
-          ? res 
+          ? (res as any) 
           : [];
 
       const parsed = rawList.map((s, idx) => {
@@ -184,7 +184,7 @@ export default function SecuritySettings({
       const res = await auditApi.getMyActivity();
       let list: AuditLogItem[] = [];
       if (Array.isArray(res.data)) {
-        list = res.data;
+        list = res.data as any;
       } else if (res.data && Array.isArray((res.data as any).logs)) {
         list = (res.data as any).logs;
       } else if (res.data && Array.isArray((res.data as any).data)) {

@@ -65,23 +65,28 @@ const defaultValues: GeneralSettingsData = {
   holidays: [],
 };
 
+// ─── Shared input class strings ───────────────────────────────────────────────
+const inputCls =
+  "w-full rounded-md border border-slate-200 bg-white py-2 px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-colors duration-150";
+
+const selectCls =
+  "w-full rounded-md border border-slate-200 bg-white py-2 px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-colors duration-150 appearance-none";
+
+const textareaCls =
+  "w-full rounded-md border border-slate-200 bg-white py-2 px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-y transition-colors duration-150";
+
 export default function GeneralSettings({
   initialValues,
   loading = false,
   saving = false,
   onSave,
 }: GeneralSettingsProps) {
-  const [values, setValues] =
-    useState<GeneralSettingsData>({
-      ...defaultValues,
-      ...initialValues,
-    });
+  const [values, setValues] = useState<GeneralSettingsData>({
+    ...defaultValues,
+    ...initialValues,
+  });
 
-  const [saved, setSaved] = useState(false);
-
-  const updateField = <
-    K extends keyof GeneralSettingsData
-  >(
+  const updateField = <K extends keyof GeneralSettingsData>(
     field: K,
     value: GeneralSettingsData[K]
   ) => {
@@ -89,18 +94,11 @@ export default function GeneralSettings({
       ...current,
       [field]: value,
     }));
-
-    setSaved(false);
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     onSave?.(values);
-
-    if (!onSave) {
-      setSaved(true);
-    }
   };
 
   if (loading) {
@@ -109,22 +107,16 @@ export default function GeneralSettings({
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={index}
-            className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+            className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
           >
-            <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
-
+            <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
             <div className="mt-6 grid gap-5 md:grid-cols-2">
-              {Array.from({ length: 4 }).map(
-                (_, fieldIndex) => (
-                  <div
-                    key={fieldIndex}
-                    className="space-y-2"
-                  >
-                    <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-                    <div className="h-10 w-full animate-pulse rounded-lg bg-gray-100" />
-                  </div>
-                )
-              )}
+              {Array.from({ length: 4 }).map((_, fieldIndex) => (
+                <div key={fieldIndex} className="space-y-2">
+                  <div className="h-4 w-24 animate-pulse rounded bg-slate-100" />
+                  <div className="h-9 w-full animate-pulse rounded-lg bg-slate-50" />
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -133,33 +125,21 @@ export default function GeneralSettings({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-6"
-    >
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Laboratory Information */}
-
       <SettingsSection
         title="Laboratory Information"
         description="Basic information displayed across the LabCore ELIS system."
       >
         <div className="grid gap-5 md:grid-cols-2">
-          <SettingsField
-            label="Laboratory Name"
-            required
-          >
+          <SettingsField label="Laboratory Name" required>
             <input
               type="text"
               value={values.laboratoryName}
-              onChange={(e) =>
-                updateField(
-                  "laboratoryName",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("laboratoryName", e.target.value)}
               placeholder="Enter laboratory name"
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
 
@@ -170,76 +150,48 @@ export default function GeneralSettings({
             <input
               type="text"
               value={values.legalName}
-              onChange={(e) =>
-                updateField(
-                  "legalName",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("legalName", e.target.value)}
               placeholder="Legal entity name"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
 
-          <SettingsField
-            label="Registration Number"
-          >
+          <SettingsField label="Registration Number">
             <input
               type="text"
               value={values.registrationNumber}
-              onChange={(e) =>
-                updateField(
-                  "registrationNumber",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("registrationNumber", e.target.value)}
               placeholder="Laboratory registration number"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
 
-          <SettingsField
-            label="Website"
-          >
+          <SettingsField label="Website">
             <input
               type="url"
               value={values.website}
-              onChange={(e) =>
-                updateField(
-                  "website",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("website", e.target.value)}
               placeholder="https://example.com"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
         </div>
       </SettingsSection>
 
       {/* Contact Information */}
-
       <SettingsSection
         title="Contact Information"
         description="Contact details used for reports, invoices and laboratory communication."
       >
         <div className="grid gap-5 md:grid-cols-2">
-          <SettingsField
-            label="Email Address"
-            required
-          >
+          <SettingsField label="Email Address" required>
             <input
               type="email"
               value={values.email}
-              onChange={(e) =>
-                updateField(
-                  "email",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("email", e.target.value)}
               placeholder="lab@example.com"
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
 
@@ -247,21 +199,15 @@ export default function GeneralSettings({
             <input
               type="tel"
               value={values.phone}
-              onChange={(e) =>
-                updateField(
-                  "phone",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("phone", e.target.value)}
               placeholder="+91 98765 43210"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
         </div>
       </SettingsSection>
 
       {/* Address */}
-
       <SettingsSection
         title="Laboratory Address"
         description="Address printed on invoices and laboratory reports."
@@ -270,15 +216,10 @@ export default function GeneralSettings({
           <SettingsField label="Address">
             <textarea
               value={values.address}
-              onChange={(e) =>
-                updateField(
-                  "address",
-                  e.target.value
-                )
-              }
+              onChange={(e) => updateField("address", e.target.value)}
               rows={3}
               placeholder="Enter complete laboratory address"
-              className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={textareaCls}
             />
           </SettingsField>
 
@@ -287,14 +228,9 @@ export default function GeneralSettings({
               <input
                 type="text"
                 value={values.city}
-                onChange={(e) =>
-                  updateField(
-                    "city",
-                    e.target.value
-                  )
-                }
+                onChange={(e) => updateField("city", e.target.value)}
                 placeholder="City"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+                className={inputCls}
               />
             </SettingsField>
 
@@ -302,14 +238,9 @@ export default function GeneralSettings({
               <input
                 type="text"
                 value={values.state}
-                onChange={(e) =>
-                  updateField(
-                    "state",
-                    e.target.value
-                  )
-                }
+                onChange={(e) => updateField("state", e.target.value)}
                 placeholder="State"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+                className={inputCls}
               />
             </SettingsField>
 
@@ -317,15 +248,10 @@ export default function GeneralSettings({
               <input
                 type="text"
                 value={values.pincode}
-                onChange={(e) =>
-                  updateField(
-                    "pincode",
-                    e.target.value
-                  )
-                }
+                onChange={(e) => updateField("pincode", e.target.value)}
                 placeholder="380001"
                 inputMode="numeric"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+                className={inputCls}
               />
             </SettingsField>
           </div>
@@ -333,7 +259,6 @@ export default function GeneralSettings({
       </SettingsSection>
 
       {/* Regional Settings */}
-
       <SettingsSection
         title="Regional Settings"
         description="Control date, currency and timezone defaults."
@@ -342,86 +267,43 @@ export default function GeneralSettings({
           <SettingsField label="Country">
             <select
               value={values.country}
-              onChange={(e) =>
-                updateField(
-                  "country",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("country", e.target.value)}
+              className={selectCls}
             >
               <option value="India">India</option>
-              <option value="United States">
-                United States
-              </option>
-              <option value="United Kingdom">
-                United Kingdom
-              </option>
-              <option value="United Arab Emirates">
-                United Arab Emirates
-              </option>
-              <option value="Singapore">
-                Singapore
-              </option>
+              <option value="United States">United States</option>
+              <option value="United Kingdom">United Kingdom</option>
+              <option value="United Arab Emirates">United Arab Emirates</option>
+              <option value="Singapore">Singapore</option>
             </select>
           </SettingsField>
 
           <SettingsField label="Timezone">
             <select
               value={values.timezone}
-              onChange={(e) =>
-                updateField(
-                  "timezone",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("timezone", e.target.value)}
+              className={selectCls}
             >
-              <option value="Asia/Kolkata">
-                Asia/Kolkata
-              </option>
+              <option value="Asia/Kolkata">Asia/Kolkata</option>
               <option value="UTC">UTC</option>
-              <option value="America/New_York">
-                America/New_York
-              </option>
-              <option value="Europe/London">
-                Europe/London
-              </option>
-              <option value="Asia/Dubai">
-                Asia/Dubai
-              </option>
-              <option value="Asia/Singapore">
-                Asia/Singapore
-              </option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="Europe/London">Europe/London</option>
+              <option value="Asia/Dubai">Asia/Dubai</option>
+              <option value="Asia/Singapore">Asia/Singapore</option>
             </select>
           </SettingsField>
 
           <SettingsField label="Currency">
             <select
               value={values.currency}
-              onChange={(e) =>
-                updateField(
-                  "currency",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("currency", e.target.value)}
+              className={selectCls}
             >
-              <option value="INR">
-                INR — Indian Rupee
-              </option>
-              <option value="USD">
-                USD — US Dollar
-              </option>
-              <option value="GBP">
-                GBP — British Pound
-              </option>
-              <option value="AED">
-                AED — UAE Dirham
-              </option>
-              <option value="SGD">
-                SGD — Singapore Dollar
-              </option>
+              <option value="INR">INR — Indian Rupee</option>
+              <option value="USD">USD — US Dollar</option>
+              <option value="GBP">GBP — British Pound</option>
+              <option value="AED">AED — UAE Dirham</option>
+              <option value="SGD">SGD — Singapore Dollar</option>
             </select>
           </SettingsField>
         </div>
@@ -430,39 +312,21 @@ export default function GeneralSettings({
           <SettingsField label="Date Format">
             <select
               value={values.dateFormat}
-              onChange={(e) =>
-                updateField(
-                  "dateFormat",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("dateFormat", e.target.value)}
+              className={selectCls}
             >
-              <option value="DD/MM/YYYY">
-                DD/MM/YYYY
-              </option>
-              <option value="MM/DD/YYYY">
-                MM/DD/YYYY
-              </option>
-              <option value="YYYY-MM-DD">
-                YYYY-MM-DD
-              </option>
-              <option value="DD-MMM-YYYY">
-                DD-MMM-YYYY
-              </option>
+              <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+              <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+              <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              <option value="DD-MMM-YYYY">DD-MMM-YYYY</option>
             </select>
           </SettingsField>
 
           <SettingsField label="Time Format">
             <select
               value={values.timeFormat}
-              onChange={(e) =>
-                updateField(
-                  "timeFormat",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("timeFormat", e.target.value)}
+              className={selectCls}
             >
               <option value="24h">24 Hour (14:30)</option>
               <option value="12h">12 Hour (2:30 PM)</option>
@@ -472,13 +336,8 @@ export default function GeneralSettings({
           <SettingsField label="Language">
             <select
               value={values.language}
-              onChange={(e) =>
-                updateField(
-                  "language",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("language", e.target.value)}
+              className={selectCls}
             >
               <option value="English">English</option>
               <option value="Hindi">हिंदी (Hindi)</option>
@@ -492,13 +351,8 @@ export default function GeneralSettings({
           <SettingsField label="Number Format">
             <select
               value={values.numberFormat}
-              onChange={(e) =>
-                updateField(
-                  "numberFormat",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("numberFormat", e.target.value)}
+              className={selectCls}
             >
               <option value="indian">Indian (1,00,000.00)</option>
               <option value="international">International (100,000.00)</option>
@@ -509,13 +363,8 @@ export default function GeneralSettings({
           <SettingsField label="First Day of Week">
             <select
               value={values.firstDayOfWeek}
-              onChange={(e) =>
-                updateField(
-                  "firstDayOfWeek",
-                  e.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              onChange={(e) => updateField("firstDayOfWeek", e.target.value)}
+              className={selectCls}
             >
               <option value="monday">Monday</option>
               <option value="sunday">Sunday</option>
@@ -526,7 +375,6 @@ export default function GeneralSettings({
       </SettingsSection>
 
       {/* Working Hours */}
-
       <SettingsSection
         title="Working Hours"
         description="Configure laboratory operating hours and working days."
@@ -545,7 +393,7 @@ export default function GeneralSettings({
                   },
                 }))
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
 
@@ -562,66 +410,60 @@ export default function GeneralSettings({
                   },
                 }))
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+              className={inputCls}
             />
           </SettingsField>
         </div>
 
         <div className="mt-5">
           <SettingsField label="Working Days">
-            <div className="flex flex-wrap gap-3">
-              {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => (
-                <label
-                  key={day}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 capitalize ${
-                    values.workingDays.includes(day)
-                      ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-200"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={values.workingDays.includes(day)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setValues((current) => ({
-                          ...current,
-                          workingDays: [...current.workingDays, day],
-                        }));
-                      } else {
-                        setValues((current) => ({
-                          ...current,
-                          workingDays: current.workingDays.filter((d) => d !== day),
-                        }));
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <span className="text-sm">{day}</span>
-                </label>
-              ))}
+            <div className="flex flex-wrap gap-2 pt-0.5">
+              {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(
+                (day) => {
+                  const isChecked = values.workingDays.includes(day);
+                  return (
+                    <label
+                      key={day}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 capitalize text-sm font-medium select-none transition-colors ${
+                        isChecked
+                          ? "border-sky-700 bg-sky-700 text-white"
+                          : "border-slate-200 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setValues((current) => ({
+                              ...current,
+                              workingDays: [...current.workingDays, day],
+                            }));
+                          } else {
+                            setValues((current) => ({
+                              ...current,
+                              workingDays: current.workingDays.filter(
+                                (d) => d !== day
+                              ),
+                            }));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      {day}
+                    </label>
+                  );
+                }
+              )}
             </div>
           </SettingsField>
         </div>
       </SettingsSection>
 
-      {/* Save */}
-
-      <div className="flex flex-wrap items-center justify-end gap-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        {saved && (
-          <p className="mr-auto text-sm font-medium text-green-600">
-            ✓ Settings saved successfully
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
-      </div>
+      {/*
+        NOTE: The global Save/Discard actions are handled by SettingsLayout's
+        sticky header and bottom banner. No local save button is rendered here.
+      */}
     </form>
   );
 }
