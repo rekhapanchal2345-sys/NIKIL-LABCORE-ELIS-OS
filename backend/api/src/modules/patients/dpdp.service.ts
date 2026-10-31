@@ -92,7 +92,10 @@ function computeConsentArtifactHash(
   consentGiven: boolean,
   timestamp: string
 ): string {
-  const secret = process.env.FIELD_ENCRYPTION_KEY || "LABCORE_DEFAULT_CONSENT_PEPPER_KEY";
+  const secret = process.env.FIELD_ENCRYPTION_KEY;
+  if (!secret) {
+    throw new Error("CRITICAL: FIELD_ENCRYPTION_KEY must be configured for consent digital signatures.");
+  }
   return crypto
     .createHmac("sha256", secret)
     .update(`${patientId}|${purpose}|${consentGiven}|${timestamp}`)

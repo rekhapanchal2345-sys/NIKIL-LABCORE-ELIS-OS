@@ -66,7 +66,10 @@ function computeSignatureHash(
   timestamp: string,
   dataHash: string
 ): string {
-  const secret = process.env.JWT_SECRET || "default_signature_secret_labcore";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("CRITICAL: JWT_SECRET must be configured for digital signatures.");
+  }
   const manifest = `${userId}:${meaning}:${timestamp}:${dataHash}`;
   return crypto.createHmac("sha256", secret).update(manifest).digest("hex");
 }
