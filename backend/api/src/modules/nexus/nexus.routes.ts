@@ -30,6 +30,11 @@ router.post('/mode', requireRoles('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRe
         const { targetMode, reason, enabledCapabilities, signingSecret } = req.body;
         const orgId = req.body.organizationId || (req.user as any)?.organizationId || 'DEFAULT_ORG';
         const actorRole = req.user?.role || 'TECHNOLOGIST';
+        const resolvedSecret = signingSecret || process.env.JWT_SECRET;
+        if (!resolvedSecret) {
+            throw new Error('CRITICAL: JWT_SECRET or signingSecret must be provided for Nexus operating mode transitions.');
+        }
+
         const updated = nexusOperatingModeService.transitionMode({
             organizationId: orgId,
             targetMode,
@@ -37,7 +42,7 @@ router.post('/mode', requireRoles('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRe
             actorRole,
             reason: reason || 'Operating mode transitioned via authenticated API',
             enabledCapabilities: enabledCapabilities || [],
-            signingSecret: signingSecret || process.env.JWT_SECRET || 'nexus-default-secret',
+            signingSecret: resolvedSecret,
         });
         res.json({ success: true, message: `Operating mode transitioned to ${targetMode}`, data: updated });
     } catch (err: any) {

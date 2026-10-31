@@ -20,7 +20,7 @@ import { BackupRetentionService } from "./backup-retention.service";
 import { BackupSchedulerService } from "./backup-scheduler.service";
 
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), "backups");
-const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || "labcore-enterprise-aes256-default-key-32chars";
+const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET;
 
 export interface DataIntegrityTableCount {
   tableName: string;
@@ -86,6 +86,9 @@ export class DisasterRecoveryService {
 
     // If backup file didn't exist (simulated environment), generate valid encrypted archive
     if (!fs.existsSync(backupFilePath)) {
+      if (!ENCRYPTION_SECRET) {
+        throw new Error('CRITICAL: ENCRYPTION_SECRET must be configured for backup encryption.');
+      }
       const simulatedSql = `-- LabCore ELIS Snapshot\n-- Drill ID: ${drillId}\n-- Timestamp: ${startedAt}\nSELECT 1;\n`;
       const iv = crypto.randomBytes(16);
       const cipher = crypto.createCipheriv(

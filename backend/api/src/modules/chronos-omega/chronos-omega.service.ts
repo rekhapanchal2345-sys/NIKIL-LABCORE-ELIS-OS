@@ -128,7 +128,11 @@ class ChronosOmegaService {
         });
 
         const sha256Hash = crypto.createHash('sha256').update(signaturePayload).digest('hex');
-        const hmacSeal = crypto.createHmac('sha256', process.env.JWT_SECRET || 'chronos-omega-secret-key-2026')
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            throw new Error('CRITICAL: JWT_SECRET must be configured for Chronos Omega signature generation.');
+        }
+        const hmacSeal = crypto.createHmac('sha256', secret)
             .update(sha256Hash)
             .digest('hex');
 

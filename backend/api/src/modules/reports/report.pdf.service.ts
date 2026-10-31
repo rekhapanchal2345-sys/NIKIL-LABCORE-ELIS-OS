@@ -2153,7 +2153,10 @@ export class ReportPdfService {
     this.qrHmacSecret =
       process.env.REPORT_QR_HMAC_SECRET ||
       process.env.DIGITAL_SIGNATURE_HMAC_SECRET ||
-      'NIKIL-LABCORE-ELIS-OS-NABL-ISO15189-QR-SECRET-KEY-2026';
+      '';
+    if (!this.qrHmacSecret) {
+      throw new Error('CRITICAL: REPORT_QR_HMAC_SECRET or DIGITAL_SIGNATURE_HMAC_SECRET must be configured for report authentication.');
+    }
     this.baseVerificationUrl = (
       process.env.PUBLIC_VERIFICATION_BASE_URL ||
       process.env.PUBLIC_WEB_URL ||
