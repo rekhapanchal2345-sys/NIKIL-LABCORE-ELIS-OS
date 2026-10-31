@@ -492,7 +492,7 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> str:
         return f"Tool execution failed: {str(e)}"
 
 
-def handle_jsonrpc(req_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def handle_jsonrpc(req_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Handle standard JSON-RPC 2.0 requests for MCP."""
     req_id = req_data.get("id")
     method = req_data.get("method")
@@ -593,7 +593,10 @@ def handle_jsonrpc(req_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             tool_args = {}
 
         print(f"[MCP] Calling tool: {tool_name} with args {tool_args}")
-        tool_output = execute_tool(tool_name, tool_args)
+        try:
+            tool_output = await asyncio.to_thread(execute_tool, tool_name, tool_args)
+        except Exception as ex:
+            tool_output = f"Tool execution failed: {str(ex)}"
         is_error = isinstance(tool_output, str) and (tool_output.startswith("Error:") or tool_output.startswith("Tool execution failed:"))
 
         return {
@@ -763,6 +766,15 @@ async def openid_configuration():
     })
 
 
+@app.get("/health")
+async def health():
+    return JSONResponse({
+        "status": "healthy",
+        "service": "NIKIL-LABCORE-ELIS-OS",
+        "tools_count": len(TOOLS_DEFINITION)
+    })
+
+
 @app.post("/")
 @app.post("/mcp")
 @app.post("/sse")
@@ -783,7 +795,7 @@ async def mcp_post(request: Request):
     if isinstance(body, list):
         responses = []
         for single in body:
-            resp = handle_jsonrpc(single)
+            resp = await handle_jsonrpc(single)
             if resp:
                 responses.append(resp)
         if session_id and session_id in active_sessions and responses:
@@ -792,7 +804,7 @@ async def mcp_post(request: Request):
             return Response(status_code=202, content="Accepted")
         return JSONResponse(responses)
     else:
-        resp = handle_jsonrpc(body)
+        resp = await handle_jsonrpc(body)
         if session_id and session_id in active_sessions:
             if resp is not None:
                 await active_sessions[session_id].put(resp)
